@@ -6,3 +6,6 @@ DerivedData/
 xcuserdata/
 # Local copies made before edits; git history replaces them.
 ios/Verification/*-backup/
+
+# Personal documents used for local testing only (never committed).
+ios/Verification/private/

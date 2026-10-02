@@ -176,6 +176,44 @@ final class OfficeLayoutTests: XCTestCase {
         _ = try export(page, name: "OfficeSamplePhoto")
     }
 
+    /// Personal forms kept outside the repository (Verification/private).
+    private func privateSample(_ name: String) throws -> (UIImage, URL) {
+        guard let home = ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] else { throw XCTSkip("Private samples are only on the developer Mac.") }
+        let folder = URL(fileURLWithPath: home).appendingPathComponent("Documents/ChatGPT/정치 중립/scanner-product/ios/Verification/private")
+        guard let image = UIImage(contentsOfFile: folder.appendingPathComponent(name).path) else { throw XCTSkip("\(name) is not available.") }
+        return (image, folder)
+    }
+
+    /// A photographed government form: dozens of boxes side by side.
+    func testFormPhotoKeepsBoxesInPlace() throws {
+        let (photo, folder) = try privateSample("T4Form.jpg")
+        let flat = try OfficeLayoutPages.flattenedIfPhoto(photo)
+        let cg = try XCTUnwrap(OfficeLayoutPages.prepare(flat).image)
+        try UIImage(cgImage: cg).pngData()?.write(to: folder.appendingPathComponent("T4Form.flat.png"))
+        let reading = try OfficeLayoutPages.prepare(flat, maxSide: OfficeLayoutPages.readingSide).image
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        try encoder.encode(try TextRecognition.recognize(reading)).write(to: folder.appendingPathComponent("T4Form.ocr.json"))
+        var log: [String] = []
+        OfficeLayoutPages.refineLog = { log.append($0) }
+        defer { OfficeLayoutPages.refineLog = nil }
+        let page = try OfficeLayoutPages.analyze(photo)
+        try log.joined(separator: "\n").write(to: folder.appendingPathComponent("T4Form-reread.txt"), atomically: true, encoding: .utf8)
+        var copy = page; for i in copy.graphics.indices { copy.graphics[i].png = nil }
+        try encoder.encode(copy).write(to: folder.appendingPathComponent("T4Form.layout.json"))
+        try OfficeLayoutExport.word([page], image: OfficeLayoutPages.missingPicture).write(to: folder.appendingPathComponent("T4Form.docx"))
+        try OfficeLayoutExport.excel([page], image: OfficeLayoutPages.missingPicture).write(to: folder.appendingPathComponent("T4Form.xlsx"))
+        try OfficeLayoutExport.powerpoint([page], theme: OfficeLayoutPages.theme(), image: OfficeLayoutPages.missingPicture).write(to: folder.appendingPathComponent("T4Form.pptx"))
+        try page.graphics.first?.png?.write(to: folder.appendingPathComponent("T4Form.art.png"))
+        try LayoutText.text([page]).write(to: folder.appendingPathComponent("T4Form-kept.txt"), atomically: true, encoding: .utf8)
+        // The boxes are one picture behind the page; text that was read
+        // reliably sits on top of it, everything else stays as printed.
+        XCTAssertTrue(page.form)
+        XCTAssertTrue(page.positioned)
+        XCTAssertEqual(page.graphics.count, 1)
+        XCTAssertFalse(page.items.contains { if case .table = $0 { return true }; return false })
+        XCTAssertGreaterThan(page.items.count, 30)
+    }
+
     func testReviewedTextKeepsFormatting() throws {
         let page = try OfficeLayoutPages.analyze(image("OfficeSamplePriceList"))
         let text = LayoutText.text([page])

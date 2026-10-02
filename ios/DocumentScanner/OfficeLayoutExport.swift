@@ -7,7 +7,7 @@ import Foundation
 enum OfficeLayoutExport {
     /// Returns PNG data for a page region. `cutout` asks for ink only on a
     /// transparent background.
-    typealias ImageProvider = (_ page: Int, _ box: LBox, _ cutout: Bool) throws -> Data
+    typealias ImageProvider = (_ page: Int, _ graphic: LayoutGraphic) throws -> Data
 
     static let latinFont = "Arial"
     static let eastAsianFont = "Malgun Gothic"
@@ -35,7 +35,7 @@ enum OfficeLayoutExport {
             // Anchor paragraph: holds the page's pictures and starts the page.
             var anchors = ""
             for g in page.graphics {
-                let data = try g.png ?? image(pageIndex, g.box, g.cutout)
+                let data = try g.png ?? image(pageIndex, g)
                 let name = "image\(media.count + 1).png", rid = "rId\(rels.count + 1)"
                 media.append(("word/media/\(name)", data)); rels.append((rid, "image", "media/\(name)"))
                 anchors += wordAnchor(g.box, emu: page.pointsPerPixel * 12700, rid: rid, id: drawingID); drawingID += 1
@@ -43,6 +43,10 @@ enum OfficeLayoutExport {
             let breakBefore = pageIndex > 0 ? "<w:pageBreakBefore/>" : ""
             body += "<w:p><w:pPr>\(breakBefore)<w:spacing w:before=\"0\" w:after=\"0\" w:line=\"20\" w:lineRule=\"exact\"/><w:rPr><w:sz w:val=\"2\"/></w:rPr></w:pPr>\(anchors)</w:p>"
             var cursor = Double(top) / scale + 1 / scale * 20 // pixels already used on the page
+            if page.positioned {
+                body += wordPositioned(page, scale: scale)
+                continue
+            }
             for item in page.items {
                 switch item {
                 case .paragraph(let p):
@@ -61,7 +65,7 @@ enum OfficeLayoutExport {
         }
         // A document must end with a paragraph (tables cannot be last).
         body += "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"20\" w:lineRule=\"exact\"/><w:rPr><w:sz w:val=\"2\"/></w:rPr></w:pPr></w:p>"
-        let ns = "xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" xmlns:r=\"\(OfficeExport.officeNS)\" xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\""
+        let ns = "xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" xmlns:r=\"\(OfficeExport.officeNS)\" xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\" xmlns:wps=\"http://schemas.microsoft.com/office/word/2010/wordprocessingShape\""
         let document = OfficeExport.declaration + "<w:document \(ns)><w:body>\(body)<w:sectPr><w:pgSz w:w=\"\(pageW)\" w:h=\"\(pageH)\"\(first.pageWidth > first.pageHeight ? " w:orient=\"landscape\"" : "")/><w:pgMar w:top=\"\(top)\" w:right=\"\(right)\" w:bottom=\"360\" w:left=\"\(left)\" w:header=\"0\" w:footer=\"0\" w:gutter=\"0\"/></w:sectPr></w:body></w:document>"
         let fonts = "<w:rFonts w:ascii=\"\(latinFont)\" w:hAnsi=\"\(latinFont)\" w:eastAsia=\"\(eastAsianFont)\" w:cs=\"\(latinFont)\"/>"
         let styles = OfficeExport.declaration + "<w:styles xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:docDefaults><w:rPrDefault><w:rPr>\(fonts)<w:sz w:val=\"20\"/><w:szCs w:val=\"20\"/><w:lang w:val=\"en-US\" w:eastAsia=\"ko-KR\"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after=\"0\" w:line=\"240\" w:lineRule=\"auto\"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"Normal\"><w:name w:val=\"Normal\"/><w:qFormat/></w:style><w:style w:type=\"table\" w:default=\"1\" w:styleId=\"TableNormal\"><w:name w:val=\"Normal Table\"/><w:tblPr><w:tblInd w:w=\"0\" w:type=\"dxa\"/><w:tblCellMar><w:top w:w=\"0\" w:type=\"dxa\"/><w:left w:w=\"57\" w:type=\"dxa\"/><w:bottom w:w=\"0\" w:type=\"dxa\"/><w:right w:w=\"57\" w:type=\"dxa\"/></w:tblCellMar></w:tblPr></w:style></w:styles>"
@@ -125,10 +129,59 @@ enum OfficeLayoutExport {
         return "<w:p><w:pPr>\(ppr)</w:pPr>\(runs)</w:p>"
     }
 
-    static func wordTable(_ t: LayoutTable, areaLeft: Double, scale: Double, pointsPerPixel: Double) -> String {
+    /// A form page: every line of text in a frame and every box as a floating
+    /// table, each at its exact position on the page.
+    static func wordPositioned(_ page: PageLayout, scale: Double) -> String {
+        var xml = ""
+        // Larger boxes first so boxes drawn inside them stay visible.
+        let tables = page.items.compactMap { item -> LayoutTable? in if case .table(let t) = item { return t }; return nil }
+            .sorted { $0.box.width * $0.box.height > $1.box.width * $1.box.height }
+        let spacer = "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"20\" w:lineRule=\"exact\"/><w:rPr><w:sz w:val=\"2\"/></w:rPr></w:pPr></w:p>"
+        for t in tables {
+            xml += wordTable(t, areaLeft: 0, scale: scale, pointsPerPixel: page.pointsPerPixel, floating: true) + spacer
+        }
+        // Text boxes anchored to the page; all go in one paragraph.
+        var boxes = ""
+        var id = 5000
+        let emu = page.pointsPerPixel * 12700
+        for item in page.items {
+            guard case .paragraph(let p) = item else { continue }
+            let lineH = max(p.linePitch, p.fontSize / page.pointsPerPixel * 1.18)
+            for line in p.lines {
+                for (k, seg) in line.segments.enumerated() {
+                    let size = seg.fontSize ?? p.fontSize
+                    let segH = max(lineH, size / page.pointsPerPixel * 1.18)
+                    let top = line.box.midY - segH / 2
+                    let align = line.segments.count > 1 && k > 0 ? LayoutAlignment.left : p.alignment
+                    // Boxes get room to spare so a wider substitute font never wraps.
+                    let slack = seg.box.width * 0.3 + size / page.pointsPerPixel
+                    var x0 = (k == 0 ? (p.bullet?.x0 ?? seg.box.x0) : seg.box.x0)
+                    let width = seg.box.x1 - x0 + slack
+                    if align == .center { x0 -= slack / 2 } else if align == .right { x0 -= slack }
+                    let jc = align == .left ? "left" : (align == .center ? "center" : "right")
+                    var runs = seg.runs
+                    if k == 0, p.bullet != nil { runs.insert(LayoutRun(text: "•  "), at: 0) }
+                    let paragraph = "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"240\" w:lineRule=\"auto\"/><w:jc w:val=\"\(jc)\"/></w:pPr>" + runs.map { wordRun($0, size: size, spacing: p.letterSpacing) }.joined() + "</w:p>"
+                    let cx = max(1, i(width * emu)), cy = max(1, i(segH * emu))
+                    boxes += "<w:r><w:drawing><wp:anchor distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\" simplePos=\"0\" relativeHeight=\"\(id)\" behindDoc=\"0\" locked=\"0\" layoutInCell=\"1\" allowOverlap=\"1\"><wp:simplePos x=\"0\" y=\"0\"/><wp:positionH relativeFrom=\"page\"><wp:posOffset>\(i(max(0, x0) * emu))</wp:posOffset></wp:positionH><wp:positionV relativeFrom=\"page\"><wp:posOffset>\(i(max(0, top) * emu))</wp:posOffset></wp:positionV><wp:extent cx=\"\(cx)\" cy=\"\(cy)\"/><wp:effectExtent l=\"0\" t=\"0\" r=\"0\" b=\"0\"/><wp:wrapNone/><wp:docPr id=\"\(id)\" name=\"Text \(id)\"/><wp:cNvGraphicFramePr/><a:graphic><a:graphicData uri=\"http://schemas.microsoft.com/office/word/2010/wordprocessingShape\"><wps:wsp><wps:cNvSpPr txBox=\"1\"/><wps:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"\(cx)\" cy=\"\(cy)\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></wps:spPr><wps:txbx><w:txbxContent>\(paragraph)</w:txbxContent></wps:txbx><wps:bodyPr rot=\"0\" vert=\"horz\" wrap=\"none\" lIns=\"0\" tIns=\"0\" rIns=\"0\" bIns=\"0\" anchor=\"ctr\" anchorCtr=\"0\"><a:noAutofit/></wps:bodyPr></wps:wsp></a:graphicData></a:graphic></wp:anchor></w:drawing></w:r>"
+                    id += 1
+                }
+            }
+        }
+        if !boxes.isEmpty { xml += "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"20\" w:lineRule=\"exact\"/><w:rPr><w:sz w:val=\"2\"/></w:rPr></w:pPr>\(boxes)</w:p>" }
+        return xml
+    }
+
+    static func wordTable(_ t: LayoutTable, areaLeft: Double, scale: Double, pointsPerPixel: Double, floating: Bool = false) -> String {
         let widths = (0..<t.columnCount).map { max(60, i((t.columns[$0 + 1] - t.columns[$0]) * scale)) }
         let border = "w:val=\"single\" w:sz=\"8\" w:space=\"0\" w:color=\"000000\""
-        var xml = "<w:tbl><w:tblPr><w:tblW w:w=\"\(widths.reduce(0, +))\" w:type=\"dxa\"/><w:tblInd w:w=\"\(i((t.columns[0] - areaLeft) * scale))\" w:type=\"dxa\"/>"
+        var xml = "<w:tbl><w:tblPr>"
+        if floating {
+            xml += "<w:tblpPr w:leftFromText=\"0\" w:rightFromText=\"0\" w:topFromText=\"0\" w:bottomFromText=\"0\" w:vertAnchor=\"page\" w:horzAnchor=\"page\" w:tblpX=\"\(i(t.columns[0] * scale))\" w:tblpY=\"\(i(t.rows[0] * scale))\"/><w:tblOverlap w:val=\"overlap\"/>"
+            xml += "<w:tblW w:w=\"\(widths.reduce(0, +))\" w:type=\"dxa\"/>"
+        } else {
+            xml += "<w:tblW w:w=\"\(widths.reduce(0, +))\" w:type=\"dxa\"/><w:tblInd w:w=\"\(i((t.columns[0] - areaLeft) * scale))\" w:type=\"dxa\"/>"
+        }
         xml += "<w:tblBorders><w:top w:val=\"nil\"/><w:left w:val=\"nil\"/><w:bottom w:val=\"nil\"/><w:right w:val=\"nil\"/><w:insideH w:val=\"nil\"/><w:insideV w:val=\"nil\"/></w:tblBorders>"
         xml += "<w:tblLayout w:type=\"fixed\"/><w:tblCellMar><w:top w:w=\"0\" w:type=\"dxa\"/><w:left w:w=\"57\" w:type=\"dxa\"/><w:bottom w:w=\"0\" w:type=\"dxa\"/><w:right w:w=\"57\" w:type=\"dxa\"/></w:tblCellMar><w:tblLook w:val=\"0000\"/></w:tblPr>"
         xml += "<w:tblGrid>" + widths.map { "<w:gridCol w:w=\"\($0)\"/>" }.joined() + "</w:tblGrid>"
@@ -303,16 +356,23 @@ enum OfficeLayoutExport {
                 }
                 return "<is>" + runs.map { "<r>" + ExcelStyles.fontXML(size: size, bold: $0.bold, underline: $0.underline, color: $0.color, wide: hasWide($0.text), tag: "rPr") + "<t xml:space=\"preserve\">\(x($0.text))</t></r>" }.joined() + "</is>"
             }
-            for item in page.items {
+            // Small boxes first: a large frame drawn around them must not merge over them.
+            let ordered = page.items.sorted {
+                func area(_ item: LayoutItem) -> Double { if case .table(let t) = item { return t.box.width * t.box.height }; return .infinity }
+                return area($0) < area($1)
+            }
+            for item in ordered {
                 switch item {
                 case .table(let t):
                     let colIndex = t.columns.map { grid.column(at: $0) }
                     let rowIndex = t.rows.map { grid.row(at: $0) }
                     for cell in t.cells {
                         let r0 = rowIndex[cell.row], c0 = colIndex[cell.column]
-                        let r1 = max(r0, (cell.row + cell.rowSpan < rowIndex.count ? rowIndex[cell.row + cell.rowSpan] : grid.ys.count - 1) - 1)
-                        let c1 = max(c0, (cell.column + cell.columnSpan < colIndex.count ? colIndex[cell.column + cell.columnSpan] : grid.xs.count - 1) - 1)
+                        var r1 = max(r0, (cell.row + cell.rowSpan < rowIndex.count ? rowIndex[cell.row + cell.rowSpan] : grid.ys.count - 1) - 1)
+                        var c1 = max(c0, (cell.column + cell.columnSpan < colIndex.count ? colIndex[cell.column + cell.columnSpan] : grid.xs.count - 1) - 1)
                         guard !occupied.contains(r0 * 100000 + c0) else { continue }
+                        // Merged areas may never overlap; shrink to what is still free.
+                        if (r0...r1).contains(where: { r in (c0...c1).contains { occupied.contains(r * 100000 + $0) } }) { r1 = r0; c1 = c0 }
                         let text = cell.text
                         let firstRun = cell.lines.first?.first
                         let font = styles.font(size: cell.fontSize, bold: firstRun?.bold ?? false, underline: firstRun?.underline ?? false, color: firstRun?.color, wide: hasWide(text))
@@ -325,6 +385,8 @@ enum OfficeLayoutExport {
                         if r1 > r0 || c1 > c0 { merges.append("\(ref(r0, c0)):\(ref(r1, c1))"); styleRange(r0, c0, r1, c1, style: style) }
                     }
                 case .paragraph(let p):
+                    // Form text floats over the form picture (drawn below).
+                    if page.form { continue }
                     let lineH = max(p.linePitch, p.fontSize / pt * 1.18)
                     for line in p.lines {
                         let r = grid.row(at: line.box.midY - lineH / 2)
@@ -371,7 +433,7 @@ enum OfficeLayoutExport {
                 var anchors = ""
                 var drawingRels: [(String, String, String)] = []
                 for (k, g) in page.graphics.enumerated() {
-                    let data = try g.png ?? image(pageIndex, g.box, g.cutout)
+                    let data = try g.png ?? image(pageIndex, g)
                     mediaCount += 1
                     entries.append(("xl/media/image\(mediaCount).png", data))
                     drawingRels.append(("rId\(k + 1)", "image", "../media/image\(mediaCount).png"))
@@ -379,7 +441,22 @@ enum OfficeLayoutExport {
                     func colPos(_ v: Double) -> (Int, Int) { let c = max(0, grid.xs.lastIndex(where: { $0 <= v }) ?? 0); return (min(c, grid.xs.count - 2), max(0, i((v - grid.xs[min(c, grid.xs.count - 2)]) * emu))) }
                     func rowPos(_ v: Double) -> (Int, Int) { let r = max(0, grid.ys.lastIndex(where: { $0 <= v }) ?? 0); return (min(r, grid.ys.count - 2), max(0, i((v - grid.ys[min(r, grid.ys.count - 2)]) * emu))) }
                     let from = (colPos(g.box.x0), rowPos(g.box.y0))
-                    anchors += "<xdr:oneCellAnchor><xdr:from><xdr:col>\(from.0.0)</xdr:col><xdr:colOff>\(from.0.1)</xdr:colOff><xdr:row>\(from.1.0)</xdr:row><xdr:rowOff>\(from.1.1)</xdr:rowOff></xdr:from><xdr:ext cx=\"\(i(g.box.width * emu))\" cy=\"\(i(g.box.height * emu))\"/><xdr:pic><xdr:nvPicPr><xdr:cNvPr id=\"\(k + 2)\" name=\"Picture \(k + 1)\"/><xdr:cNvPicPr><a:picLocks noChangeAspect=\"1\"/></xdr:cNvPicPr></xdr:nvPicPr><xdr:blipFill><a:blip r:embed=\"rId\(k + 1)\"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"\(i(g.box.width * emu))\" cy=\"\(i(g.box.height * emu))\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor>"
+                    // A form's picture and its text share absolute sheet positions so
+                    // rounding of column widths cannot shift one against the other.
+                    let start = page.form
+                        ? "<xdr:absoluteAnchor><xdr:pos x=\"\(i((g.box.x0 - grid.xs[0]) * emu))\" y=\"\(i((g.box.y0 - grid.ys[0]) * emu))\"/>"
+                        : "<xdr:oneCellAnchor><xdr:from><xdr:col>\(from.0.0)</xdr:col><xdr:colOff>\(from.0.1)</xdr:colOff><xdr:row>\(from.1.0)</xdr:row><xdr:rowOff>\(from.1.1)</xdr:rowOff></xdr:from>"
+                    anchors += start + "<xdr:ext cx=\"\(i(g.box.width * emu))\" cy=\"\(i(g.box.height * emu))\"/><xdr:pic><xdr:nvPicPr><xdr:cNvPr id=\"\(k + 2)\" name=\"Picture \(k + 1)\"/><xdr:cNvPicPr><a:picLocks noChangeAspect=\"1\"/></xdr:cNvPicPr></xdr:nvPicPr><xdr:blipFill><a:blip r:embed=\"rId\(k + 1)\"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"\(i(g.box.width * emu))\" cy=\"\(i(g.box.height * emu))\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:\(page.form ? "absoluteAnchor" : "oneCellAnchor")>"
+                }
+                if page.form {
+                    let emu = pt * 12700
+                    var id = 1000
+                    for item in page.items {
+                        guard case .paragraph(let par) = item else { continue }
+                        anchors += slideParagraph(par, emu: emu, pt: pt, id: &id) { x, y, cx, cy, shape in
+                            "<xdr:absoluteAnchor><xdr:pos x=\"\(i(max(0, x - grid.xs[0]) * emu))\" y=\"\(i(max(0, y - grid.ys[0]) * emu))\"/><xdr:ext cx=\"\(cx)\" cy=\"\(cy)\"/>\(shape)<xdr:clientData/></xdr:absoluteAnchor>"
+                        }
+                    }
                 }
                 let drawing = OfficeExport.declaration + "<xdr:wsDr xmlns:xdr=\"http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:r=\"\(OfficeExport.officeNS)\">\(anchors)</xdr:wsDr>"
                 entries.append(("xl/drawings/drawing\(n).xml", Data(drawing.utf8)))
@@ -418,7 +495,7 @@ enum OfficeLayoutExport {
             var slideRels = [("rId1", "slideLayout", "../slideLayouts/slideLayout1.xml")]
             var id = 2
             for g in page.graphics {
-                let data = try g.png ?? image(pageIndex, g.box, g.cutout)
+                let data = try g.png ?? image(pageIndex, g)
                 mediaCount += 1
                 entries.append(("ppt/media/image\(mediaCount).png", data))
                 let rid = "rId\(slideRels.count + 1)"
@@ -426,13 +503,12 @@ enum OfficeLayoutExport {
                 shapes += "<p:pic><p:nvPicPr><p:cNvPr id=\"\(id)\" name=\"Picture \(id)\"/><p:cNvPicPr><a:picLocks noChangeAspect=\"1\"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed=\"\(rid)\"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x=\"\(i(g.box.x0 * emu))\" y=\"\(i(g.box.y0 * emu))\"/><a:ext cx=\"\(max(1, i(g.box.width * emu)))\" cy=\"\(max(1, i(g.box.height * emu)))\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></p:spPr></p:pic>"
                 id += 1
             }
+            // Boxes first, larger under smaller, then text on top.
+            let tables = page.items.compactMap { item -> LayoutTable? in if case .table(let t) = item { return t }; return nil }
+                .sorted { $0.box.width * $0.box.height > $1.box.width * $1.box.height }
+            for t in tables { shapes += slideTable(t, emu: emu, id: id); id += 1 }
             for item in page.items {
-                switch item {
-                case .paragraph(let par):
-                    shapes += slideParagraph(par, emu: emu, pt: page.pointsPerPixel, id: &id)
-                case .table(let t):
-                    shapes += slideTable(t, emu: emu, id: id); id += 1
-                }
+                if case .paragraph(let par) = item { shapes += slideParagraph(par, emu: emu, pt: page.pointsPerPixel, id: &id) }
             }
             let n = pageIndex + 1, path = "ppt/slides/slide\(n).xml"
             entries.append((path, Data((OfficeExport.declaration + "<p:sld xmlns:p=\"\(p)\" xmlns:a=\"\(a)\" xmlns:r=\"\(OfficeExport.officeNS)\"><p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val=\"FFFFFF\"/></a:solidFill><a:effectLst/></p:bgPr></p:bg><p:spTree>\(group)\(shapes)</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>").utf8)))
@@ -461,7 +537,10 @@ enum OfficeLayoutExport {
         return "<a:r><a:rPr \(attrs) dirty=\"0\">\(color)<a:latin typeface=\"\(latinFont)\"/><a:ea typeface=\"\(eastAsianFont)\"/><a:cs typeface=\"\(latinFont)\"/></a:rPr><a:t>\(x(run.text))</a:t></a:r>"
     }
 
-    static func slideParagraph(_ p: LayoutParagraph, emu: Double, pt: Double, id: inout Int) -> String {
+    /// Wraps a spreadsheet text shape at a page position (pixels) with its size (EMU).
+    typealias SheetAnchor = (_ x: Double, _ y: Double, _ cx: Int, _ cy: Int, _ shape: String) -> String
+
+    static func slideParagraph(_ p: LayoutParagraph, emu: Double, pt: Double, id: inout Int, sheet: SheetAnchor? = nil) -> String {
         var xml = ""
         let lineH = max(p.linePitch, p.fontSize / pt * 1.18)
         func box(_ b: LBox, lines: Int, body: String, wrap: Bool, align: LayoutAlignment) -> String {
@@ -472,9 +551,14 @@ enum OfficeLayoutExport {
             var x0 = b.x0, width = b.width + slack
             if align == .center { x0 -= slack / 2 } else if align == .right { x0 -= slack }
             let algn = align == .left ? "l" : (align == .center ? "ctr" : "r")
-            let shape = "<p:sp><p:nvSpPr><p:cNvPr id=\"\(id)\" name=\"Text \(id)\"/><p:cNvSpPr txBox=\"1\"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x=\"\(i(x0 * emu))\" y=\"\(i(top * emu))\"/><a:ext cx=\"\(max(1, i(width * emu)))\" cy=\"\(max(1, i(height * emu)))\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom><a:noFill/></p:spPr><p:txBody><a:bodyPr wrap=\"\(wrap ? "square" : "none")\" lIns=\"0\" tIns=\"0\" rIns=\"0\" bIns=\"0\" anchor=\"t\"><a:noAutofit/></a:bodyPr><a:lstStyle/>" + body.replacingOccurrences(of: "ALGN", with: algn) + "</p:txBody></p:sp>"
-            id += 1
-            return shape
+            let cx = max(1, i(width * emu)), cy = max(1, i(height * emu))
+            let text = "<a:bodyPr wrap=\"\(wrap ? "square" : "none")\" lIns=\"0\" tIns=\"0\" rIns=\"0\" bIns=\"0\" anchor=\"t\"><a:noAutofit/></a:bodyPr><a:lstStyle/>" + body.replacingOccurrences(of: "ALGN", with: algn)
+            defer { id += 1 }
+            if let sheet {
+                let shape = "<xdr:sp macro=\"\" textlink=\"\"><xdr:nvSpPr><xdr:cNvPr id=\"\(id)\" name=\"Text \(id)\"/><xdr:cNvSpPr txBox=\"1\"/></xdr:nvSpPr><xdr:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"\(cx)\" cy=\"\(cy)\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom><a:noFill/></xdr:spPr><xdr:txBody>\(text)</xdr:txBody></xdr:sp>"
+                return sheet(x0, top, cx, cy, shape)
+            }
+            return "<p:sp><p:nvSpPr><p:cNvPr id=\"\(id)\" name=\"Text \(id)\"/><p:cNvSpPr txBox=\"1\"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x=\"\(i(x0 * emu))\" y=\"\(i(top * emu))\"/><a:ext cx=\"\(cx)\" cy=\"\(cy)\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom><a:noFill/></p:spPr><p:txBody>\(text)</p:txBody></p:sp>"
         }
         let spacing = "<a:lnSpc><a:spcPts val=\"\(i(lineH * pt * 100))\"/></a:lnSpc>"
         if p.lines.contains(where: { $0.segments.count > 1 }) {

@@ -51,7 +51,44 @@ enum OfficeLayoutPages {
         guard let flat = DocumentProcessing.context.createCGImage(output, from: output.extent) else {
             throw ScannerError.message("This photo couldn't be flattened. Try scanning the page instead.")
         }
-        return snappedToPaper(UIImage(cgImage: flat))
+        let flatImage = UIImage(cgImage: flat)
+        // Perspective correction keeps the photographed proportions; recover the
+        // sheet's real shape from the camera geometry before snapping to paper.
+        if let aspect = trueAspect(quad, width: Double(cg.width), height: Double(cg.height)) {
+            return snappedToPaper(resized(flatImage, aspect: aspect))
+        }
+        return snappedToPaper(flatImage)
+    }
+    /// Height/width of the photographed rectangle in reality (Zhang & He,
+    /// whiteboard rectification), with the focal length estimated from the
+    /// quad or, when that is unstable, a typical phone wide camera (26 mm).
+    static func trueAspect(_ quad: ScanQuad, width: Double, height: Double) -> Double? {
+        guard quad.valid else { return nil }
+        let p = quad.points.map { [$0.x * width - width / 2, $0.y * height - height / 2, 1.0] }
+        let m1 = p[0], m2 = p[1], m4 = p[2], m3 = p[3]   // TL, TR, BR, BL
+        func cross(_ a: [Double], _ b: [Double]) -> [Double] { [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]] }
+        func dot(_ a: [Double], _ b: [Double]) -> Double { a[0] * b[0] + a[1] * b[1] + a[2] * b[2] }
+        let d2 = dot(cross(m2, m4), m3), d3 = dot(cross(m3, m4), m2)
+        guard abs(d2) > 1e-9, abs(d3) > 1e-9 else { return nil }
+        let k2 = dot(cross(m1, m4), m3) / d2, k3 = dot(cross(m1, m4), m2) / d3
+        let n2 = (0..<3).map { k2 * m2[$0] - m1[$0] }, n3 = (0..<3).map { k3 * m3[$0] - m1[$0] }
+        let prior = 26 / 43.27 * hypot(width, height)
+        var focal = prior
+        if abs(n2[2] * n3[2]) > 1e-12 {
+            let f2 = -(n2[0] * n3[0] + n2[1] * n3[1]) / (n2[2] * n3[2])
+            if f2 > 0, sqrt(f2) > prior * 0.5, sqrt(f2) < prior * 2 { focal = sqrt(f2) }
+        }
+        let w2 = (n2[0] * n2[0] + n2[1] * n2[1]) / (focal * focal) + n2[2] * n2[2]
+        let h2 = (n3[0] * n3[0] + n3[1] * n3[1]) / (focal * focal) + n3[2] * n3[2]
+        guard w2 > 0, h2 > 0 else { return nil }
+        let aspect = sqrt(h2 / w2)
+        return aspect.isFinite && aspect > 0.2 && aspect < 5 ? aspect : nil
+    }
+    static func resized(_ image: UIImage, aspect: Double) -> UIImage {
+        let w = image.size.width * image.scale
+        let size = CGSize(width: w, height: (w * aspect).rounded())
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
+        return UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
     }
     /// True when the area outside the detected page looks unlike the page
     /// (a desk, a table), rather than more of the same paper.
@@ -86,7 +123,7 @@ enum OfficeLayoutPages {
         guard w > 0, h > 0 else { return image }
         let portrait = h >= w
         let aspect = portrait ? h / w : w / h
-        guard let target = paperAspects.min(by: { abs($0 / aspect - 1) < abs($1 / aspect - 1) }), abs(target / aspect - 1) < 0.12 else { return image }
+        guard let target = paperAspects.min(by: { abs($0 / aspect - 1) < abs($1 / aspect - 1) }), abs(target / aspect - 1) < 0.07 else { return image }
         let size = portrait ? CGSize(width: w, height: (w * target).rounded()) : CGSize(width: (h * target).rounded(), height: h)
         let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
         return UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
@@ -107,7 +144,7 @@ enum OfficeLayoutPages {
             var page = DocumentLayoutAnalyzer.analyze(prepared.raster, blocks: blocks, pageSize: pageSize)
             if refineCells { refineTableText(&page, image: reading, scale: CGFloat(reading.width) / CGFloat(prepared.raster.width)) }
             for i in page.graphics.indices {
-                page.graphics[i].png = png(prepared.raster, page.graphics[i].box, cutout: page.graphics[i].cutout)
+                page.graphics[i].png = png(prepared.raster, page.graphics[i])
             }
             return page
         }
@@ -117,6 +154,15 @@ enum OfficeLayoutPages {
     /// Reads each ruled-table cell again on its own. Without neighbouring
     /// cells and borders, short codes and bold text are read more reliably.
     static func refineTableText(_ page: inout PageLayout, image: CGImage, scale: CGFloat = 1) {
+        // Form text that two readings agree on, or that is spelled correctly,
+        // becomes editable; anything else stays in the form picture as printed.
+        var confirmed = Set<String>()
+        var disputed: [String: String] = [:]  // a second reading of the same words that differs
+        func key(_ box: LBox) -> String { "\(box.x0),\(box.y0),\(box.x1),\(box.y1)" }
+        func same(_ a: String, _ b: String) -> Bool {
+            let strip = { (t: String) in t.filter { !$0.isWhitespace && $0 != "|" } }
+            return strip(a) == strip(b)
+        }
         for index in page.items.indices {
             switch page.items[index] {
             case .table(var table):
@@ -136,20 +182,46 @@ enum OfficeLayoutPages {
                 for l in paragraph.lines.indices { for s in paragraph.lines[l].segments.indices {
                     let segment = paragraph.lines[l].segments[s]
                     let h = segment.box.height
-                    let box = LBox(segment.box.x0 - h * 0.6, segment.box.y0 - h * 0.3, segment.box.x1 + h * 0.6, segment.box.y1 + h * 0.3)
+                    // Form boxes are tight; a wide margin would pull in the neighbours.
+                    let mx = page.form ? 0.35 : 0.6, my = page.form ? 0.25 : 0.3
+                    let box = LBox(segment.box.x0 - h * mx, segment.box.y0 - h * my, segment.box.x1 + h * mx, segment.box.y1 + h * my)
                     let letters = segment.text.filter(\.isLetter).count, digits = segment.text.filter(\.isNumber).count
                     let prose = letters >= 8 && digits * 5 < letters
-                    guard let text = reread(box, in: image, scale: scale, old: segment.text, prose: prose),
-                          let runs = restyled(segment.runs, as: text) else { continue }
+                    var second: String?
+                    let text = reread(box, in: image, scale: scale, old: segment.text, prose: prose) { second = $0 }
+                    if page.form, let second {
+                        if same(second, segment.text) { confirmed.insert(key(segment.box)) }
+                        else if second.split(separator: " ").count == segment.text.split(separator: " ").count { disputed[key(segment.box)] = second }
+                    }
+                    guard let text, let runs = restyled(segment.runs, as: text) else { continue }
                     paragraph.lines[l].segments[s].runs = runs
                 } }
                 page.items[index] = .paragraph(paragraph)
             }
         }
+        if page.form {
+            let candidates = page.items.flatMap { item -> [String] in
+                guard case .paragraph(let p) = item else { return [] }
+                return p.lines.flatMap { $0.segments.map(\.text) }
+            }
+            let spelled = correctlySpelled((candidates + disputed.values).joined(separator: " "))
+            func plausible(_ text: String) -> Bool { DocumentLayoutAnalyzer.plausibleText(text) { spelled.contains($0) } }
+            // Agreement only vouches for entries written larger than the printed labels
+            // (names, amounts); two readings of tiny print often agree on the same misread.
+            let heights = candidatesHeights(page).sorted()
+            let label = heights.isEmpty ? 0 : heights[heights.count / 2]
+            DocumentLayoutAnalyzer.keepText(&page) { segment in
+                let k = key(segment.box)
+                if confirmed.contains(k), segment.box.height >= label * 1.2, DocumentLayoutAnalyzer.confirmable(segment.text) { return true }
+                // Two different spellings that both look right: either may be wrong.
+                if let other = disputed[k], plausible(other) { return false }
+                return plausible(segment.text)
+            }
+        }
     }
     /// Reads one region again, enlarged when the text is small. Returns the new
     /// text only when it is a confident, plausible correction of `old`.
-    static func reread(_ box: LBox, in image: CGImage, scale: CGFloat, old: String, prose: Bool) -> String? {
+    static func reread(_ box: LBox, in image: CGImage, scale: CGFloat, old: String, prose: Bool, reading: ((String) -> Void)? = nil) -> String? {
         let rect = CGRect(x: box.x0 * scale, y: box.y0 * scale, width: box.width * scale, height: box.height * scale).integral
             .intersection(CGRect(x: 0, y: 0, width: image.width, height: image.height))
         guard rect.width > 8, rect.height > 8, var crop = image.cropping(to: rect) else { return nil }
@@ -171,6 +243,7 @@ enum OfficeLayoutPages {
         let candidates = observations.compactMap { $0.topCandidates(1).first }
         guard !candidates.isEmpty else { return nil }
         let text = candidates.map(\.string).joined(separator: " ").trimmingCharacters(in: .whitespaces)
+        reading?(text)
         guard !text.isEmpty, text != old else { return nil }
         let confidence = candidates.map(\.confidence).min() ?? 0
         let accepted = confidence >= (prose ? 0.5 : 0.8) && acceptsReread(old: old, new: text, prose: prose)
@@ -279,15 +352,48 @@ enum OfficeLayoutPages {
         return Thread.isMainThread ? check() : DispatchQueue.main.sync(execute: check)
     }
 
+    static func candidatesHeights(_ page: PageLayout) -> [Double] {
+        page.items.flatMap { item -> [Double] in
+            guard case .paragraph(let p) = item else { return [] }
+            return p.lines.flatMap { $0.segments.map(\.box.height) }
+        }
+    }
+    /// Words of `text` (as written) that English or French spelling accepts.
+    static func correctlySpelled(_ text: String) -> Set<String> {
+        // Also the lower-case form of capitals and words without a leading "r" (see plausibleText).
+        let written = text.split { !$0.isLetter }.map(String.init).filter { $0.count >= 2 }
+        let words = Set(written + written.map { $0.lowercased() } + written.filter { $0.first == "r" }.map { String($0.dropFirst()) })
+        guard !words.isEmpty else { return [] }
+        let check = { () -> Set<String> in
+            let checker = UITextChecker()
+            return words.filter { word in
+                ["en_US", "fr_FR"].contains { language in
+                    checker.rangeOfMisspelledWord(in: word, range: NSRange(location: 0, length: (word as NSString).length), startingAt: 0, wrap: false, language: language).location == NSNotFound
+                }
+            }
+        }
+        return Thread.isMainThread ? check() : DispatchQueue.main.sync(execute: check)
+    }
+
     /// PNG of a page region. Cut-outs keep the ink and make paper transparent,
-    /// so rules and line art can sit behind text without hiding it.
-    static func png(_ raster: LayoutRaster, _ box: LBox, cutout: Bool) -> Data? {
+    /// so rules and line art can sit behind text without hiding it. Masked
+    /// ink (text written as editable text) is left out, except on kept rules.
+    static func png(_ raster: LayoutRaster, _ graphic: LayoutGraphic) -> Data? {
+        let box = graphic.box, cutout = graphic.cutout
         let x0 = max(0, Int(box.x0)), y0 = max(0, Int(box.y0))
         let x1 = min(raster.width, Int(box.x1.rounded(.up))), y1 = min(raster.height, Int(box.y1.rounded(.up)))
         let w = x1 - x0, h = y1 - y0
         guard w > 0, h > 0, let space = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
         var pixels = [UInt8](repeating: 0, count: w * h * 4)
+        var masked = [Bool](repeating: false, count: graphic.masks.isEmpty ? 0 : w * h)
+        func paint(_ b: LBox, _ value: Bool) {
+            for y in stride(from: max(y0, Int(b.y0)), to: min(y1, Int(b.y1.rounded(.up))), by: 1) {
+                for x in stride(from: max(x0, Int(b.x0)), to: min(x1, Int(b.x1.rounded(.up))), by: 1) { masked[(y - y0) * w + (x - x0)] = value }
+            }
+        }
+        if !masked.isEmpty { graphic.masks.forEach { paint($0, true) }; graphic.keeps.forEach { paint($0, false) } }
         for y in 0..<h { for x in 0..<w {
+            if !masked.isEmpty && masked[y * w + x] { continue }
             let s = ((y + y0) * raster.width + (x + x0)) * 4, d = (y * w + x) * 4
             let r = Int(raster.rgba[s]), g = Int(raster.rgba[s + 1]), b = Int(raster.rgba[s + 2])
             var a = 255
@@ -306,7 +412,7 @@ enum OfficeLayoutPages {
         guard let url = Bundle.main.url(forResource: "OfficeTheme", withExtension: "xml") else { throw ScannerError.message("The presentation theme is missing from the app.") }
         return try Data(contentsOf: url)
     }
-    static let missingPicture: OfficeLayoutExport.ImageProvider = { _, _, _ in
+    static let missingPicture: OfficeLayoutExport.ImageProvider = { _, _ in
         throw ScannerError.message("A picture on the page couldn't be prepared.")
     }
 }

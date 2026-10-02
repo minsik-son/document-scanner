@@ -45,6 +45,8 @@ struct LayoutSegment: Codable, Equatable {
     var runs: [LayoutRun]
     var box: LBox
     var fontSize: Double? = nil
+    /// Ink of this text in the page picture (forms erase it from their background).
+    var ink: [LBox]? = nil
     var text: String { runs.map(\.text).joined() }
 }
 struct LayoutLine: Codable, Equatable {
@@ -91,6 +93,10 @@ struct LayoutTable: Codable, Equatable {
 struct LayoutGraphic: Codable, Equatable {
     var box: LBox
     var cutout: Bool
+    /// Regions whose ink is left out of the picture (text that is written as
+    /// editable text instead), except where it lies on a `keep` region (rules).
+    var masks: [LBox] = []
+    var keeps: [LBox] = []
     /// PNG of the region, filled in by the platform layer after analysis.
     var png: Data? = nil
 }
@@ -111,6 +117,24 @@ struct PageLayout: Codable, Equatable {
     var pageWidth: Double, pageHeight: Double  // points
     var items: [LayoutItem]
     var graphics: [LayoutGraphic]
+    /// Forms (many boxes side by side) are written with every element at its
+    /// exact page position instead of as flowing text.
+    var positioned = false
+    /// A form: its line art is one picture behind the page and the text that
+    /// was read reliably sits on top of it at its exact position.
+    var form = false
+    init(width: Int, height: Int, pageWidth: Double, pageHeight: Double, items: [LayoutItem], graphics: [LayoutGraphic]) {
+        self.width = width; self.height = height; self.pageWidth = pageWidth; self.pageHeight = pageHeight
+        self.items = items; self.graphics = graphics
+    }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        width = try c.decode(Int.self, forKey: .width); height = try c.decode(Int.self, forKey: .height)
+        pageWidth = try c.decode(Double.self, forKey: .pageWidth); pageHeight = try c.decode(Double.self, forKey: .pageHeight)
+        items = try c.decode([LayoutItem].self, forKey: .items); graphics = try c.decode([LayoutGraphic].self, forKey: .graphics)
+        positioned = try c.decodeIfPresent(Bool.self, forKey: .positioned) ?? false
+        form = try c.decodeIfPresent(Bool.self, forKey: .form) ?? false
+    }
     var pointsPerPixel: Double { pageWidth / Double(width) }
     var contentBox: LBox {
         LBox.around(items.map(\.box) + graphics.map(\.box)) ?? LBox(0, 0, Double(width), Double(height))
@@ -156,6 +180,9 @@ enum DocumentLayoutAnalyzer {
             guard !trimmed.isEmpty else { continue }
             // Isolated punctuation is usually a speck or a stray pen mark.
             if trimmed.count <= 2 && !trimmed.unicodeScalars.contains(where: { CharacterSet.alphanumerics.contains($0) }) && !bulletGlyphs.contains(trimmed) { continue }
+            // Text set sideways (e.g. along the page margin) is not read upright;
+            // its ink is kept as a picture instead.
+            if block.height * h > block.width * w * 1.3 && trimmed.count >= 2 { continue }
             let parts = block.words ?? [TextWord(text: block.text, x: block.x, y: block.y, width: block.width, height: block.height)]
             var cursor = block.text.startIndex
             var line: [Word] = []
@@ -291,6 +318,30 @@ enum DocumentLayoutAnalyzer {
             for x in x0..<x1 { for y in y0..<y1 where dark[y * raster.width + x] { if left == nil { left = x }; right = x; break } }
             guard let l = left, let r = right, r >= l, Double(r - l + 1) >= box.width * 0.35 else { return nil }
             return (Double(l), Double(r + 1))
+        }
+        /// Grows a word box sideways over letters the recognizer left out: ink
+        /// that continues the word with only letter-sized gaps.
+        func extendedAlongInk(_ box: LBox, left: Bool, right: Bool, rules: [LBox] = []) -> LBox {
+            let y0 = max(0, Int(box.y0 + box.height * 0.2)), y1 = min(raster.height, Int(box.y1 - box.height * 0.2))
+            guard y1 > y0 else { return box }
+            // Blurred letters are lighter than the dark-ink threshold but still print.
+            func inked(_ x: Int) -> Bool {
+                guard x >= 0, x < raster.width else { return false }
+                return (y0..<y1).contains { y in raster.lum(x, y) < 170 && !rules.contains { $0.contains(x: Double(x), y: Double(y)) } }
+            }
+            let gapLimit = max(2, Int(box.height * 0.22)), reach = Int(box.height * 1.5)
+            var out = box
+            if left {
+                var x = Int(box.x0) - 1, gap = 0, edge = Int(box.x0)
+                while x >= Int(box.x0) - reach, gap <= gapLimit { if inked(x) { edge = x; gap = 0 } else { gap += 1 }; x -= 1 }
+                out.x0 = Double(edge)
+            }
+            if right {
+                var x = Int(box.x1), gap = 0, edge = Int(box.x1)
+                while x <= Int(box.x1) + reach, gap <= gapLimit { if inked(x) { edge = x + 1; gap = 0 } else { gap += 1 }; x += 1 }
+                out.x1 = Double(edge)
+            }
+            return out
         }
         /// Average stroke width (2 × area / perimeter) of the ink in a box.
         func strokeWidth(_ box: LBox) -> Double? {
@@ -545,8 +596,74 @@ enum DocumentLayoutAnalyzer {
 
         var free: [Word] = []
         var tableWords: [[Word]] = Array(repeating: [], count: tables.count)
+        // A page with many separate boxes is a form: its line art becomes one
+        // picture behind the page and every line of text is placed exactly.
+        let form = tables.count >= 5
+        if form {
+            let walls = vSegments
+            let splitter: (Word, Word) -> Bool = { a, b in
+                walls.contains { $0.c > a.box.x1 - 3 && $0.c < b.box.x0 + 3 && $0.a0 < max(a.box.y1, b.box.y1) && $0.a1 > min(a.box.y0, b.box.y0) }
+            }
+            // Strokes of bold letters can look like short rules; a rule is kept
+            // only where it runs outside the words.
+            let wordBoxes = wordLines.flatMap { $0.map(\.box) }
+            func inText(_ box: LBox) -> Bool {
+                let covered = wordBoxes.filter { $0.overlapY(box) >= box.height * 0.8 }.reduce(0.0) { $0 + $1.overlapX(box) }
+                    + wordBoxes.filter { $0.overlapX(box) >= box.width * 0.8 }.reduce(0.0) { $0 + $1.overlapY(box) }
+                return covered >= max(box.width, box.height) * 0.6
+            }
+            let keeps = (hSegments.map { LBox($0.a0, $0.c - $0.thickness / 2 - 1.5, $0.a1, $0.c + $0.thickness / 2 + 1.5) }
+                + vSegments.map { LBox($0.c - $0.thickness / 2 - 1.5, $0.a0, $0.c + $0.thickness / 2 + 1.5, $0.a1) }).filter { !inText($0) }
+            var paragraphs: [LayoutParagraph] = []
+            // Each recognized line stays one piece of text, cut where a box wall
+            // or a wide gap separates its words.
+            for line in wordLines {
+                var pieces: [[Word]] = []
+                for w in line.sorted(by: { $0.box.x0 < $1.box.x0 }) {
+                    if let last = pieces.last?.last, w.box.x0 - last.box.x1 <= max(last.box.height, w.box.height) * 1.2, !splitter(last, w) { pieces[pieces.count - 1].append(w) }
+                    else { pieces.append([w]) }
+                }
+                for var piece in pieces {
+                    // Stop at box walls: a rule is ink too.
+                    let first = textInk.extendedAlongInk(piece[0].box, left: true, right: false, rules: keeps)
+                    if !walls.contains(where: { $0.c > first.x0 - 2 && $0.c < piece[0].box.x0 && $0.a0 < first.y1 && $0.a1 > first.y0 }) { piece[0].box = first }
+                    let last = textInk.extendedAlongInk(piece[piece.count - 1].box, left: false, right: true, rules: keeps)
+                    if !walls.contains(where: { $0.c < last.x1 + 2 && $0.c > piece[piece.count - 1].box.x1 && $0.a0 < last.y1 && $0.a1 > last.y0 }) { piece[piece.count - 1].box = last }
+                    let visual = VisualLine(words: piece, box: LBox.around(piece.map(\.box))!)
+                    for var p in buildParagraphs([visual], ink: textInk, width: Double(W), ptPerPx: ptPerPx, gap: 1e9, merge: false, bullets: false) {
+                        guard var seg = p.lines.first?.segments.first, p.lines.count == 1, p.lines[0].segments.count == 1 else { continue }
+                        seg.ink = piece.map { w -> LBox in
+                            let rows = textInk.inkRows(w.box) ?? (w.box.y0, w.box.y1)
+                            let pad = max(2, (rows.1 - rows.0) * 0.2)
+                            return LBox(w.box.x0 - pad, min(rows.0, w.box.y0) - pad, w.box.x1 + pad, max(rows.1, w.box.y1) + pad)
+                        }
+                        // Short labels have too few strokes to tell weights word by word.
+                        let bold = seg.runs.filter(\.bold).reduce(0, { $0 + $1.text.count }) * 2 > seg.text.count
+                        seg.runs = [LayoutRun(text: seg.text, bold: bold, underline: seg.runs.contains(where: \.underline), color: seg.runs.first?.color)]
+                        // Printed width decides the size within reason; spacing does the rest.
+                        var fontSize = seg.fontSize ?? p.fontSize
+                        let natural = naturalWidth(seg.text, size: fontSize, bold: bold)
+                        if seg.text.count >= 3, natural > 0 { fontSize = min(fontSize * 1.2, max(fontSize * 0.75, fontSize * seg.box.width * ptPerPx / natural)) }
+                        seg.fontSize = fontSize; p.fontSize = fontSize
+                        p.letterSpacing = fittingSpacing(text: seg.text, width: seg.box.width * ptPerPx, size: fontSize, bold: bold, exact: true)
+                        p.alignment = .left
+                        p.lines[0].segments[0] = seg
+                        paragraphs.append(p)
+                    }
+                }
+            }
+            let art = LayoutGraphic(box: LBox(0, 0, Double(W), Double(H)), cutout: true, keeps: keeps)
+            var page = PageLayout(width: W, height: H, pageWidth: size.0, pageHeight: size.1,
+                                  items: paragraphs.sorted { $0.box.y0 < $1.box.y0 }.map { .paragraph($0) }, graphics: [art])
+            page.positioned = true
+            page.form = true
+            keepText(&page) { _ in true }
+            return page
+        }
         for line in wordLines { for word in line {
-            if let t = tables.firstIndex(where: { $0.box.contains(x: word.box.midX, y: word.box.midY) }) { tableWords[t].append(word) }
+            // Nested boxes: a word belongs to the smallest box around it.
+            let holders = tables.indices.filter { tables[$0].box.contains(x: word.box.midX, y: word.box.midY) }
+            if let t = holders.min(by: { tables[$0].box.width * tables[$0].box.height < tables[$1].box.width * tables[$1].box.height }) { tableWords[t].append(word) }
             else { free.append(word) }
         } }
         for t in tables.indices { fillCells(&tables[t], words: tableWords[t], ink: textInk, ptPerPx: ptPerPx) }
@@ -566,7 +683,7 @@ enum DocumentLayoutAnalyzer {
 
         // Borderless tables from aligned columns.
         var consumed = Set<Int>()
-        for group in borderlessGroups(lines, width: Double(W)) {
+        for group in form ? [] : borderlessGroups(lines, width: Double(W)) {
             if let table = borderlessTable(lines, rows: group, ink: textInk, ptPerPx: ptPerPx) {
                 tables.append(table); group.forEach { consumed.insert($0) }
             }
@@ -583,10 +700,117 @@ enum DocumentLayoutAnalyzer {
 
         var items: [LayoutItem] = paragraphs.map { .paragraph($0) } + tables.map { .table($0) }
         items.sort { $0.box.y0 < $1.box.y0 }
-        return PageLayout(width: W, height: H, pageWidth: size.0, pageHeight: size.1, items: items, graphics: graphics)
+        var page = PageLayout(width: W, height: H, pageWidth: size.0, pageHeight: size.1, items: items, graphics: graphics)
+        page.positioned = form || overlaps(items)
+        return page
     }
 
 
+    /// Keeps only the form text `keep` accepts; the rest stays in the page
+    /// picture, which loses exactly the ink of the text that is kept.
+    static func keepText(_ page: inout PageLayout, _ keep: (LayoutSegment) -> Bool) {
+        guard page.form else { return }
+        var dropped: [LBox] = []
+        // A rule running through the letters keeps part of them in the picture,
+        // so such text stays printed rather than drawn twice.
+        let rules = page.graphics.first?.keeps ?? []
+        func struck(_ s: LayoutSegment) -> Bool {
+            let band = LBox(s.box.x0, s.box.y0 + s.box.height * 0.3, s.box.x1, s.box.y1 - s.box.height * 0.15)
+            return rules.contains { $0.width > $0.height && $0.overlapY(band) > 0 && $0.overlapX(band) > band.width * 0.3 }
+        }
+        page.items = page.items.filter { item in
+            guard case .paragraph(let p) = item else { return true }
+            let segments = p.lines.flatMap(\.segments)
+            if segments.allSatisfy({ keep($0) && !struck($0) }) { return true }
+            dropped += segments.map(\.box)
+            return false
+        }
+        // Two readings of the same print overlap; neither can be trusted alone.
+        func crosses(_ a: LBox, _ b: LBox) -> Bool {
+            a.overlapX(b) * a.overlapY(b) > min(a.width * a.height, b.width * b.height) * 0.05
+        }
+        let boxes = page.items.map(\.box)
+        let doubled = Set(boxes.indices.filter { i in boxes.indices.contains { j in j != i && crosses(boxes[i], boxes[j]) } })
+        dropped += doubled.map { boxes[$0] }
+        page.items = page.items.enumerated().filter { !doubled.contains($0.offset) }.map(\.element)
+        // Text crossing text that stays in the picture stays there too, so no
+        // letter is drawn twice.
+        var changed = true
+        while changed {
+            changed = false
+            page.items = page.items.filter { item in
+                guard case .paragraph(let p) = item else { return true }
+                let crossing = dropped.contains { d in
+                    crosses(d, p.box)
+                }
+                if crossing { dropped += p.lines.flatMap { $0.segments.map(\.box) }; changed = true }
+                return !crossing
+            }
+        }
+        let masks = page.items.flatMap { item -> [LBox] in
+            guard case .paragraph(let p) = item else { return [] }
+            return p.lines.flatMap { $0.segments.flatMap { $0.ink ?? [$0.box] } }
+        }
+        // Text left in the picture is never erased by a neighbour's mask.
+        for g in page.graphics.indices where g == 0 { page.graphics[g].masks = masks; page.graphics[g].keeps += dropped }
+    }
+
+    /// True when every word of `text` is spelled correctly (`isWord` checks one
+    /// word) or is a short code in capitals. Numbers and words mixed
+    /// with digits cannot be checked this way and are never plausible.
+    static func plausibleText(_ text: String, isWord: (String) -> Bool) -> Bool {
+        let elisions: Set<String> = ["d", "l", "n", "s", "j", "c", "m", "t", "qu"]
+        var words = 0
+        // A lone letter before an apostrophe is a French elision: "l'employé", not "T'employé".
+        for (n, token) in text.split(whereSeparator: \.isWhitespace).enumerated() {
+            let parts = token.split(whereSeparator: { "'’".contains($0) })
+            if parts.count > 1, let first = parts.first, first.count == 1, n > 0, !elisions.contains(String(first)) { return false }
+        }
+        guard latin(text), balanced(text) else { return false }
+        for token in text.split(whereSeparator: { $0.isWhitespace || "-–/()&,.:;'’".contains($0) }) {
+            let word = String(token)
+            if word.contains(where: \.isNumber) { return false }
+            guard word.allSatisfy(\.isLetter) else { return false }
+            words += 1
+            if word.count == 1 { continue }
+            if word == word.uppercased() && word.count <= 2 { continue }
+            if elisions.contains(word.lowercased()) { continue }
+            // "pA": a capital after a small letter is a misread, not a word.
+            if zip(word, word.dropFirst()).contains(where: { $0.isLowercase && $1.isUppercase }) { return false }
+            // Spell checkers accept any word in capitals, so check it in lower case.
+            if !isWord(word == word.uppercased() ? word.lowercased() : word) { return false }
+            // "l'employé" is often read "remployé": both spellings exist, so neither is sure.
+            if word.first == "r", let next = word.dropFirst().first, "aeéèêiouyh".contains(next), isWord(String(word.dropFirst())) { return false }
+        }
+        return words > 0
+    }
+
+    /// Letters only from the Latin alphabets (a misread "BC" can come back Cyrillic).
+    static func latin(_ text: String) -> Bool {
+        text.unicodeScalars.allSatisfy { !CharacterSet.letters.contains($0) || $0.value < 0x250 }
+    }
+    static func balanced(_ text: String) -> Bool {
+        text.filter { $0 == "(" }.count == text.filter { $0 == ")" }.count
+    }
+    /// Text that a second, separate reading confirmed can still be a rule or
+    /// box wall read as a character; only clean entries count.
+    static func confirmable(_ text: String) -> Bool {
+        guard latin(text), balanced(text) else { return false }
+        let chars = Array(text)
+        for (k, c) in chars.enumerated() where "/|\\[]{}".contains(c) {
+            if k > 0, k + 1 < chars.count, chars[k - 1].isNumber || chars[k + 1].isNumber { return false }
+            if k == 0 || k + 1 == chars.count { return false }
+        }
+        return true
+    }
+
+    /// True when two items share page height side by side, which flowing text cannot reproduce.
+    static func overlaps(_ items: [LayoutItem]) -> Bool {
+        for (i, a) in items.enumerated() { for b in items[(i + 1)...] {
+            if a.box.overlapY(b.box) > min(a.box.height, b.box.height) * 0.3 && a.box.overlapX(b.box) < min(a.box.width, b.box.width) * 0.5 { return true }
+        } }
+        return false
+    }
     static func physicalSize(width: Int, height: Int) -> (Double, Double) {
         let aspect = Double(height) / Double(max(1, width))
         if abs(aspect - 11.0 / 8.5) < 0.06 { return (612, 792) }
@@ -903,13 +1127,15 @@ enum DocumentLayoutAnalyzer {
     }
 
     // MARK: Paragraphs
-    static func buildParagraphs(_ lines: [VisualLine], ink: Ink, width: Double, ptPerPx: Double) -> [LayoutParagraph] {
+    static func buildParagraphs(_ lines: [VisualLine], ink: Ink, width: Double, ptPerPx: Double,
+                                gap: Double = 1.6, splitter: ((Word, Word) -> Bool)? = nil, merge: Bool = true, bullets: Bool = true) -> [LayoutParagraph] {
         struct Info { var line: VisualLine; var size: Double; var bullet: LBox?; var textBox: LBox; var segments: [LayoutSegment] }
         var infos: [Info] = []
         for line in lines {
             var words = line.words
             var bullet: LBox?
-            if let first = words.first, bulletGlyphs.contains(first.text), words.count > 1, first.text != "-" || words[1].box.x0 - first.box.x1 > first.box.height * 0.3 {
+            if !bullets {
+            } else if let first = words.first, bulletGlyphs.contains(first.text), words.count > 1, first.text != "-" || words[1].box.x0 - first.box.x1 > first.box.height * 0.3 {
                 bullet = first.box; words.removeFirst()
             } else if let first = words.first, let b = detectBullet(ink, before: first.box) {
                 bullet = b
@@ -917,7 +1143,7 @@ enum DocumentLayoutAnalyzer {
             var segs: [[Word]] = []
             let h = (line.words.map(\.box.height).sorted())[line.words.count / 2]
             for w in words {
-                if let last = segs.last?.last, w.box.x0 - last.box.x1 <= h * 1.6 { segs[segs.count - 1].append(w) } else { segs.append([w]) }
+                if let last = segs.last?.last, w.box.x0 - last.box.x1 <= h * gap, !(splitter?(last, w) ?? false) { segs[segs.count - 1].append(w) } else { segs.append([w]) }
             }
             if var first = segs.first?.first, segs[0].count > 0 { first.spaceBefore = false; segs[0][0] = first }
             guard !segs.isEmpty else { continue }
@@ -936,7 +1162,7 @@ enum DocumentLayoutAnalyzer {
         while i < infos.count {
             var group = [infos[i]]
             var j = i + 1
-            while j < infos.count {
+            while merge && j < infos.count {
                 let prev = group.last!, next = infos[j]
                 guard prev.segments.count == 1, next.segments.count == 1, next.bullet == nil else { break }
                 let h = max(prev.textBox.height, next.textBox.height)
@@ -997,10 +1223,11 @@ enum DocumentLayoutAnalyzer {
     }
     /// Extra character spacing (points) that makes Arial text as wide as the
     /// scanned text, so lines keep their breaks and tables keep their rows.
-    static func fittingSpacing(text: String, width: Double, size: Double, bold: Bool) -> Double {
+    static func fittingSpacing(text: String, width: Double, size: Double, bold: Bool, exact: Bool = false) -> Double {
         let count = Double(max(1, text.count - 1))
         guard text.count >= 3 else { return 0 }
         let extra = (width - naturalWidth(text, size: size, bold: bold)) / count
+        if exact { return max(-size * 0.06, min(size * 0.15, extra)) }
         if abs(extra) < size * 0.015 { return 0 }
         let caps = !text.contains(where: \.isLowercase) && text.filter(\.isLetter).count >= 4
         return max(-size * 0.12, min(size * (caps ? 0.8 : 0.08), extra))

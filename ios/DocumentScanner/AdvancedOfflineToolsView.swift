@@ -685,7 +685,7 @@ struct AdvancedOfflineToolContent:View {
                     if tool == .word {
                         guard !body.isEmpty else { throw ScannerError.message("Read, type or paste text first.") }
                         if !layouts.isEmpty, LayoutText.related(body, layoutText), let pages = LayoutText.apply(body, to: layouts) {
-                            return ("Document.docx", try OfficeLayoutExport.word(pages) { _, _, _ in throw ScannerError.message("A picture on the page couldn't be prepared.") })
+                            return ("Document.docx", try OfficeLayoutExport.word(pages, image: OfficeLayoutPages.missingPicture))
                         }
                         return ("Document.docx",try OfficeExport.word(body))
                     }

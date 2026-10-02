@@ -62,6 +62,30 @@ enum DocumentProcessing {
             // Outward unit normal, in normalized units per raster pixel (inside is the
             // opposite direction used by paperEvidence).
             let nx = dy/length/Double(raster.width), ny = -dx/length/Double(raster.height)
+            let probe = max(4, span*0.018)
+            // The sheet's own color just inside this edge. Paper continues only
+            // where the color stays close to it: a light wooden desk is bright
+            // and fairly neutral too, but warmer and darker than the sheet.
+            var reference = [0.0, 0.0, 0.0], referenceCount = 0.0
+            for j in 1...9 {
+                let t = Double(j)/10
+                let x = a.x+(b.x-a.x)*t-nx*probe, y = a.y+(b.y-a.y)*t-ny*probe
+                guard (0...1).contains(x), (0...1).contains(y) else { continue }
+                let rgb = raster.pixel(x, y)
+                guard paperLikelihood(rgb) > 0.5 else { continue }
+                for c in 0..<3 { reference[c] += rgb[c] }
+                referenceCount += 1
+            }
+            guard referenceCount >= 4 else { continue }
+            reference = reference.map { $0/referenceCount }
+            func samePaper(_ rgb: [Double]) -> Bool {
+                guard paperLikelihood(rgb) > 0.5 else { return false }
+                let shift = (0..<3).map { rgb[$0]-reference[$0] }
+                // Shadows darken all channels together; a different surface changes the hue.
+                let mean = shift.reduce(0,+)/3
+                let hue = shift.map { abs($0-mean) }.max() ?? 0
+                return hue < 0.06 && mean > -0.25
+            }
             func paperFraction(_ distance: Double) -> Double? {
                 var paper = 0.0, samples = 0.0
                 for j in 1...9 {
@@ -69,11 +93,10 @@ enum DocumentProcessing {
                     let x = a.x+(b.x-a.x)*t+nx*distance, y = a.y+(b.y-a.y)*t+ny*distance
                     guard (0...1).contains(x), (0...1).contains(y) else { continue }
                     samples += 1
-                    if paperLikelihood(raster.pixel(x, y)) > 0.5 { paper += 1 }
+                    if samePaper(raster.pixel(x, y)) { paper += 1 }
                 }
                 return samples >= 6 ? paper/samples : nil
             }
-            let probe = max(4, span*0.018)
             guard let near = paperFraction(probe), near >= 0.75 else { continue }
             var distance = probe, boundary: Double?
             while distance < span {

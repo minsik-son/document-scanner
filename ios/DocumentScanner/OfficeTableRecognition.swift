@@ -8,6 +8,9 @@ struct OfficeTable: Identifiable, Equatable {
     var cells: [[String]]
     var merges: [Merge] = []
     var inferred = false
+    /// Where this table lives in a reconstructed page layout, if it came from one.
+    var layoutPage: Int? = nil
+    var layoutItem: Int? = nil
     var columnCount: Int { cells.map(\.count).max() ?? 0 }
     mutating func normalize() {
         let width = max(1,columnCount)

@@ -39,7 +39,11 @@ struct PowerPointExportView: View {
     var excel = false
     @State private var stage = 0
     @State private var camera = false
-    @State private var editable = false
+    /// How pages become slides: rebuilt editable layout, page pictures, or plain text.
+    enum SlideMode { case layout, image, text }
+    @State private var mode = SlideMode.layout
+    private var editable: Bool { mode == .text }
+    @State private var layouts: [PageLayout] = []
     @State private var slideTexts: [String] = []
     @State private var tables: [OfficeTable] = []
     @State private var tableIndex = 0
@@ -68,7 +72,7 @@ struct PowerPointExportView: View {
             .toolbar {
                 if (export != nil || stage > 0) && !busy {
                     ToolbarItem(placement:.topBarLeading) {
-                        Button { if export != nil { clearExport() } else { stage = 0; tables = []; slideTexts = [] }; message = nil } label: { Label("Back",systemImage:"chevron.left") }
+                        Button { if export != nil { clearExport() } else { stage = 0; tables = []; slideTexts = []; layouts = [] }; message = nil } label: { Label("Back",systemImage:"chevron.left") }
                             .accessibilityIdentifier("ppt-edit")
                     }
                 } else if pages.count > 1 && !busy && stage == 0 {
@@ -134,7 +138,7 @@ struct PowerPointExportView: View {
                             ForEach(tables.indices,id:\.self) { Text(tables[$0].name).tag($0) }
                         }
                         if tables.indices.contains(tableIndex) { OfficeTableEditor(table:$tables[tableIndex]) }
-                    } footer: { Text("Check names, numbers and merged cells. Each table becomes a separate worksheet. Values are exported as text to preserve leading zeros; formulas and source artwork are not reconstructed.") }
+                    } footer: { Text("Check names, numbers and merged cells. Each page becomes a worksheet that keeps its layout: merged cells, fills, borders, fonts and pictures. Values are exported as text to preserve leading zeros.") }
                 } else {
                     ForEach(slideTexts.indices,id:\.self) { index in
                         Section("Slide \(index+1)") {
@@ -145,12 +149,16 @@ struct PowerPointExportView: View {
                 }
             } else if stage == 1 {
                 Section("Choose your slide content") {
-                    Button { editable = false } label: {
-                        Label("Keep original appearance",systemImage:editable ? "circle" : "checkmark.circle.fill")
+                    Button { mode = .layout } label: {
+                        Label("Editable, same layout",systemImage:mode == .layout ? "checkmark.circle.fill" : "circle")
+                    }.accessibilityIdentifier("ppt-mode-layout")
+                    Text("Text, tables and pictures stay where they are on the page, with their sizes, colors and borders. Everything stays editable.").font(.subheadline).foregroundStyle(.secondary)
+                    Button { mode = .image } label: {
+                        Label("Keep original appearance",systemImage:mode == .image ? "checkmark.circle.fill" : "circle")
                     }.accessibilityIdentifier("ppt-mode-image")
                     Text("Each selected page becomes a full-resolution image on a slide.").font(.subheadline).foregroundStyle(.secondary)
-                    Button { editable = true } label: {
-                        Label("Editable text",systemImage:editable ? "checkmark.circle.fill" : "circle")
+                    Button { mode = .text } label: {
+                        Label("Editable text",systemImage:mode == .text ? "checkmark.circle.fill" : "circle")
                     }.accessibilityIdentifier("ppt-mode-text")
                     Text("Extract and check the text first. Pictures and original layout won't be included.").font(.subheadline).foregroundStyle(.secondary)
                 }
@@ -196,7 +204,7 @@ struct PowerPointExportView: View {
                 Text(export != nil ? "Your \(formatName) is ready" : stage == 2 ? (excel ? "Check your tables" : "Check your slide text") : stage == 1 ? "Make it your presentation" : excel ? "Turn tables into Excel" : "Turn pages into slides")
                     .font(.system(.title2,design:.rounded,weight:.bold)).foregroundStyle(headerPalette.ink)
                     .fixedSize(horizontal:false,vertical:true)
-                Text(export != nil ? "Preview your file, then save or share." : stage == 2 ? "Tap to correct anything before exporting." : stage == 1 ? "Keep the page design or work with editable text." : "Choose up to 30 pages. Everything is processed on this iPhone.")
+                Text(export != nil ? "Preview your file, then save or share." : stage == 2 ? "Tap to correct anything before exporting." : stage == 1 ? "Keep the page design and edit everything on it." : "Choose up to 30 pages. Everything is processed on this iPhone.")
                     .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
             }.frame(maxWidth:.infinity,alignment:.leading)
             ToolArtwork(name:excel ? "excel" : "slides",size:72)
@@ -328,13 +336,18 @@ struct PowerPointExportView: View {
         job = Task {
             defer { busy = false }
             do {
-                var foundTables:[OfficeTable] = [],texts:[String] = []
+                var foundTables:[OfficeTable] = [],texts:[String] = [],pageLayouts:[PageLayout] = []
                 for (index,page) in selection.enumerated() {
                     try Task.checkCancellation();phase = "Reading page \(index+1) of \(selection.count)…"
                     if excel {
-                        let image = try await OfflineWork.perform { try page.image(root:root) }
-                        let found = try await OfficeTableRecognition.recognize(image,page:index+1)
-                        foundTables += found
+                        let layout = try await OfflineWork.perform { try OfficeLayoutPages.analyze(page.image(root:root)) }
+                        pageLayouts.append(layout)
+                        var count = 0
+                        for (item, content) in layout.items.enumerated() {
+                            guard case .table(let table) = content else { continue }
+                            count += 1
+                            foundTables.append(OfficeTable(layout:table,name:"Page \(index+1) · Table \(count)",page:index,item:item))
+                        }
                         guard foundTables.count <= 100 else { throw ScannerError.message("Choose fewer pages. Up to 100 tables can be exported at once.") }
                     } else {
                         let text = try await OfflineWork.perform { try page.recognizedText(root:root) }
@@ -342,21 +355,39 @@ struct PowerPointExportView: View {
                     }
                 }
                 try Task.checkCancellation()
-                if excel && foundTables.isEmpty { message = "No table text was found. Try a clearer scan or another page."; return }
-                tables = foundTables; tableIndex = 0; slideTexts = texts;stage = 2
-                if foundTables.contains(where: \.inferred) { message = "Some pages have no detected table. Their rows and columns were estimated from text positions; check them carefully." }
+                if excel && pageLayouts.allSatisfy({ $0.items.isEmpty }) { message = "No text was found. Try a clearer scan or another page."; return }
+                tables = foundTables; tableIndex = 0; slideTexts = texts; layouts = pageLayouts; stage = 2
+                if excel && foundTables.isEmpty { message = "No tables were found. Each page's text keeps its layout on its worksheet." }
                 if !excel && texts.contains(where: { $0.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty }) { message = "Some pages contain no readable text. Add text before creating your presentation, or use original appearance." }
             } catch { message = error is CancellationError ? "Canceled. Your selected pages are unchanged." : error.localizedDescription }
         }
     }
     private func create() {
-        let selection = pages,root = store.root,tableSnapshot = tables,textSnapshot = slideTexts,asText = editable
+        let selection = pages,root = store.root,tableSnapshot = tables,textSnapshot = slideTexts,asText = editable,slideMode = mode,layoutSnapshot = layouts
         busy = true; message = nil; editMode = .inactive; phase = "Creating \(formatName)…"
         job = Task {
             defer { busy = false }
             do {
+                var rebuilt:[PageLayout] = []
+                if !excel && slideMode == .layout {
+                    for (index,page) in selection.enumerated() {
+                        try Task.checkCancellation();phase = "Rebuilding page \(index+1) of \(selection.count)…"
+                        rebuilt.append(try await OfflineWork.perform { try OfficeLayoutPages.analyze(page.image(root:root)) })
+                    }
+                    phase = "Creating PowerPoint…"
+                }
+                let slides = rebuilt
                 let data = try await OfflineWork.perform {
-                    if excel { return try OfficeExport.excel(tables:tableSnapshot) }
+                    if excel {
+                        var pages = layoutSnapshot
+                        for table in tableSnapshot {
+                            guard let p = table.layoutPage, let i = table.layoutItem, pages.indices.contains(p), pages[p].items.indices.contains(i),
+                                  case .table(var layout) = pages[p].items[i] else { continue }
+                            layout.apply(table); pages[p].items[i] = .table(layout)
+                        }
+                        return try OfficeLayoutExport.excel(pages,image:OfficeLayoutPages.missingPicture)
+                    }
+                    if slideMode == .layout { return try OfficeLayoutExport.powerpoint(slides,theme:OfficeLayoutPages.theme(),image:OfficeLayoutPages.missingPicture) }
                     return try OfficeExport.powerpoint(pageCount:selection.count,texts:textSnapshot,editable:asText) { index in
                         try selection[index].image(root:root)
                     }

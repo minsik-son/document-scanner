@@ -197,6 +197,9 @@ struct AdvancedOfflineToolContent:View {
     @State private var wordPDFPages = 0
     @State private var wordSourceName = ""
     @State private var text = ""
+    /// Reconstructed page layouts behind the review text (Word export keeps their formatting).
+    @State private var wordLayouts: [PageLayout] = []
+    @State private var wordLayoutText = ""
     @FocusState private var editingText: Bool
     @State private var translated = ""
     @State private var from = "en"
@@ -296,6 +299,7 @@ struct AdvancedOfflineToolContent:View {
             .onChange(of:photos) { _,items in loadPhotos(items) }
             .onChange(of:options) { _,_ in clearOutput(clearMessage: false) }
             .onChange(of:allPages) { _,_ in text = "" }
+            .onChange(of:text) { _,value in if value.isEmpty { wordLayouts = []; wordLayoutText = "" } }
             .onChange(of:countPoints) { _,_ in if tool == .count { clearOutput(clearMessage: false) } }
             .task {
                 if inputs.isEmpty,doc != nil { loadPage() }
@@ -627,8 +631,16 @@ struct AdvancedOfflineToolContent:View {
         let cameraPages = tool == .word && allPages && doc == nil && wordPDF == nil ? inputs : []
         busy = true;message = nil;phase = "Processing on this iPhone…"
         job = Task { defer { finishWork() };do {
-            let value = try await OfflineWork.perform { () throws -> String in
+            let word = tool == .word
+            let (value, layouts) = try await OfflineWork.perform { () throws -> (String, [PageLayout]) in
+                var layouts:[PageLayout] = []
                 func read(_ image:UIImage) throws -> String {
+                    if word {
+                        // Word keeps the page layout: tables, sizes, weights and positions.
+                        let layout = try OfficeLayoutPages.analyze(image)
+                        layouts.append(layout)
+                        return LayoutText.text([layout])
+                    }
                     guard let cg = image.cgImage else { throw ScannerError.message("Image unavailable.") }
                     let blocks = try TextRecognition.recognize(cg)
                     return excel ? OfficeExport.tableText(blocks) : blocks.map(\.text).joined(separator:"\n")
@@ -638,7 +650,7 @@ struct AdvancedOfflineToolContent:View {
                     for index in pdfIndices {
                         try Task.checkCancellation()
                         results.append(try autoreleasepool {
-                            try WordFileInput.text(pdfURL,index:index,recognize:read)
+                            try word ? read(WordFileInput.page(pdfURL,index:index)) : WordFileInput.text(pdfURL,index:index,recognize:read)
                         })
                     }
                 } else if !cameraPages.isEmpty {
@@ -647,8 +659,8 @@ struct AdvancedOfflineToolContent:View {
                     guard pages.count <= 30 else { throw ScannerError.message("Choose at most 30 pages.") }
                     for (index, page) in pages.enumerated() { try Task.checkCancellation();Task { @MainActor in if busy && !cancelling { phase = "Reading page \(index+1) of \(pages.count)…" } };results.append(try autoreleasepool { try read(Imaging.render(page,root:root)) }) }
                 } else if let source { results = [try read(source)] }
-                return results.joined(separator:tool == .slides || tool == .word ? "\u{000c}" : "\n\n")
-            };try Task.checkCancellation();text = value;message = value.isEmpty ? "No text found. Type or paste the text to continue." : (tool == .word ? nil : "Review the text before exporting.")
+                return (results.joined(separator:tool == .slides || tool == .word ? "\u{000c}" : "\n\n"), layouts)
+            };try Task.checkCancellation();text = value;wordLayouts = layouts;wordLayoutText = value;message = value.isEmpty ? "No text found. Type or paste the text to continue." : (tool == .word ? nil : "Review the text before exporting.")
             if tool == .word { wordReviewPage = 0; wordStep = .review }
         } catch { report(error) } }
     }
@@ -656,7 +668,7 @@ struct AdvancedOfflineToolContent:View {
     private func run() {
         editingText = false
         clearOutput();busy = true;phase = tool.office ? "Creating Office file…" : "Processing image…"
-        let source = input,images = inputs,positions = offsets,body = text,amount = strength,rect = selection,curve = curve,split = split,two = twoPages,blue = blue,size = portraitDimensions,threshold = threshold,minimum = minimumArea,light = lightObjects,editable = editableSlides,pages = allPages ? doc?.pages : nil,root = store.root,from = from,to = to
+        let source = input,images = inputs,positions = offsets,body = text,layouts = wordLayouts,layoutText = wordLayoutText,amount = strength,rect = selection,curve = curve,split = split,two = twoPages,blue = blue,size = portraitDimensions,threshold = threshold,minimum = minimumArea,light = lightObjects,editable = editableSlides,pages = allPages ? doc?.pages : nil,root = store.root,from = from,to = to
         job = Task { defer { finishWork() };do {
             if tool == .translate {
                 guard !body.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty,body.count <= 20000 else { throw ScannerError.message("Enter 1–20,000 characters to translate.") }
@@ -670,7 +682,13 @@ struct AdvancedOfflineToolContent:View {
             if tool == .math { translated = String(try LocalMath.evaluate(body));return }
             if tool.office {
                 let result = try await OfflineWork.perform { () throws -> (String,Data) in
-                    if tool == .word { guard !body.isEmpty else { throw ScannerError.message("Read, type or paste text first.") };return ("Document.docx",try OfficeExport.word(body)) }
+                    if tool == .word {
+                        guard !body.isEmpty else { throw ScannerError.message("Read, type or paste text first.") }
+                        if !layouts.isEmpty, LayoutText.related(body, layoutText), let pages = LayoutText.apply(body, to: layouts) {
+                            return ("Document.docx", try OfficeLayoutExport.word(pages) { _, _, _ in throw ScannerError.message("A picture on the page couldn't be prepared.") })
+                        }
+                        return ("Document.docx",try OfficeExport.word(body))
+                    }
                     if tool == .excel { guard !body.isEmpty else { throw ScannerError.message("Read, type or paste cells first.") };return ("Table.xlsx",try OfficeExport.excel(body)) }
                     let pageCount = pages?.count ?? images.count
                     let texts = editable && pages != nil ? body.components(separatedBy:"\u{000c}") : [body]

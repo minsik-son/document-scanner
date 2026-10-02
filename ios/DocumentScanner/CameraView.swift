@@ -259,6 +259,7 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
     private var autoPending = false
     private var captureStyle = CaptureStyle.document
     private var visibleCardArea: ScanQuad?
+    private var device: AVCaptureDevice? // Session queue only.
     private var lastAnalysis: TimeInterval = -Double.infinity
     private var generation = 0 // Session queue only.
     private var sessionRequestToken = 0 // Session queue only.
@@ -318,7 +319,11 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
                     self.session.inputs.forEach(self.session.removeInput)
                     self.session.outputs.forEach(self.session.removeOutput)
                     self.session.sessionPreset = .photo
-                    guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
+                    // Prefer the multi-camera device, like the Camera app: when the phone
+                    // is closer than the main lens can focus, iOS switches to the macro-
+                    // capable ultra wide automatically instead of producing a soft photo.
+                    let types: [AVCaptureDevice.DeviceType] = [.builtInTripleCamera, .builtInDualWideCamera, .builtInWideAngleCamera]
+                    guard let device = types.lazy.compactMap({ AVCaptureDevice.default($0, for: .video, position: .back) }).first else {
                         throw ScannerError.message("A camera is unavailable. Use Import on this device.")
                     }
                     let input = try AVCaptureDeviceInput(device: device)
@@ -328,6 +333,15 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
                     self.session.addInput(input)
                     self.session.addOutput(self.photoOutput)
                     self.photoOutput.maxPhotoQualityPrioritization = .quality
+                    // Largest still the format offers up to ~25 MP (24 MP on recent Pro
+                    // phones, 12 MP elsewhere). 48 MP is skipped: it disables multi-frame
+                    // processing on some models and multiplies memory for every page.
+                    let dimensions = device.activeFormat.supportedMaxPhotoDimensions
+                        .filter { Int($0.width)*Int($0.height) <= 25_000_000 }
+                        .max { Int($0.width)*Int($0.height) < Int($1.width)*Int($1.height) }
+                    if let dimensions { self.photoOutput.maxPhotoDimensions = dimensions }
+                    self.device = device
+                    self.configureFocus(device, style: self.captureStyle)
                     self.videoOutput.alwaysDiscardsLateVideoFrames = true
                     self.videoOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange]
                     self.session.addOutput(self.videoOutput)
@@ -383,8 +397,28 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
     func setAutoScan(_ enabled: Bool) {
         queue.async { self.autoEnabled = enabled; self.autoPending = false }
     }
+    /// Paper is usually 15–40 cm away: restricting autofocus to near distances makes it
+    /// lock faster and stops it hunting toward the background. Whiteboards and slides
+    /// can be far away, so they keep the full range. The virtual device starts at 1x
+    /// (main lens) rather than its widest lens.
+    private func configureFocus(_ device: AVCaptureDevice, style: CaptureStyle) {
+        guard (try? device.lockForConfiguration()) != nil else { return }
+        defer { device.unlockForConfiguration() }
+        if device.isVirtualDevice, device.videoZoomFactor == 1,
+           let main = device.virtualDeviceSwitchOverVideoZoomFactors.first {
+            device.videoZoomFactor = CGFloat(truncating: main)
+        }
+        if device.isFocusModeSupported(.continuousAutoFocus) { device.focusMode = .continuousAutoFocus }
+        if device.isAutoFocusRangeRestrictionSupported {
+            device.autoFocusRangeRestriction = (style == .whiteboard || style == .slides) ? .none : .near
+        }
+        if device.isSmoothAutoFocusSupported { device.isSmoothAutoFocusEnabled = false }
+        if device.isExposureModeSupported(.continuousAutoExposure) { device.exposureMode = .continuousAutoExposure }
+    }
+
     func setCaptureStyle(_ style: CaptureStyle) {
         queue.async {
+            if let device = self.device { self.configureFocus(device, style: style) }
             self.captureStyle = style; self.tracker.beginNextPage()
             self.autoPending = false; self.lastAnalysis = -Double.infinity
         }
@@ -427,11 +461,25 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
             self.busy = true; self.autoPending = false; self.tracker.markCapture()
             self.completion = completion
             let settings = AVCapturePhotoSettings()
+            // Quality prioritization lets iOS apply its multi-frame processing (Deep
+            // Fusion / Photonic Engine) — the same post-capture sharpening as the Camera app.
             settings.photoQualityPrioritization = .quality
+            let maximum = self.photoOutput.maxPhotoDimensions
+            if maximum.width > 0, maximum.height > 0 { settings.maxPhotoDimensions = maximum }
             if self.photoOutput.supportedFlashModes.contains(flash ? .on : .off) { settings.flashMode = flash ? .on : .off }
             self.captureID = settings.uniqueID
-            self.photoOutput.capturePhoto(with: settings, delegate: self)
+            // Pressing the shutter can start a refocus; a photo taken mid-hunt is soft.
+            self.afterFocusSettles(attempt: 0) {
+                guard self.active, self.captureID == settings.uniqueID, self.completion != nil else { return }
+                self.photoOutput.capturePhoto(with: settings, delegate: self)
+            }
         }
+    }
+
+    /// Waits up to 0.6 s on the session queue for autofocus to finish.
+    private func afterFocusSettles(attempt: Int, _ action: @escaping () -> Void) {
+        guard let device, device.isAdjustingFocus, attempt < 6 else { action(); return }
+        queue.asyncAfter(deadline: .now() + 0.1) { self.afterFocusSettles(attempt: attempt + 1, action) }
     }
 
     func finishSaving() {

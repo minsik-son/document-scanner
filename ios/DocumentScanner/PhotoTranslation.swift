@@ -58,7 +58,7 @@ enum TranslationIssue: String, CaseIterable {
 enum PhotoTranslation {
     static func scan(_ source: UIImage, crop explicitCrop: ScanQuad? = nil, sourceLanguage:String = "en",targetLanguage:String = "ko") throws -> TranslationScan {
         try Task.checkCancellation()
-        let original = Imaging.normalized(source)
+        let original = Imaging.limited(Imaging.normalized(source),maxPixels:20_000_000)
         guard let cg = original.cgImage, cg.width*cg.height <= 20_000_000 else {
             throw ScannerError.message("Choose a document photo up to 20 megapixels.")
         }

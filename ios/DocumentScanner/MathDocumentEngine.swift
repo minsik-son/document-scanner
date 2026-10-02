@@ -15,7 +15,7 @@ struct MathScan {
 enum MathDocumentEngine {
     static func prepare(_ source: UIImage, crop: ScanQuad? = nil) throws -> MathScan {
         try Task.checkCancellation()
-        let original = Imaging.normalized(source)
+        let original = Imaging.limited(Imaging.normalized(source), maxPixels: 20_000_000)
         guard let cg = original.cgImage, cg.width * cg.height <= 20_000_000 else {
             throw ScannerError.message("Choose a photo up to 20 megapixels.")
         }

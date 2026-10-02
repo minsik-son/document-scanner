@@ -19,6 +19,16 @@ enum Imaging {
             image.draw(in: CGRect(origin: .zero, size: pixelSize))
         }
     }
+    /// Scales a normalized (scale 1) photo down to at most `maxPixels`, keeping its aspect.
+    /// High-resolution captures (24 MP) stay usable by tools with tighter memory budgets.
+    static func limited(_ image: UIImage, maxPixels: Int) -> UIImage {
+        let pixels = image.size.width*image.size.height*image.scale*image.scale
+        guard pixels > CGFloat(maxPixels) else { return image }
+        let factor = sqrt(CGFloat(maxPixels)/pixels)
+        let size = CGSize(width: floor(image.size.width*image.scale*factor), height: floor(image.size.height*image.scale*factor))
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1
+        return UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
+    }
     static func detect(_ image: UIImage) -> ScanQuad? {
         guard let cg = image.cgImage else { return nil }
         return DocumentProcessing.detect(cg)

@@ -1,0 +1,6 @@
+.build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+# Local quality artifacts may contain a user's private document.
+Verification/scan-quality-sample/

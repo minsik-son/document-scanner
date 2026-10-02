@@ -1,0 +1,20 @@
+Margin trimming verification — 2026-09-29
+Xcode 26.2 / iOS 26.2 / iPhone 17 Pro simulator
+
+27 distinct targeted scenarios passed across the initial and final runs:
+- 14 existing document-tools/storage tests
+- 8 existing preview/adjustment tests
+- 4 new margin tests (raster/OCR/preview/export/reset/original bytes; native PDF text/link/rotation; old model decode/edge rotation; backup persistence)
+- 1 UI scenario: open Trim margins, preset/cancel, apply, relaunch, verify saved trim, show result, reset, apply and save PDF.
+
+Initial run: /private/tmp/scanner-margins-tests.log
+22 existing tests and 3 new margin tests passed. The native trimmed-PDF test exposed a PDFDocument lifetime issue in PDFExport; keeping the source document alive while drawing fixed it. UI Cancel needed a unique identifier because two nested sheets expose Cancel. These failures were resolved; do not describe the initial run as an all-pass run.
+Final run: /private/tmp/scanner-margins-final-tests.log
+4 margin tests + 1 UI scenario passed, zero failures.
+Result bundle: /private/tmp/DocumentScannerBuild/Logs/Test/Test-DocumentScanner-2026.09.29_17-13-34--0700.xcresult
+Screenshot: trim-margins.png
+
+Inspected the supplied 1C572A24… PDF locally: it has colored paper-edge strips and a dark lower border. The original attachment was not modified. No automatic content removal is applied; users choose trim edges and can reset them. Paper size/margins remain independent; Original + None removes added output borders. Native PDF trimming preserves vector text/links but can flatten interactive forms. Real-device finger feel and external PDF viewers were not tested in this increment.
+
+Final UI polish rerun: /private/tmp/scanner-margins-ui-verified.log — 1/1 passed after centering the trimmed result preview.
+Result: /private/tmp/DocumentScannerBuild/Logs/Test/Test-DocumentScanner-2026.09.29_17-16-04--0700.xcresult

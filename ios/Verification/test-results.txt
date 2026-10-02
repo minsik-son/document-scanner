@@ -1,0 +1,147 @@
+Latest PRD implementation verification — 2026-09-29
+81 distinct unit/integration tests + 12 distinct UI scenarios passed across regression/focused runs. Final focused run: 14 unit/integration + 2 UI, zero failures. Full regression before the final two targeted unit checks: 79 unit/integration + 3 UI, zero failures.
+See prd-implementation-results.txt for exact logs, scope, earlier failure fixes, and hardware/release gates.
+
+Xcode 26.2 · iOS 26.2 Simulator · iPhone 17 Pro
+2026-09-29 — Cancel rejects the current camera capture
+22 targeted tests passed, zero failures (19 library, 3 UI).
+Log: /private/tmp/scanner-cancel-capture-tests.log
+Result: /private/tmp/DocumentScannerBuild/Logs/Test/Test-DocumentScanner-2026.09.29_16-00-09--0700.xcresult
+
+Camera review now exposes Cancel instead of Close. Cancel atomically removes only the captured last page from the document, then removes its image only if unreferenced. Failed index writes retain both page metadata and pixels and keep review open for retry. Accepted earlier pages and existing PDFs are preserved. Camera shows No pages yet / 1 page added / N pages added instead of pages saved. Add page and Done still accept the current page; full-screen zoom Close still only dismisses the viewer.
+
+New tests verify rejecting the only page (no recoverable draft after cleanup), rejecting a new page without changing a saved PDF or earlier page, refusing to discard the wrong page, and retaining source pixels on write failure. UI tests cover early Cancel, manual retake, accepting an edited page, canceling the next capture, correct counts, and relaunch retaining only the accepted page with its edits. Existing full-screen zoom/return and capture/edit/Add page/Done/PDF export flows also pass.
+Isolated DEBUG fixtures only. No existing user documents were altered. Physical iPhone retake/automatic-capture timing remains unverified.
+
+--- Previous verification ---
+Xcode 26.2 · iOS 26.2 Simulator · iPhone 17 Pro
+2026-09-29 — Full-screen processed-page zoom
+9 distinct targeted tests passed: 8 PageAdjustments tests plus 1 capture/zoom UI scenario.
+Unit/integration: /private/tmp/scanner-zoom-preview-tests.log (8/8); initial UI lookup failed because the enclosing view overrode the button accessibility identifier.
+Final UI after removing the duplicate identifier: /private/tmp/scanner-zoom-preview-ui.log (1/1, zero failures).
+Final result: /private/tmp/DocumentScannerBuild/Logs/Test/Test-DocumentScanner-2026.09.29_15-53-27--0700.xcresult
+
+Verified tap to open, native pinch in/out, pan gesture, double-tap fit reset, Close returning to the review with brightness unchanged, and Add page returning to capture with the existing page preserved. The full-resolution result matches export dimensions/sample pixels and reuses the prepared renderer cache. A UIKit test verifies that replacing the initial raster retains zoom and content offset, and viewport resizing returns to fit. Existing preview/export fidelity, coalescing and cancellation regressions pass.
+Image quality uses the same geometry/tone/manual adjustments as PDF export; normal previews remain bounded to 1800 pixels while enlarged viewing requests the full processed raster. Enlargement is display-only, with no mutation to source or saved settings. Full-screen close releases its additional full-resolution image. Native zoom is bounded from fit to 6x with VoiceOver zoom/reset actions.
+Screenshot: enlarged-preview.png. Simulated capture uses an isolated DEBUG fixture. Actual iPhone gestures/performance and VoiceOver interaction were not manually verified.
+
+--- Previous verification ---
+Xcode 26.2 · iOS 26.2 Simulator · iPhone 17 Pro
+2026-09-29 — Home bidirectional swipe-to-trash
+3 distinct UI tests passed; final two gesture flows rerun after explicit red action tint, zero failures.
+Initial: /private/tmp/scanner-home-swipe-tests.log (3/3)
+Final: /private/tmp/scanner-home-swipe-final.log (2/2)
+Result: /private/tmp/DocumentScannerBuild/Logs/Test/Test-DocumentScanner-2026.09.29_15-42-05--0700.xcresult
+
+Verified: no idle trash icon; left and right partial swipes reveal actions; reverse gestures close them without deleting; trash tap and full swipes in either direction commit without a confirmation; restoration retains the saved PDF and ordinary row navigation; empty-library Settings navigation passes.
+Native List swipeActions replace ScrollView rows. Existing Trash persistence is unchanged. Settings unfinished-scan confirmation is unchanged. DEBUG fixtures use isolated sessions; no user documents deleted. Actual iPhone interaction remains unverified.
+Screenshots: home-swipe/closed.png, leading.png, trailing.png.
+
+--- Previous verification ---
+Xcode 26.2 · iOS 26.2 Simulator · iPhone 17 Pro
+2026-09-29 — Preview fidelity to exported PDF
+12 targeted tests passed, zero failures: PageAdjustmentsTests 7, PDFExportTests 4, capture-review UI flow 1.
+Run: /private/tmp/scanner-preview-fidelity-tests.log
+Result: /private/tmp/DocumentScannerBuild/Logs/Test/Test-DocumentScanner-2026.09.29_15-24-36--0700.xcresult
+
+Fix: same full-resolution source decoding and prepare/finish/adjust order as export; no early thumbnail or 8-bit preparation snapshot. The finished tone is cached in extended-linear RGBAh, manual adjustments stay full-resolution, and only completed output is resized for display (maximum1800px). Coalesced live frames and no updating overlay remain. PDF/OCR processing behavior and source files are unchanged.
+
+New regression: 2400x3200 warm-paper table with fine Korean/English text, colored cells, faint outside text; default settings and crop/rotation with non-neutral cleanup/brightness/contrast/sharpness. Preview is compared with full Imaging.render output resized to the same display size. Less than0.5% missing-ink/color pixels and less than2/255 mean foreground channel error are required. The test passed, along with source/cache persistence, stale-frame cancellation, coalescing and ordinary searchable PDF save.
+
+Supplied PDF audit: BDA3376E… contains one1594x2156 sRGB image. Its screenshot shows broken/pale ink compared with the rendered PDF. The original camera image and exact review recipe were not supplied, so that screenshot is not treated as an exact numerical before/after test.
+A separate local Core Image stress check used the supplied PDF image as input (already processed, not the original capture). Nine cleanup/manual-adjustment combinations compared continuous export processing with the new float cache: RGB mean absolute error0.003–0.025 of255, max difference1–2 levels, no channels differing by more than2. Scratch script: /private/tmp/preview-float-audit.swift.
+
+Physical iPhone display, frame timing and high-resolution image memory use remain unverified. Full-resolution caches cost more memory than the old thumbnail-first path; only one page's cache is retained.
+
+Per-case results: Verification/preview-fidelity-results.txt
+
+--- Previous library and scan verification ---
+Xcode 26.2 · iOS 26.2 Simulator · iPhone 17 Pro
+2026-09-29 — Home deletion and unfinished-scan cleanup
+27 distinct targeted scenarios passed: LibraryTests 16, PDFExportTests 4, UI flows 7.
+Initial run: /private/tmp/scanner-home-trash-drafts-tests.log — 20 unit/integration and 5 existing UI flows passed; new Home deletion flow exposed a missing visible Cancel button in the native confirmation dialog.
+Final run: /private/tmp/scanner-trash-verified-tests.log — 2 deletion UI flows passed, zero failures, after explicit Cancel/Move to Trash alerts were added. This build also includes the Home import-interaction guard.
+
+Verified: visible Home row trash button; cancel preserves saved document; confirmed deletion hides it from Home; Settings Trash restores its PDF. Home never shows Continue your scan cards. Settings -> Unfinished scans can resume, trash, cancel, restore and reopen all captured pages. Existing edit/save/relaunch/OCR flows continue to pass.
+Empty draft tests: repeated new sessions reuse one empty draft, legacy empties collapse, cleanup preserves pages/PDFs/trash, and failed index writes leave the in-memory library unchanged.
+UI fixtures are DEBUG-only and use isolated test storage. No user documents were deleted by these tests.
+
+Per-case results: Verification/library-results.txt
+
+--- Previous scan-processing verification ---
+Xcode 26.2 · iOS 26.2 Simulator · iPhone 17 Pro
+2026-09-29: 62 distinct test scenarios passed across the full run and targeted rerun (57 unit/integration, 5 UI).
+Full run: /private/tmp/scanner-camera-preview-perspective-tests.log
+Targeted final run: /private/tmp/scanner-preview-close-verified.log — 7 tests, zero failures.
+The first run had two incorrect test expectations: a linear brightness delta applied to sRGB pixels, and checking existence rather than visibility of the save screen behind a camera cover. Both expectations were corrected and their test scopes rerun. No production code changed between runs.
+
+Verified: Close returns to camera, recapture works, edits and pages survive relaunch; Add page/Done still work. Duplicate automatic capture remains latched on Close. UI-hidden restart and interruption-token scheduling gaps are guarded in code; actual camera hardware remains unverified.
+Preview: bounded 1200-pixel working size; original-resolution export; cached geometry/paper processing reused by Cleanup; continuous coalesced frames; canceled results cannot replace newer pages; no Updating preview overlay after initial preparation.
+Geometry: oblique ruled-grid correction, text-only 10-degree deskew, outside marks preserved, sparse text unchanged. Existing paper/color preservation, OCR/PDF text, persistence and subscriptions also passed.
+UI capture is a DEBUG-only synthetic fixture. Actual iPhone camera stop/resume and interaction latency require hardware validation.
+
+Local supplied-PDF check: Verification/scan-quality-sample/perspective-preview/
+1510x2003 supplied image; 943 selectable PDF characters; 177/178 word regions and 24/24 Korean regions selectable; 68 Hangul syllables retained. This uses the supplied export, not a fresh physical camera capture.
+
+Test Case '-[DocumentScannerTests.ClarityTests testClarityDarkensBlurredStrokesWithoutClosingWhiteGapOrErasingPencil]' passed (0.077 seconds).
+Test Case '-[DocumentScannerTests.ClarityTests testNormalizationPreservesPixelsAndRotatesScaledPhotos]' passed (0.001 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testBackupRestoreSkipsDuplicateAndPreservesDocument]' passed (0.044 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testCapturedPagesSurviveRelaunch]' passed (0.015 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testCorruptLibraryNeverOverwritten]' passed (0.003 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testCropRejectsCrossingAndNonfiniteCorners]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testFailedIndexWriteDoesNotAcknowledgeCapturedPage]' passed (0.011 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testMissingPageDoesNotReplaceExistingPDF]' passed (0.464 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testOCRFindsTextOffline]' passed (6.228 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testPDFSaveReopensWithCorrectPageCount]' passed (0.808 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testSearchablePDFContainsRecognizedText]' passed (6.431 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testTamperedBackupDoesNotModifyLibrary]' passed (0.014 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testTrashRestoreAndPermanentDelete]' passed (0.012 seconds).
+Test Case '-[DocumentScannerTests.LiveCameraTests testAutoCaptureWaitsForStableDocument]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.LiveCameraTests testBackgroundResumeKeepsCapturedPageLatch]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.LiveCameraTests testCapturedPageCannotCreateDuplicateUntilRemoved]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.LiveCameraTests testExplicitNextPageRearmsAutoCaptureButRequiresANewStableHold]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.LiveCameraTests testMissingDetectionBreaksStabilityAndClearsOutline]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.LiveCameraTests testMovingPageRestartsSteadyInterval]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.LiveCameraTests testPortraitCornersConvertToSensorCoordinates]' passed (0.003 seconds).
+Test Case '-[DocumentScannerTests.PDFExportTests testBlankScanDoesNotClaimSelectableText]' passed (1.684 seconds).
+Test Case '-[DocumentScannerTests.PDFExportTests testMissingSourceKeepsPreviousPDFAndMetadata]' passed (4.571 seconds).
+Test Case '-[DocumentScannerTests.PDFExportTests testOldOCRCoordinatesAreRebuiltByOrdinarySave]' passed (4.522 seconds).
+Test Case '-[DocumentScannerTests.PDFExportTests testOrdinarySaveEmbedsTextOnEveryPageAndPersistsIt]' passed (8.767 seconds).
+Test Case '-[DocumentScannerTests.PDFTextTests testAccurateOCRRetainsMixedEnglishKoreanAndWordBounds]' passed (5.766 seconds).
+Test Case '-[DocumentScannerTests.PDFTextTests testHiddenTextDoesNotChangePDFImagePixelsAndOldBlocksStillSelect]' passed (0.352 seconds).
+Test Case '-[DocumentScannerTests.PDFTextTests testKoreanInsideLatinParenthesesHasItsOwnSelectablePDFRegion]' passed (4.285 seconds).
+Test Case '-[DocumentScannerTests.PDFTextTests testMixedScriptWordsSelectAtTheirImagePositionsWithoutProFlag]' passed (0.173 seconds).
+Test Case '-[DocumentScannerTests.PDFTextTests testOCRRecoversDifferentScriptsOnTheSamePage]' passed (5.893 seconds).
+Test Case '-[DocumentScannerTests.PDFTextTests testUnicodeTextLayerSelectsMajorScriptsAndCombiningMarks]' passed (0.232 seconds).
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testAdjustmentsSurviveRelaunchPerPageAndPreviewMatchesExportRenderer]' passed (0.778 seconds).
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testBrightnessContrastAndSharpnessChangePixelsWithoutChangingSize]' passed (0.103 seconds).
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testCancelledPreviewCannotReplaceNewPage]' passed (0.023 seconds).
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testLegacyPageDefaultsAndInvalidAdjustmentValuesAreBounded]' passed (0.002 seconds).
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testPreviewCoalescesDragButPresentsIntermediateAndFinalFrames]' passed (0.021 seconds).
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testPreviewIsBoundedAndCleanupReusesPreparedSource]' passed (0.906 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testAutoCropRejectsSmallTableInsidePaper]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testConfidentDocumentCanOccupyAQuarterOfCameraFrame]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testDetectionChoosesSmallPaperInsteadOfPrintedTable]' passed (0.041 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testDocumentFilterRestoresGrayInkContrastWithoutDroppingThinStrokes]' passed (0.205 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testExistingPageWithoutNewSettingsStillDecodes]' passed (0.003 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testFullColorPageUsesScalarFallbackAndRetainsColor]' passed (0.055 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testLargeBlueAndYellowAreasAreNotUsedAsPaperWhiteReference]' passed (0.295 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testMonochromeKeepsInkAndMakesChannelsEqual]' passed (0.270 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testNewPhotoUsesDocumentModeAndFlagsMissingEdges]' passed (0.401 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testObliqueGridCorrectionStraightensLargeSkewWithoutCroppingSignature]' passed (0.277 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testPaleBlueMarkOutsideGridIsPreservedWhenCornerShadowIsWhitened]' passed (0.277 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testPaperWhiteningReducesShadowWithoutRemovingInkOrBlueHighlight]' passed (0.288 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testPerspectiveCorrectionUsesAllFourCorners]' passed (0.001 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testResidualCorrectionDoesNotReshapeAnUnruledRectangle]' passed (0.056 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testResidualGridCorrectionStraightensRulingsAndPreservesOutsideContent]' passed (0.126 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testSparseTextDoesNotTriggerSpeculativePageRotation]' passed (0.071 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testTextOnlyPageDeskewsFromConsistentBaselinesAndKeepsOutsideMark]' passed (0.266 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testWarmPaperBecomesDigitalWhiteWithoutRemovingPaleYellowArtwork]' passed (0.236 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testWarmShadowAlongOnePageEdgeIsWhitenedAndColoredGridSurvives]' passed (0.247 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testWhiteCanvasRejectionDoesNotMistakeGrayInkForShadow]' passed (0.198 seconds).
+Test Case '-[DocumentScannerTests.SubscriptionTests testUSPricesVerifiedPurchaseAndExpiration]' passed (0.793 seconds).
+Test Case '-[DocumentScannerUITests.ScannerFlowTests testCaptureShowsProcessedReviewAndPreservesAdjustmentsWhenAddingPage]' passed (42.547 seconds).
+Test Case '-[DocumentScannerUITests.ScannerFlowTests testClosingCaptureReviewReturnsToCameraAndKeepsRecoverablePages]' passed (29.047 seconds).
+Test Case '-[DocumentScannerUITests.ScannerFlowTests testEmptyLibraryAndSettings]' passed (6.400 seconds).
+Test Case '-[DocumentScannerUITests.ScannerFlowTests testMissingEdgesMustBeConfirmedBeforePDFSave]' passed (20.114 seconds).
+Test Case '-[DocumentScannerUITests.ScannerFlowTests testRecoverDraftEditSaveAndReopenPDF]' passed (33.610 seconds).

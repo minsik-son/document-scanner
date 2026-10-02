@@ -1,0 +1,17 @@
+Word export staged flow — 2026-10-01
+
+Word-specific UI now has three stages:
+1. Choose source/page scope. Primary: Extract text. No Create action or text editor on this screen.
+2. Review/edit recognized text. Primary: Create Word file. No source controls or Extract button. Empty/whitespace-only text disables creation. Explicit type/paste option enters this stage without OCR.
+3. Ready file. Primary: Share Word file. Secondary: Preview Word file. No editor or Create action. Back returns to editing and removes the old generated export before rebuilding.
+
+Processing shows progress/cancel instead of an inactive competing primary button. OCR errors stay on input; empty OCR goes to review with an explanation and disabled creation. Existing export limitation (editable text, not original PDF layout) remains visible before creation.
+
+Validation:
+- 18 AdvancedOfflineTests passed (including DOCX generation and Office compatibility fixtures).
+- UI tests passed for manual text + DOCX preview, back/edit/export invalidation, and saved PDF -> OCR -> review -> export -> system share sheet.
+- Initial share assertion used button elements, but iOS exposes Copy/Save to Files as cells; inspected hierarchy and corrected test. Final PDF end-to-end rerun passed.
+- iPhone Release build succeeded (unsigned).
+- All three simulator screenshots visually inspected and saved beside this report.
+
+Scope: Word export only. Other advanced tools keep their existing flow.

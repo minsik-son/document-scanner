@@ -1,0 +1,22 @@
+Visible Home Tools — 2026-09-30
+
+Change: Home's hidden Utilities ellipsis menu is replaced with a labeled Tools
+card directly below search. QR and screenshot stitching are included in the hub.
+The document-specific More offline tools entry is unchanged.
+
+Xcode 26.2, iPhone 17 Pro simulator / iOS 26.2.
+Three distinct UI flows passed across targeted runs:
+1. Home card exists and is hittable without scrolling in both empty and populated
+   libraries; opens/closes the hub; all 14 advanced tools remain reachable and the
+   unsupported LiDAR explanation is shown on the simulator.
+2. Home Tools -> QR generation -> Close -> Stitch screenshots.
+3. Home Tools -> screenshot overlap -> preview -> return to editing.
+
+Initial run: 2 passed, 1 test-selector failure. Two presented navigation stacks
+both have Close buttons; the QR test now scopes its query to the QR navigation
+bar. The targeted QR rerun passed without a production change.
+Logs: /private/tmp/scanner-home-tools-visible.log and /private/tmp/scanner-home-tools-qr.log
+Result bundles: Test-DocumentScanner-2026.09.30_00-17-47--0700.xcresult,
+                Test-DocumentScanner-2026.09.30_00-19-34--0700.xcresult
+Screenshots inspected: home-tools/populated.png, home-tools/empty.png.
+No physical-phone installation was performed.

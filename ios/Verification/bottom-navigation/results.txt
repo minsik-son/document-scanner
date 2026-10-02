@@ -1,0 +1,12 @@
+Bottom navigation verification — 2026-09-30
+
+Home: Home / Documents / center circular camera / Tools / Settings.
+Import moved to the top-right button. Documents shows the library without Home cards.
+
+PASS: testBottomNavigationAndCenterCamera — Home/Documents switching, PDF import picker cancellation, Tools, Settings, Home return, simulated camera entry.
+PASS: testLibrarySwipeAndNavigationAfterRedesign — partial swipe reveal/reversal and document navigation.
+PASS: iOS device target build with CODE_SIGNING_ALLOWED=NO.
+
+Simulator: iPhone 17 Pro, iOS 26.2.
+home.png and documents.png are screenshots from the implemented simulator UI.
+No physical-device installation or camera hardware verification performed in this change.

@@ -1,0 +1,23 @@
+Focused page editor verification — 2026-09-29
+Xcode 26.2 / iPhone 17 Pro simulator / iOS 26.2
+
+5 distinct UI scenarios passed, zero failures:
+- Reject capture / retake / preserve accepted pages across relaunch
+- Adjust brightness / enlarge / pinch / pan / return / add page
+- Adjust first capture / add second page / preserve values / relaunch / save PDF
+- Rotate existing draft page / save / reopen PDF
+- Trim margins / cancel / apply / reopen / reset / save
+Log: /private/tmp/scanner-editor-cleanup-tests.log
+Result: Test-DocumentScanner-2026.09.29_17-22-14--0700.xcresult
+
+The capture/adjust/add/save scenario was expanded and rerun after the final guard against reselecting the active tone. Passed, zero failures:
+- Only selected tool options visible; Document initially selected
+- Original comparison toggles without opening enlarged viewer
+- Original tone hides Cleanup; Contrast and Brightness menu selection works
+- Switching tool panels preserves brightness and page acceptance flow
+Log: /private/tmp/scanner-editor-panels-tests.log
+Result: Test-DocumentScanner-2026.09.29_17-26-48--0700.xcresult
+
+Screenshots: editor-tone.png, editor-adjust.png (synthetic camera test pages).
+Physical iPhone, small-screen Dynamic Type and VoiceOver validation not performed in this change.
+No image processing or persistence format changes.

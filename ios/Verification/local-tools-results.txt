@@ -1,0 +1,60 @@
+Local document tools validation — 2026-09-29
+
+Environment: Xcode 26.2, iPhone 17 Pro simulator / iOS 26.2.
+Project: DocumentScanner.xcodeproj; scheme: DocumentScanner.
+DerivedData: /private/tmp/DocumentScannerBuild. Signing disabled for simulator tests.
+
+Scope: eight on-device additions. No new server, external AI endpoint or model download.
+CamScanner observation scope and limitations: ../../CAMSCANNER-LOCAL-TOOLS.md.
+
+43 distinct unit tests and 5 distinct UI tests passed across the targeted runs below.
+This is a combined count of distinct tests, not a claim that the full application suite
+was executed in a single final run. Previously passing unaffected tests were not repeated.
+
+1. scanner-local-regression.log (23:20 run): PASS
+   DocumentToolsTests: 14/14; LibraryTests: 19/19; LocalToolsTests: 8/8.
+   UI: ID card capture stops after two sides and offers layout; rejecting a captured
+   page preserves accepted pages and permits retaking: 2/2.
+
+2. scanner-local-verified.log (23:17 run): UI subset 3/3 PASS
+   QR creation and utility entry; watermark/timestamp/identity/long-image preview,
+   saving three copies, reopening the library with originals and copies intact;
+   ID card capture flow. The unit subset in THIS earlier run failed an overlap test;
+   that failure was fixed and retested in later runs. This was not an all-pass run.
+
+3. scanner-local-final.log (23:31 run): PASS
+   LocalToolsTests: 9/9; screenshot seam preview/edit-return UI: 1/1.
+   Includes multilingual QR generation/decoding, range/size validation, long PNG
+   splitting, original-preserving PDF text/link output, rotation, logo/timestamp,
+   ID composition, generated-copy persistence, capture mode defaults, known overlap,
+   blank-image rejection, and sparse text-row registration.
+   Sparse text previously failed because coarse downsampling distorted small glyphs.
+   Candidate verification at higher resolution fixes that fixture without weakening
+   the unique-match requirement. Preview actions now remain fixed below the long image.
+   Result: Test-DocumentScanner-2026.09.29_23-31-20--0700.xcresult
+
+4. scanner-stitch-repeated.log (23:32 run): PASS
+   Added regression test rejects repeated rows with no unique overlap: 1/1.
+   Result: Test-DocumentScanner-2026.09.29_23-32-12--0700.xcresult
+
+Screenshots: local-tools/{watermark,timestamp,identity,qr,stitch}.png.
+UI fixtures use isolated --ui-test-session library roots; screenshot inputs are seeded
+only in DEBUG with a valid UUID test-session flag. StoreKitTest supplies a local Pro
+entitlement for the paid document tools. No actual purchase or outbound share occurred.
+
+Limitations:
+- CamScanner camera access was unavailable through iPhone Mirroring. Its ID guide,
+  timestamp intro and PDF-to-long-image preview were observed; internal algorithms
+  and server use were not reverse engineered.
+- Simulator camera inputs are fixtures; live capture/QR reading, glare-heavy boards,
+  photographed slides, low-memory devices, AirPrint dimensions and real Photos/iCloud
+  provider behavior still need physical-device verification.
+- Vision barcode inference failed in the simulator; the implemented Core Image
+  fallback successfully decoded the multilingual QR fixture. Device Vision path
+  is not claimed as verified by this test.
+- Screenshot detection proposes overlaps for user review. It does not automatically
+  scroll other apps; ambiguous content requires manual seam adjustment.
+- Slide mode creates color-preserving scans/PDFs, not editable PPTX. Timestamp text
+  is user-editable, not certified capture-time or GPS evidence.
+- Existing Core Image source-kernel deprecation warnings remain in processing files.
+- The build was verified in the simulator, not installed on the user's physical phone.

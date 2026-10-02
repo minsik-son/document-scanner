@@ -1,0 +1,36 @@
+Native iOS fixes and design integration — 2026-10-01
+
+Implemented
+- Home: neutral gray canvas, white rounded cards, pastel-blue controls, colorful existing PNG tool artwork, and corrected all-tools-v2 asset.
+- Center camera: deep blue (#2563EB), bold white outline camera. Import/scan actions work from the introductory card.
+- All tools: searchable, categorized white cards; all 32 existing entries/routes retained.
+- Pro: selected Soft spotlight composition in the current blue palette. Real StoreKit monthly/yearly products, price-specific CTA, annual equivalent and computed savings, restore, terms/privacy, purchase and entitlement return flow.
+- Animated onboarding retained; neutral background and blue component colors applied. Common primary buttons share the same palette.
+- Native/home and completion-ad infrastructure retained. Only the native ad card colors changed; request/caching/frequency rules did not change.
+
+Correctness fixes
+- Advanced tool output/files/translation become invalid as soon as relevant options, text, source image or count markers change. Prevents saving an old image with new physical dimensions or sharing stale Office files.
+- Photo inputs decoded at original pixel dimensions with EXIF orientation. Erase/colored-mark tools no longer silently cap output at 2400px. Explicit 48-megapixel input budget rather than silent quality reduction.
+- Multi-page PPT exports render/encode one original-size page at a time; no 1200px intermediate JPEG. Package size limit remains explicit.
+- Excel OCR builds common horizontal column anchors across rows and keeps leading/interior empty cells. It remains a text-table heuristic, not merged-cell or arbitrary table reconstruction.
+- Cancellation reaches detached CPU workers, checks processing loops, and rejects canceled outputs before publishing. Phase/page counts and a Cancel action appear while processing. System Vision/CI calls may finish their current stage before cancellation completes.
+- Image encoding moved off the main actor. Colored-mark pixel processing avoids per-pixel array allocations.
+- Book curve adjustment maps full vertical strips instead of cropping away top/bottom content.
+- Prepared exports/results have scroll targets, and text editing ends before generation. Empty option sections removed.
+- Large accessibility text uses a scrolling purchase footer so the fixed disclosure cannot obscure the page.
+
+Validation scope
+- Initial full unit/integration suite: 127 passed. Added annual-price regression brings the unique unit/integration total to 128; changed engines and StoreKit tests rerun after their final changes.
+- 10 unique UI scenarios passed after targeted retests: tool directory/routes, stale Office output, book option changes, DOCX/PPTX Quick Look, home/search/bottom navigation, onboarding, Pro purchase, and large-text paywall dismissal.
+- Initial UI navigation hit areas needed updating after the layout changed; final tests check visible bounds above the sticky controls and verify the book switch value.
+- Official native-ad scroll test skipped: no test ad supplied within the timeout. Local eligibility/caching policy tests pass; this is not evidence of a fresh network ad impression.
+- StoreKit uses the local test configuration (USD 4.99 monthly / 29.99 yearly), not production App Store transactions.
+- Test fixtures are mostly synthesized. Real-camera image quality, ID-photo masks, physical printing, AR/LiDAR, installed-language translation, and Microsoft Office roundtrips still require device/application checks.
+- This update does not claim CamScanner parity or universal language recognition.
+
+Evidence
+- home.png, all-tools.png: native simulator screenshots.
+- pro-overview.png, pro-plans.png, pro-large-text.png: native StoreKit test screenshots.
+- initial-tests.log, tool-retest.log, final-tests.log: full and targeted test runs.
+- Final accessibility-adjusted PaywallDesignTests: 2 passed, TEST SUCCEEDED (paywall-accessibility-tests.log). Screenshots visually inspected after replacing the oversized fixed footer with scrolling content at accessibility sizes.
+- Final generic iOS Release compilation: BUILD SUCCEEDED, CODE_SIGNING_ALLOWED=NO (device-release-build.log). No device installation or App Store publication was performed.

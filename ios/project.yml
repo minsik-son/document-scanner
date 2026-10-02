@@ -1,0 +1,84 @@
+name: DocumentScanner
+packages:
+  GoogleMobileAds:
+    url: https://github.com/googleads/swift-package-manager-google-mobile-ads.git
+    exactVersion: 13.11.0
+options:
+  bundleIdPrefix: com.documentscanner
+  deploymentTarget:
+    iOS: '18.0'
+  developmentLanguage: en
+  knownRegions: [en]
+settings:
+  base:
+    SWIFT_VERSION: '5.0'
+    MARKETING_VERSION: '0.1.0'
+    CURRENT_PROJECT_VERSION: '1'
+    DEVELOPMENT_TEAM: '3Q2D38NW4X'
+    CODE_SIGN_STYLE: Automatic
+targets:
+  DocumentScanner:
+    type: application
+    platform: iOS
+    sources: [DocumentScanner]
+    info:
+      path: Configuration/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # Custom keys must be in the source plist; Xcode only generates known INFOPLIST_KEY entries.
+        GADApplicationIdentifier: ca-app-pub-3940256099942544~1458002511
+        GADDelayAppMeasurementInit: true
+    dependencies:
+      - package: GoogleMobileAds
+        product: GoogleMobileAds
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.documentscanner.local
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Document Scanner
+        OTHER_LDFLAGS: $(inherited) -ObjC
+        INFOPLIST_KEY_NSCameraUsageDescription: Scan paper documents and save them on your iPhone.
+        INFOPLIST_KEY_NSFaceIDUsageDescription: Unlock your documents on this iPhone.
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UILaunchStoryboardName: LaunchScreen
+        INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleLightContent
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        TARGETED_DEVICE_FAMILY: '1'
+        SUPPORTS_MACCATALYST: NO
+        SWIFT_EMIT_LOC_STRINGS: YES
+  DocumentScannerTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - DocumentScannerTests
+      - path: Configuration/Scanner.storekit
+        buildPhase: resources
+    dependencies:
+      - target: DocumentScanner
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+  DocumentScannerUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - DocumentScannerUITests
+      - path: Configuration/Scanner.storekit
+        buildPhase: resources
+    dependencies:
+      - target: DocumentScanner
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  DocumentScanner:
+    build:
+      targets:
+        DocumentScanner: all
+    run:
+      config: Debug
+      storeKitConfiguration: Configuration/Scanner.storekit
+    test:
+      targets: [DocumentScannerTests, DocumentScannerUITests]

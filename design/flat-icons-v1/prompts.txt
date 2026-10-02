@@ -1,0 +1,14 @@
+Generated with built-in image_gen. Three 2D flat icon concept assets; app integration pending design review.
+
+Asset: scan.png
+Use case: stylized-concept. Asset type: individual iOS document scanner tool icon, transparent PNG, square composition. Design a polished strictly 2D FLAT icon in the friendly, minimal visual language of colorful Korean fintech service icons. Bold simple geometric solid-color shapes, subtly rounded corners, crisp smooth edges, clear at 48pt. Front-facing, no perspective. Consistent generous transparent margin of about 18%. No enclosing tile or background circle. Absolutely NO gradients, shadows, highlights, lighting effects, textures, 3D, bevels, outlines, text, letters, logos or watermark. Genuinely transparent background. One icon only.
+Subject: document scanning. A blue paper sheet with two short pale-blue horizontal text bars and four chunky mint-green scanning corner brackets around it. Blue #2265F5, pale blue #B9D5FF, mint #12BE9A. Simple and immediately recognizable.
+
+Asset: convert.png
+Use case: stylized-concept. Asset type: individual iOS document scanner tool icon, transparent PNG, square composition. Design a polished strictly 2D FLAT icon in the friendly, minimal visual language of colorful Korean fintech service icons. Bold simple geometric solid-color shapes, subtly rounded corners, crisp smooth edges, clear at 48pt. Front-facing, no perspective. Consistent generous transparent margin of about 18%. No enclosing tile or background circle. Absolutely NO gradients, shadows, highlights, lighting effects, textures, 3D, bevels, outlines, text, letters, logos or watermark. Genuinely transparent background. One icon only.
+Subject: document conversion. Two slightly overlapping upright flat paper silhouettes, one blue #2265F5 and one mint #12BE9A, with a single bold curved directional arrow in pale blue #B9D5FF across their lower middle indicating conversion. Use simple negative-space detail, very few shapes; no lettering.
+
+Asset: eraser.png
+Use case: stylized-concept. Asset type: individual iOS document scanner tool icon, transparent PNG, square composition. Design a polished strictly 2D FLAT icon in the friendly, minimal visual language of colorful Korean fintech service icons. Bold simple geometric solid-color shapes, subtly rounded corners, crisp smooth edges, clear at 48pt. Front-facing, no perspective. Consistent generous transparent margin of about 18%. No enclosing tile or background circle. Absolutely NO gradients, shadows, highlights, lighting effects, textures, 3D, bevels, outlines, text, letters, logos or watermark. Genuinely transparent background. One icon only.
+Subject: clean document eraser. A large simple diagonal eraser silhouette, composed of two solid-color halves, coral #FF7869 and lavender #8B72ED, with a flat pale-lavender #E3DBFF narrow erased swish underneath. A single tiny coral eraser crumb. Strictly flat silhouette, no dimensional sides or shading.
+

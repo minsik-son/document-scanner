@@ -1,0 +1,212 @@
+[
+  {
+    "file": "book.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "compress.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "convert.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "count.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "eraser.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "excel.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "extract.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "identity.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "images.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "import-file.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "import-photo.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "long-image.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "marks.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "math.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "measure.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "mega.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "merge.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "mesh.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "ocr.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "portrait.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "print.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "protect.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "qr.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "reorder.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "restore.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "scan.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "signature.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "slides.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "split.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "stitch.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "timestamp.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "translate.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "watermark.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "whiteboard.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  },
+  {
+    "file": "word.png",
+    "width": 1254,
+    "height": 1254,
+    "alpha": true
+  }
+]

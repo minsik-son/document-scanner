@@ -1,0 +1,1211 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild test -project DocumentScanner.xcodeproj -scheme DocumentScanner -destination "platform=iOS Simulator,name=iPhone 17 Pro" -derivedDataPath /private/tmp/DocumentScannerBuild -parallel-testing-enabled NO "-only-testing:DocumentScannerTests" "-only-testing:DocumentScannerUITests/AdvancedToolsUITests" "-only-testing:DocumentScannerUITests/ToolDirectoryDesignTests/testHomeAndSearchableToolDirectory" "-only-testing:DocumentScannerUITests/ToolDirectoryDesignTests/testLibraryToolSelectionAndEmptyState"
+
+Resolve Package Graph
+
+
+Resolved source packages:
+  GoogleMobileAds: https://github.com/googleads/swift-package-manager-google-mobile-ads.git @ 13.11.0
+  GoogleUserMessagingPlatform: https://github.com/googleads/swift-package-manager-google-user-messaging-platform.git @ 3.1.0
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (7 targets)
+    Target 'DocumentScannerUITests' in project 'DocumentScanner'
+        ➜ Explicit dependency on target 'DocumentScanner' in project 'DocumentScanner'
+    Target 'DocumentScannerTests' in project 'DocumentScanner'
+        ➜ Explicit dependency on target 'DocumentScanner' in project 'DocumentScanner'
+    Target 'DocumentScanner' in project 'DocumentScanner'
+        ➜ Explicit dependency on target 'GoogleMobileAds' in project 'GoogleMobileAds'
+    Target 'GoogleMobileAds' in project 'GoogleMobileAds'
+        ➜ Explicit dependency on target 'GoogleMobileAdsTarget' in project 'GoogleMobileAds'
+        ➜ Explicit dependency on target 'GoogleUserMessagingPlatform' in project 'GoogleUserMessagingPlatform'
+    Target 'GoogleMobileAdsTarget' in project 'GoogleMobileAds'
+        ➜ Explicit dependency on target 'GoogleUserMessagingPlatform' in project 'GoogleUserMessagingPlatform'
+    Target 'GoogleUserMessagingPlatform' in project 'GoogleUserMessagingPlatform'
+        ➜ Explicit dependency on target 'UserMessagingPlatformTarget' in project 'GoogleUserMessagingPlatform'
+    Target 'UserMessagingPlatformTarget' in project 'GoogleUserMessagingPlatform' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -x objective-c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/ibtool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --print-asset-tag-combinations --output-format xml1 /Users/minmac/Documents/ChatGPT/정치 중립/scanner-product/ios/DocumentScanner/Assets.xcassets
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+Build description signature: ebd4b3b771ecf5e80c5d41729283546d
+Build description path: /tmp/DocumentScannerBuild/Build/Intermediates.noindex/XCBuildData/ebd4b3b771ecf5e80c5d41729283546d.xcbuilddata
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk /tmp/DocumentScannerBuild/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios/DocumentScanner.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -o /tmp/DocumentScannerBuild/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache
+
+MkDir /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/PlugIns/DocumentScannerUITests.xctest (in target 'DocumentScannerUITests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    /bin/mkdir -p /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/PlugIns/DocumentScannerUITests.xctest
+
+MkDir /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest (in target 'DocumentScannerTests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    /bin/mkdir -p /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest
+
+WriteAuxiliaryFile /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/DerivedSources/Entitlements-Simulated.plist (in target 'DocumentScannerUITests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    write-file /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/DerivedSources/Entitlements-Simulated.plist
+
+WriteAuxiliaryFile /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DerivedSources/Entitlements-Simulated.plist (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    write-file /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DerivedSources/Entitlements-Simulated.plist
+
+ProcessProductPackaging "" /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner.app-Simulated.xcent (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    
+    Entitlements:
+    
+    {
+    "application-identifier" = "3Q2D38NW4X.com.documentscanner.local";
+}
+    
+    builtin-productPackagingUtility -entitlements -format xml -o /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner.app-Simulated.xcent
+
+ProcessProductPackagingDER /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner.app-Simulated.xcent /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner.app-Simulated.xcent.der (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    /usr/bin/derq query -f xml -i /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner.app-Simulated.xcent -o /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner.app-Simulated.xcent.der --raw
+
+Copy /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Frameworks/UserMessagingPlatform.framework /tmp/DocumentScannerBuild/SourcePackages/artifacts/swift-package-manager-google-user-messaging-platform/UserMessagingPlatform/UserMessagingPlatform.xcframework/ios-arm64_x86_64-simulator/UserMessagingPlatform.framework (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks -remove-static-executable /tmp/DocumentScannerBuild/SourcePackages/artifacts/swift-package-manager-google-user-messaging-platform/UserMessagingPlatform/UserMessagingPlatform.xcframework/ios-arm64_x86_64-simulator/UserMessagingPlatform.framework /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Frameworks
+note: Injecting stub binary into codeless framework (in target 'DocumentScanner' from project 'DocumentScanner')
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -x c -c /dev/null -target arm64-apple-ios100.0-simulator -o /private/var/folders/75/s0dvf9m172b0q9pfcyrgvxj00000gn/T/swbuild.tmp.MXaADixF/Data.noindex/arm64-apple.o
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -dynamiclib -Xlinker -adhoc_codesign -target arm64-apple-ios100.0-simulator -o /private/var/folders/75/s0dvf9m172b0q9pfcyrgvxj00000gn/T/swbuild.tmp.MXaADixF/Data.noindex/arm64-apple /private/var/folders/75/s0dvf9m172b0q9pfcyrgvxj00000gn/T/swbuild.tmp.MXaADixF/Data.noindex/arm64-apple.o
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/lipo -create -output /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Frameworks/UserMessagingPlatform.framework/UserMessagingPlatform /private/var/folders/75/s0dvf9m172b0q9pfcyrgvxj00000gn/T/swbuild.tmp.MXaADixF/Data.noindex/arm64-apple
+
+Ld /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/__preview.dylib normal (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios18.0-simulator -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -O0 -L/tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator -F/tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator -install_name @rpath/DocumentScanner.debug.dylib -dead_strip -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner_dependency_info.dat -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __entitlements -Xlinker /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner.app-Simulated.xcent -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __ents_der -Xlinker /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner.app-Simulated.xcent.der -Xlinker -no_adhoc_codesign -o /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/__preview.dylib
+
+Copy /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Frameworks/GoogleMobileAds.framework /tmp/DocumentScannerBuild/SourcePackages/artifacts/swift-package-manager-google-mobile-ads/GoogleMobileAds/GoogleMobileAds.xcframework/ios-arm64_x86_64-simulator/GoogleMobileAds.framework (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks -remove-static-executable /tmp/DocumentScannerBuild/SourcePackages/artifacts/swift-package-manager-google-mobile-ads/GoogleMobileAds/GoogleMobileAds.xcframework/ios-arm64_x86_64-simulator/GoogleMobileAds.framework /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Frameworks
+note: Injecting stub binary into codeless framework (in target 'DocumentScanner' from project 'DocumentScanner')
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -x c -c /dev/null -target arm64-apple-ios13.0-simulator -o /private/var/folders/75/s0dvf9m172b0q9pfcyrgvxj00000gn/T/swbuild.tmp.bl8EMo9Q/Data.noindex/arm64-apple.o
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -dynamiclib -Xlinker -adhoc_codesign -target arm64-apple-ios13.0-simulator -o /private/var/folders/75/s0dvf9m172b0q9pfcyrgvxj00000gn/T/swbuild.tmp.bl8EMo9Q/Data.noindex/arm64-apple /private/var/folders/75/s0dvf9m172b0q9pfcyrgvxj00000gn/T/swbuild.tmp.bl8EMo9Q/Data.noindex/arm64-apple.o
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/lipo -create -output /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Frameworks/GoogleMobileAds.framework/GoogleMobileAds /private/var/folders/75/s0dvf9m172b0q9pfcyrgvxj00000gn/T/swbuild.tmp.bl8EMo9Q/Data.noindex/arm64-apple
+
+Ld /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner.debug.dylib normal (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios18.0-simulator -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -O0 -L/tmp/DocumentScannerBuild/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator -F/tmp/DocumentScannerBuild/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator -filelist /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner.LinkFileList -install_name @rpath/DocumentScanner.debug.dylib -Xlinker -rpath -Xlinker /usr/lib/swift -Xlinker -rpath -Xlinker /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/PackageFrameworks -Xlinker -rpath -Xlinker @executable_path/Frameworks -dead_strip -Xlinker -object_path_lto -Xlinker /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner.swiftmodule @/tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner-linker-args.resp -Wl,-no_warn_duplicate_libraries -Wl,-no_warn_duplicate_libraries -ObjC -framework WebKit -Xlinker -alias -Xlinker _main -Xlinker ___debug_main_executable_dylib_entry_point -framework GoogleMobileAds -framework UserMessagingPlatform -Xlinker -no_adhoc_codesign -o /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner.debug.dylib -Xlinker -add_ast_path -Xlinker /tmp/DocumentScannerBuild/Build/Intermediates.noindex/GoogleMobileAds.build/Debug-iphonesimulator/GoogleMobileAdsTarget.build/Objects-normal/arm64/GoogleMobileAdsTarget.swiftmodule @/tmp/DocumentScannerBuild/Build/Intermediates.noindex/GoogleMobileAds.build/Debug-iphonesimulator/GoogleMobileAdsTarget.build/Objects-normal/arm64/GoogleMobileAdsTarget-linker-args.resp
+
+ProcessProductPackaging "" /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/DocumentScannerUITests.xctest-Simulated.xcent (in target 'DocumentScannerUITests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    
+    Entitlements:
+    
+    {
+    "application-identifier" = "3Q2D38NW4X.com.documentscanner.DocumentScannerUITests.xctrunner";
+    "keychain-access-groups" =     (
+        "3Q2D38NW4X.com.documentscanner.DocumentScannerUITests.xctrunner"
+    );
+}
+    
+    builtin-productPackagingUtility -entitlements -format xml -o /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/DocumentScannerUITests.xctest-Simulated.xcent
+
+ProcessProductPackagingDER /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/DocumentScannerUITests.xctest-Simulated.xcent /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/DocumentScannerUITests.xctest-Simulated.xcent.der (in target 'DocumentScannerUITests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    /usr/bin/derq query -f xml -i /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/DocumentScannerUITests.xctest-Simulated.xcent -o /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/DocumentScannerUITests.xctest-Simulated.xcent.der --raw
+
+CodeSign /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Frameworks/UserMessagingPlatform.framework (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Frameworks/UserMessagingPlatform.framework
+/tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Frameworks/UserMessagingPlatform.framework: replacing existing signature
+
+CodeSign /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Frameworks/GoogleMobileAds.framework (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Frameworks/GoogleMobileAds.framework
+/tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Frameworks/GoogleMobileAds.framework: replacing existing signature
+
+ProcessInfoPlistFile /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Info.plist /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios/Configuration/Info.plist (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-infoPlistUtility /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios/Configuration/Info.plist -producttype com.apple.product-type.application -genpkginfo /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PkgInfo -expandbuildsettings -format binary -platform iphonesimulator -additionalcontentfile /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/LaunchScreen-SBPartialInfo.plist -additionalcontentfile /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/assetcatalog_generated_info.plist -scanforprivacyfile /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Frameworks/GoogleMobileAds.framework -scanforprivacyfile /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Frameworks/UserMessagingPlatform.framework -o /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Info.plist
+
+ConstructStubExecutorLinkFileList /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-ExecutorLinkFileList-normal-arm64.txt (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    construct-stub-executor-link-file-list /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner.debug.dylib /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor_no_swift_entry_point.a /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor.a --output /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-ExecutorLinkFileList-normal-arm64.txt
+note: Using stub executor library with Swift entry point. (in target 'DocumentScanner' from project 'DocumentScanner')
+
+Ld /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner normal (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios18.0-simulator -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -O0 -L/tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator -F/tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator -Xlinker -rpath -Xlinker @executable_path -Xlinker -rpath -Xlinker /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/PackageFrameworks -Xlinker -rpath -Xlinker @executable_path/Frameworks -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -e ___debug_blank_executor_main -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_dylib -Xlinker /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-DebugDylibPath-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_instlnm -Xlinker /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-DebugDylibInstallName-normal-arm64.txt -Xlinker -filelist -Xlinker /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-ExecutorLinkFileList-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __entitlements -Xlinker /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner.app-Simulated.xcent -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __ents_der -Xlinker /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner.app-Simulated.xcent.der /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner.debug.dylib -Xlinker -no_adhoc_codesign -o /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner
+
+CopySwiftLibs /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner.debug.dylib --scan-folder /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Frameworks --scan-folder /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns --scan-folder /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/SystemExtensions --scan-folder /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+ExtractAppIntentsMetadata (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name DocumentScanner --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk --xcode-version 17C52 --platform-family iOS --deployment-target 18.0 --bundle-identifier com.documentscanner.local --output /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app --target-triple arm64-apple-ios18.0-simulator --binary-file /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner --dependency-file /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner_dependency_info.dat --stringsdata-file /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner.SwiftFileList --metadata-file-list /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner.DependencyMetadataFileList --static-metadata-file-list /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-10-01 09:48:33.835 appintentsmetadataprocessor[32310:7908691] Starting appintentsmetadataprocessor export
+2026-10-01 09:48:33.837 appintentsmetadataprocessor[32310:7908691] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+ProcessInfoPlistFile /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest/Info.plist /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/empty-DocumentScannerTests.plist (in target 'DocumentScannerTests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-infoPlistUtility /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/empty-DocumentScannerTests.plist -producttype com.apple.product-type.bundle.unit-test -expandbuildsettings -format binary -platform iphonesimulator -o /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest/Info.plist
+
+Ld /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest/DocumentScannerTests normal (in target 'DocumentScannerTests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios18.0-simulator -bundle -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -O0 -L/tmp/DocumentScannerBuild/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator -L/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F/tmp/DocumentScannerBuild/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator -iframework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -iframework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/Developer/Library/Frameworks -filelist /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests.LinkFileList -Xlinker -rpath -Xlinker /usr/lib/swift -Xlinker -rpath -Xlinker /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/PackageFrameworks -Xlinker -rpath -Xlinker @loader_path/Frameworks -Xlinker -rpath -Xlinker @executable_path/Frameworks -dead_strip -bundle_loader /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner -Xlinker -object_path_lto -Xlinker /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests.swiftmodule @/tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests-linker-args.resp -Wl,-no_warn_duplicate_libraries -Wl,-no_warn_duplicate_libraries -framework WebKit -Xlinker -needed_framework -Xlinker XCTest -framework XCTest -Xlinker -needed-lXCTestSwiftSupport -lXCTestSwiftSupport /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner.debug.dylib -Xlinker -no_adhoc_codesign -o /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest/DocumentScannerTests
+
+CopySwiftLibs /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest (in target 'DocumentScannerTests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest/DocumentScannerTests --scan-folder /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest/Frameworks --scan-folder /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest/PlugIns --scan-folder /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest/SystemExtensions --scan-folder /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+ExtractAppIntentsMetadata (in target 'DocumentScannerTests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name DocumentScannerTests --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk --xcode-version 17C52 --platform-family iOS --deployment-target 18.0 --bundle-identifier com.documentscanner.DocumentScannerTests --output /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest --target-triple arm64-apple-ios18.0-simulator --binary-file /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest/DocumentScannerTests --dependency-file /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests_dependency_info.dat --stringsdata-file /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests.SwiftFileList --metadata-file-list /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DocumentScannerTests.DependencyMetadataFileList --static-metadata-file-list /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DocumentScannerTests.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-10-01 09:48:34.011 appintentsmetadataprocessor[32313:7908711] Starting appintentsmetadataprocessor export
+2026-10-01 09:48:34.011 appintentsmetadataprocessor[32313:7908711] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+CodeSign /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest (in target 'DocumentScannerTests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest
+
+RegisterExecutionPolicyException /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest (in target 'DocumentScannerTests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-RegisterExecutionPolicyException /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest
+
+Touch /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest (in target 'DocumentScannerTests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    /usr/bin/touch -c /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest
+
+CodeSign /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner.debug.dylib (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner.debug.dylib
+
+CodeSign /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/__preview.dylib (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app/__preview.dylib
+
+CodeSign /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app
+
+Validate /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-validationUtility /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScanner.app -shallow-bundle -infoplist-subpath Info.plist
+
+ProcessInfoPlistFile /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/PlugIns/DocumentScannerUITests.xctest/Info.plist /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/empty-DocumentScannerUITests.plist (in target 'DocumentScannerUITests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-infoPlistUtility /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/empty-DocumentScannerUITests.plist -producttype com.apple.product-type.bundle.ui-testing -expandbuildsettings -format binary -platform iphonesimulator -additionalcontentfile /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/ProductTypeInfoPlistAdditions.plist -o /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/PlugIns/DocumentScannerUITests.xctest/Info.plist
+
+Ld /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/PlugIns/DocumentScannerUITests.xctest/DocumentScannerUITests normal (in target 'DocumentScannerUITests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios18.0-simulator -bundle -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -O0 -L/tmp/DocumentScannerBuild/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator -L/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F/tmp/DocumentScannerBuild/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator -iframework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -iframework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/Developer/Library/Frameworks -filelist /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/Objects-normal/arm64/DocumentScannerUITests.LinkFileList -Xlinker -rpath -Xlinker /usr/lib/swift -Xlinker -rpath -Xlinker @loader_path/Frameworks -Xlinker -rpath -Xlinker @executable_path/Frameworks -dead_strip -Xlinker -object_path_lto -Xlinker /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/Objects-normal/arm64/DocumentScannerUITests_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/Objects-normal/arm64/DocumentScannerUITests_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/Objects-normal/arm64/DocumentScannerUITests.swiftmodule @/tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/Objects-normal/arm64/DocumentScannerUITests-linker-args.resp -Xlinker -needed_framework -Xlinker XCTest -framework XCTest -Xlinker -needed-lXCTestSwiftSupport -lXCTestSwiftSupport -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __entitlements -Xlinker /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/DocumentScannerUITests.xctest-Simulated.xcent -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __ents_der -Xlinker /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/DocumentScannerUITests.xctest-Simulated.xcent.der -Xlinker -no_adhoc_codesign -o /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/PlugIns/DocumentScannerUITests.xctest/DocumentScannerUITests
+
+CopySwiftLibs /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/PlugIns/DocumentScannerUITests.xctest (in target 'DocumentScannerUITests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/PlugIns/DocumentScannerUITests.xctest/DocumentScannerUITests --scan-folder /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/PlugIns/DocumentScannerUITests.xctest/Frameworks --scan-folder /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/PlugIns/DocumentScannerUITests.xctest/PlugIns --scan-folder /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/PlugIns/DocumentScannerUITests.xctest/SystemExtensions --scan-folder /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/PlugIns/DocumentScannerUITests.xctest/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/PlugIns/DocumentScannerUITests.xctest/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+ExtractAppIntentsMetadata (in target 'DocumentScannerUITests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name DocumentScannerUITests --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk --xcode-version 17C52 --platform-family iOS --deployment-target 18.0 --bundle-identifier com.documentscanner.DocumentScannerUITests --output /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/PlugIns/DocumentScannerUITests.xctest --target-triple arm64-apple-ios18.0-simulator --binary-file /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/PlugIns/DocumentScannerUITests.xctest/DocumentScannerUITests --dependency-file /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/Objects-normal/arm64/DocumentScannerUITests_dependency_info.dat --stringsdata-file /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/Objects-normal/arm64/DocumentScannerUITests.SwiftFileList --metadata-file-list /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/DocumentScannerUITests.DependencyMetadataFileList --static-metadata-file-list /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/DocumentScannerUITests.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/DocumentScannerBuild/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerUITests.build/Objects-normal/arm64/DocumentScannerUITests.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-10-01 09:48:34.254 appintentsmetadataprocessor[32321:7908748] Starting appintentsmetadataprocessor export
+2026-10-01 09:48:34.255 appintentsmetadataprocessor[32321:7908748] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+MkDir /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app (in target 'DocumentScannerUITests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    /bin/mkdir -p /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app
+
+CopyAndPreserveArchs /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/DocumentScannerUITests-Runner (in target 'DocumentScannerUITests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/lipo /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Xcode/Agents/XCTRunner.app/XCTRunner -output /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/DocumentScannerUITests-Runner -extract arm64
+
+CodeSign /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/PlugIns/DocumentScannerUITests.xctest (in target 'DocumentScannerUITests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/PlugIns/DocumentScannerUITests.xctest
+
+CodeSign /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app (in target 'DocumentScannerUITests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app
+/tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app: replacing existing signature
+
+RegisterExecutionPolicyException /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/PlugIns/DocumentScannerUITests.xctest (in target 'DocumentScannerUITests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-RegisterExecutionPolicyException /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/PlugIns/DocumentScannerUITests.xctest
+
+Touch /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/PlugIns/DocumentScannerUITests.xctest (in target 'DocumentScannerUITests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    /usr/bin/touch -c /tmp/DocumentScannerBuild/Build/Products/Debug-iphonesimulator/DocumentScannerUITests-Runner.app/PlugIns/DocumentScannerUITests.xctest
+
+2026-10-01 09:48:39.964100-0700 DocumentScanner[32381:7909511] [Client] Updating selectors failed with: Error Domain=NSCocoaErrorDomain Code=4099 "The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process." UserInfo={NSDebugDescription=The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process.}
+2026-10-01 09:48:39.964158-0700 DocumentScanner[32381:7909503] [Client] Synchronous remote object proxy returned error: Error Domain=NSCocoaErrorDomain Code=4099 "The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process." UserInfo={NSDebugDescription=The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process.}
+2026-10-01 09:48:39.964301-0700 DocumentScanner[32381:7909511] [Client] Updating selectors failed with: Error Domain=NSCocoaErrorDomain Code=4099 "The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process." UserInfo={NSDebugDescription=The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process.}
+2026-10-01 09:48:39.964345-0700 DocumentScanner[32381:7909503] [Client] Synchronous remote object proxy returned error: Error Domain=NSCocoaErrorDomain Code=4099 "The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process." UserInfo={NSDebugDescription=The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process.}
+2026-10-01 09:48:39.965251-0700 DocumentScanner[32381:7909511] [Client] Updating selectors failed with: Error Domain=NSCocoaErrorDomain Code=4099 "The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process." UserInfo={NSDebugDescription=The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process.}
+2026-10-01 09:48:39.965342-0700 DocumentScanner[32381:7909511] [Client] Updating selectors after delegate addition failed with: Error Domain=NSCocoaErrorDomain Code=4099 "The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process." UserInfo={NSDebugDescription=The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process.}
+Test Suite 'All tests' started at 2026-10-01 09:48:40.598.
+Test Suite 'DocumentScannerTests.xctest' started at 2026-10-01 09:48:40.599.
+Test Suite 'AdvancedOfflineTests' started at 2026-10-01 09:48:40.599.
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testBookSplitAndCurveBounds]' started.
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testBookSplitAndCurveBounds]' passed (0.024 seconds).
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testColoredMarkCleanupProtectsBlackInk]' started.
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testColoredMarkCleanupProtectsBlackInk]' passed (0.074 seconds).
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testErasePreservesPixelsOutsideSelection]' started.
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testErasePreservesPixelsOutsideSelection]' passed (0.004 seconds).
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testExcelCellsAndFormulaSafety]' started.
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testExcelCellsAndFormulaSafety]' passed (0.003 seconds).
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testExportOfficeCompatibilityFixtures]' started.
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testExportOfficeCompatibilityFixtures]' passed (0.035 seconds).
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testImagePDFPhysicalDimensionsAndSelectableText]' started.
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testImagePDFPhysicalDimensionsAndSelectableText]' passed (0.050 seconds).
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testMathPrecedenceDomainsAndNoCodeEvaluation]' started.
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testMathPrecedenceDomainsAndNoCodeEvaluation]' passed (0.001 seconds).
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testMegaCanvasAndBudget]' started.
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testMegaCanvasAndBudget]' passed (0.001 seconds).
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testMegaRegistrationFindsKnownPhotoOffset]' started.
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testMegaRegistrationFindsKnownPhotoOffset]' passed (0.055 seconds).
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testMeshWorldGeometryAndValidation]' started.
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testMeshWorldGeometryAndValidation]' passed (0.001 seconds).
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testObjectCountCoordinatesAndThresholdValidation]' started.
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testObjectCountCoordinatesAndThresholdValidation]' passed (0.013 seconds).
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testPowerPointImageAndEditablePackages]' started.
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testPowerPointImageAndEditablePackages]' passed (0.040 seconds).
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testRestorationDimensionsAndInputValidation]' started.
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testRestorationDimensionsAndInputValidation]' passed (0.027 seconds).
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testWordUnicodeEscapingAndZIPIntegrity]' started.
+Test Case '-[DocumentScannerTests.AdvancedOfflineTests testWordUnicodeEscapingAndZIPIntegrity]' passed (0.001 seconds).
+Test Suite 'AdvancedOfflineTests' passed at 2026-10-01 09:48:40.931.
+	 Executed 14 tests, with 0 failures (0 unexpected) in 0.330 (0.332) seconds
+Test Suite 'ClarityTests' started at 2026-10-01 09:48:40.931.
+Test Case '-[DocumentScannerTests.ClarityTests testClarityDarkensBlurredStrokesWithoutClosingWhiteGapOrErasingPencil]' started.
+Test Case '-[DocumentScannerTests.ClarityTests testClarityDarkensBlurredStrokesWithoutClosingWhiteGapOrErasingPencil]' passed (0.049 seconds).
+Test Case '-[DocumentScannerTests.ClarityTests testNormalizationPreservesPixelsAndRotatesScaledPhotos]' started.
+Test Case '-[DocumentScannerTests.ClarityTests testNormalizationPreservesPixelsAndRotatesScaledPhotos]' passed (0.001 seconds).
+Test Suite 'ClarityTests' passed at 2026-10-01 09:48:40.982.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.050 (0.051) seconds
+Test Suite 'CompletionAdvertisementTests' started at 2026-10-01 09:48:40.982.
+Test Case '-[DocumentScannerTests.CompletionAdvertisementTests testCancellationDoesNotCountAndValidationFailureDoesNotConsumeDailyCap]' started.
+Test Case '-[DocumentScannerTests.CompletionAdvertisementTests testCancellationDoesNotCountAndValidationFailureDoesNotConsumeDailyCap]' passed (0.006 seconds).
+Test Case '-[DocumentScannerTests.CompletionAdvertisementTests testCooldownDailyLimitNextDayAndClockRollback]' started.
+Test Case '-[DocumentScannerTests.CompletionAdvertisementTests testCooldownDailyLimitNextDayAndClockRollback]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.CompletionAdvertisementTests testFirstTaskExemptionAndEveryThreeSubsequentCompletions]' started.
+Test Case '-[DocumentScannerTests.CompletionAdvertisementTests testFirstTaskExemptionAndEveryThreeSubsequentCompletions]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.CompletionAdvertisementTests testHomeAdsRemainSuppressedUntilAnotherDocumentTask]' started.
+Test Case '-[DocumentScannerTests.CompletionAdvertisementTests testHomeAdsRemainSuppressedUntilAnotherDocumentTask]' passed (0.001 seconds).
+Test Case '-[DocumentScannerTests.CompletionAdvertisementTests testNoFillReturnsImmediatelyAndNeverDisplaysLateResult]' started.
+Test Case '-[DocumentScannerTests.CompletionAdvertisementTests testNoFillReturnsImmediatelyAndNeverDisplaysLateResult]' passed (0.005 seconds).
+Test Case '-[DocumentScannerTests.CompletionAdvertisementTests testPresentationAndCompletionPersistAndDuplicateDoneIsIgnored]' started.
+Test Case '-[DocumentScannerTests.CompletionAdvertisementTests testPresentationAndCompletionPersistAndDuplicateDoneIsIgnored]' passed (0.005 seconds).
+Test Case '-[DocumentScannerTests.CompletionAdvertisementTests testProOfflineBackgroundLockedOrCoveredAtDoneDiscardsPreparedAd]' started.
+Test Case '-[DocumentScannerTests.CompletionAdvertisementTests testProOfflineBackgroundLockedOrCoveredAtDoneDiscardsPreparedAd]' passed (0.007 seconds).
+Test Suite 'CompletionAdvertisementTests' passed at 2026-10-01 09:48:41.008.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.025 (0.026) seconds
+Test Suite 'DocumentToolsTests' started at 2026-10-01 09:48:41.008.
+Test Case '-[DocumentScannerTests.DocumentToolsTests testAbandonedAssetCleanupKeepsRecentAndReferencedFiles]' started.
+Test Case '-[DocumentScannerTests.DocumentToolsTests testAbandonedAssetCleanupKeepsRecentAndReferencedFiles]' passed (0.013 seconds).
+Test Case '-[DocumentScannerTests.DocumentToolsTests testAnnotationOutputContainsTextAndRetainsUnderlyingText]' started.
+2026-10-01 09:48:41.028625-0700 DocumentScanner[32381:7909503] Drawing a PDFPage when its PDFDocument is nil is unsupported.
+Test Case '-[DocumentScannerTests.DocumentToolsTests testAnnotationOutputContainsTextAndRetainsUnderlyingText]' passed (0.024 seconds).
+Test Case '-[DocumentScannerTests.DocumentToolsTests testAnnotationTextDrawsIntoProvidedCanvasContext]' started.
+Test Case '-[DocumentScannerTests.DocumentToolsTests testAnnotationTextDrawsIntoProvidedCanvasContext]' passed (0.025 seconds).
+Test Case '-[DocumentScannerTests.DocumentToolsTests testApplyAppearanceKeepsGeometryAndInvalidatesOldOCR]' started.
+Test Case '-[DocumentScannerTests.DocumentToolsTests testApplyAppearanceKeepsGeometryAndInvalidatesOldOCR]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.DocumentToolsTests testCommonPaperLayoutKeepsNativeTextAndTransformedLinks]' started.
+Test Case '-[DocumentScannerTests.DocumentToolsTests testCommonPaperLayoutKeepsNativeTextAndTransformedLinks]' passed (0.030 seconds).
+Test Case '-[DocumentScannerTests.DocumentToolsTests testCompressionKeepsSelectableTextAndCopiesKeepSharedAssets]' started.
+Test Case '-[DocumentScannerTests.DocumentToolsTests testCompressionKeepsSelectableTextAndCopiesKeepSharedAssets]' passed (0.713 seconds).
+Test Case '-[DocumentScannerTests.DocumentToolsTests testEditingStagingDoesNotReplaceSavedDocumentUntilCommit]' started.
+Test Case '-[DocumentScannerTests.DocumentToolsTests testEditingStagingDoesNotReplaceSavedDocumentUntilCommit]' passed (0.019 seconds).
+Test Case '-[DocumentScannerTests.DocumentToolsTests testImageOnlyImportedPDFGetsAutomaticSelectableText]' started.
+Test Case '-[DocumentScannerTests.DocumentToolsTests testImageOnlyImportedPDFGetsAutomaticSelectableText]' passed (6.666 seconds).
+Test Case '-[DocumentScannerTests.DocumentToolsTests testNativeImportMergeExtractRotateAndBackupKeepTextAndLinks]' started.
+Test Case '-[DocumentScannerTests.DocumentToolsTests testNativeImportMergeExtractRotateAndBackupKeepTextAndLinks]' passed (0.043 seconds).
+Test Case '-[DocumentScannerTests.DocumentToolsTests testPasswordOutputIsLockedAndImportRequiresCorrectPassword]' started.
+Test Case '-[DocumentScannerTests.DocumentToolsTests testPasswordOutputIsLockedAndImportRequiresCorrectPassword]' passed (0.023 seconds).
+Test Case '-[DocumentScannerTests.DocumentToolsTests testRangesRejectInvalidPagesAndPreserveRequestedOrder]' started.
+Test Case '-[DocumentScannerTests.DocumentToolsTests testRangesRejectInvalidPagesAndPreserveRequestedOrder]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.DocumentToolsTests testReusableSignaturesAreOptInForBackup]' started.
+Test Case '-[DocumentScannerTests.DocumentToolsTests testReusableSignaturesAreOptInForBackup]' passed (0.008 seconds).
+Test Case '-[DocumentScannerTests.DocumentToolsTests testStreamingBackupCorruptionTruncationAndLegacyCompatibility]' started.
+Test Case '-[DocumentScannerTests.DocumentToolsTests testStreamingBackupCorruptionTruncationAndLegacyCompatibility]' passed (0.007 seconds).
+Test Case '-[DocumentScannerTests.DocumentToolsTests testTrashRetentionAndFailedCopyCommitDoNotLoseSources]' started.
+Test Case '-[DocumentScannerTests.DocumentToolsTests testTrashRetentionAndFailedCopyCommitDoNotLoseSources]' passed (0.008 seconds).
+Test Suite 'DocumentToolsTests' passed at 2026-10-01 09:48:48.589.
+	 Executed 14 tests, with 0 failures (0 unexpected) in 7.578 (7.581) seconds
+Test Suite 'HomeAdvertisementTests' started at 2026-10-01 09:48:48.589.
+Test Case '-[DocumentScannerTests.HomeAdvertisementTests testOnlyVerifiedFreeVisibleOnlineHomeCanRequestAds]' started.
+Test Case '-[DocumentScannerTests.HomeAdvertisementTests testOnlyVerifiedFreeVisibleOnlineHomeCanRequestAds]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.HomeAdvertisementTests testPackagedAdMobConfiguration]' started.
+Test Case '-[DocumentScannerTests.HomeAdvertisementTests testPackagedAdMobConfiguration]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.HomeAdvertisementTests testScrollAndNavigationRetainAdButProAndSuppressionDiscardIt]' started.
+Test Case '-[DocumentScannerTests.HomeAdvertisementTests testScrollAndNavigationRetainAdButProAndSuppressionDiscardIt]' passed (0.001 seconds).
+Test Suite 'HomeAdvertisementTests' passed at 2026-10-01 09:48:48.592.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'LibraryTests' started at 2026-10-01 09:48:48.592.
+Test Case '-[DocumentScannerTests.LibraryTests testBackupRestoreSkipsDuplicateAndPreservesDocument]' started.
+Test Case '-[DocumentScannerTests.LibraryTests testBackupRestoreSkipsDuplicateAndPreservesDocument]' passed (0.015 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testCapturedPagesSurviveRelaunch]' started.
+Test Case '-[DocumentScannerTests.LibraryTests testCapturedPagesSurviveRelaunch]' passed (0.013 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testCorruptLibraryNeverOverwritten]' started.
+Test Case '-[DocumentScannerTests.LibraryTests testCorruptLibraryNeverOverwritten]' passed (0.003 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testCropRejectsCrossingAndNonfiniteCorners]' started.
+Test Case '-[DocumentScannerTests.LibraryTests testCropRejectsCrossingAndNonfiniteCorners]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testDiscardCapturePreservesAcceptedPageAndExistingPDF]' started.
+Test Case '-[DocumentScannerTests.LibraryTests testDiscardCapturePreservesAcceptedPageAndExistingPDF]' passed (0.480 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testDiscardOnlyCaptureLeavesNoRecoverableScanAndCleansEmptyDraft]' started.
+Test Case '-[DocumentScannerTests.LibraryTests testDiscardOnlyCaptureLeavesNoRecoverableScanAndCleansEmptyDraft]' passed (0.012 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testEmptyCleanupPreservesPDFsSavedRecordsAndTrash]' started.
+Test Case '-[DocumentScannerTests.LibraryTests testEmptyCleanupPreservesPDFsSavedRecordsAndTrash]' passed (0.450 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testFailedCaptureCancellationKeepsPageAndPixels]' started.
+Test Case '-[DocumentScannerTests.LibraryTests testFailedCaptureCancellationKeepsPageAndPixels]' passed (0.012 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testFailedEmptyCleanupLeavesManifestUnchanged]' started.
+Test Case '-[DocumentScannerTests.LibraryTests testFailedEmptyCleanupLeavesManifestUnchanged]' passed (0.002 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testFailedIndexWriteDoesNotAcknowledgeCapturedPage]' started.
+Test Case '-[DocumentScannerTests.LibraryTests testFailedIndexWriteDoesNotAcknowledgeCapturedPage]' passed (0.012 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testMissingPageDoesNotReplaceExistingPDF]' started.
+Test Case '-[DocumentScannerTests.LibraryTests testMissingPageDoesNotReplaceExistingPDF]' passed (0.442 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testNewScanCollapsesLegacyEmptySessionsWithoutLosingCapturedPages]' started.
+Test Case '-[DocumentScannerTests.LibraryTests testNewScanCollapsesLegacyEmptySessionsWithoutLosingCapturedPages]' passed (0.012 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testOCRFindsTextOffline]' started.
+Test Case '-[DocumentScannerTests.LibraryTests testOCRFindsTextOffline]' passed (5.509 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testPDFSaveReopensWithCorrectPageCount]' started.
+Test Case '-[DocumentScannerTests.LibraryTests testPDFSaveReopensWithCorrectPageCount]' passed (0.813 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testRepeatedNewScanDoesNotAccumulateEmptySessions]' started.
+Test Case '-[DocumentScannerTests.LibraryTests testRepeatedNewScanDoesNotAccumulateEmptySessions]' passed (0.020 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testSavedDocumentCanBeTrashedAndRestoredWithItsPDF]' started.
+Test Case '-[DocumentScannerTests.LibraryTests testSavedDocumentCanBeTrashedAndRestoredWithItsPDF]' passed (0.443 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testSearchablePDFContainsRecognizedText]' started.
+Test Case '-[DocumentScannerTests.LibraryTests testSearchablePDFContainsRecognizedText]' passed (6.570 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testTamperedBackupDoesNotModifyLibrary]' started.
+Test Case '-[DocumentScannerTests.LibraryTests testTamperedBackupDoesNotModifyLibrary]' passed (0.014 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testTrashRestoreAndPermanentDelete]' started.
+Test Case '-[DocumentScannerTests.LibraryTests testTrashRestoreAndPermanentDelete]' passed (0.013 seconds).
+Test Suite 'LibraryTests' passed at 2026-10-01 09:49:03.431.
+	 Executed 19 tests, with 0 failures (0 unexpected) in 14.836 (14.839) seconds
+Test Suite 'LiveCameraTests' started at 2026-10-01 09:49:03.431.
+Test Case '-[DocumentScannerTests.LiveCameraTests testAutoCaptureWaitsForStableDocument]' started.
+Test Case '-[DocumentScannerTests.LiveCameraTests testAutoCaptureWaitsForStableDocument]' passed (0.001 seconds).
+Test Case '-[DocumentScannerTests.LiveCameraTests testBackgroundResumeKeepsCapturedPageLatch]' started.
+Test Case '-[DocumentScannerTests.LiveCameraTests testBackgroundResumeKeepsCapturedPageLatch]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.LiveCameraTests testCapturedPageCannotCreateDuplicateUntilRemoved]' started.
+Test Case '-[DocumentScannerTests.LiveCameraTests testCapturedPageCannotCreateDuplicateUntilRemoved]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.LiveCameraTests testExplicitNextPageRearmsAutoCaptureButRequiresANewStableHold]' started.
+Test Case '-[DocumentScannerTests.LiveCameraTests testExplicitNextPageRearmsAutoCaptureButRequiresANewStableHold]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.LiveCameraTests testMissingDetectionBreaksStabilityAndClearsOutline]' started.
+Test Case '-[DocumentScannerTests.LiveCameraTests testMissingDetectionBreaksStabilityAndClearsOutline]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.LiveCameraTests testMovingPageRestartsSteadyInterval]' started.
+Test Case '-[DocumentScannerTests.LiveCameraTests testMovingPageRestartsSteadyInterval]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.LiveCameraTests testPortraitCornersConvertToSensorCoordinates]' started.
+Test Case '-[DocumentScannerTests.LiveCameraTests testPortraitCornersConvertToSensorCoordinates]' passed (0.000 seconds).
+Test Suite 'LiveCameraTests' passed at 2026-10-01 09:49:03.436.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.003 (0.005) seconds
+Test Suite 'LocalToolsTests' started at 2026-10-01 09:49:03.436.
+Test Case '-[DocumentScannerTests.LocalToolsTests testCaptureStylesHaveDistinctColorAndCleanupPolicies]' started.
+Test Case '-[DocumentScannerTests.LocalToolsTests testCaptureStylesHaveDistinctColorAndCleanupPolicies]' passed (0.002 seconds).
+Test Case '-[DocumentScannerTests.LocalToolsTests testGeneratedCopyCommitsAndReloadsWithoutChangingOriginal]' started.
+Test Case '-[DocumentScannerTests.LocalToolsTests testGeneratedCopyCommitsAndReloadsWithoutChangingOriginal]' passed (0.047 seconds).
+Test Case '-[DocumentScannerTests.LocalToolsTests testIDCardLayoutContainsBothSidesAndPreservesText]' started.
+Test Case '-[DocumentScannerTests.LocalToolsTests testIDCardLayoutContainsBothSidesAndPreservesText]' passed (0.006 seconds).
+Test Case '-[DocumentScannerTests.LocalToolsTests testLongImagePartsPreserveAllRowsAndRejectOversize]' started.
+Test Case '-[DocumentScannerTests.LocalToolsTests testLongImagePartsPreserveAllRowsAndRejectOversize]' passed (0.029 seconds).
+Test Case '-[DocumentScannerTests.LocalToolsTests testQRUnicodeRoundTripAndInputLimits]' started.
+2026-10-01 09:49:03.583757-0700 DocumentScanner[32381:7909353] The filter 'CIPortraitEffectSpillCorrection' is not implemented in the bundle at /Library/Developer/CoreSimulator/Volumes/iOS_23C54/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 26.2.simruntime/Contents/Resources/RuntimeRoot/System/Library/CoreImage/PortraitFilters.cifilter.
+Test Case '-[DocumentScannerTests.LocalToolsTests testQRUnicodeRoundTripAndInputLimits]' passed (0.173 seconds).
+Test Case '-[DocumentScannerTests.LocalToolsTests testScreenshotOverlapMatchesSparseTextRows]' started.
+Test Case '-[DocumentScannerTests.LocalToolsTests testScreenshotOverlapMatchesSparseTextRows]' passed (0.317 seconds).
+Test Case '-[DocumentScannerTests.LocalToolsTests testScreenshotOverlapRejectsBlankAndMatchesKnownOffset]' started.
+Test Case '-[DocumentScannerTests.LocalToolsTests testScreenshotOverlapRejectsBlankAndMatchesKnownOffset]' passed (0.304 seconds).
+Test Case '-[DocumentScannerTests.LocalToolsTests testScreenshotOverlapRejectsRepeatedRows]' started.
+Test Case '-[DocumentScannerTests.LocalToolsTests testScreenshotOverlapRejectsRepeatedRows]' passed (0.276 seconds).
+Test Case '-[DocumentScannerTests.LocalToolsTests testTimestampLogoAndRotatedPage]' started.
+Test Case '-[DocumentScannerTests.LocalToolsTests testTimestampLogoAndRotatedPage]' passed (0.015 seconds).
+Test Case '-[DocumentScannerTests.LocalToolsTests testWatermarkRetainsOriginalTextLinksAndPageSelection]' started.
+Test Case '-[DocumentScannerTests.LocalToolsTests testWatermarkRetainsOriginalTextLinksAndPageSelection]' passed (0.007 seconds).
+Test Suite 'LocalToolsTests' passed at 2026-10-01 09:49:04.613.
+	 Executed 10 tests, with 0 failures (0 unexpected) in 1.176 (1.178) seconds
+Test Suite 'MarginTrimTests' started at 2026-10-01 09:49:04.614.
+Test Case '-[DocumentScannerTests.MarginTrimTests testBackupRetainsTrimRecipe]' started.
+Test Case '-[DocumentScannerTests.MarginTrimTests testBackupRetainsTrimRecipe]' passed (0.008 seconds).
+Test Case '-[DocumentScannerTests.MarginTrimTests testEdgesRotateWithPageAndLegacyPagesHaveNoTrim]' started.
+Test Case '-[DocumentScannerTests.MarginTrimTests testEdgesRotateWithPageAndLegacyPagesHaveNoTrim]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.MarginTrimTests testTrimKeepsNativeTextLinksAndRotationWithoutRasterizing]' started.
+Test Case '-[DocumentScannerTests.MarginTrimTests testTrimKeepsNativeTextLinksAndRotationWithoutRasterizing]' passed (0.016 seconds).
+Test Case '-[DocumentScannerTests.MarginTrimTests testTrimPersistencePreviewExportAndResetKeepOriginal]' started.
+Test Case '-[DocumentScannerTests.MarginTrimTests testTrimPersistencePreviewExportAndResetKeepOriginal]' passed (3.690 seconds).
+Test Suite 'MarginTrimTests' passed at 2026-10-01 09:49:08.329.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 3.714 (3.715) seconds
+Test Suite 'PDFExportTests' started at 2026-10-01 09:49:08.329.
+Test Case '-[DocumentScannerTests.PDFExportTests testBlankScanDoesNotClaimSelectableText]' started.
+Test Case '-[DocumentScannerTests.PDFExportTests testBlankScanDoesNotClaimSelectableText]' passed (1.834 seconds).
+Test Case '-[DocumentScannerTests.PDFExportTests testMissingSourceKeepsPreviousPDFAndMetadata]' started.
+Test Case '-[DocumentScannerTests.PDFExportTests testMissingSourceKeepsPreviousPDFAndMetadata]' passed (4.734 seconds).
+Test Case '-[DocumentScannerTests.PDFExportTests testOldOCRCoordinatesAreRebuiltByOrdinarySave]' started.
+Test Case '-[DocumentScannerTests.PDFExportTests testOldOCRCoordinatesAreRebuiltByOrdinarySave]' passed (5.049 seconds).
+Test Case '-[DocumentScannerTests.PDFExportTests testOrdinarySaveEmbedsTextOnEveryPageAndPersistsIt]' started.
+Test Case '-[DocumentScannerTests.PDFExportTests testOrdinarySaveEmbedsTextOnEveryPageAndPersistsIt]' passed (9.960 seconds).
+Test Suite 'PDFExportTests' passed at 2026-10-01 09:49:29.906.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 21.576 (21.577) seconds
+Test Suite 'PDFTextTests' started at 2026-10-01 09:49:29.906.
+Test Case '-[DocumentScannerTests.PDFTextTests testAccurateOCRRetainsMixedEnglishKoreanAndWordBounds]' started.
+Test Case '-[DocumentScannerTests.PDFTextTests testAccurateOCRRetainsMixedEnglishKoreanAndWordBounds]' passed (6.224 seconds).
+Test Case '-[DocumentScannerTests.PDFTextTests testHiddenTextDoesNotChangePDFImagePixelsAndOldBlocksStillSelect]' started.
+Test Case '-[DocumentScannerTests.PDFTextTests testHiddenTextDoesNotChangePDFImagePixelsAndOldBlocksStillSelect]' passed (0.385 seconds).
+Test Case '-[DocumentScannerTests.PDFTextTests testKoreanInsideLatinParenthesesHasItsOwnSelectablePDFRegion]' started.
+Test Case '-[DocumentScannerTests.PDFTextTests testKoreanInsideLatinParenthesesHasItsOwnSelectablePDFRegion]' passed (4.400 seconds).
+Test Case '-[DocumentScannerTests.PDFTextTests testMixedScriptWordsSelectAtTheirImagePositionsWithoutProFlag]' started.
+Test Case '-[DocumentScannerTests.PDFTextTests testMixedScriptWordsSelectAtTheirImagePositionsWithoutProFlag]' passed (0.180 seconds).
+Test Case '-[DocumentScannerTests.PDFTextTests testOCRRecoversDifferentScriptsOnTheSamePage]' started.
+Test Case '-[DocumentScannerTests.PDFTextTests testOCRRecoversDifferentScriptsOnTheSamePage]' passed (6.448 seconds).
+Test Case '-[DocumentScannerTests.PDFTextTests testUnicodeTextLayerSelectsMajorScriptsAndCombiningMarks]' started.
+Test Case '-[DocumentScannerTests.PDFTextTests testUnicodeTextLayerSelectsMajorScriptsAndCombiningMarks]' passed (0.270 seconds).
+Test Suite 'PDFTextTests' passed at 2026-10-01 09:49:47.814.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 17.906 (17.908) seconds
+Test Suite 'PageAdjustmentsTests' started at 2026-10-01 09:49:47.814.
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testAdjustmentsSurviveRelaunchPerPageAndPreviewMatchesExportRenderer]' started.
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testAdjustmentsSurviveRelaunchPerPageAndPreviewMatchesExportRenderer]' passed (0.719 seconds).
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testBrightnessContrastAndSharpnessChangePixelsWithoutChangingSize]' started.
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testBrightnessContrastAndSharpnessChangePixelsWithoutChangingSize]' passed (0.111 seconds).
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testCancelledPreviewCannotReplaceNewPage]' started.
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testCancelledPreviewCannotReplaceNewPage]' passed (0.022 seconds).
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testHighResolutionPreviewPreservesExportInkAndColoredCells]' started.
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testHighResolutionPreviewPreservesExportInkAndColoredCells]' passed (3.526 seconds).
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testLegacyPageDefaultsAndInvalidAdjustmentValuesAreBounded]' started.
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testLegacyPageDefaultsAndInvalidAdjustmentValuesAreBounded]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testPreviewCoalescesDragButPresentsIntermediateAndFinalFrames]' started.
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testPreviewCoalescesDragButPresentsIntermediateAndFinalFrames]' passed (0.031 seconds).
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testPreviewIsBoundedAndCleanupReusesPreparedSource]' started.
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testPreviewIsBoundedAndCleanupReusesPreparedSource]' passed (1.384 seconds).
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testZoomPreservesPositionWhenFullResolutionArrivesAndFitsNewViewport]' started.
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testZoomPreservesPositionWhenFullResolutionArrivesAndFitsNewViewport]' passed (0.014 seconds).
+Test Suite 'PageAdjustmentsTests' passed at 2026-10-01 09:49:53.622.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 5.807 (5.808) seconds
+Test Suite 'ScanQualityTests' started at 2026-10-01 09:49:53.622.
+Test Case '-[DocumentScannerTests.ScanQualityTests testAutoCropRejectsSmallTableInsidePaper]' started.
+Test Case '-[DocumentScannerTests.ScanQualityTests testAutoCropRejectsSmallTableInsidePaper]' passed (0.001 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testConfidentDocumentCanOccupyAQuarterOfCameraFrame]' started.
+Test Case '-[DocumentScannerTests.ScanQualityTests testConfidentDocumentCanOccupyAQuarterOfCameraFrame]' passed (0.001 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testDetectionChoosesSmallPaperInsteadOfPrintedTable]' started.
+Test Case '-[DocumentScannerTests.ScanQualityTests testDetectionChoosesSmallPaperInsteadOfPrintedTable]' passed (0.048 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testDocumentFilterRestoresGrayInkContrastWithoutDroppingThinStrokes]' started.
+Test Case '-[DocumentScannerTests.ScanQualityTests testDocumentFilterRestoresGrayInkContrastWithoutDroppingThinStrokes]' passed (0.222 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testExistingPageWithoutNewSettingsStillDecodes]' started.
+Test Case '-[DocumentScannerTests.ScanQualityTests testExistingPageWithoutNewSettingsStillDecodes]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testFullColorPageUsesScalarFallbackAndRetainsColor]' started.
+Test Case '-[DocumentScannerTests.ScanQualityTests testFullColorPageUsesScalarFallbackAndRetainsColor]' passed (0.066 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testLargeBlueAndYellowAreasAreNotUsedAsPaperWhiteReference]' started.
+Test Case '-[DocumentScannerTests.ScanQualityTests testLargeBlueAndYellowAreasAreNotUsedAsPaperWhiteReference]' passed (0.315 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testMonochromeKeepsInkAndMakesChannelsEqual]' started.
+Test Case '-[DocumentScannerTests.ScanQualityTests testMonochromeKeepsInkAndMakesChannelsEqual]' passed (0.295 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testNewPhotoUsesDocumentModeAndFlagsMissingEdges]' started.
+Test Case '-[DocumentScannerTests.ScanQualityTests testNewPhotoUsesDocumentModeAndFlagsMissingEdges]' passed (0.391 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testObliqueGridCorrectionStraightensLargeSkewWithoutCroppingSignature]' started.
+Test Case '-[DocumentScannerTests.ScanQualityTests testObliqueGridCorrectionStraightensLargeSkewWithoutCroppingSignature]' passed (0.276 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testPaleBlueMarkOutsideGridIsPreservedWhenCornerShadowIsWhitened]' started.
+Test Case '-[DocumentScannerTests.ScanQualityTests testPaleBlueMarkOutsideGridIsPreservedWhenCornerShadowIsWhitened]' passed (0.285 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testPaperWhiteningReducesShadowWithoutRemovingInkOrBlueHighlight]' started.
+Test Case '-[DocumentScannerTests.ScanQualityTests testPaperWhiteningReducesShadowWithoutRemovingInkOrBlueHighlight]' passed (0.300 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testPerspectiveCorrectionUsesAllFourCorners]' started.
+Test Case '-[DocumentScannerTests.ScanQualityTests testPerspectiveCorrectionUsesAllFourCorners]' passed (0.002 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testResidualCorrectionDoesNotReshapeAnUnruledRectangle]' started.
+Test Case '-[DocumentScannerTests.ScanQualityTests testResidualCorrectionDoesNotReshapeAnUnruledRectangle]' passed (0.063 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testResidualGridCorrectionStraightensRulingsAndPreservesOutsideContent]' started.
+Test Case '-[DocumentScannerTests.ScanQualityTests testResidualGridCorrectionStraightensRulingsAndPreservesOutsideContent]' passed (0.133 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testSparseTextDoesNotTriggerSpeculativePageRotation]' started.
+Test Case '-[DocumentScannerTests.ScanQualityTests testSparseTextDoesNotTriggerSpeculativePageRotation]' passed (0.060 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testTextOnlyPageDeskewsFromConsistentBaselinesAndKeepsOutsideMark]' started.
+Test Case '-[DocumentScannerTests.ScanQualityTests testTextOnlyPageDeskewsFromConsistentBaselinesAndKeepsOutsideMark]' passed (0.260 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testWarmPaperBecomesDigitalWhiteWithoutRemovingPaleYellowArtwork]' started.
+Test Case '-[DocumentScannerTests.ScanQualityTests testWarmPaperBecomesDigitalWhiteWithoutRemovingPaleYellowArtwork]' passed (0.260 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testWarmShadowAlongOnePageEdgeIsWhitenedAndColoredGridSurvives]' started.
+Test Case '-[DocumentScannerTests.ScanQualityTests testWarmShadowAlongOnePageEdgeIsWhitenedAndColoredGridSurvives]' passed (0.256 seconds).
+Test Case '-[DocumentScannerTests.ScanQualityTests testWhiteCanvasRejectionDoesNotMistakeGrayInkForShadow]' started.
+Test Case '-[DocumentScannerTests.ScanQualityTests testWhiteCanvasRejectionDoesNotMistakeGrayInkForShadow]' passed (0.206 seconds).
+Test Suite 'ScanQualityTests' passed at 2026-10-01 09:49:57.066.
+	 Executed 20 tests, with 0 failures (0 unexpected) in 3.439 (3.443) seconds
+Test Suite 'StartupPerformanceTests' started at 2026-10-01 09:49:57.066.
+Test Case '-[DocumentScannerTests.StartupPerformanceTests testAsyncOpeningNeverCleansAssetsWhenIndexIsCorrupt]' started.
+Test Case '-[DocumentScannerTests.StartupPerformanceTests testAsyncOpeningNeverCleansAssetsWhenIndexIsCorrupt]' passed (0.004 seconds).
+Test Case '-[DocumentScannerTests.StartupPerformanceTests testAsyncOpeningRetainsActiveAndRecentTrashAndPurgesOnlyExpired]' started.
+Test Case '-[DocumentScannerTests.StartupPerformanceTests testAsyncOpeningRetainsActiveAndRecentTrashAndPurgesOnlyExpired]' passed (0.003 seconds).
+Test Case '-[DocumentScannerTests.StartupPerformanceTests testSavedPDFThumbnailSkipsPhotoProcessingEntirely]' started.
+Test Case '-[DocumentScannerTests.StartupPerformanceTests testSavedPDFThumbnailSkipsPhotoProcessingEntirely]' passed (0.003 seconds).
+Test Case '-[DocumentScannerTests.StartupPerformanceTests testThumbnailReusesMemoryAndDiskAndInvalidatesAppearanceAndSource]' started.
+Test Case '-[DocumentScannerTests.StartupPerformanceTests testThumbnailReusesMemoryAndDiskAndInvalidatesAppearanceAndSource]' passed (0.004 seconds).
+Test Suite 'StartupPerformanceTests' passed at 2026-10-01 09:49:57.081.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.014 (0.015) seconds
+Test Suite 'SubscriptionTests' started at 2026-10-01 09:49:57.081.
+Test Case '-[DocumentScannerTests.SubscriptionTests testUSPricesVerifiedPurchaseAndExpiration]' started.
+Test Case '-[DocumentScannerTests.SubscriptionTests testUSPricesVerifiedPurchaseAndExpiration]' passed (1.034 seconds).
+Test Suite 'SubscriptionTests' passed at 2026-10-01 09:49:58.115.
+	 Executed 1 test, with 0 failures (0 unexpected) in 1.034 (1.034) seconds
+Test Suite 'DocumentScannerTests.xctest' passed at 2026-10-01 09:49:58.115.
+	 Executed 123 tests, with 0 failures (0 unexpected) in 77.490 (77.516) seconds
+Test Suite 'All tests' passed at 2026-10-01 09:49:58.115.
+	 Executed 123 tests, with 0 failures (0 unexpected) in 77.490 (77.517) seconds
+2026-10-01 09:49:59.037728-0700 DocumentScannerUITests-Runner[32842:7912915] [Default] Running tests...
+    t =      nans Interface orientation changed to Portrait
+Test Suite 'Selected tests' started at 2026-10-01 09:50:00.949.
+Test Suite 'DocumentScannerUITests.xctest' started at 2026-10-01 09:50:00.949.
+Test Suite 'AdvancedToolsUITests' started at 2026-10-01 09:50:00.949.
+Test Case '-[DocumentScannerUITests.AdvancedToolsUITests testBookPreviewAndPowerPointExportFromDocument]' started.
+    t =     0.00s Start Test at 2026-10-01 09:50:00.950
+    t =     0.09s Set Up
+    t =     0.09s Open com.documentscanner.local
+    t =     0.09s     Launch com.documentscanner.local
+    t =     0.30s         Setting up automation session
+    t =     0.78s         Wait for com.documentscanner.local to idle
+    t =     2.96s Tap "Test document" StaticText
+    t =     2.96s     Wait for com.documentscanner.local to idle
+    t =     2.97s     Find the "Test document" StaticText
+    t =     3.07s     Check for interrupting elements affecting "Test document" StaticText
+    t =     3.11s     Synthesize event
+    t =     3.49s     Wait for com.documentscanner.local to idle
+    t =     3.54s Tap "Tools" Button
+    t =     3.54s     Wait for com.documentscanner.local to idle
+    t =     4.04s     Find the "Tools" Button
+    t =     4.08s     Check for interrupting elements affecting "Tools" Button
+    t =     4.10s     Synthesize event
+    t =     4.39s     Wait for com.documentscanner.local to idle
+    t =     5.43s Tap "More offline tools" Button
+    t =     5.43s     Wait for com.documentscanner.local to idle
+    t =     5.44s     Find the "More offline tools" Button
+    t =     5.48s     Check for interrupting elements affecting "More offline tools" Button
+    t =     5.51s     Synthesize event
+    t =     5.79s     Wait for com.documentscanner.local to idle
+    t =     7.21s Tap "Book pages" Button
+    t =     7.21s     Wait for com.documentscanner.local to idle
+    t =     7.21s     Find the "Book pages" Button
+    t =     7.25s     Check for interrupting elements affecting "Book pages" Button
+    t =     7.28s     Synthesize event
+    t =     7.57s     Wait for com.documentscanner.local to idle
+    t =     9.26s Checking `Expect predicate `exists == 1 AND enabled == 1` for object "offline-run" Button`
+    t =     9.26s     Checking existence of `"offline-run" Button`
+    t =     9.32s     Find the "offline-run" Button
+    t =     9.35s Tap "offline-run" Button
+    t =     9.35s     Wait for com.documentscanner.local to idle
+    t =     9.35s     Find the "offline-run" Button
+    t =     9.38s     Check for interrupting elements affecting "offline-run" Button
+    t =     9.41s     Synthesize event
+    t =     9.69s     Wait for com.documentscanner.local to idle
+    t =    10.72s Checking `Expect predicate `exists == 1 AND enabled == 1` for object "offline-run" Button`
+    t =    10.72s     Checking existence of `"offline-run" Button`
+    t =    10.77s     Find the "offline-run" Button
+    t =    10.80s Checking existence of `"offline-save" Button`
+    t =    10.84s Swipe up Target Application 'com.documentscanner.local'
+    t =    10.84s     Wait for com.documentscanner.local to idle
+    t =    10.84s     Find the Target Application 'com.documentscanner.local'
+    t =    10.86s     Check for interrupting elements affecting "Document Scanner" Application
+    t =    10.89s     Synthesize event
+    t =    11.30s     Wait for com.documentscanner.local to idle
+    t =    13.42s Checking existence of `"offline-save" Button`
+    t =    13.48s Swipe up Target Application 'com.documentscanner.local'
+    t =    13.48s     Wait for com.documentscanner.local to idle
+    t =    13.48s     Find the Target Application 'com.documentscanner.local'
+    t =    13.51s     Check for interrupting elements affecting "Document Scanner" Application
+    t =    13.54s     Synthesize event
+    t =    13.96s     Wait for com.documentscanner.local to idle
+    t =    16.05s Checking existence of `"offline-save" Button`
+    t =    16.10s Checking existence of `"offline-save" Button`
+    t =    16.12s Checking existence of `"offline-save" Button`
+    t =    16.15s Checking existence of `"offline-save" Button`
+    t =    16.18s Checking existence of `"offline-save" Button`
+    t =    16.21s Checking existence of `"offline-save" Button`
+    t =    16.23s Checking existence of `"Processed result 2" Image`
+    t =    16.26s Find the Target Application 'com.documentscanner.local'
+    t =    16.35s Added attachment named 'Book split preview'
+    t =    16.35s Tap Button (Element at index 0)
+    t =    16.35s     Wait for com.documentscanner.local to idle
+    t =    16.35s     Find the Button (Element at index 0)
+    t =    16.38s     Check for interrupting elements affecting "BackButton" Button
+    t =    16.40s     Synthesize event
+    t =    16.42s         Scroll element to visible
+    t =    16.42s         Find the "BackButton" Button
+    t =    16.46s         Computed hit point {-1, -1} after scrolling to visible
+    t =    16.75s     Wait for com.documentscanner.local to idle
+    t =    17.43s Find the "PowerPoint export" Button
+    t =    17.48s Find the "PowerPoint export" Button
+    t =    17.51s Find the "PowerPoint export" Button
+    t =    17.55s Find the "PowerPoint export" Button
+    t =    17.58s Find the "PowerPoint export" Button
+    t =    17.61s Tap "PowerPoint export" Button
+    t =    17.61s     Wait for com.documentscanner.local to idle
+    t =    17.61s     Find the "PowerPoint export" Button
+    t =    17.64s     Check for interrupting elements affecting "PowerPoint export" Button
+    t =    17.67s     Synthesize event
+    t =    17.95s     Wait for com.documentscanner.local to idle
+    t =    19.50s Checking `Expect predicate `exists == 1 AND enabled == 1` for object "offline-run" Button`
+    t =    19.50s     Checking existence of `"offline-run" Button`
+    t =    19.56s     Find the "offline-run" Button
+    t =    19.59s Tap "offline-run" Button
+    t =    19.59s     Wait for com.documentscanner.local to idle
+    t =    19.59s     Find the "offline-run" Button
+    t =    19.62s     Check for interrupting elements affecting "offline-run" Button
+    t =    19.65s     Synthesize event
+    t =    19.93s     Wait for com.documentscanner.local to idle
+    t =    20.96s Checking `Expect predicate `exists == 1 AND enabled == 1` for object "offline-run" Button`
+    t =    20.96s     Checking existence of `"offline-run" Button`
+    t =    21.01s     Find the "offline-run" Button
+    t =    21.04s Find the "Preview exported file" Button
+    t =    22.07s     Find the "Preview exported file" Button (retry 1)
+    t =    23.13s     Find the "Preview exported file" Button (retry 2)
+    t =    23.17s Swipe up Target Application 'com.documentscanner.local'
+    t =    23.17s     Wait for com.documentscanner.local to idle
+    t =    23.17s     Find the Target Application 'com.documentscanner.local'
+    t =    23.20s     Check for interrupting elements affecting "Document Scanner" Application
+    t =    23.23s     Synthesize event
+    t =    23.64s     Wait for com.documentscanner.local to idle
+    t =    24.69s Find the "Preview exported file" Button
+    t =    24.74s Find the "Preview exported file" Button
+    t =    24.78s Find the "Preview exported file" Button
+    t =    24.81s Find the "Preview exported file" Button
+    t =    24.84s Find the "Preview exported file" Button
+    t =    24.88s Find the "Preview exported file" Button
+    t =    24.91s Checking existence of `"Share export" Button`
+    t =    24.94s Tap "Preview exported file" Button
+    t =    24.94s     Wait for com.documentscanner.local to idle
+    t =    24.94s     Find the "Preview exported file" Button
+    t =    24.97s     Check for interrupting elements affecting "Preview exported file" Button
+    t =    25.00s     Synthesize event
+    t =    25.29s     Wait for com.documentscanner.local to idle
+    t =    25.71s Waiting 10.0s for "Done" Button to exist
+    t =    26.74s     Checking `Expect predicate `existsNoRetry == 1` for object "Done" Button`
+    t =    26.74s         Checking existence of `"Done" Button`
+    t =    27.90s Checking `Expect predicate `exists == 0` for object ActivityIndicator (First Match)`
+    t =    27.90s     Checking existence of `ActivityIndicator (First Match)`
+    t =    27.98s Checking existence of `"Office Open XML presentation" StaticText`
+    t =    28.03s Find the Target Application 'com.documentscanner.local'
+    t =    28.13s Added attachment named 'PPTX Quick Look'
+    t =    28.13s Tear Down
+Test Case '-[DocumentScannerUITests.AdvancedToolsUITests testBookPreviewAndPowerPointExportFromDocument]' passed (28.387 seconds).
+Test Case '-[DocumentScannerUITests.AdvancedToolsUITests testHubListsAllToolsAndHonestDeviceRequirements]' started.
+    t =     0.00s Start Test at 2026-10-01 09:50:29.338
+    t =     0.02s Set Up
+    t =     0.02s Open com.documentscanner.local
+    t =     0.02s     Launch com.documentscanner.local
+    t =     0.02s         Terminate com.documentscanner.local:32855
+    t =     1.30s         Setting up automation session
+    t =     1.83s         Wait for com.documentscanner.local to idle
+    t =     2.97s Waiting 5.0s for "home-tools" Button to exist
+    t =     4.00s     Checking `Expect predicate `existsNoRetry == 1` for object "home-tools" Button`
+    t =     4.01s         Checking existence of `"home-tools" Button`
+    t =     4.08s Find the "home-tools" Button
+    t =     4.11s Find the Target Application 'com.documentscanner.local'
+    t =     4.17s Added attachment named 'Home tools empty library'
+    t =     4.18s Tap "home-tools" Button
+    t =     4.18s     Wait for com.documentscanner.local to idle
+    t =     4.18s     Find the "home-tools" Button
+    t =     4.19s     Check for interrupting elements affecting "home-tools" Button
+    t =     4.21s     Synthesize event
+    t =     4.50s     Wait for com.documentscanner.local to idle
+    t =     5.27s Waiting 5.0s for "Word export" Button to exist
+    t =     6.29s     Checking `Expect predicate `existsNoRetry == 1` for object "Word export" Button`
+    t =     6.29s         Checking existence of `"Word export" Button`
+    t =     6.35s Checking existence of `"QR code" Button`
+    t =     6.38s Tap "Close" Button
+    t =     6.38s     Wait for com.documentscanner.local to idle
+    t =     6.38s     Find the "Close" Button
+    t =     6.41s     Check for interrupting elements affecting "xmark" Button
+    t =     6.44s     Synthesize event
+    t =     6.73s     Wait for com.documentscanner.local to idle
+    t =     7.55s Find the "home-tools" Button
+    t =     7.59s Terminate com.documentscanner.local:33029
+    t =     8.63s Open com.documentscanner.local
+    t =     8.63s     Launch com.documentscanner.local
+    t =     8.84s         Setting up automation session
+    t =     9.33s         Wait for com.documentscanner.local to idle
+    t =    11.50s Waiting 5.0s for "home-tools" Button to exist
+    t =    12.53s     Checking `Expect predicate `existsNoRetry == 1` for object "home-tools" Button`
+    t =    12.53s         Checking existence of `"home-tools" Button`
+    t =    12.60s Find the "home-tools" Button
+    t =    12.62s Find the Target Application 'com.documentscanner.local'
+    t =    12.69s Added attachment named 'Home tools with documents'
+    t =    12.69s Tap "home-tools" Button
+    t =    12.69s     Wait for com.documentscanner.local to idle
+    t =    12.70s     Find the "home-tools" Button
+    t =    12.71s     Check for interrupting elements affecting "home-tools" Button
+    t =    12.73s     Synthesize event
+    t =    13.01s     Wait for com.documentscanner.local to idle
+    t =    13.77s Waiting 5.0s for "Word export" Button to exist
+    t =    14.80s     Checking `Expect predicate `existsNoRetry == 1` for object "Word export" Button`
+    t =    14.80s         Checking existence of `"Word export" Button`
+    t =    14.87s Checking existence of `"QR code" Button`
+    t =    14.90s Tap "Close" Button
+    t =    14.90s     Wait for com.documentscanner.local to idle
+    t =    14.90s     Find the "Close" Button
+    t =    14.93s     Check for interrupting elements affecting "xmark" Button
+    t =    14.96s     Synthesize event
+    t =    15.25s     Wait for com.documentscanner.local to idle
+    t =    16.07s Find the "home-tools" Button
+    t =    16.11s Terminate com.documentscanner.local:33076
+    t =    17.15s Open com.documentscanner.local
+    t =    17.15s     Launch com.documentscanner.local
+    t =    17.36s         Setting up automation session
+    t =    17.84s         Wait for com.documentscanner.local to idle
+    t =    18.99s Find the "home-tools" Button
+    t =    19.08s Tap "home-tools" Button
+    t =    19.08s     Wait for com.documentscanner.local to idle
+    t =    19.08s     Find the "home-tools" Button
+    t =    19.09s     Check for interrupting elements affecting "home-tools" Button
+    t =    19.11s     Synthesize event
+    t =    19.40s     Wait for com.documentscanner.local to idle
+    t =    20.00s Find the "Word export" Button
+    t =    20.05s Find the "Word export" Button
+    t =    20.09s Find the "Word export" Button
+    t =    20.13s Find the "Word export" Button
+    t =    20.16s Find the "Word export" Button
+    t =    20.19s Find the "Word export" Button
+    t =    20.22s Checking existence of `"Word export" Button`
+    t =    20.25s Find the "Excel export" Button
+    t =    20.28s Find the "Excel export" Button
+    t =    20.32s Find the "Excel export" Button
+    t =    20.35s Find the "Excel export" Button
+    t =    20.38s Find the "Excel export" Button
+    t =    20.41s Find the "Excel export" Button
+    t =    20.45s Checking existence of `"Excel export" Button`
+    t =    20.47s Find the "PowerPoint export" Button
+    t =    20.50s Find the "PowerPoint export" Button
+    t =    20.54s Find the "PowerPoint export" Button
+    t =    20.57s Find the "PowerPoint export" Button
+    t =    20.60s Find the "PowerPoint export" Button
+    t =    20.64s Find the "PowerPoint export" Button
+    t =    20.67s Checking existence of `"PowerPoint export" Button`
+    t =    20.70s Find the "Translate text" Button
+    t =    20.74s Find the "Translate text" Button
+    t =    20.79s Find the "Translate text" Button
+    t =    20.83s Find the "Translate text" Button
+    t =    20.86s Find the "Translate text" Button
+    t =    20.89s Find the "Translate text" Button
+    t =    20.92s Checking existence of `"Translate text" Button`
+    t =    20.95s Find the "Math calculator" Button
+    t =    20.98s Find the "Math calculator" Button
+    t =    21.01s Find the "Math calculator" Button
+    t =    21.04s Find the "Math calculator" Button
+    t =    21.07s Find the "Math calculator" Button
+    t =    21.10s Find the "Math calculator" Button
+    t =    21.13s Checking existence of `"Math calculator" Button`
+    t =    21.15s Find the "Book pages" Button
+    t =    21.18s Find the "Book pages" Button
+    t =    21.22s Find the "Book pages" Button
+    t =    21.25s Find the "Book pages" Button
+    t =    21.28s Find the "Book pages" Button
+    t =    21.31s Find the "Book pages" Button
+    t =    21.34s Checking existence of `"Book pages" Button`
+    t =    21.37s Find the "ID photo" Button
+    t =    21.40s Find the "ID photo" Button
+    t =    21.43s Find the "ID photo" Button
+    t =    21.46s Find the "ID photo" Button
+    t =    21.49s Find the "ID photo" Button
+    t =    21.52s Find the "ID photo" Button
+    t =    21.55s Checking existence of `"ID photo" Button`
+    t =    21.58s Find the "Smart erase" Button
+    t =    21.61s Find the "Smart erase" Button
+    t =    21.64s Find the "Smart erase" Button
+    t =    21.67s Find the "Smart erase" Button
+    t =    21.70s Find the "Smart erase" Button
+    t =    21.74s Find the "Smart erase" Button
+    t =    21.77s Checking existence of `"Smart erase" Button`
+    t =    21.80s Find the "Remove colored marks" Button
+    t =    21.83s Find the "Remove colored marks" Button
+    t =    21.86s Find the "Remove colored marks" Button
+    t =    21.89s Find the "Remove colored marks" Button
+    t =    21.93s Find the "Remove colored marks" Button
+    t =    21.96s Find the "Remove colored marks" Button
+    t =    21.99s Checking existence of `"Remove colored marks" Button`
+    t =    22.02s Find the "Restore photo" Button
+    t =    23.05s     Find the "Restore photo" Button (retry 1)
+    t =    24.10s     Find the "Restore photo" Button (retry 2)
+    t =    24.14s Swipe up Target Application 'com.documentscanner.local'
+    t =    24.14s     Wait for com.documentscanner.local to idle
+    t =    24.15s     Find the Target Application 'com.documentscanner.local'
+    t =    24.17s     Check for interrupting elements affecting "Document Scanner" Application
+    t =    24.20s     Synthesize event
+    t =    24.61s     Wait for com.documentscanner.local to idle
+    t =    26.72s Find the "Restore photo" Button
+    t =    26.78s Find the "Restore photo" Button
+    t =    26.82s Find the "Restore photo" Button
+    t =    26.86s Find the "Restore photo" Button
+    t =    26.90s Find the "Restore photo" Button
+    t =    26.94s Checking existence of `"Restore photo" Button`
+    t =    26.97s Find the "Mega scan" Button
+    t =    27.01s Find the "Mega scan" Button
+    t =    27.05s Find the "Mega scan" Button
+    t =    27.09s Find the "Mega scan" Button
+    t =    27.13s Find the "Mega scan" Button
+    t =    27.17s Find the "Mega scan" Button
+    t =    27.21s Checking existence of `"Mega scan" Button`
+    t =    27.25s Find the "Count objects" Button
+    t =    27.29s Find the "Count objects" Button
+    t =    27.33s Find the "Count objects" Button
+    t =    27.37s Find the "Count objects" Button
+    t =    27.41s Find the "Count objects" Button
+    t =    27.44s Find the "Count objects" Button
+    t =    27.48s Checking existence of `"Count objects" Button`
+    t =    27.52s Find the "Measure" Button
+    t =    28.56s     Find the "Measure" Button (retry 1)
+    t =    29.61s     Find the "Measure" Button (retry 2)
+    t =    29.67s Swipe up Target Application 'com.documentscanner.local'
+    t =    29.67s     Wait for com.documentscanner.local to idle
+    t =    29.67s     Find the Target Application 'com.documentscanner.local'
+    t =    29.70s     Check for interrupting elements affecting "Document Scanner" Application
+    t =    29.73s     Synthesize event
+    t =    30.15s     Wait for com.documentscanner.local to idle
+    t =    30.83s Find the "Measure" Button
+    t =    30.88s Find the "Measure" Button
+    t =    30.92s Find the "Measure" Button
+    t =    30.96s Find the "Measure" Button
+    t =    31.00s Find the "Measure" Button
+    t =    31.04s Checking existence of `"Measure" Button`
+    t =    31.07s Find the "3D scan" Button
+    t =    31.11s Find the "3D scan" Button
+    t =    31.14s Find the "3D scan" Button
+    t =    31.18s Find the "3D scan" Button
+    t =    31.22s Find the "3D scan" Button
+    t =    31.26s Find the "3D scan" Button
+    t =    31.30s Checking existence of `"3D scan" Button`
+    t =    31.33s Tap "3D scan" Button
+    t =    31.33s     Wait for com.documentscanner.local to idle
+    t =    31.33s     Find the "3D scan" Button
+    t =    31.37s     Check for interrupting elements affecting "3D scan" Button
+    t =    31.40s     Synthesize event
+    t =    31.69s     Wait for com.documentscanner.local to idle
+    t =    32.39s Waiting 5.0s for "LiDAR required" StaticText to exist
+    t =    33.41s     Checking `Expect predicate `existsNoRetry == 1` for object "LiDAR required" StaticText`
+    t =    33.42s         Checking existence of `"LiDAR required" StaticText`
+    t =    33.46s Find the Target Application 'com.documentscanner.local'
+    t =    33.54s Added attachment named '3D device capability'
+    t =    33.54s Tear Down
+Test Case '-[DocumentScannerUITests.AdvancedToolsUITests testHubListsAllToolsAndHonestDeviceRequirements]' passed (33.825 seconds).
+Test Case '-[DocumentScannerUITests.AdvancedToolsUITests testLocalMathAndEditableWordExport]' started.
+    t =     0.00s Start Test at 2026-10-01 09:51:03.163
+    t =     0.02s Set Up
+    t =     0.02s Open com.documentscanner.local
+    t =     0.02s     Launch com.documentscanner.local
+    t =     0.02s         Terminate com.documentscanner.local:33127
+    t =     1.28s         Setting up automation session
+    t =     1.76s         Wait for com.documentscanner.local to idle
+    t =     2.91s Find the "home-tools" Button
+    t =     3.00s Tap "home-tools" Button
+    t =     3.00s     Wait for com.documentscanner.local to idle
+    t =     3.00s     Find the "home-tools" Button
+    t =     3.02s     Check for interrupting elements affecting "home-tools" Button
+    t =     3.04s     Synthesize event
+    t =     3.32s     Wait for com.documentscanner.local to idle
+    t =     3.93s Tap "Math calculator" Button
+    t =     3.93s     Wait for com.documentscanner.local to idle
+    t =     3.93s     Find the "Math calculator" Button
+    t =     3.99s     Check for interrupting elements affecting "Math calculator" Button
+    t =     4.02s     Synthesize event
+    t =     4.31s     Wait for com.documentscanner.local to idle
+    t =     5.06s Find the "offline-text" TextView
+    t =     5.13s Find the "offline-text" TextView
+    t =     5.17s Find the "offline-text" TextView
+    t =     5.20s Find the "offline-text" TextView
+    t =     5.24s Tap "offline-text" TextView
+    t =     5.24s     Wait for com.documentscanner.local to idle
+    t =     5.24s     Find the "offline-text" TextView
+    t =     5.26s     Check for interrupting elements affecting "offline-text" TextView
+    t =     5.29s     Synthesize event
+    t =     5.58s     Wait for com.documentscanner.local to idle
+    t =     5.64s Type 'sqrt(81)+2^3' into "offline-text" TextView
+    t =     5.64s     Wait for com.documentscanner.local to idle
+    t =     6.02s     Find the "offline-text" TextView
+    t =     6.08s     Check for interrupting elements affecting "offline-text" TextView
+    t =     6.12s     Synthesize event
+    t =     6.52s     Wait for com.documentscanner.local to idle
+    t =     6.59s Tap "offline-run" Button
+    t =     6.60s     Wait for com.documentscanner.local to idle
+    t =     6.60s     Find the "offline-run" Button
+    t =     6.65s     Check for interrupting elements affecting "offline-run" Button
+    t =     6.69s     Synthesize event
+    t =     6.97s     Wait for com.documentscanner.local to idle
+    t =     7.27s Checking existence of `"17.0" StaticText`
+    t =     7.32s Checking existence of `"17.0" StaticText`
+    t =     7.36s Checking existence of `"17.0" StaticText`
+    t =     7.40s Checking existence of `"17.0" StaticText`
+    t =     7.45s Waiting 5.0s for "17.0" StaticText to exist
+    t =     8.47s     Checking `Expect predicate `existsNoRetry == 1` for object "17.0" StaticText`
+    t =     8.47s         Checking existence of `"17.0" StaticText`
+    t =     8.53s Tap Button (Element at index 0)
+    t =     8.53s     Wait for com.documentscanner.local to idle
+    t =     8.54s     Find the Button (Element at index 0)
+    t =     8.57s     Check for interrupting elements affecting "BackButton" Button
+    t =     8.61s     Synthesize event
+    t =     8.89s     Wait for com.documentscanner.local to idle
+    t =     9.60s Find the "Word export" Button
+    t =     9.64s Find the "Word export" Button
+    t =     9.68s Find the "Word export" Button
+    t =     9.71s Find the "Word export" Button
+    t =     9.75s Find the "Word export" Button
+    t =     9.78s Find the "Word export" Button
+    t =     9.81s Tap "Word export" Button
+    t =     9.81s     Wait for com.documentscanner.local to idle
+    t =     9.81s     Find the "Word export" Button
+    t =     9.84s     Check for interrupting elements affecting "Word export" Button
+    t =     9.87s     Synthesize event
+    t =    10.15s     Wait for com.documentscanner.local to idle
+    t =    10.83s Find the "offline-text" TextView
+    t =    10.89s Find the "offline-text" TextView
+    t =    10.92s Find the "offline-text" TextView
+    t =    10.96s Find the "offline-text" TextView
+    t =    10.99s Tap "offline-text" TextView
+    t =    10.99s     Wait for com.documentscanner.local to idle
+    t =    10.99s     Find the "offline-text" TextView
+    t =    11.02s     Check for interrupting elements affecting "offline-text" TextView
+    t =    11.05s     Synthesize event
+    t =    11.34s     Wait for com.documentscanner.local to idle
+    t =    11.58s Type 'Local document
+Off...' into "offline-text" TextView
+    t =    11.58s     Wait for com.documentscanner.local to idle
+    t =    11.59s     Find the "offline-text" TextView
+    t =    11.64s     Check for interrupting elements affecting "offline-text" TextView
+    t =    11.68s     Synthesize event
+    t =    12.49s     Wait for com.documentscanner.local to idle
+    t =    12.49s Tap "offline-run" Button
+    t =    12.49s     Wait for com.documentscanner.local to idle
+    t =    12.50s     Find the "offline-run" Button
+    t =    12.55s     Check for interrupting elements affecting "offline-run" Button
+    t =    12.58s     Synthesize event
+    t =    12.87s     Wait for com.documentscanner.local to idle
+    t =    14.89s Checking `Expect predicate `exists == 1 AND enabled == 1` for object "offline-run" Button`
+    t =    14.89s     Checking existence of `"offline-run" Button`
+    t =    14.95s     Find the "offline-run" Button
+    t =    15.00s Find the "Preview exported file" Button
+    t =    15.05s Swipe up Target Application 'com.documentscanner.local'
+    t =    15.05s     Wait for com.documentscanner.local to idle
+    t =    15.05s     Find the Target Application 'com.documentscanner.local'
+    t =    15.08s     Check for interrupting elements affecting "Document Scanner" Application
+    t =    15.11s     Synthesize event
+    t =    15.53s     Wait for com.documentscanner.local to idle
+    t =    16.18s Find the "Preview exported file" Button
+    t =    16.23s Find the "Preview exported file" Button
+    t =    16.28s Find the "Preview exported file" Button
+    t =    16.32s Find the "Preview exported file" Button
+    t =    16.36s Checking existence of `"Share export" Button`
+    t =    16.40s Tap "Preview exported file" Button
+    t =    16.40s     Wait for com.documentscanner.local to idle
+    t =    16.40s     Find the "Preview exported file" Button
+    t =    16.44s     Check for interrupting elements affecting "Preview exported file" Button
+    t =    16.47s     Synthesize event
+    t =    16.76s     Wait for com.documentscanner.local to idle
+    t =    18.33s Waiting 10.0s for "Done" Button to exist
+    t =    19.35s     Checking `Expect predicate `existsNoRetry == 1` for object "Done" Button`
+    t =    19.35s         Checking existence of `"Done" Button`
+    t =    20.48s Checking `Expect predicate `exists == 0` for object ActivityIndicator (First Match)`
+    t =    20.48s     Checking existence of `ActivityIndicator (First Match)`
+    t =    20.58s Checking existence of `"Office Open XML presentation" StaticText`
+    t =    20.63s Find the Target Application 'com.documentscanner.local'
+    t =    20.73s Added attachment named 'DOCX Quick Look'
+    t =    20.73s Tear Down
+Test Case '-[DocumentScannerUITests.AdvancedToolsUITests testLocalMathAndEditableWordExport]' passed (20.979 seconds).
+Test Suite 'AdvancedToolsUITests' passed at 2026-10-01 09:51:24.142.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 83.192 (83.193) seconds
+Test Suite 'ToolDirectoryDesignTests' started at 2026-10-01 09:51:24.143.
+Test Case '-[DocumentScannerUITests.ToolDirectoryDesignTests testHomeAndSearchableToolDirectory]' started.
+    t =     0.00s Start Test at 2026-10-01 09:51:24.144
+    t =     0.02s Set Up
+    t =     0.02s Open com.documentscanner.local
+    t =     0.02s     Launch com.documentscanner.local
+    t =     0.02s         Terminate com.documentscanner.local:33232
+    t =     1.29s         Setting up automation session
+    t =     1.77s         Wait for com.documentscanner.local to idle
+    t =     2.91s Waiting 5.0s for "home-tools" Button to exist
+    t =     3.93s     Checking `Expect predicate `existsNoRetry == 1` for object "home-tools" Button`
+    t =     3.93s         Checking existence of `"home-tools" Button`
+    t =     3.99s Find the "home-tools" Button
+    t =     4.02s Find the "Scan document" Button
+    t =     4.04s Find the Target Application 'com.documentscanner.local'
+    t =     4.10s Added attachment named 'Color home'
+    t =     4.10s Tap "home-tools" Button
+    t =     4.10s     Wait for com.documentscanner.local to idle
+    t =     4.10s     Find the "home-tools" Button
+    t =     4.12s     Check for interrupting elements affecting "home-tools" Button
+    t =     4.14s     Synthesize event
+    t =     4.43s     Wait for com.documentscanner.local to idle
+    t =     5.20s Waiting 5.0s for "tool-search" TextField to exist
+    t =     6.22s     Checking `Expect predicate `existsNoRetry == 1` for object "tool-search" TextField`
+    t =     6.22s         Checking existence of `"tool-search" TextField`
+    t =     6.26s Find the Target Application 'com.documentscanner.local'
+    t =     6.35s Added attachment named 'All tools colored grid'
+    t =     6.35s Tap "tool-search" TextField
+    t =     6.35s     Wait for com.documentscanner.local to idle
+    t =     6.35s     Find the "tool-search" TextField
+    t =     6.38s     Check for interrupting elements affecting "tool-search" TextField
+    t =     6.41s     Synthesize event
+    t =     6.69s     Wait for com.documentscanner.local to idle
+    t =     7.03s Type 'Excel' into "tool-search" TextField
+    t =     7.03s     Wait for com.documentscanner.local to idle
+    t =     7.03s     Find the "tool-search" TextField
+    t =     7.09s     Check for interrupting elements affecting "tool-search" TextField
+    t =     7.12s     Synthesize event
+    t =     7.40s     Wait for com.documentscanner.local to idle
+    t =     7.41s Find the "Excel export" Button
+    t =     7.46s Checking existence of `"Word export" Button`
+    t =     7.49s Tap "Excel export" Button
+    t =     7.49s     Wait for com.documentscanner.local to idle
+    t =     7.50s     Find the "Excel export" Button
+    t =     7.53s     Check for interrupting elements affecting "Excel export" Button
+    t =     7.56s     Synthesize event
+    t =     7.84s     Wait for com.documentscanner.local to idle
+    t =     8.63s Waiting 5.0s for "Excel export" NavigationBar to exist
+    t =     9.65s     Checking `Expect predicate `existsNoRetry == 1` for object "Excel export" NavigationBar`
+    t =     9.65s         Checking existence of `"Excel export" NavigationBar`
+    t =     9.71s Tap Button (Element at index 0)
+    t =     9.71s     Wait for com.documentscanner.local to idle
+    t =     9.71s     Find the Button (Element at index 0)
+    t =     9.74s     Check for interrupting elements affecting "BackButton" Button
+    t =     9.78s     Synthesize event
+    t =    10.07s     Wait for com.documentscanner.local to idle
+    t =    10.88s Tap "Clear search" Button
+    t =    10.88s     Wait for com.documentscanner.local to idle
+    t =    10.89s     Find the "Clear search" Button
+    t =    10.93s     Check for interrupting elements affecting "xmark.circle.fill" Button
+    t =    10.97s     Synthesize event
+    t =    11.25s     Wait for com.documentscanner.local to idle
+    t =    11.25s Tap "tool-search" TextField
+    t =    11.25s     Wait for com.documentscanner.local to idle
+    t =    11.26s     Find the "tool-search" TextField
+    t =    11.31s     Check for interrupting elements affecting "tool-search" TextField
+    t =    11.34s     Synthesize event
+    t =    11.63s     Wait for com.documentscanner.local to idle
+    t =    11.88s Type 'not-a-tool' into "tool-search" TextField
+    t =    11.88s     Wait for com.documentscanner.local to idle
+    t =    12.27s     Find the "tool-search" TextField
+    t =    12.33s     Check for interrupting elements affecting "tool-search" TextField
+    t =    12.36s     Synthesize event
+    t =    12.73s     Wait for com.documentscanner.local to idle
+    t =    12.85s Waiting 5.0s for "No tools found" StaticText to exist
+    t =    13.87s     Checking `Expect predicate `existsNoRetry == 1` for object "No tools found" StaticText`
+    t =    13.87s         Checking existence of `"No tools found" StaticText`
+    t =    13.92s Tear Down
+Test Case '-[DocumentScannerUITests.ToolDirectoryDesignTests testHomeAndSearchableToolDirectory]' passed (14.133 seconds).
+Test Case '-[DocumentScannerUITests.ToolDirectoryDesignTests testLibraryToolSelectionAndEmptyState]' started.
+    t =     0.00s Start Test at 2026-10-01 09:51:38.277
+    t =     0.02s Set Up
+    t =     0.02s Open com.documentscanner.local
+    t =     0.02s     Launch com.documentscanner.local
+    t =     0.02s         Terminate com.documentscanner.local:33347
+    t =     1.27s         Setting up automation session
+    t =     1.76s         Wait for com.documentscanner.local to idle
+    t =     3.92s Tap "home-tools" Button
+    t =     3.92s     Wait for com.documentscanner.local to idle
+    t =     3.92s     Find the "home-tools" Button
+    t =     3.99s     Check for interrupting elements affecting "home-tools" Button
+    t =     4.01s     Synthesize event
+    t =     4.30s     Wait for com.documentscanner.local to idle
+    t =     5.07s Tap "tool-search" TextField
+    t =     5.07s     Wait for com.documentscanner.local to idle
+    t =     5.07s     Find the "tool-search" TextField
+    t =     5.14s     Check for interrupting elements affecting "tool-search" TextField
+    t =     5.17s     Synthesize event
+    t =     5.46s     Wait for com.documentscanner.local to idle
+    t =     5.79s Type 'Export images' into "tool-search" TextField
+    t =     5.79s     Wait for com.documentscanner.local to idle
+    t =     5.79s     Find the "tool-search" TextField
+    t =     5.85s     Check for interrupting elements affecting "tool-search" TextField
+    t =     5.88s     Synthesize event
+    t =     6.30s     Wait for com.documentscanner.local to idle
+    t =     6.31s Tap "Export images" Button
+    t =     6.31s     Wait for com.documentscanner.local to idle
+    t =     6.31s     Find the "Export images" Button
+    t =     6.36s     Check for interrupting elements affecting "Export images" Button
+    t =     6.39s     Synthesize event
+    t =     6.68s     Wait for com.documentscanner.local to idle
+    t =     6.69s Waiting 5.0s for "Choose a document" StaticText to exist
+    t =     7.71s     Checking `Expect predicate `existsNoRetry == 1` for object "Choose a document" StaticText`
+    t =     7.71s         Checking existence of `"Choose a document" StaticText`
+    t =     7.78s Tap Button (First Match)
+    t =     7.78s     Wait for com.documentscanner.local to idle
+    t =     7.78s     Find the Button (First Match)
+    t =     7.84s     Check for interrupting elements affecting "tool-document-41159C2B-3B86-4C9F-9544-38990F800F9C" Button
+    t =     7.87s     Synthesize event
+    t =     8.16s     Wait for com.documentscanner.local to idle
+    t =     8.81s Waiting 5.0s for "Prepare export" Button to exist
+    t =     9.84s     Checking `Expect predicate `existsNoRetry == 1` for object "Prepare export" Button`
+    t =     9.84s         Checking existence of `"Prepare export" Button`
+    t =     9.93s Tap "document-tool-close" Button
+    t =     9.93s     Wait for com.documentscanner.local to idle
+    t =     9.93s     Find the "document-tool-close" Button
+    t =     9.98s     Check for interrupting elements affecting "document-tool-close" Button
+    t =    10.02s     Synthesize event
+    t =    10.31s     Wait for com.documentscanner.local to idle
+    t =    11.07s Waiting 5.0s for "Choose a document" StaticText to exist
+    t =    12.07s     Checking `Expect predicate `existsNoRetry == 1` for object "Choose a document" StaticText`
+    t =    12.08s         Checking existence of `"Choose a document" StaticText`
+    t =    12.13s Terminate com.documentscanner.local:33431
+    t =    13.18s Open com.documentscanner.local
+    t =    13.18s     Launch com.documentscanner.local
+    t =    13.39s         Setting up automation session
+    t =    13.87s         Wait for com.documentscanner.local to idle
+    t =    15.02s Tap "Text" Button
+    t =    15.02s     Wait for com.documentscanner.local to idle
+    t =    15.02s     Find the "Text" Button
+    t =    15.09s     Check for interrupting elements affecting "Text" Button
+    t =    15.11s     Synthesize event
+    t =    15.40s     Wait for com.documentscanner.local to idle
+    t =    16.07s Waiting 5.0s for "No saved documents" StaticText to exist
+    t =    17.08s     Checking `Expect predicate `existsNoRetry == 1` for object "No saved documents" StaticText`
+    t =    17.08s         Checking existence of `"No saved documents" StaticText`
+    t =    17.13s Find the Target Application 'com.documentscanner.local'
+    t =    17.22s Added attachment named 'Tool without saved document'
+    t =    17.22s Tear Down
+Test Case '-[DocumentScannerUITests.ToolDirectoryDesignTests testLibraryToolSelectionAndEmptyState]' passed (17.489 seconds).
+Test Suite 'ToolDirectoryDesignTests' passed at 2026-10-01 09:51:55.766.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 31.622 (31.623) seconds
+Test Suite 'DocumentScannerUITests.xctest' passed at 2026-10-01 09:51:55.767.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 114.813 (114.817) seconds
+Test Suite 'Selected tests' passed at 2026-10-01 09:51:55.768.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 114.813 (114.818) seconds
+2026-10-01 09:52:06.330 xcodebuild[32231:7908267] [MT] IDETestOperationsObserverDebug: 212.000 elapsed -- Testing started completed.
+2026-10-01 09:52:06.330 xcodebuild[32231:7908267] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-10-01 09:52:06.330 xcodebuild[32231:7908267] [MT] IDETestOperationsObserverDebug: 212.000 sec, +212.000 sec -- end
+
+Test session results, code coverage, and logs:
+	/tmp/DocumentScannerBuild/Logs/Test/Test-DocumentScanner-2026.10.01_09-48-30--0700.xcresult
+
+** TEST SUCCEEDED **
+
+Testing started

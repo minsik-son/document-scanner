@@ -1,0 +1,74 @@
+All remaining offline tools — 2026-09-30
+
+Environment: Xcode 26.2; iOS 26.2 iPhone 17 Pro simulator.
+Target: DocumentScanner. No external runtime packages, service endpoints or remote
+models were added. OfficeTheme.xml is a static DrawingML resource generated from
+python-pptx's default theme; Python is only used during development/verification.
+
+Final combined validation: PASS, 60 tests, zero failures.
+  AdvancedOfflineTests: 14
+  DocumentToolsTests: 14
+  LibraryTests: 19
+  LocalToolsTests: 10
+  AdvancedToolsUITests: 3
+Command: xcodebuild test, destination B5EC4D85-82CA-411F-AAF4-A2179B83E009,
+  -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO, the five suites above.
+Log: /private/tmp/scanner-all-offline-validation.log
+Result bundle: Test-DocumentScanner-2026.09.30_00-01-00--0700.xcresult
+
+Tests include:
+- Real ZIP/CRC/XML and OOXML structure, Unicode DOCX, cell addressing and safe XLSX
+  string values/leading zeros, picture and editable-text PPTX, static slide theme.
+- Book splitting/curve bounds, small-region erase preserving outside pixels,
+  colored-mark removal preserving black ink, photo restoration dimensions.
+- Separated-object count coordinates/invalid inputs; mega canvas bounds/memory
+  budget and known horizontal/vertical registration, verified overlap correlation.
+- Image PDF physical dimensions and selectable Korean/English hidden text.
+- Arithmetic precedence, exponent association, domain errors, recursion bounds,
+  and rejection of non-arithmetic input. Valid OBJ indices/world vertices.
+- All fourteen tool entry points, device capability messaging, actual arithmetic,
+  Word export/Quick Look, library-page book preview and PPTX/Quick Look.
+- Existing library persistence, backups, PDF text/links/annotations, first eight
+  local tools and screenshot stitching regression suites.
+
+Fixed issues found during this work:
+- Duplicate/early document page loading could clear a newly prepared preview.
+  Document selection is now initialized once; actions wait for the input image.
+- Quick Look lacked navigation controls, and minimal PPTX lacked a complete theme.
+  Added navigation/Done and bundled a full DrawingML theme.
+- Vision registration could propose a false periodic-texture alignment. Overlap
+  pixel correlation now validates proposals; uncertain matches remain manual.
+- Input/output images are bounded in the form and output supports enlarged pinch
+  preview. Advanced image PDF output regenerates OCR for document-edit tools.
+
+Independent compatibility check: PASS.
+  See all-offline/compatibility.txt and sample.docx/sample.xlsx/image-slides.pptx/
+  editable-slides.pptx. python-docx, openpyxl and python-pptx load files generated
+  by the actual iOS Swift implementation and validate their content.
+  iOS Quick Look DOCX and PPTX screenshots were inspected. This does not establish
+  full Microsoft Office desktop compatibility for arbitrary documents.
+
+Final follow-up UI adjustment: Mega X/Y ranges expanded to ±16,000 px with 1-pixel
+steppers so all eight photos can be positioned, including late images whose
+initial offset exceeds 6,000 px. Processing math is unchanged; final device build
+validates this small control change. The 60-test run preceded this control change.
+
+Not physically verified:
+- Camera/portrait segmentation quality, installed-language translation, AR tracking
+  accuracy, LiDAR mesh capture, large-document memory/thermals, print dimensions,
+  and external application sharing on the user's phone.
+- Strict translation requires iOS 26 and installed language resources, and uses
+  installedSource without downloads. iOS 18 remains the app minimum for other tools.
+- These tools implement the documented local subset. No claim of complete
+  CamScanner algorithm parity, generative restoration, generic semantic counting,
+  arbitrary automatic dewarping, or AI word-problem solving.
+- No actual purchase, outbound message, physical-phone installation, or deployment.
+
+Acceptance guide: ../../OFFLINE-TOOLS-ACCEPTANCE.md
+
+Final iPhone target build: PASS (2026-09-30 00:05).
+  xcodebuild -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
+  DerivedData: /private/tmp/DocumentScannerDeviceBuild
+  Log: /private/tmp/scanner-all-offline-device-build.log
+  Includes the final Mega position controls. Unsigned device build only; no install.
+  Existing source-kernel deprecation warnings remain in DocumentClarity/Processing.

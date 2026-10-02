@@ -1,0 +1,3 @@
+Timestamp               Ty Process[PID:TID]
+2026-10-01 14:35:12.833 Df DocumentScanner[40099:8453c2] [com.documentscanner.local:HomeAdTiming] Native ad request started; SDK wait 0.057308s
+2026-10-01 14:35:14.396 Df DocumentScanner[40099:8453c2] [com.documentscanner.local:HomeAdTiming] Native ad received in 1.562761s; video true

@@ -1,0 +1,38 @@
+Animated introduction — 2026-09-30
+Scan: moving detection line, perspective/rotation correction, completion check.
+Refine: slider movement synchronized with paper tone and contrast improvement.
+Library: document enters the list, then local save confirmation appears.
+Sequences run once per visible page. Replay button restarts them.
+Tasks cancel on page changes, dismissal and background; Reduce Motion shows final static examples.
+No network or external API. Existing first-run completion/skip behavior is preserved.
+
+PASS: onboarding paging, back, skip persistence, completion persistence, settings replay, large text tests.
+PASS: simulator test build and unsigned iPhone build.
+scan-demo.mp4: actual simulator recording of the first-page animation; frames inspected.
+No physical device installation or Reduce Motion device-setting test performed.
+
+Second-page refinement — 2026-09-30
+Brightness removes a warm paper tint, then Contrast sharpens and darkens the sample lines.
+The active adjustment chip, slider, status caption and completion check follow the sequence.
+PASS: testOnboardingPagesCompletionAndReplay (1 test, 0 failures).
+PASS: unsigned iPhone build after second-page changes.
+PASS: manual simulator Replay; recorded frames show warm/blurred and white/clear states.
+refine-demo.mp4: 8-second excerpt of the actual second-page simulator recording.
+
+Redesign v2 — 2026-10-01 (not yet built or run)
+Layout: left-aligned bold headline + one sentence, 300pt illustration, single 56pt blue CTA; top progress segments, chevron Back, text Skip.
+Motion: one linear progress value per page (Animatable views) mapped through eased windows; starts 80 ms after the page is shown (was 450 ms),
+plays once in 1.4–1.6 s and holds the finished state (old loop: ~4–6 s, repeated). Tap the illustration to replay. Reduce Motion shows the end state.
+Scenes: 1 corner guides lock onto a tilted page on a desk → scan line → shutter flash → flat cropped page + "Edges found".
+        2 before/after wipe from yellowed/shadowed paper to clean page + "Auto-enhanced".
+        3 PDF/TXT/JPG cards settle into a stack + "Saved on this iPhone", "Works offline", "No account".
+Accessibility identifiers used by UI tests are unchanged (onboarding-title-N, onboarding-next, onboarding-back, onboarding-skip). Replay button removed (no test uses it).
+Previous file: Verification/onboarding-v2-backup/OnboardingView.swift.
+
+v2.1 — 2026-10-01 (not yet built or run)
+Scenes now autoplay and loop from a TimelineView frame clock (play 1.4–1.6 s, hold 1.6 s, 0.25 s fade, repeat); no tap needed.
+The previous withAnimation start could be dropped on first appearance, which is why it only played after a tap.
+Off-screen pages pause at their start pose; clocks start only after the loading screen is gone. Hero drawn with drawingGroup().
+Launch: StartupView now stays over the first screen while the library opens, StoreKit's first entitlement read (≤1.0 s),
+Google Mobile Ads start-up (≤1.2 s, only when ads are configured and the user was not Pro), plus 200 ms for the first layout/draw underneath; then a 0.28 s fade.
+Backups: Verification/startup-loop-backup/.

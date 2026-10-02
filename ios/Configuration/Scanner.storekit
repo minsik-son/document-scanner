@@ -1,0 +1,72 @@
+{
+  "identifier": "A4572AB9-2710-4F76-82C8-1CF287E175E5",
+  "nonRenewingSubscriptions": [],
+  "products": [],
+  "settings": {
+    "_failTransactionsEnabled": false,
+    "_locale": "en_US",
+    "_storefront": "USA",
+    "_storeKitErrors": []
+  },
+  "subscriptionGroups": [
+    {
+      "id": "scanner-pro",
+      "localizations": [
+        {
+          "description": "Document Scanner Pro",
+          "displayName": "Pro",
+          "locale": "en_US"
+        }
+      ],
+      "name": "Document Scanner Pro",
+      "subscriptions": [
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "4.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "scanner-monthly",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Batch OCR and searchable PDFs, processed on your iPhone.",
+              "displayName": "Document Scanner Pro Monthly",
+              "locale": "en_US"
+            }
+          ],
+          "productID": "com.documentscanner.pro.monthly",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "Pro monthly",
+          "subscriptionGroupID": "scanner-pro",
+          "type": "RecurringSubscription"
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "29.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "scanner-yearly",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Batch OCR and searchable PDFs, processed on your iPhone.",
+              "displayName": "Document Scanner Pro Yearly",
+              "locale": "en_US"
+            }
+          ],
+          "productID": "com.documentscanner.pro.yearly",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "Pro yearly",
+          "subscriptionGroupID": "scanner-pro",
+          "type": "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version": {
+    "major": 3,
+    "minor": 0
+  }
+}

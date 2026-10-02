@@ -1,0 +1,17 @@
+{
+  "tool": "built-in image_gen",
+  "concepts": [
+    {
+      "name": "01-camera",
+      "prompt": "Use case: logo-brand. One original iOS document scanner app icon concept. Camera MUST be the unmistakable dominant subject, recognizable instantly at 32px. Premium simple 2D FLAT vector-like geometry, friendly softly rounded forms, crisp edges. Strict flat solid colors: cobalt blue #145FE8, mint #09BFA5, white. Square full-bleed opaque canvas, no rounded outer canvas corners. Mark occupies 65 percent, centered with generous safe margins. No text, letters, watermark, gradients, shadows, texture, 3D, photorealism, mockup or collage. Solid cobalt blue background. A bold white front-facing camera silhouette with rounded rectangular body and a distinct raised viewfinder bump on top. One large mint circular lens with a cobalt circular center, and one tiny cobalt flash mark. The body is broad and substantial, the lens is the main focal point. Pure iconic camera, no document, no scanner brackets."
+    },
+    {
+      "name": "02-lens",
+      "prompt": "Use case: logo-brand. One original iOS document scanner app icon concept. Camera MUST be the unmistakable dominant subject, recognizable instantly at 32px. Premium simple 2D FLAT vector-like geometry, friendly softly rounded forms, crisp edges. Strict flat solid colors: cobalt blue #145FE8, mint #09BFA5, white. Square full-bleed opaque canvas, no rounded outer canvas corners. Mark occupies 65 percent, centered with generous safe margins. No text, letters, watermark, gradients, shadows, texture, 3D, photorealism, mockup or collage. Solid mint teal background. A compact cobalt blue camera body with rounded corners and raised shutter/viewfinder hump. An oversized white circular lens ring and cobalt inner disc dominate the camera, with a small mint circle at its center. Lens occupies nearly the full body height. Camera silhouette must remain extremely clear; not just a standalone circle. Minimal elegant strong graphic geometry, no document."
+    },
+    {
+      "name": "03-camera-document",
+      "prompt": "Use case: logo-brand. One original iOS document scanner app icon concept. Camera MUST be the unmistakable dominant subject, recognizable instantly at 32px. Premium simple 2D FLAT vector-like geometry, friendly softly rounded forms, crisp edges. Strict flat solid colors: cobalt blue #145FE8, mint #09BFA5, white. Square full-bleed opaque canvas, no rounded outer canvas corners. Mark occupies 65 percent, centered with generous safe margins. No text, letters, watermark, gradients, shadows, texture, 3D, photorealism, mockup or collage. Solid cobalt blue background. A large white camera silhouette with rounded corners and raised viewfinder bump dominates the foreground, with a large cobalt circular lens containing a mint inner disc. A SINGLE small mint folded-corner sheet peeks out from behind the camera at upper right, suggesting scanning paper. Camera occupies 85 percent of the symbol; document is only a subtle secondary cue. No scanner corner brackets, no lines of text, no extraneous details."
+    }
+  ]
+}

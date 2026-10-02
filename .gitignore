@@ -1,0 +1,8 @@
+.DS_Store
+# Xcode
+DerivedData/
+.build/
+*.xcuserstate
+xcuserdata/
+# Local copies made before edits; git history replaces them.
+ios/Verification/*-backup/

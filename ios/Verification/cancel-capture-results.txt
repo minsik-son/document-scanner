@@ -1,0 +1,10 @@
+Xcode 26.2 · iOS 26.2 Simulator · iPhone 17 Pro
+2026-09-29 — Cancel rejects the current camera capture
+22 targeted tests passed, zero failures (19 library, 3 UI).
+Log: /private/tmp/scanner-cancel-capture-tests.log
+Result: /private/tmp/DocumentScannerBuild/Logs/Test/Test-DocumentScanner-2026.09.29_16-00-09--0700.xcresult
+
+Camera review now exposes Cancel instead of Close. Cancel atomically removes only the captured last page from the document, then removes its image only if unreferenced. Failed index writes retain both page metadata and pixels and keep review open for retry. Accepted earlier pages and existing PDFs are preserved. Camera shows No pages yet / 1 page added / N pages added instead of pages saved. Add page and Done still accept the current page; full-screen zoom Close still only dismisses the viewer.
+
+New tests verify rejecting the only page (no recoverable draft after cleanup), rejecting a new page without changing a saved PDF or earlier page, refusing to discard the wrong page, and retaining source pixels on write failure. UI tests cover early Cancel, manual retake, accepting an edited page, canceling the next capture, correct counts, and relaunch retaining only the accepted page with its edits. Existing full-screen zoom/return and capture/edit/Add page/Done/PDF export flows also pass.
+Isolated DEBUG fixtures only. No existing user documents were altered. Physical iPhone retake/automatic-capture timing remains unverified.

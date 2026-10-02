@@ -1,0 +1,14 @@
+First-run introduction — 2026-09-30
+
+Three English pages: scan, refine, local document library.
+Mint/cream pastel background, large centered headings, white rounded demonstration cards, navy CTA.
+Next/Get started, Back, horizontal paging, page indicators, and Skip introduction.
+Completion and skip persist through relaunch. Settings > Take a quick tour reopens without changing library contents.
+Decorative examples are hidden from accessibility and do not create sample documents.
+Large text uses a scrolling content area; navigation controls stay available.
+
+PASS: testOnboardingPagesCompletionAndReplay (including swipe, back, completion, relaunch, settings replay).
+PASS: testOnboardingLargeTextSkipPersists.
+PASS: simulator test build and unsigned iPhone target build.
+Screenshots: 01-scan.png, 02-refine.png, 03-library.png, large-text.png.
+No physical iPhone installation performed.

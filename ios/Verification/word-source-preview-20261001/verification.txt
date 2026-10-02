@@ -1,0 +1,3 @@
+Word input: native document camera, photo picker, and PDF/image Files import. Centered tappable document preview, fixed Extract text action, page selector, and all-page extraction. Temporary input does not create library documents.
+Two WordFileInput unit tests passed (images, PDF text, rotation, invalid PDF, scanned-PDF recognition fallback). Final three UI tests passed (extract/review/share, manual text and Quick Look, edit/re-export). Initial manual-input UI test needed an explicit scroll to its secondary action.
+Camera capture requires physical-device verification; simulator cannot capture photos. Files picker security-scoped/iCloud-provider integration was not tested with an external provider.

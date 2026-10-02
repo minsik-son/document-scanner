@@ -1,0 +1,10 @@
+Xcode 26.2 · iOS 26.2 Simulator · iPhone 17 Pro
+2026-09-29 — Home bidirectional swipe-to-trash
+3 distinct UI tests passed; final two gesture flows rerun after explicit red action tint, zero failures.
+Initial: /private/tmp/scanner-home-swipe-tests.log (3/3)
+Final: /private/tmp/scanner-home-swipe-final.log (2/2)
+Result: /private/tmp/DocumentScannerBuild/Logs/Test/Test-DocumentScanner-2026.09.29_15-42-05--0700.xcresult
+
+Verified: no idle trash icon; left and right partial swipes reveal actions; reverse gestures close them without deleting; trash tap and full swipes in either direction commit without a confirmation; restoration retains the saved PDF and ordinary row navigation; empty-library Settings navigation passes.
+Native List swipeActions replace ScrollView rows. Existing Trash persistence is unchanged. Settings unfinished-scan confirmation is unchanged. DEBUG fixtures use isolated sessions; no user documents deleted. Actual iPhone interaction remains unverified.
+Screenshots: home-swipe/closed.png, leading.png, trailing.png.

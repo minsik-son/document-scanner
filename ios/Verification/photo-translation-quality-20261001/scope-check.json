@@ -1,0 +1,14 @@
+{
+  "edited_by_this_task": [
+    "DocumentScanner/PhotoTranslation.swift",
+    "DocumentScanner/PhotoTranslationLayout.swift",
+    "DocumentScanner/PhotoTranslationView.swift",
+    "DocumentScanner/PhotoTranslationRecognition.swift"
+  ],
+  "other_concurrent_changes_observed": [
+    "DocumentScanner/PageThumbnailCache.swift",
+    "DocumentScanner/PDFExport.swift",
+    "DocumentScanner/DocumentProcessing.swift"
+  ],
+  "note": "Other files changed during this task without edits by this task. Preserved; ordinary PDF regression passed. No claim that the entire workspace remained unchanged."
+}

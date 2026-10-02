@@ -1,0 +1,21 @@
+{
+  "tool": "built-in image_gen",
+  "concepts": [
+    {
+      "name": "01-scan-frame",
+      "prompt": "Use case: logo-brand. Create ONE polished iOS document scanner app icon concept, square image, full bleed opaque background. Flat 2D vector-like graphic, crisp clean edges, friendly geometric construction, bold distinctive silhouette legible at 32px. Existing app uses cobalt blue #145FE8, mint teal #09BFA5 and white. Centered mark occupying about 64% of canvas, generous balanced margins. No text, letters, numbers, watermark, mockup, borders, gradients, texture, lighting, shadows, 3D or extra illustrations. Do not round outer canvas corners; OS mask is applied later. Original identity, not another app's logo. Solid cobalt blue background. A white upright sheet of paper with a small folded top-right corner, two short cobalt text strokes inside; four thick, short mint scanner corner brackets neatly surround the sheet. A balanced exceptionally simple scan identity."
+    },
+    {
+      "name": "02-folded-page",
+      "prompt": "Use case: logo-brand. Create ONE polished iOS document scanner app icon concept, square image, full bleed opaque background. Flat 2D vector-like graphic, crisp clean edges, friendly geometric construction, bold distinctive silhouette legible at 32px. Existing app uses cobalt blue #145FE8, mint teal #09BFA5 and white. Centered mark occupying about 64% of canvas, generous balanced margins. No text, letters, numbers, watermark, mockup, borders, gradients, texture, lighting, shadows, 3D or extra illustrations. Do not round outer canvas corners; OS mask is applied later. Original identity, not another app's logo. Solid mint teal background. A single bold white folded-paper symbol: an upright document with a large geometric fold on upper right in deep cobalt blue. The blue fold and white negative space subtly suggest forward motion, digitizing paper. No scan frame. Only one short cobalt horizontal stroke near bottom of paper. Editorial, memorable, very minimal."
+    },
+    {
+      "name": "03-focus",
+      "prompt": "Use case: logo-brand. Create ONE polished iOS document scanner app icon concept, square image, full bleed opaque background. Flat 2D vector-like graphic, crisp clean edges, friendly geometric construction, bold distinctive silhouette legible at 32px. Existing app uses cobalt blue #145FE8, mint teal #09BFA5 and white. Centered mark occupying about 64% of canvas, generous balanced margins. No text, letters, numbers, watermark, mockup, borders, gradients, texture, lighting, shadows, 3D or extra illustrations. Do not round outer canvas corners; OS mask is applied later. Original identity, not another app's logo. Solid cobalt blue background. A unique unified white scanning aperture symbol built from four chunky rounded right-angle corners around a central mint upright paper-shaped rectangle. The corners and paper create a tight coherent distinctive icon. No text lines, no circles, no camera body. Precise modern minimalist geometry."
+    },
+    {
+      "name": "04-paper-stack",
+      "prompt": "Use case: logo-brand. Create ONE polished iOS document scanner app icon concept, square image, full bleed opaque background. Flat 2D vector-like graphic, crisp clean edges, friendly geometric construction, bold distinctive silhouette legible at 32px. Existing app uses cobalt blue #145FE8, mint teal #09BFA5 and white. Centered mark occupying about 64% of canvas, generous balanced margins. No text, letters, numbers, watermark, mockup, borders, gradients, texture, lighting, shadows, 3D or extra illustrations. Do not round outer canvas corners; OS mask is applied later. Original identity, not another app's logo. Solid warm white #F7F9FC background. Two bold overlapping rounded document silhouettes: back page mint teal shifted slightly upper left, front page cobalt blue shifted lower right, with white folded top-right corner and a single broad white horizontal text stroke. Compact unified asymmetric mark with balanced optical centering. Extremely restrained, no scan brackets."
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "tool": "built-in image_gen",
+  "variants": [
+    {
+      "name": "lined-purple",
+      "source": "/Users/minmac/Documents/ChatGPT 이미지 2026년 9월 30일 오전 11_42_51.png",
+      "prompt": "Use case: precise-object-edit. Edit the provided app icon ONLY by replacing its colors. STRICTLY preserve all original geometry, composition, exact relative positions, stroke widths, corner radii, document silhouette, fold shape, proportions, margins, and all existing details. Do NOT redesign, simplify, add, remove or move anything. Replace every cobalt blue region with solid #663DE8; replace every mint/teal region with solid #C2ADFF; keep every white region white. Preserve the TWO document text strokes and blue fold cutout, recoloring them to the new background color; four scanner corners become the accent color. Flat 2D, uniform solid fills, crisp edges. Same square full-bleed framing. No gradients, texture, shadows, text, labels, mockup or watermark. Return ONLY the recolored icon."
+    },
+    {
+      "name": "lined-navy",
+      "source": "/Users/minmac/Documents/ChatGPT 이미지 2026년 9월 30일 오전 11_42_51.png",
+      "prompt": "Use case: precise-object-edit. Edit the provided app icon ONLY by replacing its colors. STRICTLY preserve all original geometry, composition, exact relative positions, stroke widths, corner radii, document silhouette, fold shape, proportions, margins, and all existing details. Do NOT redesign, simplify, add, remove or move anything. Replace every cobalt blue region with solid #112944; replace every mint/teal region with solid #55C5F4; keep every white region white. Preserve the TWO document text strokes and blue fold cutout, recoloring them to the new background color; four scanner corners become the accent color. Flat 2D, uniform solid fills, crisp edges. Same square full-bleed framing. No gradients, texture, shadows, text, labels, mockup or watermark. Return ONLY the recolored icon."
+    },
+    {
+      "name": "plain-purple",
+      "source": "/Users/minmac/Documents/ChatGPT 이미지 2026년 9월 30일 오전 11_42_32.png",
+      "prompt": "Use case: precise-object-edit. Edit the provided app icon ONLY by replacing its colors. STRICTLY preserve all original geometry, composition, exact relative positions, stroke widths, corner radii, document silhouette, fold shape, proportions, margins, and all existing details. Do NOT redesign, simplify, add, remove or move anything. Replace every cobalt blue region with solid #663DE8; replace every mint/teal region with solid #C2ADFF; keep every white region white. Preserve the blank document with NO text strokes; document body becomes accent color; four thick scanner corners and the paper fold stay white. Flat 2D, uniform solid fills, crisp edges. Same square full-bleed framing. No gradients, texture, shadows, text, labels, mockup or watermark. Return ONLY the recolored icon."
+    },
+    {
+      "name": "plain-navy",
+      "source": "/Users/minmac/Documents/ChatGPT 이미지 2026년 9월 30일 오전 11_42_32.png",
+      "prompt": "Use case: precise-object-edit. Edit the provided app icon ONLY by replacing its colors. STRICTLY preserve all original geometry, composition, exact relative positions, stroke widths, corner radii, document silhouette, fold shape, proportions, margins, and all existing details. Do NOT redesign, simplify, add, remove or move anything. Replace every cobalt blue region with solid #112944; replace every mint/teal region with solid #55C5F4; keep every white region white. Preserve the blank document with NO text strokes; document body becomes accent color; four thick scanner corners and the paper fold stay white. Flat 2D, uniform solid fills, crisp edges. Same square full-bleed framing. No gradients, texture, shadows, text, labels, mockup or watermark. Return ONLY the recolored icon."
+    }
+  ]
+}

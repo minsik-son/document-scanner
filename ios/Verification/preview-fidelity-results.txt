@@ -1,0 +1,27 @@
+Xcode 26.2 · iOS 26.2 Simulator · iPhone 17 Pro
+2026-09-29 — Preview fidelity to exported PDF
+12 targeted tests passed, zero failures: PageAdjustmentsTests 7, PDFExportTests 4, capture-review UI flow 1.
+Run: /private/tmp/scanner-preview-fidelity-tests.log
+Result: /private/tmp/DocumentScannerBuild/Logs/Test/Test-DocumentScanner-2026.09.29_15-24-36--0700.xcresult
+
+Fix: same full-resolution source decoding and prepare/finish/adjust order as export; no early thumbnail or 8-bit preparation snapshot. The finished tone is cached in extended-linear RGBAh, manual adjustments stay full-resolution, and only completed output is resized for display (maximum1800px). Coalesced live frames and no updating overlay remain. PDF/OCR processing behavior and source files are unchanged.
+
+New regression: 2400x3200 warm-paper table with fine Korean/English text, colored cells, faint outside text; default settings and crop/rotation with non-neutral cleanup/brightness/contrast/sharpness. Preview is compared with full Imaging.render output resized to the same display size. Less than0.5% missing-ink/color pixels and less than2/255 mean foreground channel error are required. The test passed, along with source/cache persistence, stale-frame cancellation, coalescing and ordinary searchable PDF save.
+
+Supplied PDF audit: BDA3376E… contains one1594x2156 sRGB image. Its screenshot shows broken/pale ink compared with the rendered PDF. The original camera image and exact review recipe were not supplied, so that screenshot is not treated as an exact numerical before/after test.
+A separate local Core Image stress check used the supplied PDF image as input (already processed, not the original capture). Nine cleanup/manual-adjustment combinations compared continuous export processing with the new float cache: RGB mean absolute error0.003–0.025 of255, max difference1–2 levels, no channels differing by more than2. Scratch script: /private/tmp/preview-float-audit.swift.
+
+Physical iPhone display, frame timing and high-resolution image memory use remain unverified. Full-resolution caches cost more memory than the old thumbnail-first path; only one page's cache is retained.
+
+Test Case '-[DocumentScannerTests.PDFExportTests testBlankScanDoesNotClaimSelectableText]' passed (1.928 seconds).
+Test Case '-[DocumentScannerTests.PDFExportTests testMissingSourceKeepsPreviousPDFAndMetadata]' passed (4.838 seconds).
+Test Case '-[DocumentScannerTests.PDFExportTests testOldOCRCoordinatesAreRebuiltByOrdinarySave]' passed (4.461 seconds).
+Test Case '-[DocumentScannerTests.PDFExportTests testOrdinarySaveEmbedsTextOnEveryPageAndPersistsIt]' passed (8.867 seconds).
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testAdjustmentsSurviveRelaunchPerPageAndPreviewMatchesExportRenderer]' passed (0.887 seconds).
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testBrightnessContrastAndSharpnessChangePixelsWithoutChangingSize]' passed (0.103 seconds).
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testCancelledPreviewCannotReplaceNewPage]' passed (0.022 seconds).
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testHighResolutionPreviewPreservesExportInkAndColoredCells]' passed (3.445 seconds).
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testLegacyPageDefaultsAndInvalidAdjustmentValuesAreBounded]' passed (0.001 seconds).
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testPreviewCoalescesDragButPresentsIntermediateAndFinalFrames]' passed (0.031 seconds).
+Test Case '-[DocumentScannerTests.PageAdjustmentsTests testPreviewIsBoundedAndCleanupReusesPreparedSource]' passed (1.193 seconds).
+Test Case '-[DocumentScannerUITests.ScannerFlowTests testCaptureShowsProcessedReviewAndPreservesAdjustmentsWhenAddingPage]' passed (47.596 seconds).

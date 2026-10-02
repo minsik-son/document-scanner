@@ -1,0 +1,26 @@
+Color icon / Home / All tools redesign — 2026-09-30
+
+35 generated transparent icons installed as 256 px universal asset catalog images (~1.2 MB total).
+Home: light gray canvas, white rounded scan and quick-tool cards, eight shortcuts,
+existing searchable library/folders/favorites/grid and native bidirectional swipe-to-trash.
+All tools: full-screen searchable category grid, camera launch, advanced local tools,
+PDF tool document selection using existing editors and Pro purchase gates.
+Corrected Excel and blue-sleeved white eraser assets included.
+
+Validation (iPhone 17 Pro simulator, iOS 26.2):
+PASS Home and searchable tool directory, including no-results and Excel navigation.
+PASS Library tool selection, export screen, dismissal and empty-library state.
+PASS Native swipe reveal/reversal and document navigation.
+PASS QR generation and transition to screenshot stitching.
+The initial UI tests matched underlying Home elements; unique labels/identifiers
+were added, and all four distinct targeted flows passed on rerun.
+
+PASS simulator build and final generic iOS build (CODE_SIGNING_ALLOWED=NO).
+No physical-device installation performed.
+
+Final screenshots: home.png, tools.png (exported from passing UI test).
+Logs:
+/private/tmp/scanner-color-design-tests.log (swipe flow pass)
+/private/tmp/scanner-color-routing-tests.log (QR and document-selection passes)
+/private/tmp/scanner-color-final-visual.log (final Home/search pass)
+/private/tmp/scanner-color-device-build.log (final device build)

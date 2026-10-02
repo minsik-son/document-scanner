@@ -1,0 +1,6 @@
+Independent Python OOXML validation: PASS
+ZIP CRC and all XML parsed for four generated packages.
+python-docx: Korean/English paragraphs round-trip.
+openpyxl: Korean cell and leading zeroes round-trip.
+python-pptx: image slide and editable Korean/English text slide load.
+No Microsoft Office desktop rendering claim.

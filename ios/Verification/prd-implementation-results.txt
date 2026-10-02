@@ -1,0 +1,39 @@
+PRD 1.0 implementation verification — 2026-09-29
+Environment: Xcode 26.2, iOS 26.2, iPhone 17 Pro simulator.
+No physical-device or production App Store validation is implied.
+
+Full regression: /private/tmp/scanner-prd-regression.log
+79 unit/integration tests + 3 UI scenarios: PASS, zero failures.
+Result bundle: /private/tmp/DocumentScannerBuild/Logs/Test/Test-DocumentScanner-2026.09.29_16-46-16--0700.xcresult
+UI: empty/settings, verified StoreKit Pro extraction/annotation entry, saved-document add/cancel/retake/commit.
+
+Follow-up: /private/tmp/scanner-prd-final-verification.log
+13 document-tools/storage tests + 3 UI scenarios: PASS, zero failures.
+Result bundle: /private/tmp/DocumentScannerBuild/Logs/Test/Test-DocumentScanner-2026.09.29_16-50-15--0700.xcresult
+UI: capture/edit/Add page/Done/persistence, missing-edge crop confirmation, page duplicate/Undo/Redo/body search/OCR correction.
+
+Final strengthened verification: /private/tmp/scanner-prd-save-verified.log
+Checks the explicit supplied graphics context for annotation text and waits for annotation/OCR sheets to dismiss after actual save.
+14 document-tools/storage tests + 2 strengthened UI scenarios: PASS, zero failures.
+Result bundle: /private/tmp/DocumentScannerBuild/Logs/Test/Test-DocumentScanner-2026.09.29_16-53-43--0700.xcresult
+Across this implementation cycle, 81 distinct unit/integration tests and 12 distinct UI scenarios have passing evidence; no known test failure remains unresolved. These are combined counts across the full regression and focused reruns.
+
+Earlier UI gesture scenarios passed in /private/tmp/scanner-prd-full-tests.log:
+- Capture cancellation preserves accepted pages and rejected pages stay absent after relaunch.
+- Fullscreen preview pinch/pan/double-tap and return to unchanged edits.
+- Home leading/trailing reveal, reverse cancellation, full swipe/tap deletion and Trash recovery.
+- Unfinished scan trash/restore/resume and draft edit/save/relaunch/reopen.
+The initial run had settings lookup and text-field selector failures; those were corrected and rerun. A trailing-data backup test exposed cached file-size metadata; validation now uses the open file's actual length and the corruption/truncation/trailing-data cases pass. Do not report the initial failing run as a clean full-suite pass.
+
+Covered data invariants:
+- Native imported PDF vectors, selectable text and links survive normal composition and common-paper fitting.
+- Protected output is locked, rejects incorrect passwords and unlocks with the correct one.
+- Annotation output contains added text and retains underlying text; Canvas drawing uses its supplied CGContext.
+- Compression retains selectable OCR; extraction/split/merge copies do not delete shared originals.
+- Editing staging does not change the saved original until an atomic successful save.
+- Streamed backup hashes, truncated/trailing bytes, legacy backup compatibility, skip/keep-both, optional reusable signatures.
+- Image-only PDF automatic OCR, deleted OCR-cache cleanup, 30-day Trash and failed-commit rollback.
+- Old unreferenced assets can be cleaned; referenced/recent assets remain.
+- Existing Korean/multiple-script PDF text, paper/shadow/ink/color preservation, preview/PDF fidelity and StoreKit pricing/purchase/expiry regressions.
+
+Limits: simulator synthetic captures only; no physical camera/biometrics/printer, external PDF reader, file-provider failure matrix, 100-page thermal/memory benchmark or real Sandbox billing matrix. UI scenarios passed over successive builds/reruns, not all in a single final run. See IMPLEMENTATION-STATUS.md for release gates and feature constraints.

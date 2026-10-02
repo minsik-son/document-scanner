@@ -1,0 +1,197 @@
+{
+  "mode": "built-in image_gen",
+  "assets": [
+    {
+      "name": "word",
+      "label": "Word export",
+      "subject": "A blue upright document with pale blue folded corner and three white horizontal text bars, a small blue outgoing arrow",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: A blue upright document with pale blue folded corner and three white horizontal text bars, a small blue outgoing arrow."
+    },
+    {
+      "name": "excel",
+      "label": "Excel export",
+      "subject": "A green upright spreadsheet document with a clearly visible simple white 3 by 3 cell grid",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: A green upright spreadsheet document with a clearly visible simple white 3 by 3 cell grid."
+    },
+    {
+      "name": "slides",
+      "label": "PowerPoint export",
+      "subject": "An orange presentation screen on a short stand, showing a simple white pie chart and one white bar",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: An orange presentation screen on a short stand, showing a simple white pie chart and one white bar."
+    },
+    {
+      "name": "translate",
+      "label": "Translate text",
+      "subject": "Two overlapping rounded speech cards in blue and mint with one simple white A and one white 文, representing language translation",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: Two overlapping rounded speech cards in blue and mint with one simple white A and one white 文, representing language translation."
+    },
+    {
+      "name": "book",
+      "label": "Book pages",
+      "subject": "An open book with blue cover, two pale blue pages and two short blue text bars on each page",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: An open book with blue cover, two pale blue pages and two short blue text bars on each page."
+    },
+    {
+      "name": "portrait",
+      "label": "ID photo",
+      "subject": "A blue portrait photo card containing a simple cream face and coral shirt bust, tiny crop corners",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: A blue portrait photo card containing a simple cream face and coral shirt bust, tiny crop corners."
+    },
+    {
+      "name": "marks",
+      "label": "Remove colored marks",
+      "subject": "A pale blue paper with two dark blue text bars and a coral highlighter stroke, small white eraser with purple sleeve clearing one end of the stroke",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: A pale blue paper with two dark blue text bars and a coral highlighter stroke, small white eraser with purple sleeve clearing one end of the stroke."
+    },
+    {
+      "name": "restore",
+      "label": "Restore photo",
+      "subject": "A coral and pale peach landscape photo with a blue mountain shape, one small simple coral four-point sparkle",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: A coral and pale peach landscape photo with a blue mountain shape, one small simple coral four-point sparkle."
+    },
+    {
+      "name": "mega",
+      "label": "Mega scan",
+      "subject": "Four blue and pale blue image tiles joining into one larger square with four mint outward corner brackets",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: Four blue and pale blue image tiles joining into one larger square with four mint outward corner brackets."
+    },
+    {
+      "name": "count",
+      "label": "Count objects",
+      "subject": "Three distinct mint circles grouped inside four blue scanner corners, one tiny blue count badge containing three white dots",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: Three distinct mint circles grouped inside four blue scanner corners, one tiny blue count badge containing three white dots."
+    },
+    {
+      "name": "measure",
+      "label": "Measure",
+      "subject": "A diagonally oriented mint ruler with four dark teal tick marks, minimal bold rectangular silhouette",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: A diagonally oriented mint ruler with four dark teal tick marks, minimal bold rectangular silhouette."
+    },
+    {
+      "name": "mesh",
+      "label": "3D scan",
+      "subject": "A flat line-diagram cube in mint and blue inside four blue scanner corners; diagram only, no rendered 3D object or shading",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: A flat line-diagram cube in mint and blue inside four blue scanner corners; diagram only, no rendered 3D object or shading."
+    },
+    {
+      "name": "math",
+      "label": "Math calculator",
+      "subject": "A mint rounded calculator body with pale mint screen and four white circular buttons, no text",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: A mint rounded calculator body with pale mint screen and four white circular buttons, no text."
+    },
+    {
+      "name": "qr",
+      "label": "QR code",
+      "subject": "A simplified decorative QR code glyph, three chunky teal corner finder squares and a few teal modules in the lower-right. Not a real scannable code, no payload",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: A simplified decorative QR code glyph, three chunky teal corner finder squares and a few teal modules in the lower-right. Not a real scannable code, no payload."
+    },
+    {
+      "name": "stitch",
+      "label": "Stitch screenshots",
+      "subject": "Two tall narrow pale-blue screenshot strips with blue header bars joining vertically, mint small connector arrow at the seam",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: Two tall narrow pale-blue screenshot strips with blue header bars joining vertically, mint small connector arrow at the seam."
+    },
+    {
+      "name": "watermark",
+      "label": "Watermark",
+      "subject": "A purple rubber stamp silhouette above a pale lavender sheet with a simple purple imprint rectangle",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: A purple rubber stamp silhouette above a pale lavender sheet with a simple purple imprint rectangle."
+    },
+    {
+      "name": "timestamp",
+      "label": "Timestamp",
+      "subject": "A blue landscape photo thumbnail with a small orange clock at its lower-right, white clock face with two simple hands",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: A blue landscape photo thumbnail with a small orange clock at its lower-right, white clock face with two simple hands."
+    },
+    {
+      "name": "identity",
+      "label": "ID card layout",
+      "subject": "Two mint identity cards overlapping slightly, pale mint card faces, simple teal portrait dot and two teal information bars",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: Two mint identity cards overlapping slightly, pale mint card faces, simple teal portrait dot and two teal information bars."
+    },
+    {
+      "name": "long-image",
+      "label": "Long image",
+      "subject": "One tall mint image strip with three stacked simple landscape panels and a small teal downward arrow along its right",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: One tall mint image strip with three stacked simple landscape panels and a small teal downward arrow along its right."
+    },
+    {
+      "name": "signature",
+      "label": "Sign & annotate",
+      "subject": "A diagonal purple fountain-pen nib drawing a short purple signature-like flowing stroke; no actual lettering",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: A diagonal purple fountain-pen nib drawing a short purple signature-like flowing stroke; no actual lettering."
+    },
+    {
+      "name": "merge",
+      "label": "Merge documents",
+      "subject": "Two blue and pale-blue sheets above a single mint sheet with two small blue inward arrows converging toward the output",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: Two blue and pale-blue sheets above a single mint sheet with two small blue inward arrows converging toward the output."
+    },
+    {
+      "name": "split",
+      "label": "Split PDF",
+      "subject": "One blue document dividing into two smaller pale-blue sheets with a pair of coral outward branching arrows",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: One blue document dividing into two smaller pale-blue sheets with a pair of coral outward branching arrows."
+    },
+    {
+      "name": "extract",
+      "label": "Extract pages",
+      "subject": "A stack of three pale lavender pages with a single purple page pulled out to the right, one small purple outgoing arrow",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: A stack of three pale lavender pages with a single purple page pulled out to the right, one small purple outgoing arrow."
+    },
+    {
+      "name": "compress",
+      "label": "Compress PDF",
+      "subject": "A blue document with two chunky mint arrows pointing inward from left and right, simple white text bars",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: A blue document with two chunky mint arrows pointing inward from left and right, simple white text bars."
+    },
+    {
+      "name": "protect",
+      "label": "Protect with password",
+      "subject": "A mint padlock with a pale mint rounded shackle and white keyhole over the lower corner of a pale-blue document",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: A mint padlock with a pale mint rounded shackle and white keyhole over the lower corner of a pale-blue document."
+    },
+    {
+      "name": "images",
+      "label": "Export images",
+      "subject": "Two blue and mint overlapping square photo cards, each with a white simple mountain and sun silhouette",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: Two blue and mint overlapping square photo cards, each with a white simple mountain and sun silhouette."
+    },
+    {
+      "name": "print",
+      "label": "Print",
+      "subject": "A blue and pale-blue compact printer silhouette with a white sheet emerging, two blue text bars and one mint status dot",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: A blue and pale-blue compact printer silhouette with a white sheet emerging, two blue text bars and one mint status dot."
+    },
+    {
+      "name": "ocr",
+      "label": "Extract text",
+      "subject": "A large blue capital T with a smaller blue horizontal text bar beneath, surrounded by four mint scanning corners",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: A large blue capital T with a smaller blue horizontal text bar beneath, surrounded by four mint scanning corners."
+    },
+    {
+      "name": "whiteboard",
+      "label": "Whiteboard",
+      "subject": "A white board with pale blue border on two short blue legs, a small mint chart line and two blue marker strokes",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: A white board with pale blue border on two short blue legs, a small mint chart line and two blue marker strokes."
+    },
+    {
+      "name": "import-photo",
+      "label": "Import photos",
+      "subject": "A blue landscape photo card with pale-blue mountain and warm yellow sun, small mint plus badge at lower right",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: A blue landscape photo card with pale-blue mountain and warm yellow sun, small mint plus badge at lower right."
+    },
+    {
+      "name": "import-file",
+      "label": "Import files",
+      "subject": "A mint folder with pale mint front face and a bold blue downward arrow entering it",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: A mint folder with pale mint front face and a bold blue downward arrow entering it."
+    },
+    {
+      "name": "reorder",
+      "label": "Reorder pages",
+      "subject": "Three pale-purple page bars stacked vertically, with a blue up arrow on the left and a purple down arrow on the right",
+      "prompt": "Use case: stylized-concept. Create ONE individual iOS document-scanner tool icon. Strictly 2D FLAT illustration, bold simple geometric shapes, soft rounded corners, crisp smooth edges, solid uniform fills, friendly Korean fintech service-icon feel, readable at 48pt. Square canvas, icon centered in the middle 64% leaving equal 18% transparent padding. Genuine transparent background, no tile or enclosing circle. Palette: royal blue #2265F5, mint #12BE9A, orange #FF9A38, coral #FF7869, purple #8B72ED; pale tints for secondary shapes. Use only subject-specified colors, 2-4 colors total. NO gradients, shadows, lighting, texture, bevels, perspective, rendered 3D, black outline, branding or watermarks. No lettering unless the subject explicitly requires it. Keep sparse details and consistent visual weight. Subject: Three pale-purple page bars stacked vertically, with a blue up arrow on the left and a purple down arrow on the right."
+    }
+  ]
+}

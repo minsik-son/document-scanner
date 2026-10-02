@@ -1,0 +1,9 @@
+Selected icon: third displayed recolor — lined-navy.png (navy, sky blue frame, white lined document).
+AppIcon: 1024x1024 opaque PNG, universal iOS app icon asset.
+Native launch: LaunchScreen.storyboard, matching LaunchLogo and LaunchBackground assets.
+Runtime startup: local library preparation before Home. No artificial production delay; subscription/network loading does not gate Home.
+
+Validation: iOS simulator build and unsigned iPhone target build succeeded.
+UI tests passed: branded startup preview, local saved library opening, relaunch retention, bottom menu routing and camera entry (simulated).
+Startup preview uses an isolated DEBUG-only hold flag for screenshots, absent in production behavior.
+Physical iPhone installation/hardware testing not performed for this change.

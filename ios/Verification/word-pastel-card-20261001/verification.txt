@@ -1,0 +1,3 @@
+Word export instruction cards: subtle blue/lilac/peach gradient, gradient heading, existing flat artwork, and step indicator.
+Simulator build and testWordPDFExportHasOnePrimaryActionPerStep passed. Visually reviewed all three captured stages.
+Large accessibility text uses vertical artwork layout; no physical-device or large-text visual check performed in this change.

@@ -1,0 +1,37 @@
+Xcode 26.2 · iOS 26.2 Simulator · iPhone 17 Pro
+2026-09-29 — Home deletion and unfinished-scan cleanup
+27 distinct targeted scenarios passed: LibraryTests 16, PDFExportTests 4, UI flows 7.
+Initial run: /private/tmp/scanner-home-trash-drafts-tests.log — 20 unit/integration and 5 existing UI flows passed; new Home deletion flow exposed a missing visible Cancel button in the native confirmation dialog.
+Final run: /private/tmp/scanner-trash-verified-tests.log — 2 deletion UI flows passed, zero failures, after explicit Cancel/Move to Trash alerts were added. This build also includes the Home import-interaction guard.
+
+Verified: visible Home row trash button; cancel preserves saved document; confirmed deletion hides it from Home; Settings Trash restores its PDF. Home never shows Continue your scan cards. Settings -> Unfinished scans can resume, trash, cancel, restore and reopen all captured pages. Existing edit/save/relaunch/OCR flows continue to pass.
+Empty draft tests: repeated new sessions reuse one empty draft, legacy empties collapse, cleanup preserves pages/PDFs/trash, and failed index writes leave the in-memory library unchanged.
+UI fixtures are DEBUG-only and use isolated test storage. No user documents were deleted by these tests.
+
+Test Case '-[DocumentScannerTests.LibraryTests testBackupRestoreSkipsDuplicateAndPreservesDocument]' passed (0.046 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testCapturedPagesSurviveRelaunch]' passed (0.017 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testCorruptLibraryNeverOverwritten]' passed (0.003 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testCropRejectsCrossingAndNonfiniteCorners]' passed (0.001 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testEmptyCleanupPreservesPDFsSavedRecordsAndTrash]' passed (0.484 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testFailedEmptyCleanupLeavesManifestUnchanged]' passed (0.001 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testFailedIndexWriteDoesNotAcknowledgeCapturedPage]' passed (0.011 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testMissingPageDoesNotReplaceExistingPDF]' passed (0.426 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testNewScanCollapsesLegacyEmptySessionsWithoutLosingCapturedPages]' passed (0.012 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testOCRFindsTextOffline]' passed (6.316 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testPDFSaveReopensWithCorrectPageCount]' passed (0.875 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testRepeatedNewScanDoesNotAccumulateEmptySessions]' passed (0.023 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testSavedDocumentCanBeTrashedAndRestoredWithItsPDF]' passed (0.445 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testSearchablePDFContainsRecognizedText]' passed (6.736 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testTamperedBackupDoesNotModifyLibrary]' passed (0.014 seconds).
+Test Case '-[DocumentScannerTests.LibraryTests testTrashRestoreAndPermanentDelete]' passed (0.012 seconds).
+Test Case '-[DocumentScannerTests.PDFExportTests testBlankScanDoesNotClaimSelectableText]' passed (1.714 seconds).
+Test Case '-[DocumentScannerTests.PDFExportTests testMissingSourceKeepsPreviousPDFAndMetadata]' passed (4.565 seconds).
+Test Case '-[DocumentScannerTests.PDFExportTests testOldOCRCoordinatesAreRebuiltByOrdinarySave]' passed (4.565 seconds).
+Test Case '-[DocumentScannerTests.PDFExportTests testOrdinarySaveEmbedsTextOnEveryPageAndPersistsIt]' passed (9.151 seconds).
+Test Case '-[DocumentScannerUITests.ScannerFlowTests testCaptureShowsProcessedReviewAndPreservesAdjustmentsWhenAddingPage]' passed (47.771 seconds).
+Test Case '-[DocumentScannerUITests.ScannerFlowTests testClosingCaptureReviewReturnsToCameraAndKeepsRecoverablePages]' passed (34.817 seconds).
+Test Case '-[DocumentScannerUITests.ScannerFlowTests testEmptyLibraryAndSettings]' passed (6.391 seconds).
+Test Case '-[DocumentScannerUITests.ScannerFlowTests testHomeTrashActionCanBeCancelledAndDocumentRestored]' passed (20.006 seconds).
+Test Case '-[DocumentScannerUITests.ScannerFlowTests testMissingEdgesMustBeConfirmedBeforePDFSave]' passed (25.029 seconds).
+Test Case '-[DocumentScannerUITests.ScannerFlowTests testRecoverDraftEditSaveAndReopenPDF]' passed (39.383 seconds).
+Test Case '-[DocumentScannerUITests.ScannerFlowTests testUnfinishedScanCanBeTrashedRestoredAndResumed]' passed (25.385 seconds).

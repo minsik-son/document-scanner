@@ -1,0 +1,10 @@
+Xcode 26.2 · iOS 26.2 Simulator · iPhone 17 Pro
+2026-09-29 — Full-screen processed-page zoom
+9 distinct targeted tests passed: 8 PageAdjustments tests plus 1 capture/zoom UI scenario.
+Unit/integration: /private/tmp/scanner-zoom-preview-tests.log (8/8); initial UI lookup failed because the enclosing view overrode the button accessibility identifier.
+Final UI after removing the duplicate identifier: /private/tmp/scanner-zoom-preview-ui.log (1/1, zero failures).
+Final result: /private/tmp/DocumentScannerBuild/Logs/Test/Test-DocumentScanner-2026.09.29_15-53-27--0700.xcresult
+
+Verified tap to open, native pinch in/out, pan gesture, double-tap fit reset, Close returning to the review with brightness unchanged, and Add page returning to capture with the existing page preserved. The full-resolution result matches export dimensions/sample pixels and reuses the prepared renderer cache. A UIKit test verifies that replacing the initial raster retains zoom and content offset, and viewport resizing returns to fit. Existing preview/export fidelity, coalescing and cancellation regressions pass.
+Image quality uses the same geometry/tone/manual adjustments as PDF export; normal previews remain bounded to 1800 pixels while enlarged viewing requests the full processed raster. Enlargement is display-only, with no mutation to source or saved settings. Full-screen close releases its additional full-resolution image. Native zoom is bounded from fit to 6x with VoiceOver zoom/reset actions.
+Screenshot: enlarged-preview.png. Simulated capture uses an isolated DEBUG fixture. Actual iPhone gestures/performance and VoiceOver interaction were not manually verified.

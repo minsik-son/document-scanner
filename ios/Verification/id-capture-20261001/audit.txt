@@ -1,0 +1,76 @@
+ID capture correction and tool entry audit — 2026-10-01
+
+Finding
+The Home / All tools ID action routed to LibraryToolPicker and required a saved
+PDF. The existing engine arranged selected pages on one sheet, but this was
+not a complete camera-first ID scanning product flow. Calling all tools complete
+based on their processing/export engines overstated end-to-end readiness.
+
+Changed
+- Home/All tools QuickTool.library(identity) now opens IdentityScanView.
+- ID scan is in Everyday essentials and searchable by ID scan / ID card.
+- New, isolated local draft; immediately opens a locked ID capture mode.
+- Automatic capture enabled initially; manual shutter available.
+- Card candidate selection uses pixel-space aspect ratio, area, center and
+  unclipped corners. Live detection and full-resolution crop use the same policy.
+- Existing stable tracking shows green outlines and waits 0.8 seconds before
+  capture. Explicit front confirmation and back-ready step prevent immediate
+  duplication of the stationary front. This is not ID authentication.
+- Per-side processed preview and crop/rotate/tone controls. Cancel rejects only
+  the newly captured side. Retaking retains the prior accepted side until confirm.
+- Front/back edit and retake controls precede the single-page PDF preview.
+- A4 / US Letter; both sides fit standard 85.6 x 53.98 mm card areas without
+  stretching. Final save adds one one-page PDF, preserving supported OCR text.
+- Nothing is saved as a library PDF until Save PDF. Discard removes this flow's
+  draft and its unreferenced assets. Existing library documents are untouched.
+- ID preview uses single-page PDFKit display with pinch zoom. General PDF view
+  keeps its existing continuous-page mode.
+
+Entry inventory: 32 tools; source-code audit, not a claim of feature parity
+Camera paths (6 after this change)
+  Scan document: dedicated camera + page editor
+  Whiteboard: dedicated camera with whiteboard capture settings
+  ID scan: dedicated two-side workflow added in this change
+  QR code: Scan with camera button via still-photo picker, plus image import;
+           no continuous QR detector overlay
+  Measure: AR camera, device support required
+  3D scan: AR/LiDAR camera, supported hardware required
+
+Saved-PDF selection paths (13)
+  Extract text, Reorder pages, Watermark, Timestamp, Long image,
+  Sign & annotate, Merge documents, Split PDF, Extract pages, Compress PDF,
+  Protect with password, Export images, Print.
+  Document-bound actions use the already open PDF; otherwise use a picker.
+  This is appropriate for PDF editing. Extract text additionally needs a future
+  camera-first shortcut if presented as a new scan rather than a PDF action.
+
+Photo / saved-page / text input paths (12; unchanged in this change)
+  Word export, Excel export, PowerPoint export, Translate text, Math calculator,
+  Book pages, ID photo, Smart erase, Remove colored marks, Restore photo,
+  Mega scan, Count objects.
+  Book, ID photo, Mega scan and Count objects still lack dedicated capture flows.
+  Translation/math/OCR entry also offers no direct capture here.
+  These are processors with previews/exports, not full CamScanner-equivalent
+  capture experiences. Office conversion and photo editing naturally accept
+  existing input, but adding a new camera source would improve several tools.
+
+Photo-only input (1)
+  Stitch screenshots: ordered photo selection, overlap preview, image export.
+
+Validation
+See final test/build logs alongside this file. Test fixtures are synthetic;
+no personal ID contents from the user's screenshots were copied into the repo.
+Manual device checks still required: real camera focus and exposure, reflective
+laminated cards, low contrast, tilting, real-time outline alignment, automatic
+capture timing, and print size on physical printers. The synthetic Vision test
+and simulated camera UI tests do not establish those real-device qualities.
+
+Verified results
+- 19 unit/integration tests and 4 UI flows passed in regression-tests.log.
+- After the final card-specific Auto scan and automatic-capture resume changes,
+  9 camera/Vision tests and both ID UI flows passed again in final-tests.log.
+- Generic iPhone Release build succeeded, signing disabled; no physical device
+  installation was performed.
+- id-preview.png and id-saved.png were visually inspected. Front/back retake
+  controls are above the preview and are accessible without the Save button
+  covering their hit targets. The final PDF is one page after retaking the front.

@@ -1,0 +1,26 @@
+ID dynamic outline and edge cleanup — 2026-10-01
+
+Behavior
+- Fixed guide removed. Only the detected four-corner outline is displayed.
+- Full detected card must lie inside the actual aspect-fill viewport. Two consistent detection frames qualify it; green and automatic shutter request are emitted together with no added green-state timer.
+- ID analysis resolution increased to 1280; rectangle tolerance allows perspective. Full-resolution still detection and grayscale contrast retries retained.
+- Front confirmation advances directly to back camera with automatic capture enabled; no Ready for back button. Within each side, duplicate-capture protection remains.
+- Manual shutter remains independent of detection.
+
+Background
+- Supplied PDF visually showed narrow brown strips and background in rounded card corners, not a whole uncropped camera frame.
+- Added ID-only post-perspective edge refinement. Requires consistent light-inside edge evidence along 75% of the sampled edge; bounded to the outer 3%.
+- ID rounded corner cutouts are composited onto white. Original printing colors, photo and magnetic stripe remain untouched.
+- New optional per-page setting is backward-decodable. Preview, thumbnail, OCR input and PDF use the same cleanup path. Unconfirmed crops are not cleaned blindly.
+- Original captured pixels remain on disk for crop adjustment. Existing exported PDFs are not changed automatically.
+
+Validation
+- 14 camera/ID tests: detection, visibility, stable-frame readiness, duplicate latch, perspective crop, missing-edge rejection, asymmetric desk strips, white corners, black/blue content retention, preview/export geometry and thumbnail invalidation.
+- 10 local PDF tool tests, 8 page adjustment tests, 4 startup/cache tests passed.
+- 2 ID UI tests passed (front/back, retake, save, cancellation/discard).
+- Supplied PDF card regions processed privately in /tmp with the same cleanup function and visually inspected; no personal ID fixtures copied into the project.
+
+Limits
+Live physical-camera detection still needs device testing. No semantic recognition or guaranteed segmentation of every ID/background. Ambiguous edge detection falls back to manual crop confirmation. Rounded-corner cleanup assumes standard ID-card geometry.
+
+Final unsigned iPhone Release build: BUILD SUCCEEDED.

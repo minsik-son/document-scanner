@@ -1,0 +1,60 @@
+0: •복구 솔루션 (선택 사항) →  | OK
+1: Backup →  | OK
+2: Back up your current Window user environment into external storage (ex USB memory) It is much easier to operate if you know where the data is backed up. → 현재 Windows 사용자 환경을 USB 메모리 같은 외부 저장 장치에 백업하세요. 데이터가 백업된 위치를 알면 더 쉽게 이용할 수 있습니다. | OK
+3: Keyboard and mouse must be connected → 키보드와 마우스를 연결해야 합니다. | OK
+4: Flesse enter a portance →  | OK
+5: F11 to Recovery Zonc-. →  | OK
+6: 포스 →  | OK
+7: D 비밀번호 →  | OK
+8: WinClon 6 Premium →  | OK
+9: 취소 →  | OK
+10: Confem →  | OK
+11: WinCion 6 Premium →  | OK
+12: 초기 상태로 복원 (59) →  | OK
+13: M stued de seremet CoP →  | OK
+14: : -cm-hes →  | OK
+15: do ma more Srace →  | OK
+16: mun Patea →  | OK
+17: •wandson am의 사용한 evers →  | OK
+18: 22.16Ca/ 100.0420 →  | OK
+19: L CLONIX →  | OK
+20: • Sea to see seriad a fa →  | OK
+21: Turn on the system and follow the on-screen instructions: → 컴퓨터를 켜고 화면의 안내를 따르세요. | OK
+22: ① →  | OK
+23: Press < F11> when the "F11 to WinClon ... →  | OK
+24: 09.30 L2/00:8-00 →  | OK
+25: 75449 →  | OK
+26: message appears on the screen within 2 to 4 seconds (PC POST process). →  | OK
+27: cecl →  | OK
+28: When WinClon appears on the screen, press <F10> key on your keyboard or use your mouse to select "Backup". →  | OK
+29: • 비밀번호를 입력한 후, <OK> 버튼을 눌러 백업을 계속하십시오. (비밀번호. pos) →  | OK
+30: •되돌리다 →  | OK
+31: You can still recover quickly even if you are not able to boot from the OS. → 운영체제로 부팅할 수 없는 경우에도 빠르게 복구할 수 있습니다. | OK
+32: Keyboard and mouse must be connected. → 키보드와 마우스를 연결해야 합니다. | OK
+33: When you recover the Hard Disk, all the data in the system will be deleted → 하드 디스크를 복구하면 시스템의 모든 데이터가 삭제됩니다. | OK
+34: Please save all important data in external storage before you start recovery. → 복구를 시작하기 전에 중요한 데이터를 외부 저장 장치에 보관하세요. | OK
+35: 비밀빈호를 입력해 주세요. →  | OK
+36: F11에서 복구 구역으로... →  | OK
+37: [pos →  | OK
+38: D 비밀번호 →  | OK
+39: WinClon 6 Premium →  | OK
+40: 확립하다 →  | OK
+41: Cancel →  | OK
+42: WinClon →  | OK
+43: Ref aro를 초기 상태 [F]리 →  | OK
+44: Bickup 최근 상태 (F10) →  | OK
+45: Restore to roome Me 1F71 →  | OK
+46: 복구가 성공했습니다. →  | OK
+47: 시스템이 재시작되었습니다. →  | OK
+48: D ww a wa un rcon one Sata →  | OK
+49: 1Yee as id tea bckis ru mant24204 →  | OK
+50: L CLONIK →  | OK
+51: ® →  | OK
+52: *"Restore to Initial State"는 공장 기본 설정으로 복원됩니다. →  | OK
+53: ※"Restore to Recent State"는 최신 Windows 백업으로 복원합니다. →  | OK
+54: Turn on the system and follow the on-screen instructions: Press <F11> when the "F11 to WinClon..." message appears on the screen within 2 to 4 seconds (PC POST process). → 컴퓨터를 켜고 화면의 안내를 따르세요. PC 부팅 과정에서 2~4초 동안 F11 to WinClon 메시지가 나타나면 F11 키를 누르세요. | OK
+55: ① →  | OK
+56: 2 When WinClon appears on the screen, press <F2> or <F3> key on your keyboard or use your mouse to select →  | OK
+57: 1M1M 00026A →  | OK
+58: "Restore to Recent State" or "Restore to Initial State". →  | OK
+59: 3 비밀번호를 입력한 후, <OK> 버튼을 눌러 복원을 계속하십시오. (비밀번호: pos) →  | OK

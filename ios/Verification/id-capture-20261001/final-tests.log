@@ -1,0 +1,566 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild test -project DocumentScanner.xcodeproj -scheme DocumentScanner -destination "platform=iOS Simulator,id=B5EC4D85-82CA-411F-AAF4-A2179B83E009" -derivedDataPath /tmp/scanner-id-derived -parallel-testing-enabled NO "-only-testing:DocumentScannerTests/LiveCameraTests" "-only-testing:DocumentScannerUITests/IdentityCaptureTests" -resultBundlePath /tmp/scanner-id-final.xcresult CODE_SIGNING_ALLOWED=NO
+
+Build settings from command line:
+    CODE_SIGNING_ALLOWED = NO
+
+Resolve Package Graph
+
+
+Resolved source packages:
+  GoogleMobileAds: https://github.com/googleads/swift-package-manager-google-mobile-ads.git @ 13.11.0
+  GoogleUserMessagingPlatform: https://github.com/googleads/swift-package-manager-google-user-messaging-platform.git @ 3.1.0
+
+Writing result bundle at path:
+	/tmp/scanner-id-final.xcresult
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (7 targets)
+    Target 'DocumentScannerUITests' in project 'DocumentScanner'
+        ➜ Explicit dependency on target 'DocumentScanner' in project 'DocumentScanner'
+    Target 'DocumentScannerTests' in project 'DocumentScanner'
+        ➜ Explicit dependency on target 'DocumentScanner' in project 'DocumentScanner'
+    Target 'DocumentScanner' in project 'DocumentScanner'
+        ➜ Explicit dependency on target 'GoogleMobileAds' in project 'GoogleMobileAds'
+    Target 'GoogleMobileAds' in project 'GoogleMobileAds'
+        ➜ Explicit dependency on target 'GoogleMobileAdsTarget' in project 'GoogleMobileAds'
+        ➜ Explicit dependency on target 'GoogleUserMessagingPlatform' in project 'GoogleUserMessagingPlatform'
+    Target 'GoogleMobileAdsTarget' in project 'GoogleMobileAds'
+        ➜ Explicit dependency on target 'GoogleUserMessagingPlatform' in project 'GoogleUserMessagingPlatform'
+    Target 'GoogleUserMessagingPlatform' in project 'GoogleUserMessagingPlatform'
+        ➜ Explicit dependency on target 'UserMessagingPlatformTarget' in project 'GoogleUserMessagingPlatform'
+    Target 'UserMessagingPlatformTarget' in project 'GoogleUserMessagingPlatform' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk /tmp/scanner-id-derived/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios/DocumentScanner.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -o /tmp/scanner-id-derived/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache
+
+SwiftDriver DocumentScanner normal arm64 com.apple.xcode.tools.swift.compiler (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name DocumentScanner -Onone -enforce-exclusivity\=checked @/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner.SwiftFileList -DDEBUG -Xcc -fmodule-map-file\=/tmp/scanner-id-derived/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/UserMessagingPlatformTarget.modulemap -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -target arm64-apple-ios18.0-simulator -g -module-cache-path /tmp/scanner-id-derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/scanner-id-derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator -F /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64 -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/scanner-id-derived/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache -output-file-map /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/scanner-id-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/scanner-id-derived/ModuleCache.noindex -sdk-module-cache-path /tmp/scanner-id-derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/scanner-id-derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-generated-files.hmap -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-own-target-headers.hmap -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner-9f21363ba7d03a3c80303994f84c102b-VFS-iphonesimulator/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-project-headers.hmap -Xcc -I/tmp/scanner-id-derived/SourcePackages/checkouts/swift-package-manager-google-user-messaging-platform/UserMessagingPlatformTarget/include -Xcc -I/tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DerivedSources-normal/arm64 -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DerivedSources/arm64 -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner-Swift.h -working-directory /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios -experimental-emit-module-separately -disable-cmo
+
+SwiftCompile normal arm64 Compiling\ ReviewView.swift /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios/DocumentScanner/ReviewView.swift (in target 'DocumentScanner' from project 'DocumentScanner')
+
+SwiftCompile normal arm64 /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios/DocumentScanner/ReviewView.swift (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    
+
+SwiftCompile normal arm64 Compiling\ IdentityScanView.swift /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios/DocumentScanner/IdentityScanView.swift (in target 'DocumentScanner' from project 'DocumentScanner')
+
+SwiftCompile normal arm64 /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios/DocumentScanner/IdentityScanView.swift (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ DocumentScanner (in target 'DocumentScanner' from project 'DocumentScanner')
+
+EmitSwiftModule normal arm64 (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    
+/Users/minmac/Documents/ChatGPT/정치 중립/scanner-product/ios/DocumentScanner/DocumentClarity.swift:6:33: warning: 'init(source:)' was deprecated in iOS 12.0: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings)
+    private static let kernel = CIColorKernel(source: """
+                                ^
+/Users/minmac/Documents/ChatGPT/정치 중립/scanner-product/ios/DocumentScanner/DocumentProcessing.swift:373:43: warning: 'init(source:)' was deprecated in iOS 12.0: Core Image Kernel Language API deprecated. (Define CI_SILENCE_GL_DEPRECATION to silence these warnings)
+    private static let paperWhiteKernel = CIColorKernel(source: """
+                                          ^
+
+SwiftCompile normal arm64 Compiling\ CameraView.swift /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios/DocumentScanner/CameraView.swift (in target 'DocumentScanner' from project 'DocumentScanner')
+
+SwiftCompile normal arm64 /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios/DocumentScanner/CameraView.swift (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling IdentityScanView.swift (in target 'DocumentScanner' from project 'DocumentScanner')
+
+SwiftDriverJobDiscovery normal arm64 Compiling CameraView.swift (in target 'DocumentScanner' from project 'DocumentScanner')
+
+SwiftDriverJobDiscovery normal arm64 Compiling ReviewView.swift (in target 'DocumentScanner' from project 'DocumentScanner')
+
+SwiftDriver\ Compilation DocumentScanner normal arm64 com.apple.xcode.tools.swift.compiler (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name DocumentScanner -Onone -enforce-exclusivity\=checked @/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner.SwiftFileList -DDEBUG -Xcc -fmodule-map-file\=/tmp/scanner-id-derived/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/UserMessagingPlatformTarget.modulemap -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -target arm64-apple-ios18.0-simulator -g -module-cache-path /tmp/scanner-id-derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/scanner-id-derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator -F /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64 -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/scanner-id-derived/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache -output-file-map /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/scanner-id-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/scanner-id-derived/ModuleCache.noindex -sdk-module-cache-path /tmp/scanner-id-derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/scanner-id-derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-generated-files.hmap -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-own-target-headers.hmap -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner-9f21363ba7d03a3c80303994f84c102b-VFS-iphonesimulator/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-project-headers.hmap -Xcc -I/tmp/scanner-id-derived/SourcePackages/checkouts/swift-package-manager-google-user-messaging-platform/UserMessagingPlatformTarget/include -Xcc -I/tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DerivedSources-normal/arm64 -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DerivedSources/arm64 -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner-Swift.h -working-directory /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for DocumentScanner (in target 'DocumentScanner' from project 'DocumentScanner')
+
+SwiftDriver\ Compilation\ Requirements DocumentScanner normal arm64 com.apple.xcode.tools.swift.compiler (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name DocumentScanner -Onone -enforce-exclusivity\=checked @/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner.SwiftFileList -DDEBUG -Xcc -fmodule-map-file\=/tmp/scanner-id-derived/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/UserMessagingPlatformTarget.modulemap -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -target arm64-apple-ios18.0-simulator -g -module-cache-path /tmp/scanner-id-derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/scanner-id-derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator -F /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64 -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/scanner-id-derived/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache -output-file-map /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/scanner-id-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/scanner-id-derived/ModuleCache.noindex -sdk-module-cache-path /tmp/scanner-id-derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/scanner-id-derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-generated-files.hmap -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-own-target-headers.hmap -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner-9f21363ba7d03a3c80303994f84c102b-VFS-iphonesimulator/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-project-headers.hmap -Xcc -I/tmp/scanner-id-derived/SourcePackages/checkouts/swift-package-manager-google-user-messaging-platform/UserMessagingPlatformTarget/include -Xcc -I/tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DerivedSources-normal/arm64 -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DerivedSources/arm64 -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner-Swift.h -working-directory /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios -experimental-emit-module-separately -disable-cmo
+
+Copy /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.swiftmodule/arm64-apple-ios-simulator.swiftmodule /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner.swiftmodule (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner.swiftmodule /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.swiftmodule/arm64-apple-ios-simulator.swiftmodule
+
+Copy /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.swiftmodule/arm64-apple-ios-simulator.abi.json /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner.abi.json (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner.abi.json /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.swiftmodule/arm64-apple-ios-simulator.abi.json
+
+Ld /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner.debug.dylib normal (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios18.0-simulator -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -O0 -L/tmp/scanner-id-derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator -F/tmp/scanner-id-derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator -filelist /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner.LinkFileList -install_name @rpath/DocumentScanner.debug.dylib -Xlinker -rpath -Xlinker /usr/lib/swift -Xlinker -rpath -Xlinker /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -Xlinker -rpath -Xlinker @executable_path/Frameworks -dead_strip -Xlinker -object_path_lto -Xlinker /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner.swiftmodule @/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner-linker-args.resp -Wl,-no_warn_duplicate_libraries -Wl,-no_warn_duplicate_libraries -ObjC -framework WebKit -Xlinker -alias -Xlinker _main -Xlinker ___debug_main_executable_dylib_entry_point -framework GoogleMobileAds -framework UserMessagingPlatform -o /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner.debug.dylib -Xlinker -add_ast_path -Xlinker /tmp/scanner-id-derived/Build/Intermediates.noindex/GoogleMobileAds.build/Debug-iphonesimulator/GoogleMobileAdsTarget.build/Objects-normal/arm64/GoogleMobileAdsTarget.swiftmodule @/tmp/scanner-id-derived/Build/Intermediates.noindex/GoogleMobileAds.build/Debug-iphonesimulator/GoogleMobileAdsTarget.build/Objects-normal/arm64/GoogleMobileAdsTarget-linker-args.resp
+
+Copy /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner.swiftsourceinfo (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner.swiftsourceinfo /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo
+
+ConstructStubExecutorLinkFileList /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-ExecutorLinkFileList-normal-arm64.txt (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    construct-stub-executor-link-file-list /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner.debug.dylib /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor_no_swift_entry_point.a /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor.a --output /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-ExecutorLinkFileList-normal-arm64.txt
+note: Using stub executor library with Swift entry point. (in target 'DocumentScanner' from project 'DocumentScanner')
+
+Ld /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner normal (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios18.0-simulator -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -O0 -L/tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator -F/tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator -Xlinker -rpath -Xlinker @executable_path -Xlinker -rpath -Xlinker /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -Xlinker -rpath -Xlinker @executable_path/Frameworks -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -e ___debug_blank_executor_main -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_dylib -Xlinker /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-DebugDylibPath-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_instlnm -Xlinker /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-DebugDylibInstallName-normal-arm64.txt -Xlinker -filelist -Xlinker /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner-ExecutorLinkFileList-normal-arm64.txt /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner.debug.dylib -o /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner
+
+ExtractAppIntentsMetadata (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name DocumentScanner --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk --xcode-version 17C52 --platform-family iOS --deployment-target 18.0 --bundle-identifier com.documentscanner.local --output /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app --target-triple arm64-apple-ios18.0-simulator --binary-file /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner --dependency-file /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner_dependency_info.dat --stringsdata-file /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner.SwiftFileList --metadata-file-list /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner.DependencyMetadataFileList --static-metadata-file-list /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/DocumentScanner.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/Objects-normal/arm64/DocumentScanner.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-10-01 11:39:27.880 appintentsmetadataprocessor[73795:8199205] Starting appintentsmetadataprocessor export
+2026-10-01 11:39:27.881 appintentsmetadataprocessor[73795:8199205] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+CopySwiftLibs /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-swiftStdLibTool --copy --verbose --scan-executable /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner.debug.dylib --scan-folder /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Frameworks --scan-folder /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns --scan-folder /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/SystemExtensions --scan-folder /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+Ignoring --strip-bitcode because --sign was not passed
+
+SwiftDriver DocumentScannerTests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'DocumentScannerTests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name DocumentScannerTests -Onone -enforce-exclusivity\=checked @/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests.SwiftFileList -DDEBUG -Xcc -fmodule-map-file\=/tmp/scanner-id-derived/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/UserMessagingPlatformTarget.modulemap -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -target arm64-apple-ios18.0-simulator -g -module-cache-path /tmp/scanner-id-derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/scanner-id-derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/Developer/Library/Frameworks -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/scanner-id-derived/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache -output-file-map /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/scanner-id-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/scanner-id-derived/ModuleCache.noindex -sdk-module-cache-path /tmp/scanner-id-derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/scanner-id-derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DocumentScannerTests-generated-files.hmap -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DocumentScannerTests-own-target-headers.hmap -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DocumentScannerTests-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner-9f21363ba7d03a3c80303994f84c102b-VFS-iphonesimulator/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DocumentScannerTests-project-headers.hmap -Xcc -I/tmp/scanner-id-derived/SourcePackages/checkouts/swift-package-manager-google-user-messaging-platform/UserMessagingPlatformTarget/include -Xcc -I/tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DerivedSources-normal/arm64 -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DerivedSources/arm64 -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests-Swift.h -working-directory /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios -experimental-emit-module-separately -disable-cmo
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ DocumentScannerTests (in target 'DocumentScannerTests' from project 'DocumentScanner')
+
+EmitSwiftModule normal arm64 (in target 'DocumentScannerTests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    
+
+SwiftDriver\ Compilation DocumentScannerTests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'DocumentScannerTests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name DocumentScannerTests -Onone -enforce-exclusivity\=checked @/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests.SwiftFileList -DDEBUG -Xcc -fmodule-map-file\=/tmp/scanner-id-derived/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/UserMessagingPlatformTarget.modulemap -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -target arm64-apple-ios18.0-simulator -g -module-cache-path /tmp/scanner-id-derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/scanner-id-derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/Developer/Library/Frameworks -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/scanner-id-derived/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache -output-file-map /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/scanner-id-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/scanner-id-derived/ModuleCache.noindex -sdk-module-cache-path /tmp/scanner-id-derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/scanner-id-derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DocumentScannerTests-generated-files.hmap -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DocumentScannerTests-own-target-headers.hmap -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DocumentScannerTests-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner-9f21363ba7d03a3c80303994f84c102b-VFS-iphonesimulator/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DocumentScannerTests-project-headers.hmap -Xcc -I/tmp/scanner-id-derived/SourcePackages/checkouts/swift-package-manager-google-user-messaging-platform/UserMessagingPlatformTarget/include -Xcc -I/tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DerivedSources-normal/arm64 -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DerivedSources/arm64 -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests-Swift.h -working-directory /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for DocumentScannerTests (in target 'DocumentScannerTests' from project 'DocumentScanner')
+
+SwiftDriver\ Compilation\ Requirements DocumentScannerTests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'DocumentScannerTests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name DocumentScannerTests -Onone -enforce-exclusivity\=checked @/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests.SwiftFileList -DDEBUG -Xcc -fmodule-map-file\=/tmp/scanner-id-derived/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/UserMessagingPlatformTarget.modulemap -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -target arm64-apple-ios18.0-simulator -g -module-cache-path /tmp/scanner-id-derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/scanner-id-derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/Developer/Library/Frameworks -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/scanner-id-derived/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache -output-file-map /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/scanner-id-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/scanner-id-derived/ModuleCache.noindex -sdk-module-cache-path /tmp/scanner-id-derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/scanner-id-derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DocumentScannerTests-generated-files.hmap -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DocumentScannerTests-own-target-headers.hmap -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DocumentScannerTests-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScanner-9f21363ba7d03a3c80303994f84c102b-VFS-iphonesimulator/all-product-headers.yaml -Xcc -iquote -Xcc /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DocumentScannerTests-project-headers.hmap -Xcc -I/tmp/scanner-id-derived/SourcePackages/checkouts/swift-package-manager-google-user-messaging-platform/UserMessagingPlatformTarget/include -Xcc -I/tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DerivedSources-normal/arm64 -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DerivedSources/arm64 -Xcc -I/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests-Swift.h -working-directory /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios -experimental-emit-module-separately -disable-cmo
+
+Copy /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScannerTests.swiftmodule/arm64-apple-ios-simulator.abi.json /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests.abi.json (in target 'DocumentScannerTests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests.abi.json /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScannerTests.swiftmodule/arm64-apple-ios-simulator.abi.json
+
+Ld /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest/DocumentScannerTests normal (in target 'DocumentScannerTests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios18.0-simulator -bundle -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -O0 -L/tmp/scanner-id-derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator -L/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F/tmp/scanner-id-derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -F/tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator -iframework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -iframework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/Developer/Library/Frameworks -filelist /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests.LinkFileList -Xlinker -rpath -Xlinker /usr/lib/swift -Xlinker -rpath -Xlinker /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -Xlinker -rpath -Xlinker @loader_path/Frameworks -Xlinker -rpath -Xlinker @executable_path/Frameworks -dead_strip -bundle_loader /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner -Xlinker -object_path_lto -Xlinker /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests.swiftmodule @/tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests-linker-args.resp -Wl,-no_warn_duplicate_libraries -Wl,-no_warn_duplicate_libraries -framework WebKit -Xlinker -needed_framework -Xlinker XCTest -framework XCTest -Xlinker -needed-lXCTestSwiftSupport -lXCTestSwiftSupport /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/DocumentScanner.debug.dylib -o /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest/DocumentScannerTests
+
+ExtractAppIntentsMetadata (in target 'DocumentScannerTests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name DocumentScannerTests --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk --xcode-version 17C52 --platform-family iOS --deployment-target 18.0 --bundle-identifier com.documentscanner.DocumentScannerTests --output /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest --target-triple arm64-apple-ios18.0-simulator --binary-file /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest/DocumentScannerTests --dependency-file /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests_dependency_info.dat --stringsdata-file /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests.SwiftFileList --metadata-file-list /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DocumentScannerTests.DependencyMetadataFileList --static-metadata-file-list /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/DocumentScannerTests.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/Objects-normal/arm64/DocumentScannerTests.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-10-01 11:39:28.494 appintentsmetadataprocessor[73800:8199255] Starting appintentsmetadataprocessor export
+2026-10-01 11:39:28.495 appintentsmetadataprocessor[73800:8199255] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+CopySwiftLibs /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest (in target 'DocumentScannerTests' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-swiftStdLibTool --copy --verbose --scan-executable /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest/DocumentScannerTests --scan-folder /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest/Frameworks --scan-folder /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest/PlugIns --scan-folder /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest/SystemExtensions --scan-folder /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app/PlugIns/DocumentScannerTests.xctest/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/scanner-id-derived/Build/Intermediates.noindex/DocumentScanner.build/Debug-iphonesimulator/DocumentScannerTests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+Ignoring --strip-bitcode because --sign was not passed
+
+Validate /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app (in target 'DocumentScanner' from project 'DocumentScanner')
+    cd /Users/minmac/Documents/ChatGPT/정치\ 중립/scanner-product/ios
+    builtin-validationUtility /tmp/scanner-id-derived/Build/Products/Debug-iphonesimulator/DocumentScanner.app -shallow-bundle -infoplist-subpath Info.plist
+
+2026-10-01 11:39:30.112210-0700 DocumentScanner[73811:8199532] [Client] Updating selectors failed with: Error Domain=NSCocoaErrorDomain Code=4099 "The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process." UserInfo={NSDebugDescription=The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process.}
+2026-10-01 11:39:30.112282-0700 DocumentScanner[73811:8199522] [Client] Synchronous remote object proxy returned error: Error Domain=NSCocoaErrorDomain Code=4099 "The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process." UserInfo={NSDebugDescription=The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process.}
+2026-10-01 11:39:30.112494-0700 DocumentScanner[73811:8199522] [Client] Synchronous remote object proxy returned error: Error Domain=NSCocoaErrorDomain Code=4099 "The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process." UserInfo={NSDebugDescription=The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process.}
+2026-10-01 11:39:30.112542-0700 DocumentScanner[73811:8199533] [Client] Updating selectors failed with: Error Domain=NSCocoaErrorDomain Code=4099 "The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process." UserInfo={NSDebugDescription=The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process.}
+2026-10-01 11:39:30.113112-0700 DocumentScanner[73811:8199533] [Client] Updating selectors failed with: Error Domain=NSCocoaErrorDomain Code=4099 "The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process." UserInfo={NSDebugDescription=The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process.}
+2026-10-01 11:39:30.113167-0700 DocumentScanner[73811:8199533] [Client] Updating selectors after delegate addition failed with: Error Domain=NSCocoaErrorDomain Code=4099 "The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process." UserInfo={NSDebugDescription=The connection to service named com.apple.commcenter.coretelephony.xpc was invalidated: Connection init failed at lookup with error 3 - No such process.}
+Test Suite 'Selected tests' started at 2026-10-01 11:39:31.455.
+Test Suite 'DocumentScannerTests.xctest' started at 2026-10-01 11:39:31.456.
+Test Suite 'LiveCameraTests' started at 2026-10-01 11:39:31.456.
+Test Case '-[DocumentScannerTests.LiveCameraTests testAutoCaptureWaitsForStableDocument]' started.
+Test Case '-[DocumentScannerTests.LiveCameraTests testAutoCaptureWaitsForStableDocument]' passed (0.001 seconds).
+Test Case '-[DocumentScannerTests.LiveCameraTests testBackgroundResumeKeepsCapturedPageLatch]' started.
+Test Case '-[DocumentScannerTests.LiveCameraTests testBackgroundResumeKeepsCapturedPageLatch]' passed (0.001 seconds).
+Test Case '-[DocumentScannerTests.LiveCameraTests testCapturedPageCannotCreateDuplicateUntilRemoved]' started.
+Test Case '-[DocumentScannerTests.LiveCameraTests testCapturedPageCannotCreateDuplicateUntilRemoved]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.LiveCameraTests testExplicitNextPageRearmsAutoCaptureButRequiresANewStableHold]' started.
+Test Case '-[DocumentScannerTests.LiveCameraTests testExplicitNextPageRearmsAutoCaptureButRequiresANewStableHold]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.LiveCameraTests testIDShapeUsesPixelAspectAndRejectsUnrelatedRectangles]' started.
+Test Case '-[DocumentScannerTests.LiveCameraTests testIDShapeUsesPixelAspectAndRejectsUnrelatedRectangles]' passed (0.001 seconds).
+Test Case '-[DocumentScannerTests.LiveCameraTests testMissingDetectionBreaksStabilityAndClearsOutline]' started.
+Test Case '-[DocumentScannerTests.LiveCameraTests testMissingDetectionBreaksStabilityAndClearsOutline]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.LiveCameraTests testMovingPageRestartsSteadyInterval]' started.
+Test Case '-[DocumentScannerTests.LiveCameraTests testMovingPageRestartsSteadyInterval]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.LiveCameraTests testPortraitCornersConvertToSensorCoordinates]' started.
+Test Case '-[DocumentScannerTests.LiveCameraTests testPortraitCornersConvertToSensorCoordinates]' passed (0.000 seconds).
+Test Case '-[DocumentScannerTests.LiveCameraTests testVisionFindsSyntheticCardAndExcludesPortraitInsideIt]' started.
+Test Case '-[DocumentScannerTests.LiveCameraTests testVisionFindsSyntheticCardAndExcludesPortraitInsideIt]' passed (0.036 seconds).
+Test Suite 'LiveCameraTests' passed at 2026-10-01 11:39:31.505.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 0.040 (0.050) seconds
+Test Suite 'DocumentScannerTests.xctest' passed at 2026-10-01 11:39:31.505.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 0.040 (0.050) seconds
+Test Suite 'Selected tests' passed at 2026-10-01 11:39:31.506.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 0.040 (0.050) seconds
+2026-10-01 11:39:32.258030-0700 DocumentScannerUITests-Runner[73830:8199613] [Default] Running tests...
+    t =      nans Interface orientation changed to Portrait
+Test Suite 'Selected tests' started at 2026-10-01 11:39:32.945.
+Test Suite 'DocumentScannerUITests.xctest' started at 2026-10-01 11:39:32.946.
+Test Suite 'IdentityCaptureTests' started at 2026-10-01 11:39:32.946.
+Test Case '-[DocumentScannerUITests.IdentityCaptureTests testCancelIDCaptureAndDiscardDoNotSaveDocument]' started.
+    t =     0.00s Start Test at 2026-10-01 11:39:32.946
+    t =     0.03s Set Up
+    t =     0.03s Open com.documentscanner.local
+    t =     0.03s     Launch com.documentscanner.local
+    t =     0.24s         Setting up automation session
+    t =     0.73s         Wait for com.documentscanner.local to idle
+    t =     1.88s Waiting 10.0s for "home-tools" Button to exist
+    t =     2.91s     Checking `Expect predicate `existsNoRetry == 1` for object "home-tools" Button`
+    t =     2.91s         Checking existence of `"home-tools" Button`
+    t =     3.00s Tap "home-tools" Button
+    t =     3.00s     Wait for com.documentscanner.local to idle
+    t =     3.00s     Find the "home-tools" Button
+    t =     3.03s     Check for interrupting elements affecting "home-tools" Button
+    t =     3.04s     Synthesize event
+    t =     3.33s     Wait for com.documentscanner.local to idle
+    t =     4.09s Waiting 5.0s for "tool-search" TextField to exist
+    t =     5.12s     Checking `Expect predicate `existsNoRetry == 1` for object "tool-search" TextField`
+    t =     5.12s         Checking existence of `"tool-search" TextField`
+    t =     5.19s Tap "tool-search" TextField
+    t =     5.19s     Wait for com.documentscanner.local to idle
+    t =     5.20s     Find the "tool-search" TextField
+    t =     5.23s     Check for interrupting elements affecting "tool-search" TextField
+    t =     5.26s     Synthesize event
+    t =     5.54s     Wait for com.documentscanner.local to idle
+    t =     5.55s Type 'ID scan' into "tool-search" TextField
+    t =     5.55s     Wait for com.documentscanner.local to idle
+    t =     5.55s     Find the "tool-search" TextField
+    t =     5.59s     Check for interrupting elements affecting "tool-search" TextField
+    t =     5.62s     Synthesize event
+    t =     5.94s     Wait for com.documentscanner.local to idle
+    t =     6.07s Tap "id-scan-tool" Button
+    t =     6.07s     Wait for com.documentscanner.local to idle
+    t =     6.07s     Find the "id-scan-tool" Button
+    t =     6.12s     Check for interrupting elements affecting "id-scan-tool" Button
+    t =     6.15s     Synthesize event
+    t =     6.44s     Wait for com.documentscanner.local to idle
+    t =     7.43s Waiting 10.0s for "Capture page" Button to exist
+    t =     8.46s     Checking `Expect predicate `existsNoRetry == 1` for object "Capture page" Button`
+    t =     8.46s         Checking existence of `"Capture page" Button`
+    t =     8.54s Checking existence of `"Select a saved PDF to get started." StaticText`
+    t =     8.58s Checking existence of `"Front of card" StaticText`
+    t =     8.61s Find the "Automatic capture" Button
+    t =     8.64s Tap "Capture page" Button
+    t =     8.64s     Wait for com.documentscanner.local to idle
+    t =     8.65s     Find the "Capture page" Button
+    t =     8.68s     Check for interrupting elements affecting "Capture page" Button
+    t =     8.71s     Synthesize event
+    t =     8.99s     Wait for com.documentscanner.local to idle
+    t =     8.99s Waiting 15.0s for "capture-review-cancel" Button to exist
+    t =    10.03s     Checking `Expect predicate `existsNoRetry == 1` for object "capture-review-cancel" Button`
+    t =    10.03s         Checking existence of `"capture-review-cancel" Button`
+    t =    10.10s Tap "capture-review-cancel" Button
+    t =    10.10s     Wait for com.documentscanner.local to idle
+    t =    10.10s     Find the "capture-review-cancel" Button
+    t =    10.14s     Check for interrupting elements affecting "capture-review-cancel" Button
+    t =    10.18s     Synthesize event
+    t =    10.47s     Wait for com.documentscanner.local to idle
+    t =    11.26s Waiting 10.0s for "Front of card" StaticText to exist
+    t =    12.29s     Checking `Expect predicate `existsNoRetry == 1` for object "Front of card" StaticText`
+    t =    12.29s         Checking existence of `"Front of card" StaticText`
+    t =    12.35s Tap "Capture page" Button
+    t =    12.35s     Wait for com.documentscanner.local to idle
+    t =    12.35s     Find the "Capture page" Button
+    t =    12.39s     Check for interrupting elements affecting "Capture page" Button
+    t =    12.42s     Synthesize event
+    t =    12.71s     Wait for com.documentscanner.local to idle
+    t =    12.71s Waiting 15.0s for "review-done" Button to exist
+    t =    13.77s     Checking `Expect predicate `existsNoRetry == 1` for object "review-done" Button`
+    t =    13.77s         Checking existence of `"review-done" Button`
+    t =    14.88s Checking `Expect predicate `enabled == 1` for object "review-done" Button`
+    t =    14.88s     Find the "review-done" Button
+    t =    14.95s Tap "review-done" Button
+    t =    14.95s     Wait for com.documentscanner.local to idle
+    t =    14.95s     Find the "review-done" Button
+    t =    15.00s     Check for interrupting elements affecting "review-done" Button
+    t =    15.03s     Synthesize event
+    t =    15.32s     Wait for com.documentscanner.local to idle
+    t =    15.33s Waiting 10.0s for "id-ready-back" Button to exist
+    t =    16.36s     Checking `Expect predicate `existsNoRetry == 1` for object "id-ready-back" Button`
+    t =    16.36s         Checking existence of `"id-ready-back" Button`
+    t =    16.43s Tap "camera-close" Button
+    t =    16.43s     Wait for com.documentscanner.local to idle
+    t =    16.43s     Find the "camera-close" Button
+    t =    16.47s     Check for interrupting elements affecting "camera-close" Button
+    t =    16.50s     Synthesize event
+    t =    16.79s     Wait for com.documentscanner.local to idle
+    t =    17.12s Waiting 10.0s for "Scan back" Button to exist
+    t =    18.14s     Checking `Expect predicate `existsNoRetry == 1` for object "Scan back" Button`
+    t =    18.14s         Checking existence of `"Scan back" Button`
+    t =    18.20s Checking existence of `"id-save-pdf" Button`
+    t =    18.24s Tap "id-cancel" Button
+    t =    18.24s     Wait for com.documentscanner.local to idle
+    t =    18.24s     Find the "id-cancel" Button
+    t =    18.27s     Check for interrupting elements affecting "id-cancel" Button
+    t =    18.31s     Synthesize event
+    t =    18.60s     Wait for com.documentscanner.local to idle
+    t =    19.34s Tap "Discard scan" Button
+    t =    19.34s     Wait for com.documentscanner.local to idle
+    t =    19.34s     Find the "Discard scan" Button
+    t =    19.41s     Check for interrupting elements affecting "Discard scan" Button
+    t =    19.44s     Synthesize event
+    t =    19.73s     Wait for com.documentscanner.local to idle
+    t =    20.08s Waiting 10.0s for "tool-search" TextField to exist
+    t =    21.12s     Checking `Expect predicate `existsNoRetry == 1` for object "tool-search" TextField`
+    t =    21.12s         Checking existence of `"tool-search" TextField`
+    t =    21.18s Tap "Close" Button
+    t =    21.18s     Wait for com.documentscanner.local to idle
+    t =    21.19s     Find the "Close" Button
+    t =    21.22s     Check for interrupting elements affecting "xmark" Button
+    t =    21.25s     Synthesize event
+    t =    21.54s     Wait for com.documentscanner.local to idle
+    t =    22.36s Tap "nav-documents" Button
+    t =    22.36s     Wait for com.documentscanner.local to idle
+    t =    22.36s     Find the "nav-documents" Button
+    t =    22.40s     Check for interrupting elements affecting "nav-documents" Button
+    t =    22.42s     Synthesize event
+    t =    22.71s     Wait for com.documentscanner.local to idle
+    t =    22.71s Checking existence of `"ID card" StaticText`
+    t =    22.74s Checking existence of `"Saved on this iPhone" StaticText`
+    t =    22.76s Tear Down
+Test Case '-[DocumentScannerUITests.IdentityCaptureTests testCancelIDCaptureAndDiscardDoNotSaveDocument]' passed (22.995 seconds).
+Test Case '-[DocumentScannerUITests.IdentityCaptureTests testIDStartsCameraCapturesBothSidesRetakesAndSavesOneSheet]' started.
+    t =     0.00s Start Test at 2026-10-01 11:39:55.942
+    t =     0.02s Set Up
+    t =     0.02s Open com.documentscanner.local
+    t =     0.02s     Launch com.documentscanner.local
+    t =     0.02s         Terminate com.documentscanner.local:73842
+    t =     1.30s         Setting up automation session
+    t =     1.85s         Wait for com.documentscanner.local to idle
+    t =     3.00s Waiting 10.0s for "home-tools" Button to exist
+    t =     4.03s     Checking `Expect predicate `existsNoRetry == 1` for object "home-tools" Button`
+    t =     4.03s         Checking existence of `"home-tools" Button`
+    t =     4.12s Tap "home-tools" Button
+    t =     4.12s     Wait for com.documentscanner.local to idle
+    t =     4.12s     Find the "home-tools" Button
+    t =     4.14s     Check for interrupting elements affecting "home-tools" Button
+    t =     4.15s     Synthesize event
+    t =     4.44s     Wait for com.documentscanner.local to idle
+    t =     5.10s Waiting 5.0s for "tool-search" TextField to exist
+    t =     6.13s     Checking `Expect predicate `existsNoRetry == 1` for object "tool-search" TextField`
+    t =     6.13s         Checking existence of `"tool-search" TextField`
+    t =     6.20s Tap "tool-search" TextField
+    t =     6.20s     Wait for com.documentscanner.local to idle
+    t =     6.20s     Find the "tool-search" TextField
+    t =     6.23s     Check for interrupting elements affecting "tool-search" TextField
+    t =     6.26s     Synthesize event
+    t =     6.54s     Wait for com.documentscanner.local to idle
+    t =     6.54s Type 'ID scan' into "tool-search" TextField
+    t =     6.54s     Wait for com.documentscanner.local to idle
+    t =     6.54s     Find the "tool-search" TextField
+    t =     6.58s     Check for interrupting elements affecting "tool-search" TextField
+    t =     6.61s     Synthesize event
+    t =     6.93s     Wait for com.documentscanner.local to idle
+    t =     7.05s Tap "id-scan-tool" Button
+    t =     7.05s     Wait for com.documentscanner.local to idle
+    t =     7.06s     Find the "id-scan-tool" Button
+    t =     7.11s     Check for interrupting elements affecting "id-scan-tool" Button
+    t =     7.14s     Synthesize event
+    t =     7.43s     Wait for com.documentscanner.local to idle
+    t =     8.44s Waiting 10.0s for "Capture page" Button to exist
+    t =     9.47s     Checking `Expect predicate `existsNoRetry == 1` for object "Capture page" Button`
+    t =     9.48s         Checking existence of `"Capture page" Button`
+    t =     9.55s Checking existence of `"Select a saved PDF to get started." StaticText`
+    t =     9.58s Checking existence of `"Front of card" StaticText`
+    t =     9.62s Find the "Automatic capture" Button
+    t =     9.65s Find the Target Application 'com.documentscanner.local'
+    t =     9.74s Added attachment named 'ID front camera'
+    t =     9.74s Tap "Capture page" Button
+    t =     9.74s     Wait for com.documentscanner.local to idle
+    t =     9.74s     Find the "Capture page" Button
+    t =     9.77s     Check for interrupting elements affecting "Capture page" Button
+    t =     9.80s     Synthesize event
+    t =    10.09s     Wait for com.documentscanner.local to idle
+    t =    10.09s Waiting 15.0s for "review-done" Button to exist
+    t =    11.10s     Checking `Expect predicate `existsNoRetry == 1` for object "review-done" Button`
+    t =    11.10s         Checking existence of `"review-done" Button`
+    t =    12.20s Checking `Expect predicate `enabled == 1` for object "review-done" Button`
+    t =    12.20s     Find the "review-done" Button
+    t =    12.27s Tap "review-done" Button
+    t =    12.27s     Wait for com.documentscanner.local to idle
+    t =    12.27s     Find the "review-done" Button
+    t =    12.32s     Check for interrupting elements affecting "review-done" Button
+    t =    12.36s     Synthesize event
+    t =    12.64s     Wait for com.documentscanner.local to idle
+    t =    12.65s Waiting 10.0s for "id-ready-back" Button to exist
+    t =    13.66s     Checking `Expect predicate `existsNoRetry == 1` for object "id-ready-back" Button`
+    t =    13.66s         Checking existence of `"id-ready-back" Button`
+    t =    13.71s Checking existence of `"Back of card" StaticText`
+    t =    13.75s Find the Target Application 'com.documentscanner.local'
+    t =    13.85s Added attachment named 'Flip card before automatic capture'
+    t =    13.85s Tap "id-ready-back" Button
+    t =    13.85s     Wait for com.documentscanner.local to idle
+    t =    13.85s     Find the "id-ready-back" Button
+    t =    13.88s     Check for interrupting elements affecting "id-ready-back" Button
+    t =    13.91s     Synthesize event
+    t =    14.20s     Wait for com.documentscanner.local to idle
+    t =    14.21s Tap "Capture page" Button
+    t =    14.21s     Wait for com.documentscanner.local to idle
+    t =    14.21s     Find the "Capture page" Button
+    t =    14.26s     Check for interrupting elements affecting "Capture page" Button
+    t =    14.30s     Synthesize event
+    t =    14.58s     Wait for com.documentscanner.local to idle
+    t =    14.58s Waiting 15.0s for "review-done" Button to exist
+    t =    15.62s     Checking `Expect predicate `existsNoRetry == 1` for object "review-done" Button`
+    t =    15.62s         Checking existence of `"review-done" Button`
+    t =    16.71s Checking `Expect predicate `enabled == 1` for object "review-done" Button`
+    t =    16.71s     Find the "review-done" Button
+    t =    16.78s Tap "review-done" Button
+    t =    16.78s     Wait for com.documentscanner.local to idle
+    t =    16.78s     Find the "review-done" Button
+    t =    16.83s     Check for interrupting elements affecting "review-done" Button
+    t =    16.86s     Synthesize event
+    t =    17.15s     Wait for com.documentscanner.local to idle
+    t =    17.50s Waiting 15.0s for "id-retake-front" Button to exist
+    t =    18.53s     Checking `Expect predicate `existsNoRetry == 1` for object "id-retake-front" Button`
+    t =    18.54s         Checking existence of `"id-retake-front" Button`
+    t =    18.61s Waiting 15.0s for "id-save-pdf" Button to exist
+    t =    19.64s     Checking `Expect predicate `existsNoRetry == 1` for object "id-save-pdf" Button`
+    t =    19.64s         Checking existence of `"id-save-pdf" Button`
+    t =    19.71s Find the Target Application 'com.documentscanner.local'
+    t =    19.80s Added attachment named 'Both ID sides on one sheet'
+    t =    19.80s Find the "id-retake-front" Button
+    t =    19.83s Tap "id-retake-front" Button
+    t =    19.83s     Wait for com.documentscanner.local to idle
+    t =    19.83s     Find the "id-retake-front" Button
+    t =    19.87s     Check for interrupting elements affecting "id-retake-front" Button
+    t =    19.90s     Synthesize event
+    t =    20.18s     Wait for com.documentscanner.local to idle
+    t =    20.53s Waiting 10.0s for "Front of card" StaticText to exist
+    t =    21.56s     Checking `Expect predicate `existsNoRetry == 1` for object "Front of card" StaticText`
+    t =    21.56s         Checking existence of `"Front of card" StaticText`
+    t =    21.62s Tap "Capture page" Button
+    t =    21.62s     Wait for com.documentscanner.local to idle
+    t =    21.62s     Find the "Capture page" Button
+    t =    21.67s     Check for interrupting elements affecting "Capture page" Button
+    t =    21.70s     Synthesize event
+    t =    21.99s     Wait for com.documentscanner.local to idle
+    t =    21.99s Waiting 15.0s for "capture-review-cancel" Button to exist
+    t =    23.01s     Checking `Expect predicate `existsNoRetry == 1` for object "capture-review-cancel" Button`
+    t =    23.01s         Checking existence of `"capture-review-cancel" Button`
+    t =    23.07s Tap "capture-review-cancel" Button
+    t =    23.07s     Wait for com.documentscanner.local to idle
+    t =    23.08s     Find the "capture-review-cancel" Button
+    t =    23.12s     Check for interrupting elements affecting "capture-review-cancel" Button
+    t =    23.16s     Synthesize event
+    t =    23.45s     Wait for com.documentscanner.local to idle
+    t =    24.23s Waiting 10.0s for "Capture page" Button to exist
+    t =    25.26s     Checking `Expect predicate `existsNoRetry == 1` for object "Capture page" Button`
+    t =    25.27s         Checking existence of `"Capture page" Button`
+    t =    25.33s Tap "Capture page" Button
+    t =    25.33s     Wait for com.documentscanner.local to idle
+    t =    25.33s     Find the "Capture page" Button
+    t =    25.37s     Check for interrupting elements affecting "Capture page" Button
+    t =    25.40s     Synthesize event
+    t =    25.68s     Wait for com.documentscanner.local to idle
+    t =    25.68s Waiting 15.0s for "review-done" Button to exist
+    t =    26.71s     Checking `Expect predicate `existsNoRetry == 1` for object "review-done" Button`
+    t =    26.71s         Checking existence of `"review-done" Button`
+    t =    27.80s Checking `Expect predicate `enabled == 1` for object "review-done" Button`
+    t =    27.80s     Find the "review-done" Button
+    t =    27.87s Tap "review-done" Button
+    t =    27.87s     Wait for com.documentscanner.local to idle
+    t =    27.87s     Find the "review-done" Button
+    t =    27.92s     Check for interrupting elements affecting "review-done" Button
+    t =    27.95s     Synthesize event
+    t =    28.24s     Wait for com.documentscanner.local to idle
+    t =    28.60s Waiting 15.0s for "id-retake-back" Button to exist
+    t =    29.62s     Checking `Expect predicate `existsNoRetry == 1` for object "id-retake-back" Button`
+    t =    29.63s         Checking existence of `"id-retake-back" Button`
+    t =    29.69s Waiting 15.0s for "id-save-pdf" Button to exist
+    t =    30.70s     Checking `Expect predicate `existsNoRetry == 1` for object "id-save-pdf" Button`
+    t =    30.70s         Checking existence of `"id-save-pdf" Button`
+    t =    31.79s Checking `Expect predicate `enabled == 1` for object "id-save-pdf" Button`
+    t =    31.79s     Find the "id-save-pdf" Button
+    t =    31.85s Tap "id-save-pdf" Button
+    t =    31.85s     Wait for com.documentscanner.local to idle
+    t =    31.85s     Find the "id-save-pdf" Button
+    t =    31.89s     Check for interrupting elements affecting "id-save-pdf" Button
+    t =    31.92s     Synthesize event
+    t =    32.21s     Wait for com.documentscanner.local to idle
+    t =    32.21s Waiting 60.0s for "Saved on this iPhone" StaticText to exist
+    t =    33.28s     Checking `Expect predicate `existsNoRetry == 1` for object "Saved on this iPhone" StaticText`
+    t =    33.28s         Checking existence of `"Saved on this iPhone" StaticText`
+    t =    33.32s         Capturing element debug description
+    t =    34.24s     Checking `Expect predicate `existsNoRetry == 1` for object "Saved on this iPhone" StaticText`
+    t =    34.24s         Checking existence of `"Saved on this iPhone" StaticText`
+    t =    34.28s         Capturing element debug description
+    t =    35.29s     Checking `Expect predicate `existsNoRetry == 1` for object "Saved on this iPhone" StaticText`
+    t =    35.29s         Checking existence of `"Saved on this iPhone" StaticText`
+    t =    35.33s         Capturing element debug description
+    t =    36.26s     Checking `Expect predicate `existsNoRetry == 1` for object "Saved on this iPhone" StaticText`
+    t =    36.26s         Checking existence of `"Saved on this iPhone" StaticText`
+    t =    36.30s         Capturing element debug description
+    t =    37.30s     Checking `Expect predicate `existsNoRetry == 1` for object "Saved on this iPhone" StaticText`
+    t =    37.30s         Checking existence of `"Saved on this iPhone" StaticText`
+    t =    37.34s         Capturing element debug description
+    t =    38.25s     Checking `Expect predicate `existsNoRetry == 1` for object "Saved on this iPhone" StaticText`
+    t =    38.25s         Checking existence of `"Saved on this iPhone" StaticText`
+    t =    38.28s         Capturing element debug description
+    t =    39.31s     Checking `Expect predicate `existsNoRetry == 1` for object "Saved on this iPhone" StaticText`
+    t =    39.31s         Checking existence of `"Saved on this iPhone" StaticText`
+    t =    39.35s Checking existence of `"Front and back on one page" StaticText`
+    t =    39.39s Find the Target Application 'com.documentscanner.local'
+    t =    39.47s Added attachment named 'Saved single-page ID PDF'
+    t =    39.47s Tap "id-saved-done" Button
+    t =    39.47s     Wait for com.documentscanner.local to idle
+    t =    39.47s     Find the "id-saved-done" Button
+    t =    39.51s     Check for interrupting elements affecting "id-saved-done" Button
+    t =    39.54s     Synthesize event
+    t =    39.83s     Wait for com.documentscanner.local to idle
+    t =    39.83s Waiting 10.0s for "tool-search" TextField to exist
+    t =    40.85s     Checking `Expect predicate `existsNoRetry == 1` for object "tool-search" TextField`
+    t =    40.85s         Checking existence of `"tool-search" TextField`
+    t =    40.91s Tap "Close" Button
+    t =    40.91s     Wait for com.documentscanner.local to idle
+    t =    40.91s     Find the "Close" Button
+    t =    40.95s     Check for interrupting elements affecting "xmark" Button
+    t =    40.98s     Synthesize event
+    t =    41.27s     Wait for com.documentscanner.local to idle
+    t =    42.10s Tap "nav-documents" Button
+    t =    42.10s     Wait for com.documentscanner.local to idle
+    t =    42.10s     Find the "nav-documents" Button
+    t =    42.14s     Check for interrupting elements affecting "nav-documents" Button
+    t =    42.16s     Synthesize event
+    t =    42.45s     Wait for com.documentscanner.local to idle
+    t =    42.45s Waiting 10.0s for "ID card" StaticText to exist
+    t =    43.46s     Checking `Expect predicate `existsNoRetry == 1` for object "ID card" StaticText`
+    t =    43.47s         Checking existence of `"ID card" StaticText`
+    t =    43.50s Tear Down
+Test Case '-[DocumentScannerUITests.IdentityCaptureTests testIDStartsCameraCapturesBothSidesRetakesAndSavesOneSheet]' passed (43.774 seconds).
+Test Suite 'IdentityCaptureTests' passed at 2026-10-01 11:40:39.717.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 66.769 (66.771) seconds
+Test Suite 'DocumentScannerUITests.xctest' passed at 2026-10-01 11:40:39.718.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 66.769 (66.772) seconds
+Test Suite 'Selected tests' passed at 2026-10-01 11:40:39.718.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 66.769 (66.773) seconds
+2026-10-01 11:40:49.464 xcodebuild[73745:8198836] [MT] IDETestOperationsObserverDebug: 80.928 elapsed -- Testing started completed.
+2026-10-01 11:40:49.464 xcodebuild[73745:8198836] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-10-01 11:40:49.464 xcodebuild[73745:8198836] [MT] IDETestOperationsObserverDebug: 80.928 sec, +80.928 sec -- end
+
+Test session results, code coverage, and logs:
+	/tmp/scanner-id-final.xcresult
+
+** TEST SUCCEEDED **
+
+Testing started

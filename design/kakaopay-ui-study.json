@@ -1,0 +1,44 @@
+{
+  "date": "2026-09-30",
+  "status": "Observed reference and proposed scanner design rules; not yet implemented",
+  "method": "Direct read-only navigation in Kakao Pay through iPhone Mirroring; comparison with current HomeView.swift, AdvancedOfflineToolsView.swift, App.swift and OnboardingView.swift",
+  "scope": {
+    "observed": ["Home", "Benefits list", "Reward introduction", "All services", "Payment category directory", "Offline payment guide: barcode", "Offline payment guide: QR", "Search landing", "Settings", "Autoplay selection bottom sheet"],
+    "limits": ["Not an exhaustive audit of all product screens", "No payment, transfer, purchase or account-setting change performed", "No source access: internal implementation and exact animation timings are unknown", "Earlier attached onboarding references supplement live observations", "Previously generated color-design screenshots predate the current bottom navigation and are not treated as current UI proof"],
+    "personal_data": "Account values, transactions and profile information are intentionally omitted from this record"
+  },
+  "observations": [
+    {"id":"surface","evidence":"Home and category directory","finding":"Pale neutral page background separates broad white cards. Borders and shadows are restrained. Rows inside one semantic group share a surface."},
+    {"id":"color","evidence":"Home, menu, settings and reward introduction","finding":"Yellow emphasizes primary actions; small multicolor icons supply most color in directories. Settings use blue for information and values. Marketing screens use pastel background fields."},
+    {"id":"hierarchy","evidence":"Home summary and settings rows","finding":"Dark bold primary content, quieter labels and secondary metadata create a clear reading order without many separators."},
+    {"id":"icons","evidence":"Home shortcuts, all services and category rows","finding":"Large shortcut grids use recognizable colored object icons; denser rows use smaller icons on pale rounded tiles. Navigation symbols remain simple and mostly monochrome."},
+    {"id":"directory","evidence":"All services","finding":"Recent usage appears before recommended services and category rows. The inspected guide appeared in recent usage after it was visited."},
+    {"id":"category","evidence":"Payment category","finding":"Selecting a category opens a separate titled directory, with consistent icon, label and chevron rows."},
+    {"id":"search","evidence":"Search landing","finding":"Search has a dedicated landing view with a prominent input and suggested entry points. AI content exists here but is outside the scanner scope."},
+    {"id":"navigation","evidence":"Home, directory and guide","finding":"Root navigation distinguishes active and inactive tabs through icon/text appearance. Deeper pages use back and contextual home controls."},
+    {"id":"sheet","evidence":"Autoplay selection","finding":"A compact bottom sheet keeps the parent page visible under a dim layer. A short title, close control, generous option rows and a checkmark explain the choice."},
+    {"id":"guidance","evidence":"Offline payment guide","finding":"Two-level tabs, numbered steps, illustration cards and a strong final action explain a workflow progressively. Selecting QR changed content and brought the relevant steps into view."},
+    {"id":"status","evidence":"Settings notification status","finding":"An inline pale blue notice contains the state, explanation and an action near the affected setting."},
+    {"id":"tradeoffs","evidence":"All services and benefits","finding":"Some long icon labels truncate and marketing badges compete for attention. Scanner labels should remain readable and badges should describe real state only."}
+  ],
+  "proposed_scanner_tokens": {
+    "note": "These are our proposed values, not measured Kakao Pay tokens. Validate contrast, Dynamic Type and device layouts before shipping.",
+    "colors": {"canvas":"#F5F6F8","surface":"#FFFFFF","text":"#18212B","secondaryText":"#667180","primaryAction":"#145FE8","brandNavy":"#0F2C4C","mintAccent":"#14B8A6","mintWash":"#E8F8F4","skyWash":"#EDF5FF","creamWash":"#FFFBE8","border":"#E8EBEF"},
+    "layoutPt": {"pageInset":20,"cardPadding":20,"cardGap":12,"cardRadius":24,"smallTileRadius":16,"rowHeightMin":56,"tapTargetMin":44,"homeArtwork":40,"directoryArtwork":28,"primaryButtonHeight":56},
+    "typographyPt": {"pageTitle":28,"sectionTitle":19,"rowTitle":16,"body":15,"metadata":13},
+    "motionMs": {"pressFeedback":120,"stateChange":220,"sheetTransition":300},
+    "motionNote": "Proposed ranges only. Prefer native navigation and sheet transitions; respect Reduce Motion. Never delay completed work for decorative progress."
+  },
+  "application_plan": [
+    {"priority":1,"screen":"Home","current":"Large title, search, introduction card, eight shortcuts and document filters precede the document list.","proposal":"Reduce the introduction to a compact pale mint/sky card. Keep eight shortcuts at most with smaller equal optical-size icons. Show a recent-document group of about three rows and View all; keep complete browsing in Documents. Keep the requested center circular camera button.","detail":"First-use empty state can explain scanning; returning users should see useful documents instead of repeated promotional copy."},
+    {"priority":1,"screen":"Tools","current":"Everyday essentials and four large categorized icon grids; no actual recent-tool history in AdvancedOfflineHub.","proposal":"Search, Recently used (up to four real local entries), then compact purpose-based categories: Scan, Enhance, Organize PDF, Convert, Utilities. Category pages show concise rows and one-line descriptions where useful.","detail":"Search should match both display names and synonyms and search every tool even when a category is collapsed. Record actual use locally; do not invent recent history. Empty history is omitted."},
+    {"priority":1,"screen":"Navigation","current":"Home/Documents switch local state; Tools is a full-screen cover; Settings is a sheet. Home can remain logically selected under these destinations.","proposal":"Use coherent root-tab selection and preserved per-tab state for Home, Documents, Tools and Settings. Treat center Scan as an action, not a persistent selected tab. Preserve modal capture and any draft safeguards."},
+    {"priority":2,"screen":"Review scan","proposal":"Let the page preview dominate. Use one compact toolbar for Crop, Tone, Adjust and Margins; reveal the selected controls in a contextual bottom panel. Keep Add page secondary and Done primary. Retain full-resolution zoom and immediate preview updates.","detail":"Do not apply decorative gradients behind the document viewing area, where they can bias perceived paper color."},
+    {"priority":2,"screen":"Document detail","proposal":"Large preview, quiet page count/date, prominent Share PDF and a compact set of relevant actions. Move infrequent tools to a labeled More entry."},
+    {"priority":2,"screen":"Settings and option sheets","proposal":"Consistent white groups, stable label/value alignment and content-sized option sheets. Use inline notices for storage or permission problems with a relevant action. Keep selected options identifiable without color alone."},
+    {"priority":2,"screen":"Onboarding and upgrade","proposal":"Keep the existing pastel mint/cream style and short workflow animations. Each page explains one outcome. Upgrade should reuse the surface and type system, while showing actual StoreKit prices and terms clearly."}
+  ],
+  "keep": ["English-first copy and localization readiness", "Original flat icon family including the white eraser with sleeve", "Navy document/camera logo", "Offline processing", "Native document swipe deletion and recovery", "Actual PDF-quality preview", "Reduced Motion and accessible text support"],
+  "avoid": ["Copying Kakao Pay branding or character artwork", "Adding colorful backgrounds to every card", "Artificial notification dots or marketing badges", "Very faint functional text", "Truncated English tool names", "Repeated large explanatory cards for returning users", "Adding online AI features from the reference app"],
+  "acceptance_for_future_implementation": ["At standard text size, a returning user can reach recent documents without passing several oversized blocks", "Every tool remains discoverable through search and category browsing", "No root tab incorrectly appears selected", "Controls and labels remain usable at 375, 390 and 430 pt widths and accessibility text sizes", "Keep at least 44 pt hit targets and verify text contrast", "Animation reduces or becomes static when Reduce Motion is enabled", "No scan, export, deletion or purchase behavior changes unintentionally during visual refactoring"]
+}

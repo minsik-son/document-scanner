@@ -1,0 +1,18 @@
+ID bottom background correction — 2026-10-01
+
+Observed: supplied PDF's back card retains a continuous brown bottom band exceeding the previous 3% edge search. Original PDF was inspected locally; personal ID assets were not copied into this project.
+
+Changes:
+- Edge search expands to 10%, with continuous exterior-color evidence required between image border and proposed boundary. Internal printed stripes with white outer margins are rejected.
+- Clamps source pixels before analysis scaling and uses source-derived integer raster bounds. Prevents a fractional resampling row from appearing as black/transparent and breaking edge connectivity.
+- Prefer earlier near-equal edge candidates to reduce over-trimming.
+- New ID thumbnail cache key; OCR processing version advanced to avoid stale text placement after changed image geometry.
+- Preview/export both continue using IdentityBackground through the shared rendering pipeline.
+
+Verification:
+- Supplied PDF back-card region reprocessed locally with final production cleanup code, 548x342 -> 548x325; lower brown band removed on visual inspection. Already exported PDF itself remains unchanged.
+- 16 camera/ID tests, including new 8% bottom-strip/barcode preservation and internal dark-stripe rejection, passed.
+- 10 PDF tools and 4 startup/cache tests passed. Total 30.
+- Unsigned iPhone Release build succeeded.
+
+Limit: real camera capture with varying lighting/background still needs device validation. Boundaries lacking sufficient visual contrast require manual correction. This patch does not claim universal background segmentation.

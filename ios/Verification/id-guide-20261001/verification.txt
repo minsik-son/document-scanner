@@ -1,0 +1,18 @@
+ID capture guide and background crop — 2026-10-01
+
+Implemented:
+- English guidance: Align your ID card with the frame.
+- Guide rendered by the same AVCaptureVideoPreviewLayer surface used to convert detection coordinates; accounts for portrait rotation and aspect-fill.
+- Four detected corners must match guide (13% horizontal / 16% vertical tolerance). Missing guide, tiny/off-center/skewed cards do not qualify.
+- Continuous stable hold for 0.8 seconds, then green outline/glow for at least 0.35 seconds before auto capture. Leaving alignment resets the hold. Duplicate-capture latch retained.
+- Manual shutter remains available without detection.
+- Captured still detection up to 1800 pixels, then grayscale/contrast retries when ordinary detection fails. Retries only affect detection; original color pixels remain the render source.
+- Existing perspective correction crops to detected corners for preview/PDF. Missing edges require manual four-corner confirmation, not blind guide cropping.
+
+Verification:
+12 LiveCameraTests passed, including alignment/reset/latch, synthetic card detection/crop and blank-image rejection.
+2 IdentityCaptureTests passed: front/back, retake, save one sheet, cancellation/discard.
+iPhone Release build succeeded (unsigned).
+
+Limits:
+Simulator camera flow is simulated. Live camera projection, low-contrast/reflective physical IDs and capture accuracy still need device validation. This is geometric boundary detection, not semantic ID recognition. Rounded-corner background slivers and missing edges may still require manual adjustment.

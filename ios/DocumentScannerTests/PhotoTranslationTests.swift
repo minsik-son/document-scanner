@@ -235,6 +235,83 @@ final class PhotoTranslationTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(selected.count,6)
         XCTAssertTrue(result.issues.filter { selected.contains($0.key) }.isEmpty,report)
     }
+    private func line(_ words:[(String,Double,Double)],y:Double,h:Double = 0.03) -> TextBlock {
+        // (text, x, width) in normalized page coordinates.
+        let items = words.map { TextWord(text:$0.0,x:$0.1,y:y,width:$0.2,height:h) }
+        let minX = items.map(\.x).min()!,maxX = items.map { $0.x+$0.width }.max()!
+        return TextBlock(text:words.map(\.0).joined(separator:" "),x:minX,y:y,width:maxX-minX,height:h,words:items)
+    }
+    func testMisreadCircledNumeralStaysAsMarkerAndIndentedLinesJoinTheItem() throws {
+        let f = UIGraphicsImageRendererFormat();f.scale = 1
+        let page = UIGraphicsImageRenderer(size:CGSize(width:1000,height:1000),format:f).image { c in
+            UIColor.white.setFill();c.fill(CGRect(x:0,y:0,width:1000,height:1000))
+        }
+        // "①" read as a square "I", then two lines indented under "Press".
+        let blocks = [
+            line([("I",0.05,0.03),("Press",0.10,0.08),("F11",0.19,0.05),("when",0.25,0.07),("the",0.33,0.05),("message",0.39,0.12)],y:0.20),
+            line([("appears",0.10,0.11),("on",0.22,0.03),("the",0.26,0.05),("screen",0.32,0.10),("within",0.43,0.09),("seconds.",0.53,0.12)],y:0.24)]
+        let regions = TranslationParagraphs.group(blocks,raster:try TranslationRaster(XCTUnwrap(page.cgImage)))
+        let marker = try XCTUnwrap(regions.first { $0.isMarker })
+        XCTAssertEqual(marker.source,"I");XCTAssertTrue(marker.keepOriginal)
+        let item = try XCTUnwrap(regions.first { !$0.isMarker })
+        XCTAssertEqual(regions.filter { !$0.isMarker }.count,1,"\(regions.map(\.source))")
+        XCTAssertEqual(item.sourceBoxes.count,2)
+        XCTAssertTrue(item.source.hasPrefix("Press F11"),item.source)
+        XCTAssertTrue(item.source.hasSuffix("seconds."),item.source)
+    }
+    func testOrdinaryPronounIIsNotTreatedAsMarker() throws {
+        let f = UIGraphicsImageRendererFormat();f.scale = 1
+        let page = UIGraphicsImageRenderer(size:CGSize(width:1000,height:1000),format:f).image { c in
+            UIColor.white.setFill();c.fill(CGRect(x:0,y:0,width:1000,height:1000))
+        }
+        let blocks = [line([("I",0.05,0.008),("agree",0.07,0.08),("to",0.16,0.03),("the",0.20,0.05),("terms",0.26,0.08)],y:0.3)]
+        let regions = TranslationParagraphs.group(blocks,raster:try TranslationRaster(XCTUnwrap(page.cgImage)))
+        XCTAssertFalse(regions.contains { $0.isMarker })
+        XCTAssertEqual(regions.first?.source,"I agree to the terms")
+    }
+    @MainActor
+    func testUnreadableTinyOrLowConfidenceTextIsKeptInsteadOfTranslated() {
+        func region(_ id:Int,_ text:String,height:Double = 0.012,confidence:Float = 1) -> TranslationRegion {
+            TranslationRegion(id:id,source:text,box:CGRect(x:0.1,y:0.05*Double(id+1),width:0.5,height:height),confidence:confidence)
+        }
+        let regions = TranslationQuality.review([
+            region(0,"It is much easier to operate if you know where the data is backed up."),
+            region(1,"Bark up your cutter Window us enviorant hay extend storate levisa mandry"),
+            region(2,"Press F11 when the WinClon message appears (PC POST process)."),
+            region(3,"Please enter a password",height:0.004),
+            region(4,"Keyboard and mouse must be connected.",confidence:0.3),
+            region(5,"Confem")],language:"en",imageHeight:2346)
+        XCTAssertFalse(regions[0].unclear);XCTAssertFalse(regions[2].unclear,"Acronyms and product names are not misspellings")
+        XCTAssertTrue(regions[1].unclear && regions[1].keepOriginal,"Garbled reading must not be translated")
+        XCTAssertTrue(regions[3].unclear,"Tiny screenshot labels are kept");XCTAssertTrue(regions[4].unclear)
+        XCTAssertTrue(regions[5].unclear,"A single misspelled label is kept")
+    }
+    func testGlossaryFixesContextFreeHeadingsOnly() {
+        XCTAssertEqual(TranslationGlossary.target(for:"Restore",from:"en",to:"ko"),"복원")
+        XCTAssertEqual(TranslationGlossary.target(for:"● Backup",from:"en",to:"ko"),"백업")
+        XCTAssertEqual(TranslationGlossary.target(for:"Cancel",from:"en",to:"ko"),"취소")
+        XCTAssertNil(TranslationGlossary.target(for:"Restore your files",from:"en",to:"ko"))
+        XCTAssertNil(TranslationGlossary.target(for:"Restore",from:"en",to:"ja"))
+    }
+    func testKoreanWrapsBetweenWordsAndTextLayerHasNoJoiners() throws {
+        let joined = TranslationText.keepingHangulWords("화면에 표시됩니다 (PC POST 프로세스).")
+        XCTAssertTrue(joined.contains("프\u{2060}로\u{2060}세\u{2060}스"))
+        XCTAssertTrue(joined.contains("(PC POST"),"Latin words are left unchanged")
+        XCTAssertEqual(joined.replacingOccurrences(of:TranslationText.wordJoiner,with:""),"화면에 표시됩니다 (PC POST 프로세스).")
+        let f = UIGraphicsImageRendererFormat();f.scale = 1
+        let page = UIGraphicsImageRenderer(size:CGSize(width:800,height:300),format:f).image { c in
+            UIColor.white.setFill();c.fill(CGRect(x:0,y:0,width:800,height:300))
+            ("Message appears within seconds" as NSString).draw(at:CGPoint(x:60,y:80),withAttributes:[.font:UIFont.systemFont(ofSize:28),.foregroundColor:UIColor.black])
+        }
+        let regions = [TranslationRegion(id:0,source:"Message appears within seconds",target:"메시지가 화면에 2~4초 이내에 표시됩니다 (PC POST 프로세스).",
+                                         box:CGRect(x:60.0/800,y:80.0/300,width:420.0/800,height:36.0/300))]
+        let result = try PhotoTranslation.compose(page,regions:regions)
+        let text = result.text.map(\.text).joined(separator:" ")
+        XCTAssertFalse(text.contains(TranslationText.wordJoiner))
+        if result.replaced == 1 {
+            XCTAssertFalse(result.text.contains { $0.text.hasPrefix("스") },"A Korean word must not be split across lines: \(result.text.map(\.text))")
+        }
+    }
     private func bytes(_ image:UIImage,_ rect:CGRect) throws -> Data {
         let cg = try XCTUnwrap(image.cgImage?.cropping(to:rect));let color = CGColorSpace(name:CGColorSpace.sRGB)!
         var bytes = [UInt8](repeating:0,count:cg.width*cg.height*4)

@@ -172,12 +172,41 @@ enum TranslationParagraphs {
             let box = group.map { CGRect(x:$0.x,y:$0.y,width:$0.width,height:$0.height) }.reduce(CGRect.null) { $0.union($1) }
             let lower = start == 0 ? block.text.startIndex : ranges[start].lowerBound
             let upper = end == words.count ? block.text.endIndex : ranges[end].lowerBound
-            return TextBlock(text:String(block.text[lower..<upper]).trimmingCharacters(in:.whitespacesAndNewlines),x:box.minX,y:box.minY,width:box.width,height:box.height,words:group)
+            return TextBlock(text:String(block.text[lower..<upper]).trimmingCharacters(in:.whitespacesAndNewlines),x:box.minX,y:box.minY,width:box.width,height:box.height,words:group,confidence:block.confidence)
         }
+    }
+    /// A leading list marker (•, ①, "1.") is kept as photographed pixels, and the item
+    /// text starts after it, so continuation lines indented under the text align with it.
+    /// Vision often reads a circled numeral as "I", "Q", "@" or "1"; a single, roughly
+    /// square glyph followed by a gap is treated as a marker too (a real word "I" is narrow).
+    static func splitMarker(_ block:TextBlock,raster:TranslationRaster) -> (marker:TextBlock?,body:TextBlock) {
+        guard let words = block.words,words.count >= 2 else { return (nil,block) }
+        let first = words[0],second = words[1]
+        let a = raster.pixelBox(CGRect(x:first.x,y:first.y,width:first.width,height:first.height))
+        let b = raster.pixelBox(CGRect(x:second.x,y:second.y,width:second.width,height:second.height))
+        let h = max(1,max(a.height,b.height))
+        let token = first.text
+        let explicit = token.range(of:"^([•●■◆▶▪·*-]|[①-⑳]|[0-9]{1,2}[.)])$",options:.regularExpression) != nil
+        let misread = token.count == 1 && "IlQ@O0123456789".contains(token) && a.width >= a.height*0.6
+        guard explicit || misread,b.minX-a.maxX >= h*0.2,
+              let tokenRange = block.text.range(of:token),
+              let range = block.text.range(of:second.text,range:tokenRange.upperBound..<block.text.endIndex) else { return (nil,block) }
+        let rest = Array(words.dropFirst())
+        let box = rest.map { CGRect(x:$0.x,y:$0.y,width:$0.width,height:$0.height) }.reduce(CGRect.null) { $0.union($1) }
+        let body = TextBlock(text:String(block.text[range.lowerBound...]).trimmingCharacters(in:.whitespacesAndNewlines),
+                             x:box.minX,y:box.minY,width:box.width,height:box.height,words:rest,confidence:block.confidence)
+        let marker = TextBlock(text:token,x:first.x,y:first.y,width:first.width,height:first.height,words:[first],confidence:block.confidence)
+        return (marker,body)
     }
     /// Only join aligned continuation lines. Buttons, headings, columns and ruled cells remain separate.
     static func group(_ input:[TextBlock],raster:TranslationRaster) -> [TranslationRegion] {
-        let blocks = input.flatMap { splitColumns($0,raster:raster) }
+        var blocks:[TextBlock] = [],markers:[TextBlock] = [],itemStarts:[TextBlock] = []
+        for block in input.flatMap({ splitColumns($0,raster:raster) }) {
+            let split = splitMarker(block,raster:raster)
+            if let marker = split.marker { markers.append(marker);itemStarts.append(split.body) }
+            blocks.append(split.body)
+        }
+        let obstacles = blocks+markers
         var groups:[[TextBlock]] = []
         for block in blocks.sorted(by:{ $0.y == $1.y ? $0.x < $1.x : $0.y < $1.y }) {
             let current = raster.pixelBox(CGRect(x:block.x,y:block.y,width:block.width,height:block.height))
@@ -192,10 +221,11 @@ enum TranslationParagraphs {
                       sameScript(last.text,block.text),
                       !last.text.trimmingCharacters(in:.whitespaces).hasSuffix(":"),
                       !last.text.trimmingCharacters(in:.whitespaces).hasSuffix("."),
+                      !itemStarts.contains(block),
                       block.text.range(of:"^[•●■①②③④⑤]|^[0-9]+[.)]\\s",options:.regularExpression) == nil else { return false }
                 let union = previous.union(current)
                 // Never merge around another column/cell/label.
-                guard !blocks.contains(where:{ other in
+                guard !obstacles.contains(where:{ other in
                     if other == last || other == block { return false }
                     let b = raster.pixelBox(CGRect(x:other.x,y:other.y,width:other.width,height:other.height))
                     let overlap = b.intersection(union)
@@ -206,10 +236,17 @@ enum TranslationParagraphs {
             }
             if let index { groups[index].append(block) } else { groups.append([block]) }
         }
-        return groups.enumerated().map { id,lines in
+        var regions = groups.enumerated().map { id,lines -> TranslationRegion in
             let boxes = lines.map { CGRect(x:$0.x,y:$0.y,width:$0.width,height:$0.height) }
             let union = boxes.dropFirst().reduce(boxes[0]) { $0.union($1) }
-            return TranslationRegion(id:id,source:lines.map(\.text).joined(separator:" "),box:union,sourceBoxes:boxes)
-        }.sorted { $0.box.minY == $1.box.minY ? $0.box.minX < $1.box.minX : $0.box.minY < $1.box.minY }
+            return TranslationRegion(id:id,source:lines.map(\.text).joined(separator:" "),box:union,sourceBoxes:boxes,
+                                     confidence:lines.compactMap(\.confidence).min() ?? 1)
+        }
+        for marker in markers {
+            regions.append(TranslationRegion(id:regions.count,source:marker.text,
+                                             box:CGRect(x:marker.x,y:marker.y,width:marker.width,height:marker.height),
+                                             keepOriginal:true,isMarker:true))
+        }
+        return regions.sorted { $0.box.minY == $1.box.minY ? $0.box.minX < $1.box.minX : $0.box.minY < $1.box.minY }
     }
 }

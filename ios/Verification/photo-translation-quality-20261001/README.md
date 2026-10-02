@@ -21,3 +21,20 @@ This task changes photo translation only: selected-language OCR (plus target-scr
 - Separate concurrent edits were detected in DocumentProcessing, PDFExport and PageThumbnailCache; this task did not write or revert them. See scope-check.json.
 
 Results: `/tmp/translation-quality-final.xcresult`. 15 passing tests, one explicit model-availability skip. Device log included.
+
+## 2026-10-01 — fixes from "1-Partially translated document 2.pdf" (not yet built or run)
+
+Observed: garbled OCR of small/gray print ("Bark up your cutter…"), screenshot labels turned into invented sentences
+("저는 니나가 죽는 것을…"), list items split line by line ("…PC POST 프로세 / 스)."), headings mistranslated
+("Restore" → "되돌리다"), circled numerals read as I/Q/@/1, Korean wrapped mid-word.
+
+Changes:
+- OCR runs on the geometry/illumination-corrected image before the paper-white tone curve and sharpening (`TranslationScan.reading`).
+- `TextBlock.confidence` is carried into `TranslationRegion.confidence`. `TranslationQuality.review` keeps tiny (<11 px or <45% of body),
+  low-confidence (<0.5) or misspelled (≥1/3 of ordinary words, UITextChecker) areas in the original (`unclear`), shown as a count;
+  the user can still translate them in Review.
+- `TranslationParagraphs.splitMarker`: leading •/①/"1." — or a square single glyph I/l/Q/@/O/digit followed by a gap — stays as pixels
+  (`isMarker`, not in the text layer); item text starts after it, so indented continuation lines join the item.
+- `TranslationGlossary` (en→ko exact whole-area matches) for headings/UI labels: Backup→백업, Restore→복원, Password→비밀번호, …
+- Korean translations wrap between words (U+2060 joiners during layout only; removed from the PDF text layer).
+Tests added in PhotoTranslationTests (marker/indent grouping, pronoun "I", unclear text, glossary, Korean wrapping).

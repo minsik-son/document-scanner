@@ -45,7 +45,7 @@ struct PhotoTranslationView: View {
                 HStack {
                     if !ready { Button { crop = true } label: { Label("Crop",systemImage:"crop") } }
                     Spacer()
-                    Button { reviewIssuesOnly = false;editAreas = true } label: { Label("Review \(scan.regions.count) text areas",systemImage:"text.viewfinder") }
+                    Button { reviewIssuesOnly = false;editAreas = true } label: { Label("Review \(scan.regions.filter { !$0.isMarker }.count) text areas",systemImage:"text.viewfinder") }
                         .accessibilityIdentifier("translation-edit-areas")
                 }.font(.subheadline)
                 if let composition {
@@ -68,6 +68,10 @@ struct PhotoTranslationView: View {
                             .background(Color.orange.opacity(0.08),in:RoundedRectangle(cornerRadius:16))
                     }
                     if composition.kept > 0 { Text("\(composition.kept) kept by you").font(.footnote).foregroundStyle(.secondary) }
+                    if composition.unclear > 0 {
+                        Text("\(composition.unclear) small or unclear areas stayed in the original language, so no guessed translation was added. To translate one anyway, open Review and turn off Keep original.")
+                            .font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("translation-unclear")
+                    }
                     if composition.unchanged > 0 { Text("\(composition.unchanged) translations match the original. Check names, numbers and any text still in the source language.").font(.footnote).foregroundStyle(.secondary) }
                     ShareLink(item:translationText) { Label("Share translation text",systemImage:"text.page") }
                         .accessibilityIdentifier("translation-share-text")
@@ -121,6 +125,7 @@ struct PhotoTranslationView: View {
             .sheet(isPresented:$sharing) { if let files { ShareSheet(items:files.urls) } }
             .onChange(of:from) { _,_ in rereadSourceLanguage() }
             .onChange(of:to) { _,_ in rereadSourceLanguage() }
+            .onAppear { if !scan.clarityChecked { scan = TranslationQuality.checked(scan,language:scan.recognitionLanguage ?? from) } }
             .task {
                 let supported = await LanguageAvailability().supportedLanguages.map(\.minimalIdentifier)
                 languages = Array(Set(supported+[from,to])).sorted()
@@ -128,7 +133,7 @@ struct PhotoTranslationView: View {
             .onDisappear { if !zoom && !sharing && !crop && !editAreas { job?.cancel(); if let files { ExportFiles.remove(files.directory) } } }
     }
     private var translationText:String {
-        scan.regions.map { region in
+        scan.regions.filter { !$0.isMarker }.map { region in
             if region.keepOriginal { return "[Original kept] " + region.source }
             if region.target.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty { return "[Translation missing] " + region.source }
             return region.target
@@ -141,19 +146,21 @@ struct PhotoTranslationView: View {
         busy = true;error = nil;phase = "Preparing scan…";let source = scan.original,language = from,target = to
         job = Task { defer { busy = false }; do {
             let prepared = try await OfflineWork.perform { try PhotoTranslation.scan(source,crop:quad,sourceLanguage:language,targetLanguage:target) }
-            try Task.checkCancellation();scan = prepared;invalidate()
+            try Task.checkCancellation();scan = TranslationQuality.checked(prepared,language:language);invalidate()
         } catch { report(error) } }
     }
     private func rereadSourceLanguage() {
         clearTranslations();busy = true;phase = "Reading the source language…"
-        let image = scan.image,language = from,target = to
+        let image = scan.reading ?? scan.image,language = from,target = to
         job = Task { defer { busy = false };do {
             let regions = try await OfflineWork.perform {
                 guard let cg = image.cgImage else { throw ScannerError.message("The scan couldn't be read.") }
                 let blocks = try PhotoTranslationRecognition.recognize(cg,language:language,secondaryLanguage:target)
                 return TranslationParagraphs.group(blocks,raster:try TranslationRaster(cg))
             }
-            try Task.checkCancellation();scan.regions = regions;scan.recognitionLanguage = language
+            try Task.checkCancellation()
+            scan.regions = TranslationQuality.review(regions,language:language,imageHeight:image.size.height*image.scale)
+            scan.recognitionLanguage = language;scan.clarityChecked = true
         } catch { report(error) } }
     }
     private func translate() {
@@ -164,7 +171,10 @@ struct PhotoTranslationView: View {
                 throw ScannerError.message("Read this page in the selected source language before translating. Select the source language again or adjust the crop to retry.")
             }
             var translated = regions
-            let pending = regions.indices.filter { !regions[$0].keepOriginal && regions[$0].target.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty }
+            var pending = regions.indices.filter { !regions[$0].keepOriginal && regions[$0].target.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty }
+            // Headings and interface labels with a fixed meaning are filled from the glossary.
+            for i in pending { if let fixed = TranslationGlossary.target(for:regions[i].source,from:source,to:target) { translated[i].target = fixed } }
+            pending = pending.filter { translated[$0].target.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty }
             if !pending.isEmpty {
                 guard pending.reduce(0,{ $0+regions[$1].source.count }) <= 20000 else { throw ScannerError.message("Use a smaller section with up to 20,000 characters.") }
                 if source == target { for i in pending { translated[i].target = regions[i].source } }
@@ -226,7 +236,7 @@ private struct TranslationAreasEditor: View {
     let apply:([TranslationRegion])->Void
     @State private var selected = 0
     @State var issuesOnly:Bool = false
-    private var indices:[Int] { regions.indices.filter { !issuesOnly || issues[regions[$0].id] != nil } }
+    private var indices:[Int] { regions.indices.filter { !regions[$0].isMarker && (!issuesOnly || issues[regions[$0].id] != nil) } }
     private var snippet:UIImage? {
         guard regions.indices.contains(selected),let cg = image.cgImage else { return nil }
         let b = regions[selected].box
@@ -258,6 +268,10 @@ private struct TranslationAreasEditor: View {
                         Button("Copy translation") { UIPasteboard.general.string = regions[selected].target }
                             .disabled(regions[selected].target.isEmpty).accessibilityIdentifier("translation-copy-area")
                         Toggle("Keep original in this area",isOn:$regions[selected].keepOriginal)
+                        if regions[selected].unclear {
+                            Text("This text was small or hard to read, so it was kept in the original. Check the recognized text above before translating it.")
+                                .font(.footnote).foregroundStyle(.secondary)
+                        }
                         if let issue = issues[regions[selected].id] { Text(issue).font(.footnote).foregroundStyle(.orange) }
                     }
                 } else { Text("No text areas found. Return to the scan and adjust its crop.") }

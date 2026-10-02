@@ -9,6 +9,11 @@ struct TranslationRegion: Identifiable {
     var box: CGRect // Normalized, top-left origin on the corrected scan.
     var keepOriginal = false
     var sourceBoxes: [CGRect] = [] // Original line boxes, preserved when a paragraph is grouped.
+    /// Small, low-confidence or misspelled reading, kept in the original unless the user opts in.
+    var unclear = false
+    /// A list marker (•, ①, "1.") left as photographed pixels; never translated.
+    var isMarker = false
+    var confidence: Float = 1
 }
 struct TranslationScan {
     let original: UIImage
@@ -18,6 +23,10 @@ struct TranslationScan {
     var regions: [TranslationRegion]
     var notice: String? = nil
     var recognitionLanguage: String? = nil
+    /// Same geometry as `image`, before the paper-white tone curve and ink sharpening.
+    /// Small gray print survives here, so text is recognized from this image.
+    var reading: UIImage? = nil
+    var clarityChecked = false
 }
 struct TranslationComposition {
     let image: UIImage
@@ -27,6 +36,7 @@ struct TranslationComposition {
     var reasons: [Int: TranslationIssue] = [:]
     var kept = 0
     var unchanged = 0
+    var unclear = 0
 }
 enum TranslationIssue: String, CaseIterable {
     case missing = "Translation missing"
@@ -54,15 +64,21 @@ enum PhotoTranslation {
         }
         let detected = explicitCrop ?? Imaging.detect(original)
         let crop = detected ?? .full
-        let prepared = try DocumentProcessing.render(CIImage(cgImage:cg),crop:crop,turns:0,enhancement:.document)
-        guard let output = DocumentProcessing.context.createCGImage(prepared,from:prepared.extent) else {
+        // Geometry and illumination first; the paper-white tone curve and ink
+        // sharpening are applied only to the page that is shown and rebuilt.
+        // Recognizing text before that step keeps small, light-gray print legible.
+        let base = try DocumentProcessing.prepare(CIImage(cgImage:cg),crop:crop,turns:0,enhancement:.document)
+        let finished = try DocumentProcessing.finish(base)
+        guard let output = DocumentProcessing.context.createCGImage(finished,from:finished.extent),
+              let reading = DocumentProcessing.context.createCGImage(base.image,from:finished.extent) else {
             throw ScannerError.message("The scan couldn't be prepared. Retake the photo.")
         }
         try Task.checkCancellation()
-        let blocks = try PhotoTranslationRecognition.recognize(output,language:sourceLanguage,secondaryLanguage:targetLanguage)
+        let blocks = try PhotoTranslationRecognition.recognize(reading,language:sourceLanguage,secondaryLanguage:targetLanguage)
         guard blocks.count <= 400 else { throw ScannerError.message("This page has too many text areas. Crop to a smaller section.") }
         return TranslationScan(original:original,image:UIImage(cgImage:output),crop:crop,edgesDetected:detected != nil,
-            regions:TranslationParagraphs.group(blocks,raster:try TranslationRaster(output)),recognitionLanguage:sourceLanguage)
+            regions:TranslationParagraphs.group(blocks,raster:try TranslationRaster(reading)),recognitionLanguage:sourceLanguage,
+            reading:UIImage(cgImage:reading))
     }
     private struct Placement { let region:TranslationRegion; let inks:[TranslationRaster.Ink]; let text:NSAttributedString; let rect:CGRect }
     static func compose(_ image:UIImage, regions:[TranslationRegion]) throws -> TranslationComposition {
@@ -72,7 +88,7 @@ enum PhotoTranslation {
         let space = CGColorSpace(name:CGColorSpace.sRGB)!
         let bitmapInfo = CGBitmapInfo.byteOrder32Big.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue
         var placements:[Placement] = [], issues:[Int:String] = [:], reasons:[Int:TranslationIssue] = [:], text:[TextBlock] = []
-        var kept = 0, unchanged = 0
+        var kept = 0, unchanged = 0, unclear = 0
         var boxes:[Int:CGRect] = [:]
         guard Set(regions.map(\.id)).count == regions.count else { throw ScannerError.message("Text areas must have unique identifiers.") }
         for region in regions {
@@ -91,7 +107,10 @@ enum PhotoTranslation {
                 if let reason { reasons[region.id] = reason;issues[region.id] = reason.explanation }
                 text.append(TextBlock(text:region.source,x:region.box.minX,y:region.box.minY,width:region.box.width,height:region.box.height))
             }
-            if region.keepOriginal { kept += 1;retain(nil);continue }
+            // Markers stay as photographed pixels and add nothing to the text layer:
+            // a misread circled numeral ("I", "Q") must not become selectable text.
+            if region.isMarker { continue }
+            if region.keepOriginal { if region.unclear { unclear += 1 } else { kept += 1 };retain(nil);continue }
             if region.target.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty { retain(.missing);continue }
             if region.target == region.source { unchanged += 1;retain(nil);continue }
             guard region.target.count <= 5000 else { retain(.space);continue }
@@ -170,15 +189,23 @@ enum PhotoTranslation {
                     var ascent:CGFloat = 0,descent:CGFloat = 0
                     let width = CTLineGetTypographicBounds(line,&ascent,&descent,nil)
                     let value = (item.text.string as NSString).substring(with:NSRange(location:range.location,length:range.length))
+                        .replacingOccurrences(of:TranslationText.wordJoiner,with:"")
                     text.append(TextBlock(text:value,x:(rect.minX+origins[i].x)/CGFloat(w),y:(rect.maxY-origins[i].y-ascent)/CGFloat(h),width:min(width,rect.width)/CGFloat(w),height:(ascent+descent)/CGFloat(h)))
                 }
             }
         }
         try Task.checkCancellation()
         text.sort { abs($0.y-$1.y) < min($0.height,$1.height)*0.4 ? $0.x < $1.x : $0.y < $1.y }
-        return TranslationComposition(image:composed,text:text,issues:issues,replaced:placements.count,reasons:reasons,kept:kept,unchanged:unchanged)
+        return TranslationComposition(image:composed,text:text,issues:issues,replaced:placements.count,reasons:reasons,kept:kept,unchanged:unchanged,unclear:unclear)
     }
     private static func fit(_ string:String,in size:CGSize,maximum:CGFloat,minimum:CGFloat,color:UIColor) -> NSAttributedString? {
+        // Korean wraps between words ("프로세스)." stays whole). Fall back to the
+        // plain string only when a single word is wider than the available box.
+        let keepWords = TranslationText.keepingHangulWords(string)
+        if keepWords != string, let fitted = fitText(keepWords,in:size,maximum:maximum,minimum:minimum,color:color) { return fitted }
+        return fitText(string,in:size,maximum:maximum,minimum:minimum,color:color)
+    }
+    private static func fitText(_ string:String,in size:CGSize,maximum:CGFloat,minimum:CGFloat,color:UIColor) -> NSAttributedString? {
         func attributed(_ fontSize:CGFloat) -> NSAttributedString {
             let paragraph = NSMutableParagraphStyle();paragraph.alignment = .natural;paragraph.lineBreakMode = .byWordWrapping
             return NSAttributedString(string:string,attributes:[.font:UIFont.systemFont(ofSize:fontSize),.foregroundColor:color,.paragraphStyle:paragraph])
@@ -211,5 +238,90 @@ enum PhotoTranslation {
             }
         }
         return rect
+    }
+}
+
+enum TranslationText {
+    static let wordJoiner = "\u{2060}"
+    /// Core Text may break Korean between any two syllables. Joining the letters of
+    /// each Hangul word keeps line breaks at spaces, as Korean text expects.
+    static func keepingHangulWords(_ text:String) -> String {
+        guard text.unicodeScalars.contains(where:{ (0xAC00...0xD7A3).contains($0.value) }) else { return text }
+        return text.split(separator:" ",omittingEmptySubsequences:false).map { token -> String in
+            guard token.unicodeScalars.contains(where:{ (0xAC00...0xD7A3).contains($0.value) }) else { return String(token) }
+            return token.map { String($0) }.joined(separator:wordJoiner)
+        }.joined(separator:" ")
+    }
+}
+
+/// Text that could not be read reliably is not sent to the translator: a model given
+/// "Ws unive nina daed" returns a fluent but invented sentence. Such areas stay in the
+/// original language, flagged, and the user can still translate them in Review.
+@MainActor
+enum TranslationQuality {
+    static func checked(_ scan:TranslationScan,language:String) -> TranslationScan {
+        var result = scan
+        result.regions = review(scan.regions,language:language,imageHeight:scan.image.size.height*scan.image.scale)
+        result.clarityChecked = true
+        return result
+    }
+    static func review(_ regions:[TranslationRegion],language:String,imageHeight:CGFloat) -> [TranslationRegion] {
+        func lines(_ region:TranslationRegion) -> [CGRect] { region.sourceBoxes.isEmpty ? [region.box] : region.sourceBoxes }
+        let heights = regions.filter { !$0.isMarker }.flatMap { lines($0).map { $0.height*imageHeight } }.sorted()
+        let typical = heights.isEmpty ? 0 : heights[heights.count/2]
+        let checker = UITextChecker()
+        let prefix = language.split(separator:"-").first.map(String.init) ?? language
+        let spelling = UITextChecker.availableLanguages.first { $0 == prefix || $0.hasPrefix(prefix+"_") }
+        return regions.map { region in
+            var r = region
+            guard !r.isMarker,!r.keepOriginal else { return r }
+            let own = lines(r).map { $0.height*imageHeight }.sorted()
+            let lineHeight = own[own.count/2]
+            // Labels inside screenshots and pictures: a few pixels tall and far
+            // smaller than the page's body text.
+            let tiny = lineHeight < 11 || (typical > 0 && lineHeight < typical*0.45 && lineHeight < 16)
+            let garbled = spelling.map { misspelled(r.source,checker:checker,language:$0) } ?? false
+            if r.confidence < 0.5 || tiny || garbled { r.unclear = true;r.keepOriginal = true }
+            return r
+        }
+    }
+    /// True when too many ordinary words are not words. Acronyms (PC, POST), product
+    /// names with inner capitals (WinClon), capitalized names after the first word,
+    /// numbers and other scripts are ignored.
+    static func misspelled(_ text:String,checker:UITextChecker,language:String) -> Bool {
+        var counted = 0,wrong = 0,first = true
+        for token in text.split(whereSeparator:{ !$0.isLetter && $0 != "'" }) {
+            let word = String(token)
+            defer { first = false }
+            guard word.count >= 3,word.unicodeScalars.allSatisfy({ $0.value < 0x0250 }) else { continue }
+            if word == word.uppercased() || word.dropFirst().contains(where:{ $0.isUppercase }) { continue }
+            if !first,word.first?.isUppercase == true { continue }
+            counted += 1
+            let range = checker.rangeOfMisspelledWord(in:word,range:NSRange(location:0,length:(word as NSString).length),
+                                                      startingAt:0,wrap:false,language:language)
+            if range.location != NSNotFound { wrong += 1 }
+        }
+        guard counted > 0 else { return false }
+        return counted <= 2 ? wrong == counted : wrong*3 >= counted
+    }
+}
+
+/// Short headings and interface labels have no sentence context, so a general model
+/// can pick the wrong sense ("Restore" → "되돌리다"). Exact whole-area matches only.
+enum TranslationGlossary {
+    private static let englishKorean: [String:String] = [
+        "backup":"백업","back up":"백업","restore":"복원","recovery":"복구","password":"비밀번호",
+        "confirm":"확인","cancel":"취소","ok":"확인","next":"다음","previous":"이전","back":"뒤로",
+        "settings":"설정","help":"도움말","close":"닫기","yes":"예","no":"아니요","start":"시작",
+        "finish":"완료","done":"완료","delete":"삭제","save":"저장","open":"열기","print":"인쇄",
+        "warning":"경고","caution":"주의","note":"참고","contents":"목차","introduction":"소개",
+        "index":"색인","features":"기능","specifications":"사양","troubleshooting":"문제 해결",
+        "installation":"설치","overview":"개요","appendix":"부록","important":"중요"
+    ]
+    static func target(for source:String,from:String,to:String) -> String? {
+        guard from.hasPrefix("en"),to.hasPrefix("ko") else { return nil }
+        let key = source.trimmingCharacters(in:CharacterSet.letters.inverted)
+            .split(whereSeparator:\.isWhitespace).joined(separator:" ").lowercased()
+        return englishKorean[key]
     }
 }

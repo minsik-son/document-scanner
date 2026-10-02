@@ -50,6 +50,8 @@ struct TextBlock: Codable, Equatable {
     // Word bounds keep selections on the photographed words, including mixed scripts
     // and table columns. Optional so earlier local libraries still decode.
     var words: [TextWord]?
+    // Recognition confidence (0...1) when the reader reported one; not persisted by older builds.
+    var confidence: Float? = nil
 }
 struct TextWord: Codable, Equatable {
     var text: String

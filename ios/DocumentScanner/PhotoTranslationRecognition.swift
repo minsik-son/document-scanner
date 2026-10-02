@@ -41,7 +41,7 @@ enum PhotoTranslationRecognition {
                 }
                 // Word boxes exclude the large margins of slanted whole-line observations.
                 let b = mapped(local)
-                return Reading(block:TextBlock(text:text,x:b.minX,y:b.minY,width:b.width,height:b.height,words:words.isEmpty ? nil : words),confidence:candidate.confidence)
+                return Reading(block:TextBlock(text:text,x:b.minX,y:b.minY,width:b.width,height:b.height,words:words.isEmpty ? nil : words,confidence:candidate.confidence),confidence:candidate.confidence)
             }
         }
         var readings = try read(image,within:CGRect(x:0,y:0,width:1,height:1))

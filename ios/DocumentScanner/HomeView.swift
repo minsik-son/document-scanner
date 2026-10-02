@@ -133,7 +133,7 @@ struct HomeView: View {
             .fullScreenCover(item: $route, onDismiss: {
                 if !importing { store.perform { try store.discardEmptyDrafts() } }
             }) { value in
-                ReviewView(documentID: value.id, captureOnOpen: newCapture, completionAdEnabled: true,
+                ReviewView(documentID: value.id, captureOnOpen: newCapture, completionAdEnabled: false,
                            onCompleted: { showingDocuments = false; query = "" })
             }
             .confirmationDialog("Import pages", isPresented: $importMenu) {
@@ -237,9 +237,9 @@ struct HomeView: View {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: typeSize.isAccessibilitySize ? 2 : 4), spacing: 4) {
                 shortcut("Photos", icon: "import-photo") { photos = true }
                 shortcut("Text", icon: "ocr") { quick = .library(.ocr) }
-                shortcut("Word", icon: "word") { quick = .advanced(.word) }
-                shortcut("Excel", icon: "excel") { quick = .advanced(.excel) }
-                shortcut("Sign", icon: "signature", pro: true) { quick = .library(.annotate) }
+                shortcut("Word", icon: "word", pro: true) { quick = .advanced(.word) }
+                shortcut("Excel", icon: "excel", pro: true) { quick = .advanced(.excel) }
+                shortcut("Sign", icon: "signature") { quick = .library(.annotate) }
                 shortcut("Compress", icon: "compress", pro: true) { quick = .library(.compress) }
                 shortcut("QR code", icon: "qr") { quick = .qr }
                 Button { advanced = true } label: {

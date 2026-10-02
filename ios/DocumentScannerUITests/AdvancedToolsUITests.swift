@@ -11,6 +11,27 @@ final class AdvancedToolsUITests:XCTestCase {
         else { XCTAssertTrue(app.buttons["home-tools"].isHittable);app.buttons["home-tools"].tap() }
         return app
     }
+    @MainActor func testProToolFreeTriesThenUpgrade() {
+        let session = UUID().uuidString
+        func open() -> XCUIApplication {
+            let app = XCUIApplication();app.launchArguments = ["--ui-test-session",session,"--test-pro-gate"];app.launch()
+            app.buttons["home-tools"].tap();XCTAssertTrue(app.buttons["Word export"].waitForExistence(timeout:5));app.buttons["Word export"].tap()
+            return app
+        }
+        var app = open()
+        let tryFree = app.buttons["pro-try-free"]
+        XCTAssertTrue(tryFree.waitForExistence(timeout:5));XCTAssertTrue(tryFree.label.contains("3 left"))
+        let lock = XCTAttachment(screenshot:app.screenshot());lock.name = "Pro tool lock";lock.lifetime = .keepAlways;add(lock)
+        tryFree.tap()
+        XCTAssertFalse(app.buttons["pro-try-free"].waitForExistence(timeout:2))
+        XCTAssertFalse(app.staticTexts["pro-trial-status"].exists)
+        app.terminate()
+        app = open()
+        XCTAssertTrue(app.buttons["pro-try-free"].waitForExistence(timeout:5));XCTAssertTrue(app.buttons["pro-try-free"].label.contains("2 left"))
+        app.buttons["pro-upgrade"].tap()
+        XCTAssertTrue(app.staticTexts["Every page.\nMore possibilities."].waitForExistence(timeout:10))
+        let pay = XCTAttachment(screenshot:app.screenshot());pay.name = "Paywall from tool";pay.lifetime = .keepAlways;add(pay)
+    }
     @MainActor func testHubListsAllToolsAndHonestDeviceRequirements() {
         for populated in [false,true] {
             let home = XCUIApplication();home.launchArguments = ["--ui-test-session",UUID().uuidString]+(populated ? ["--seed-saved"] : []);home.launch()

@@ -135,7 +135,7 @@ final class ScannerFlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["tool-result"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.staticTexts["tool-result"].label.contains("saved"))
         app.buttons["Close"].tap()
-        app.buttons["Tools"].tap(); app.buttons["Sign & annotate · PRO"].tap()
+        app.buttons["Tools"].tap(); app.buttons["Sign & annotate"].tap()
         XCTAssertTrue(app.buttons["Add text box"].waitForExistence(timeout: 10))
         app.buttons["Add text box"].tap()
         let field = app.descendants(matching: .any)["annotation-text"].firstMatch

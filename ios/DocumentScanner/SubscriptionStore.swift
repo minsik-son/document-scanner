@@ -6,6 +6,9 @@ import Combine
 final class SubscriptionStore: ObservableObject {
     static let monthlyID = "com.documentscanner.pro.monthly"
     static let yearlyID = "com.documentscanner.pro.yearly"
+    /// One-time purchase that unlocks Pro permanently (non-consumable).
+    static let lifetimeID = "com.documentscanner.pro.lifetime"
+    static let productIDs = [yearlyID, monthlyID, lifetimeID]
     static func annualSavingsPercent(yearly: Decimal, monthly: Decimal) -> Int? {
         guard monthly > 0, yearly >= 0, yearly < monthly * 12 else { return nil }
         var percent = (Decimal(1) - yearly / (monthly * 12)) * 100
@@ -22,6 +25,7 @@ final class SubscriptionStore: ObservableObject {
     @Published private(set) var busy = false
     @Published private(set) var statusText = "Free"
     @Published private(set) var expiresAt: Date?
+    @Published private(set) var lifetime = false
     @Published var message: String?
     private var listener: Task<Void, Never>?
     private var expiryRefresh: Task<Void, Never>?
@@ -48,15 +52,20 @@ final class SubscriptionStore: ObservableObject {
         }
     }
     func load() async {
-        do { products = try await Product.products(for: [Self.monthlyID, Self.yearlyID]) }
+        do { products = try await Product.products(for: Self.productIDs) }
         catch { message = "Plans couldn't be loaded. Connect to the internet and try again." }
     }
     func refreshEntitlements() async {
         refreshGeneration += 1
         let generation = refreshGeneration
         var active = false
+        var owned = false
         var nextExpiry: Date?
         for await result in Transaction.currentEntitlements {
+            if case .verified(let transaction) = result, transaction.productID == Self.lifetimeID,
+               transaction.productType == .nonConsumable, transaction.revocationDate == nil {
+                owned = true; continue
+            }
             guard case .verified(let transaction) = result,
                   [Self.monthlyID, Self.yearlyID].contains(transaction.productID),
                   transaction.revocationDate == nil, !transaction.isUpgraded,
@@ -82,7 +91,9 @@ final class SubscriptionStore: ObservableObject {
             } catch { if active { status = "Pro is active through the last verified paid period. Subscription status could not be refreshed." } }
         }
         guard generation == refreshGeneration else { return }
+        if owned { active = true; nextExpiry = nil; status = "Pro is unlocked for life" }
         statusText = status; expiresAt = nextExpiry
+        lifetime = owned
         isPro = active
         entitlementsResolved = true
         expiryRefresh?.cancel()
@@ -109,7 +120,62 @@ final class SubscriptionStore: ObservableObject {
     }
     func restore() async {
         busy = true; message = nil; defer { busy = false }
-        do { try await AppStore.sync(); await refreshEntitlements(); message = isPro ? "Your subscription is restored." : "No active subscription was found. Existing documents are still available." }
+        do { try await AppStore.sync(); await refreshEntitlements(); message = isPro ? "Your purchase is restored." : "No active subscription or lifetime purchase was found. Existing documents are still available." }
         catch { message = error.localizedDescription }
     }
 }
+
+/// Families of Pro tools that free users can try a few times before upgrading.
+enum ProFeature: String, CaseIterable {
+    case office, translate, image
+    var title: String {
+        switch self {
+        case .office: return "Office export"
+        case .translate: return "Photo translation"
+        case .image: return "Photo tools"
+        }
+    }
+}
+
+extension AdvancedTool {
+    /// Pro family for gated advanced tools; nil means always free.
+    var proFeature: ProFeature? {
+        switch self {
+        case .word, .excel, .slides, .math: return .office
+        case .translate: return .translate
+        case .book, .portrait, .erase, .marks, .restore, .mega: return .image
+        case .count, .measure, .mesh: return nil
+        }
+    }
+    var pro: Bool { proFeature != nil }
+}
+
+/// Counts free tries of Pro tools on this device. UI tests get their own
+/// session-scoped counters and skip the gate unless `--test-pro-gate` is passed.
+struct ProTrials {
+    static let limit = 3
+    let defaults: UserDefaults
+    let bypassed: Bool
+    private let prefix: String
+    init(defaults: UserDefaults = .standard, arguments: [String] = ProcessInfo.processInfo.arguments) {
+        self.defaults = defaults
+        var prefix = "pro-trial."
+        var bypassed = false
+        #if DEBUG
+        if let i = arguments.firstIndex(of: "--ui-test-session") {
+            bypassed = !arguments.contains("--test-pro-gate")
+            if i + 1 < arguments.count { prefix += arguments[i + 1] + "." }
+        }
+        #endif
+        self.prefix = prefix; self.bypassed = bypassed
+    }
+    func used(_ feature: ProFeature) -> Int { defaults.integer(forKey: prefix + feature.rawValue) }
+    func remaining(_ feature: ProFeature) -> Int { max(0, Self.limit - used(feature)) }
+    /// Uses one free try. Returns false when none are left.
+    @discardableResult func consume(_ feature: ProFeature) -> Bool {
+        guard remaining(feature) > 0 else { return false }
+        defaults.set(used(feature) + 1, forKey: prefix + feature.rawValue)
+        return true
+    }
+}
+

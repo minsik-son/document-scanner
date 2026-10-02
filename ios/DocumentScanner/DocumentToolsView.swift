@@ -17,13 +17,18 @@ enum DocumentTool: String, Identifiable, CaseIterable {
   case print = "Print"
   var localTool: Bool { [.watermark, .timestamp, .identity, .longImage].contains(self) }
   var id: String { rawValue }
-  var pro: Bool { self != .offline && self != .images && self != .print && self != .identity }
+  /// Signing (signature only) and merging two documents are free; the full
+  /// editors are unlocked inside each tool.
+  var pro: Bool { ![.offline, .images, .print, .identity, .annotate, .merge].contains(self) }
+  static let freeMergeDocuments = 1
 }
 struct DocumentToolsView: View {
   @EnvironmentObject var store: LibraryStore
+  @EnvironmentObject var subscription: SubscriptionStore
   @Environment(\.dismiss) private var dismiss
   let documentID: UUID
   let tool: DocumentTool
+  @State private var paywall = false
   @State private var range = ""
   @State private var splitAfter = "1"
   @State private var selected: [UUID] = []
@@ -52,7 +57,15 @@ struct DocumentToolsView: View {
               }.onMove { selected.move(fromOffsets: $0, toOffset: $1) }
               ForEach(store.active.filter { $0.id != documentID && !selected.contains($0.id) }) {
                 other in
-                Button(other.title) { selected.append(other.id) }
+                Button(other.title) {
+                  if subscription.isPro || selected.count < DocumentTool.freeMergeDocuments {
+                    selected.append(other.id)
+                  } else { paywall = true }
+                }
+              }
+              if !subscription.isPro {
+                Text("Free: merge 2 documents. Pro: merge any number.").font(.caption)
+                  .accessibilityIdentifier("merge-free-limit")
               }
               if !selected.isEmpty { Button("Clear selection") { selected = [] } }
               Text("The open document comes first. Originals are kept.").font(.caption)
@@ -124,6 +137,7 @@ struct DocumentToolsView: View {
           if tool == .merge { ToolbarItem(placement: .topBarTrailing) { EditButton() } }
         }
         .interactiveDismissDisabled(busy)
+        .sheet(isPresented: $paywall) { PaywallView() }
         .sheet(item: $share, onDismiss: { ExportFiles.cleanExpired() }) { files in
           ShareSheet(items: files.urls, completion: { _, _ in ExportFiles.remove(files.directory) })
         }

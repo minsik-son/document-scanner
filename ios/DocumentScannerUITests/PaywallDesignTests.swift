@@ -18,6 +18,10 @@ final class PaywallDesignTests: XCTestCase {
         XCTAssertTrue(subscribe.label.contains("29.99"));XCTAssertTrue(subscribe.label.contains("year"))
         monthly.tap();XCTAssertTrue(subscribe.label.contains("4.99"));XCTAssertTrue(subscribe.label.contains("month"))
         capture(app, "Pro monthly plan")
+        let lifetime = app.buttons["plan-lifetime"]
+        for _ in 0..<6 where !lifetime.isHittable { app.swipeUp() }
+        lifetime.tap();XCTAssertTrue(subscribe.label.contains("39.99"));XCTAssertTrue(subscribe.label.contains("Buy once"))
+        capture(app, "Pro lifetime plan")
         yearly.tap();XCTAssertTrue(subscribe.label.contains("29.99"))
         capture(app, "Pro yearly plan")
         XCTAssertTrue(app.buttons["Privacy"].exists);XCTAssertTrue(app.buttons["Restore purchases"].exists)

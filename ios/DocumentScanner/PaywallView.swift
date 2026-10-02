@@ -8,7 +8,11 @@ struct PaywallView: View {
     @State private var selected = SubscriptionStore.yearlyID
     @State private var privacy = false
     private var product: Product? { subscription.products.first { $0.id == selected } }
-    private var plans: [Product] { subscription.products.sorted { $0.id == SubscriptionStore.yearlyID && $1.id != SubscriptionStore.yearlyID } }
+    private var plans: [Product] {
+        subscription.products.sorted {
+            (SubscriptionStore.productIDs.firstIndex(of: $0.id) ?? 99) < (SubscriptionStore.productIDs.firstIndex(of: $1.id) ?? 99)
+        }
+    }
     private var saving: Int? {
         guard let yearly = subscription.products.first(where: { $0.id == SubscriptionStore.yearlyID }),
               let monthly = subscription.products.first(where: { $0.id == SubscriptionStore.monthlyID }), monthly.price > 0 else { return nil }
@@ -25,9 +29,10 @@ struct PaywallView: View {
                         Text("A little less paperwork.\nA lot more room to do your thing.").font(.subheadline).multilineTextAlignment(.center).foregroundStyle(.secondary)
                     }
                     VStack(spacing: 20) {
-                        benefit("Make it yours", subtitle: "Sign, write, highlight and add watermarks.", icon: "signature")
-                        benefit("Get your PDFs in order", subtitle: "Merge, split, extract and compress pages.", icon: "doc.on.doc")
-                        benefit("Work without interruptions", subtitle: "No ads. Password-protected PDF exports.", icon: "checkmark.shield")
+                        benefit("Turn scans into Office files", subtitle: "Editable Word, Excel and PowerPoint exports.", icon: "doc.richtext")
+                        benefit("Translate what you photograph", subtitle: "Keeps the page layout, on device.", icon: "character.bubble")
+                        benefit("Finish the whole job", subtitle: "Passwords, compression, full-document text, edit and mark up PDFs.", icon: "lock.doc")
+                        benefit("No ads", subtitle: "Pro never loads advertisements.", icon: "checkmark.shield")
                     }.padding(22).background(.white, in: RoundedRectangle(cornerRadius: 26))
                     VStack(spacing: 12) {
                         if plans.isEmpty {
@@ -37,7 +42,7 @@ struct PaywallView: View {
                             ForEach(plans) { plan in planCard(plan) }
                         }
                     }
-                    Text("Scanning and selectable PDF text are free.\nYour existing documents stay yours, even after Pro ends.")
+                    Text("Scanning, selectable PDF text and signing are free.\nYour existing documents stay yours, even after Pro ends.")
                         .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
                     if typeSize.isAccessibilitySize { purchaseFooter }
                 }.padding(.horizontal, 24).padding(.top, 8).padding(.bottom, 24)
@@ -86,23 +91,25 @@ struct PaywallView: View {
     }
     private func planCard(_ plan: Product) -> some View {
         let annual = plan.id == SubscriptionStore.yearlyID
+        let lifetime = plan.id == SubscriptionStore.lifetimeID
         let active = selected == plan.id
         return Button { selected = plan.id } label: {
             HStack(spacing: 14) {
                 Image(systemName: active ? "largecircle.fill.circle" : "circle").font(.title3).foregroundStyle(active ? Design.blue : .secondary)
                 VStack(alignment: .leading, spacing: 7) {
                     HStack {
-                        Text(annual ? "Yearly" : "Monthly").font(.subheadline.weight(.semibold))
+                        Text(lifetime ? "Lifetime" : annual ? "Yearly" : "Monthly").font(.subheadline.weight(.semibold))
                         if annual, let saving { Text("SAVE \(saving)%").font(.system(.caption2, weight: .bold)).foregroundStyle(Design.blueInk).padding(.horizontal, 8).padding(.vertical, 4).background(Design.pastelBlue, in: Capsule()) }
                     }
-                    Text("\(plan.displayPrice) / \(annual ? "year" : "month")").font(.title3.bold())
+                    Text(lifetime ? "\(plan.displayPrice) once" : "\(plan.displayPrice) / \(annual ? "year" : "month")").font(.title3.bold())
+                    if lifetime { Text("One-time purchase. No subscription.").font(.caption).foregroundStyle(.secondary) }
                     if annual { Text("\((plan.price / 12).formatted(plan.priceFormatStyle)) / month, billed yearly").font(.caption).foregroundStyle(.secondary) }
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }.padding(18).foregroundStyle(Design.ink)
                 .background(active ? Design.softBlue : .white, in: RoundedRectangle(cornerRadius: 22))
                 .overlay(RoundedRectangle(cornerRadius: 22).stroke(active ? Design.blue : .clear, lineWidth: 1.5))
         }.buttonStyle(.plain).disabled(subscription.busy)
-            .accessibilityIdentifier(annual ? "plan-yearly" : "plan-monthly").accessibilityAddTraits(active ? .isSelected : [])
+            .accessibilityIdentifier(lifetime ? "plan-lifetime" : annual ? "plan-yearly" : "plan-monthly").accessibilityAddTraits(active ? .isSelected : [])
     }
     private var purchaseFooter: some View {
         VStack(spacing: 12) {
@@ -110,9 +117,12 @@ struct PaywallView: View {
             if let product {
                 Button { Task { await subscription.purchase(product) } } label: {
                     if subscription.busy { ProgressView().tint(Design.blueInk).frame(maxWidth: .infinity) }
+                    else if product.id == SubscriptionStore.lifetimeID { Text("Buy once for \(product.displayPrice)") }
                     else { Text("Subscribe for \(product.displayPrice)/\(product.id == SubscriptionStore.yearlyID ? "year" : "month")") }
                 }.buttonStyle(PrimaryButton()).disabled(subscription.busy).accessibilityIdentifier("subscribe-button")
-                Text("Auto-renews until canceled. Payment is charged to your Apple Account. Cancel at least 24 hours before renewal in App Store account settings.")
+                Text(product.id == SubscriptionStore.lifetimeID
+                     ? "One-time payment charged to your Apple Account. Pro stays unlocked; restore it on your other devices with Restore purchases."
+                     : "Auto-renews until canceled. Payment is charged to your Apple Account. Cancel at least 24 hours before renewal in App Store account settings.")
                     .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             }
             HStack(spacing: 24) {
@@ -130,11 +140,11 @@ struct PrivacyView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     Text("Your documents stay with you").font(.title.bold())
                     Text("This build stores your scans and recognized text in the app on this iPhone. Camera processing and text recognition happen on device. There is no developer-operated document server or account system.")
-                    Text("The free version can show Google AdMob advertisements on Home and after a saved document is finished. The first completed document has no full-screen ad. Later opportunities occur every three completed document tasks, at least 10 minutes apart and at most twice per day. Ads never delay saving, and unavailable ads are skipped. Pro users do not load or display advertisements. This development build uses official test advertisements only; release-build advertising is disabled pending live setup.")
+                    Text("The free version can show a Google AdMob advertisement on Home. There are no full-screen advertisements, and ads never delay scanning or saving. Unavailable ads are skipped. Pro users do not load or display advertisements. This development build uses official test advertisements only; release-build advertising is disabled pending live setup.")
                     Text("The app does not send your scanned pages, document names, or recognized text to the advertising SDK. Google may process device, network and ad-interaction information to serve advertisements. Scanning and PDF creation remain available offline.")
                     Link("Google advertising privacy information", destination: URL(string: "https://policies.google.com/technologies/ads")!)
                     Text("Sharing sends only the items you select to the app or destination you choose. Exported backups are not encrypted. Files saved outside this app are controlled by that destination.")
-                    Text("Apple processes subscription payments. The app uses Apple's verified purchase records to check Pro access. Device backups may include app data according to your iPhone backup settings.")
+                    Text("Apple processes subscription and one-time payments. The app uses Apple's verified purchase records to check Pro access. Device backups may include app data according to your iPhone backup settings.")
                     Text("To remove local documents, move them to Trash and permanently delete them. Copies you previously exported must be removed separately.")
                     Text("Development preview: a published privacy policy and developer contact must be supplied before App Store distribution.").font(.footnote).foregroundStyle(.secondary)
                 }.padding(24)

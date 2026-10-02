@@ -101,7 +101,7 @@ struct AdvancedOfflineHub: View {
                         NavigationLink {
                             if tool == .measure || tool == .mesh { SpatialToolsView(mesh: tool == .mesh) }
                             else { AdvancedOfflineToolView(tool: tool, documentID: documentID) }
-                        } label: { ToolTile(title: tool.rawValue, icon: tool.icon) }.accessibilityLabel(tool.rawValue)
+                        } label: { ToolTile(title: tool.rawValue, icon: tool.icon, pro: tool.pro) }.accessibilityLabel(tool.rawValue)
                     }
                 }
             }.padding(20).background(.white, in: RoundedRectangle(cornerRadius: 26))
@@ -130,7 +130,55 @@ struct AdvancedOfflineHub: View {
         }
     }
 }
+/// Entry point for advanced tools. Pro tools show a lock screen with a few
+/// free tries before the actual tool opens.
 struct AdvancedOfflineToolView:View {
+    @EnvironmentObject private var subscription:SubscriptionStore
+    let tool:AdvancedTool
+    var documentID:UUID?
+    @State private var unlocked = false
+    @State private var paywall = false
+    @State private var trials = ProTrials()
+    var body:some View {
+        if let feature = tool.proFeature, !subscription.isPro, !unlocked, !trials.bypassed {
+            ProToolLockView(tool:tool, feature:feature, remaining:trials.remaining(feature),
+                            tryFree:{ if trials.consume(feature) { unlocked = true } },
+                            upgrade:{ paywall = true })
+                .sheet(isPresented:$paywall) { PaywallView() }
+        } else {
+            AdvancedOfflineToolContent(tool:tool, documentID:documentID)
+        }
+    }
+}
+struct ProToolLockView:View {
+    let tool:AdvancedTool
+    let feature:ProFeature
+    let remaining:Int
+    let tryFree:() -> Void
+    let upgrade:() -> Void
+    var body:some View {
+        ScrollView {
+            VStack(spacing:18) {
+                ToolArtwork(name:tool.icon, size:96).padding(.top, 32)
+                Text(tool.rawValue).font(.title2.bold()).foregroundStyle(Design.ink)
+                Text("PRO").font(.caption.weight(.bold)).foregroundStyle(Design.blue)
+                Text(tool.detail).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                Text(remaining > 0
+                     ? "\(feature.title) is part of Pro. You have \(remaining) free \(remaining == 1 ? "try" : "tries") left on this iPhone."
+                     : "You've used your free tries of \(feature.title.lowercased()). Upgrade to keep using it.")
+                    .font(.subheadline).multilineTextAlignment(.center).foregroundStyle(Design.ink)
+                    .accessibilityIdentifier("pro-trial-status")
+                Button("Upgrade to Pro", action:upgrade).buttonStyle(PrimaryButton())
+                    .accessibilityIdentifier("pro-upgrade")
+                if remaining > 0 {
+                    Button("Try free (\(remaining) left)", action:tryFree).font(.headline)
+                        .accessibilityIdentifier("pro-try-free")
+                }
+            }.padding(24).frame(maxWidth:520).frame(maxWidth:.infinity)
+        }.navigationTitle(tool.rawValue).navigationBarTitleDisplayMode(.inline)
+    }
+}
+struct AdvancedOfflineToolContent:View {
     @EnvironmentObject private var store:LibraryStore
     let tool:AdvancedTool
     var documentID:UUID?

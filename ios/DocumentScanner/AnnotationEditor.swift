@@ -4,6 +4,10 @@ import SwiftUI
 
 struct AnnotationEditor: View {
   @EnvironmentObject var store: LibraryStore
+  @EnvironmentObject var subscription: SubscriptionStore
+  @State private var paywall = false
+  /// Free users can place signatures; text, pen and highlight are Pro.
+  private func allowed(_ kind: AnnotationKind) -> Bool { kind == .signature || subscription.isPro }
   @Environment(\.dismiss) private var dismiss
   let documentID: UUID
   @State private var document: ScanDocument?
@@ -97,6 +101,13 @@ struct AnnotationEditor: View {
             Picker("Tool", selection: $mode) {
               ForEach(AnnotationKind.allCases, id: \.self) { Text($0.rawValue) }
             }.pickerStyle(.segmented)
+              .onChange(of: mode) { old, new in
+                if !allowed(new) { mode = allowed(old) ? old : .signature; paywall = true }
+              }
+            if !subscription.isPro {
+              Text("Signatures are free. Text, pen and highlight are Pro.").font(.caption)
+                .foregroundStyle(.secondary).accessibilityIdentifier("annotate-free-limit")
+            }
             if mode == .text {
               Button("Add text box") {
                 remember()
@@ -112,7 +123,7 @@ struct AnnotationEditor: View {
             ForEach(marks) { item in
               Button {
                 selected = item.id
-                mode = item.kind
+                if allowed(item.kind) { mode = item.kind }
               } label: {
                 HStack {
                   Text(item.kind.rawValue + (item.text.isEmpty ? "" : ": " + item.text)).lineLimit(
@@ -177,6 +188,7 @@ struct AnnotationEditor: View {
           if busy { ProgressView("Saving annotations…").padding().background(.regularMaterial) }
         }
         .interactiveDismissDisabled(busy)
+        .sheet(isPresented: $paywall) { PaywallView() }
         .sheet(isPresented: $signature) {
           SignatureEditor(root: store.root) { item in
             remember()
@@ -185,7 +197,10 @@ struct AnnotationEditor: View {
           }
         }
         .task(id: index) {
-          if document == nil { document = store.document(documentID) }
+          if document == nil {
+            document = store.document(documentID)
+            if !subscription.isPro { mode = .signature }
+          }
           await loadPreview()
         }
     }
@@ -250,6 +265,10 @@ struct AnnotationEditor: View {
 }
 struct SignatureEditor: View {
   @EnvironmentObject var store: LibraryStore
+  @EnvironmentObject var subscription: SubscriptionStore
+  @State private var paywall = false
+  static let freeSavedSignatures = 1
+  private var canSaveMore: Bool { subscription.isPro || saved.count < Self.freeSavedSignatures }
   @Environment(\.dismiss) private var dismiss
   let root: URL
   let apply: (PageAnnotation) -> Void
@@ -305,6 +324,12 @@ struct SignatureEditor: View {
             "Imported images retain their background. Use a transparent signature image for a clean result. This is a handwritten signature, not a certified digital signature."
           ).font(.caption)
           Toggle("Save signature for reuse on this iPhone", isOn: $saveReusable)
+            .onChange(of: saveReusable) { _, on in
+              if on && !canSaveMore { saveReusable = false; paywall = true }
+            }
+          if !subscription.isPro {
+            Text("Free: 1 saved signature. Pro: unlimited.").font(.caption).foregroundStyle(.secondary)
+          }
         }
         if !saved.isEmpty {
           Section("Saved signatures") {
@@ -323,7 +348,7 @@ struct SignatureEditor: View {
           }
         }
         if let error { Text(error).foregroundStyle(.red) }
-      }.navigationTitle("Signature").toolbar {
+      }.navigationTitle("Signature").sheet(isPresented: $paywall) { PaywallView() }.toolbar {
         ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
         ToolbarItem(placement: .confirmationAction) {
           Button("Use signature") {

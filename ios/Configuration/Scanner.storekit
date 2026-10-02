@@ -1,7 +1,23 @@
 {
   "identifier": "A4572AB9-2710-4F76-82C8-1CF287E175E5",
   "nonRenewingSubscriptions": [],
-  "products": [],
+  "products": [
+    {
+      "displayPrice": "39.99",
+      "familyShareable": false,
+      "internalID": "scanner-lifetime",
+      "localizations": [
+        {
+          "description": "Unlock Document Scanner Pro forever with one purchase.",
+          "displayName": "Document Scanner Pro Lifetime",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "com.documentscanner.pro.lifetime",
+      "referenceName": "Pro lifetime",
+      "type": "NonConsumable"
+    }
+  ],
   "settings": {
     "_failTransactionsEnabled": false,
     "_locale": "en_US",

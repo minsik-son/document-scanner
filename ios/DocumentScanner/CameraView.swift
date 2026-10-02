@@ -23,6 +23,8 @@ struct CameraView: View {
     @State private var flash = false
     @State private var shutter = 0
     @State private var importedPhoto: PhotosPickerItem?
+    @State private var autoCaptureHint = false
+    @AppStorage("autoCaptureHintShown") private var autoCaptureHintShown = false
     var body: some View {
         ZStack {
             if let capturedPage {
@@ -114,21 +116,42 @@ struct CameraView: View {
                     Button("Try camera again") { Task { await startCamera() } }
                         .padding(8).background(.white.opacity(0.15), in: Capsule())
                 }
-                HStack(spacing: 28) {
+                if autoCaptureHint {
+                    Text("Hold steady — we'll take the photo when the page is found")
+                        .font(.subheadline.weight(.semibold)).multilineTextAlignment(.center)
+                        .padding(.horizontal, 16).padding(.vertical, 10)
+                        .background(Color.blue.opacity(0.92), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .padding(.horizontal, 24).transition(.opacity.combined(with: .move(edge: .bottom)))
+                        .accessibilityIdentifier("auto-capture-hint")
+                }
+                HStack(spacing: 16) {
                     Button {
                         autoScan.toggle(); camera.setAutoScan(autoScan)
+                        if autoScan && !autoCaptureHintShown {
+                            autoCaptureHintShown = true
+                            withAnimation(.easeOut(duration: 0.2)) { autoCaptureHint = true }
+                            Task {
+                                try? await Task.sleep(nanoseconds: 3_500_000_000)
+                                withAnimation(.easeIn(duration: 0.3)) { autoCaptureHint = false }
+                            }
+                        }
                     } label: {
-                        Text(autoScan ? "Auto on" : "Auto off")
-                            .font(.subheadline.weight(.semibold)).frame(minWidth: 76, minHeight: 44)
-                            .background(autoScan ? Color.blue : Color.white.opacity(0.15), in: Capsule())
+                        HStack(spacing: 5) {
+                            Image(systemName: autoScan ? "checkmark.circle.fill" : "circle.dashed")
+                                .font(.system(size: 14, weight: .bold))
+                            Text("Auto-capture").lineLimit(1).fixedSize()
+                        }
+                        .font(.subheadline.weight(.semibold)).padding(.horizontal, 12).frame(minHeight: 44)
+                        .background(autoScan ? Color.blue : Color.white.opacity(0.15), in: Capsule())
                     }.accessibilityLabel("Automatic capture")
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityValue(autoScan ? "On" : "Off")
                     Button(action: capturePage) {
                         Circle().fill(.white).frame(width: 72, height: 72)
                             .overlay(Circle().stroke(.black, lineWidth: 3).padding(5))
                     }.accessibilityLabel("Capture page").disabled(saving || cardComplete || (!camera.ready && !testCamera))
-                    Color.clear.frame(width: 76, height: 44).accessibilityHidden(true)
-                }.padding(.bottom, 24)
+                    Color.clear.frame(maxWidth: .infinity, maxHeight: 44).accessibilityHidden(true)
+                }.padding(.horizontal, 20).padding(.bottom, 24)
             }.foregroundStyle(.white)
         }
     }

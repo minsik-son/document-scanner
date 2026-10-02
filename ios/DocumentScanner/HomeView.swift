@@ -160,7 +160,7 @@ struct HomeView: View {
                 showingDocuments = true
             }
             Button {
-                store.perform { let id = try store.createDraft(); newCapture = true; route = ScanRoute(id: id) }
+                store.perform { let id = try store.createDraft(); newCapture = true; Instant.run { route = ScanRoute(id: id) } }
             } label: {
                 Image(systemName: "camera")
                     .font(.system(size: 28, weight: .bold))
@@ -218,7 +218,7 @@ struct HomeView: View {
                         .foregroundStyle(Design.ink).background(Design.muted, in: Capsule())
                 }.accessibilityIdentifier("hero-import")
                 Button {
-                    store.perform { let id = try store.createDraft(); newCapture = true; route = ScanRoute(id: id) }
+                    store.perform { let id = try store.createDraft(); newCapture = true; Instant.run { route = ScanRoute(id: id) } }
                 } label: {
                     Label("Scan", systemImage: "camera").font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity).padding(.vertical, 14)
                         .foregroundStyle(Design.blueInk).background(Design.pastelBlue, in: Capsule())

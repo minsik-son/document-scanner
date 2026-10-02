@@ -127,7 +127,7 @@ struct AdvancedOfflineHub: View {
         store.perform {
             let id = try store.createDraft()
             if var doc = store.document(id) { doc.captureStyle = style; try store.update(doc) }
-            capture = ScanRoute(id: id)
+            Instant.run { capture = ScanRoute(id: id) }
         }
     }
 }

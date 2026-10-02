@@ -1,5 +1,13 @@
 import SwiftUI
 
+/// Runs a state change without animation, so a full-screen camera appears at once.
+enum Instant {
+    static func run(_ change: () -> Void) {
+        var transaction = Transaction(); transaction.disablesAnimations = true
+        withTransaction(transaction, change)
+    }
+}
+
 struct ReviewView: View {
     @EnvironmentObject var store: LibraryStore
     @Environment(\.dismiss) var dismiss
@@ -23,6 +31,9 @@ struct ReviewView: View {
     }
     @State private var document: ScanDocument?
     @State private var camera = false
+    /// A new scan opens straight into the camera; the review list appears only
+    /// after the first page, never as an empty screen in front of the camera.
+    @State private var cameraFirst = true
     @State private var identityLayout = false
     @State private var editPage: ScanPage?
     @State private var saving = false
@@ -45,7 +56,9 @@ struct ReviewView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if let doc = document {
+                if captureOnOpen && cameraFirst {
+                    Color.black.ignoresSafeArea().toolbar(.hidden, for: .navigationBar)
+                } else if let doc = document {
                     if saved {
                         VStack(spacing: 24) {
                             Image(systemName: "checkmark.circle.fill").font(.system(size: 64)).foregroundStyle(Design.blue)
@@ -132,7 +145,13 @@ struct ReviewView: View {
                 Button("Cancel", role: .cancel) {}
             } message: { Text("Removing the last page moves this document to Trash, where it can be restored.") }
             .interactiveDismissDisabled(saving)
-            .onAppear { if document == nil { document = store.document(documentID); camera = captureOnOpen } }
+            .onAppear {
+                guard document == nil else { return }
+                document = store.document(documentID)
+                if captureOnOpen {
+                    Instant.run { camera = true }
+                }
+            }
             .onAppear {
                 if completionAdEnabled && !startedAdSession {
                     startedAdSession = true; homeAds.beginDocumentTask()
@@ -145,6 +164,12 @@ struct ReviewView: View {
             .fullScreenCover(isPresented: $camera, onDismiss: {
                 if let workingDraftID, let staging = store.document(workingDraftID) { change { $0.pages = staging.pages } }
                 else { document = store.document(documentID) }
+                if captureOnOpen && cameraFirst {
+                    // Closing the camera without a page leaves nothing to review.
+                    if (document?.pages.isEmpty ?? true) {
+                        Instant.run { dismiss() }
+                    } else { cameraFirst = false }
+                }
             }) { CameraView(documentID: workingDraftID ?? documentID, retakingPageID: retakingPage) }
             .sheet(isPresented: $identityLayout) { LocalDocumentToolsView(documentID: documentID, tool: .identity) }
             .sheet(item: $editPage) { page in

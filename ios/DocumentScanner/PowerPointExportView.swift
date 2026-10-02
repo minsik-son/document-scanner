@@ -104,7 +104,7 @@ struct PowerPointExportView: View {
                     }
                 }.ignoresSafeArea()
             }
-            .sheet(isPresented:$preview) { if let url = export?.urls.first { OfficeQuickLook(url:url) } }
+            .fullScreenCover(isPresented:$preview) { if let url = export?.urls.first { OfficeQuickLook(url:url) } }
             .sheet(isPresented:$sharing) { if let export { ShareSheet(items:export.urls) } }
             .task {
                 guard !initialized else { return }; initialized = true
@@ -393,6 +393,8 @@ struct PowerPointExportView: View {
                     }
                 }
                 try Task.checkCancellation(); export = try ExportFiles.write([(excel ? "Tables.xlsx" : "Slides.pptx",data)])
+                // Show the finished file at full size right away, like a scan result.
+                preview = true
             } catch { message = error is CancellationError ? "Canceled. Your selected pages are unchanged." : error.localizedDescription }
         }
     }

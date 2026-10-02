@@ -285,7 +285,7 @@ struct AdvancedOfflineToolContent:View {
                 }
             }
             .sheet(isPresented:$sharing) { if let files { ShareSheet(items:files.urls) } }
-            .sheet(isPresented:$quickLook) { if let url = files?.urls.first { OfficeQuickLook(url:url) } }
+            .fullScreenCover(isPresented:$quickLook) { if let url = files?.urls.first { OfficeQuickLook(url:url) } }
             .fullScreenCover(isPresented:$wordCamera) {
                 WordDocumentCamera { result in
                     wordCamera = false
@@ -711,6 +711,8 @@ struct AdvancedOfflineToolContent:View {
                 };try Task.checkCancellation();files = try ExportFiles.write([result])
                 if tool == .word { wordStep = .ready; message = nil }
                 else { message = "File created on this iPhone. Preview before sharing." }
+                // Show the finished file at full size right away, like a scan result.
+                quickLook = true
                 return
             }
             guard let source else { throw ScannerError.message("Choose a photo or document page first.") }
@@ -935,16 +937,36 @@ private struct WordExportIntroCard: View {
     }
 }
 
+/// Full-screen look at a finished Word, Excel or PowerPoint file: every page
+/// at full size, pinch to zoom, with Share and Done at the top.
 struct OfficeQuickLook:UIViewControllerRepresentable {
     @Environment(\.dismiss) private var dismiss
     let url:URL
     func makeCoordinator() -> Coordinator { Coordinator(url:url,close:{ dismiss() }) }
-    func makeUIViewController(context:Context) -> UINavigationController { let view = QLPreviewController();view.dataSource = context.coordinator;view.navigationItem.rightBarButtonItem = UIBarButtonItem(title:"Done",style:.done,target:context.coordinator,action:#selector(Coordinator.close));return UINavigationController(rootViewController:view) }
+    func makeUIViewController(context:Context) -> UINavigationController {
+        let view = QLPreviewController(); view.dataSource = context.coordinator
+        let done = UIBarButtonItem(title:"Done",style:.done,target:context.coordinator,action:#selector(Coordinator.close))
+        done.accessibilityIdentifier = "office-preview-done"
+        let share = UIBarButtonItem(barButtonSystemItem:.action,target:context.coordinator,action:#selector(Coordinator.share(_:)))
+        share.accessibilityLabel = "Share file"; share.accessibilityIdentifier = "office-preview-share"
+        view.navigationItem.rightBarButtonItem = done
+        view.navigationItem.leftBarButtonItem = share
+        context.coordinator.controller = view
+        let navigation = UINavigationController(rootViewController:view)
+        navigation.modalPresentationStyle = .fullScreen
+        return navigation
+    }
     func updateUIViewController(_ uiViewController:UINavigationController,context:Context) {}
     class Coordinator:NSObject,QLPreviewControllerDataSource {
         let url:URL;let action:()->Void
+        weak var controller:UIViewController?
         init(url:URL,close:@escaping ()->Void) { self.url = url;self.action = close }
         @objc func close() { action() }
+        @objc func share(_ sender:UIBarButtonItem) {
+            let sheet = UIActivityViewController(activityItems:[url],applicationActivities:nil)
+            sheet.popoverPresentationController?.barButtonItem = sender
+            controller?.present(sheet,animated:true)
+        }
         func numberOfPreviewItems(in controller:QLPreviewController) -> Int { 1 }
         func previewController(_ controller:QLPreviewController,previewItemAt index:Int) -> QLPreviewItem { url as NSURL }
     }

@@ -5,6 +5,13 @@ final class AdvancedToolsUITests:XCTestCase {
         let expectation = XCTNSPredicateExpectation(predicate:NSPredicate(format:"exists == true AND enabled == true"),object:button)
         XCTAssertEqual(XCTWaiter.wait(for:[expectation],timeout:30),.completed,file:file,line:line)
     }
+    /// A finished Word, Excel or PowerPoint file opens full screen; close it to continue.
+    @MainActor private func closePreview(_ app:XCUIApplication,file:StaticString = #filePath,line:UInt = #line) {
+        let done = app.buttons["office-preview-done"]
+        XCTAssertTrue(done.waitForExistence(timeout:90),"The finished file opens at full size",file:file,line:line)
+        let shot = XCTAttachment(screenshot:app.screenshot());shot.name = "Office full-size preview";shot.lifetime = .keepAlways;add(shot)
+        done.tap()
+    }
     @MainActor private func launch(document:Bool = false,table:Bool = false) -> XCUIApplication {
         let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString]+(document ? ["--seed-saved"] : [])+(table ? ["--seed-office-table"] : []);app.launch()
         if document { app.buttons["nav-documents"].tap();app.staticTexts["Test document"].tap();XCTAssertTrue(app.buttons["Share PDF"].waitForExistence(timeout:5));app.buttons.matching(NSPredicate(format: "label == %@ AND NOT (identifier IN %@)", "Tools", ["nav-tools", "home-tools"])).firstMatch.tap();app.buttons["More offline tools"].tap();XCTAssertTrue(app.textFields["tool-search"].waitForExistence(timeout:5)) }
@@ -68,7 +75,7 @@ final class AdvancedToolsUITests:XCTestCase {
         app.buttons["word-type-text"].tap()
         XCTAssertFalse(app.buttons["offline-run"].isEnabled)
         editor.tap();editor.typeText("Local document\nOffline export example")
-        app.buttons["offline-run"].tap();ready(app.buttons["word-share"])
+        app.buttons["offline-run"].tap();closePreview(app);ready(app.buttons["word-share"])
         XCTAssertFalse(app.buttons["offline-run"].exists)
         app.buttons["word-preview"].tap()
         XCTAssertTrue(app.navigationBars.buttons["Done"].waitForExistence(timeout:10))
@@ -197,13 +204,13 @@ final class AdvancedToolsUITests:XCTestCase {
         app.buttons["word-type-text"].tap()
         let editor = app.textViews["offline-text"]
         editor.tap();editor.typeText("First version")
-        app.buttons["offline-run"].tap();ready(app.buttons["word-share"])
+        app.buttons["offline-run"].tap();closePreview(app);ready(app.buttons["word-share"])
         app.buttons["word-step-back"].tap()
         XCTAssertFalse(app.buttons["word-share"].exists)
         XCTAssertFalse(app.buttons["word-preview"].exists)
         XCTAssertTrue((editor.value as? String ?? "").contains("First version"))
         editor.tap();editor.typeText(" revised")
-        app.buttons["offline-run"].tap();ready(app.buttons["word-share"])
+        app.buttons["offline-run"].tap();closePreview(app);ready(app.buttons["word-share"])
     }
     @MainActor func testWordPDFExportHasOnePrimaryActionPerStep() {
         let app = launch(document:true);app.buttons["Word export"].tap()
@@ -229,7 +236,7 @@ final class AdvancedToolsUITests:XCTestCase {
         ready(app.buttons["word-extract"])
         XCTAssertFalse(app.buttons["offline-run"].exists)
         app.buttons["word-extract"].tap();ready(app.buttons["offline-run"])
-        app.buttons["offline-run"].tap();ready(app.buttons["word-share"])
+        app.buttons["offline-run"].tap();closePreview(app);ready(app.buttons["word-share"])
         XCTAssertFalse(app.buttons["word-extract"].exists)
         XCTAssertFalse(app.buttons["offline-run"].exists)
         XCTAssertFalse(app.textViews["offline-text"].exists)
@@ -249,7 +256,7 @@ final class AdvancedToolsUITests:XCTestCase {
         let selected = XCTAttachment(screenshot:app.screenshot());selected.name = "PowerPoint selected pages";selected.lifetime = .keepAlways;add(selected)
         app.buttons["ppt-options-1"].tap();app.buttons["Remove slide"].tap()
         XCTAssertFalse(app.staticTexts["ppt-source-2"].exists)
-        app.buttons["office-continue"].tap();app.buttons["ppt-create"].tap();ready(app.buttons["ppt-share"])
+        app.buttons["office-continue"].tap();app.buttons["ppt-create"].tap();closePreview(app);ready(app.buttons["ppt-share"])
         XCTAssertTrue(app.staticTexts["1 slide ready"].exists)
         app.buttons["ppt-preview"].tap()
         XCTAssertTrue(app.navigationBars.buttons["Done"].waitForExistence(timeout:10))
@@ -260,7 +267,7 @@ final class AdvancedToolsUITests:XCTestCase {
         app.buttons["ppt-library-page-2"].tap();app.buttons["ppt-add-pages"].tap()
         ready(app.buttons["office-continue"])
         XCTAssertTrue(app.staticTexts["ppt-source-2"].label.contains("Page 2"))
-        app.buttons["office-continue"].tap();app.buttons["ppt-create"].tap();ready(app.buttons["ppt-share"])
+        app.buttons["office-continue"].tap();app.buttons["ppt-create"].tap();closePreview(app);ready(app.buttons["ppt-share"])
         let result = XCTAttachment(screenshot:app.screenshot());result.name = "PowerPoint ready";result.lifetime = .keepAlways;add(result)
         app.buttons["ppt-share"].tap()
         XCTAssertTrue(app.cells["Copy"].waitForExistence(timeout:10))
@@ -293,7 +300,7 @@ final class AdvancedToolsUITests:XCTestCase {
         app.buttons["excel-cell-save"].tap()
         XCTAssertTrue(cell.label.contains("corrected"))
         let shot = XCTAttachment(screenshot:app.screenshot());shot.name = "Excel review cells";shot.lifetime = .keepAlways;add(shot)
-        app.buttons["ppt-create"].tap();ready(app.buttons["ppt-share"])
+        app.buttons["ppt-create"].tap();closePreview(app);ready(app.buttons["ppt-share"])
         app.buttons["ppt-preview"].tap()
         XCTAssertTrue(app.navigationBars.buttons["Done"].waitForExistence(timeout:15))
         _ = app.staticTexts.containing(NSPredicate(format:"label CONTAINS[c] %@","Paper")).firstMatch.waitForExistence(timeout:15)
@@ -309,7 +316,7 @@ final class AdvancedToolsUITests:XCTestCase {
         app.buttons["ppt-mode-text"].tap();app.buttons["office-extract"].tap()
         XCTAssertTrue(app.textViews["ppt-text-1"].waitForExistence(timeout:60))
         XCTAssertTrue((app.textViews["ppt-text-1"].value as? String ?? "").contains("SCANNER TEST PAGE"))
-        app.buttons["ppt-create"].tap();ready(app.buttons["ppt-share"])
+        app.buttons["ppt-create"].tap();closePreview(app);ready(app.buttons["ppt-share"])
         app.buttons["ppt-preview"].tap()
         XCTAssertTrue(app.navigationBars.buttons["Done"].waitForExistence(timeout:15))
         _ = app.staticTexts.containing(NSPredicate(format:"label CONTAINS[c] %@","SCANNER TEST PAGE")).firstMatch.waitForExistence(timeout:15)

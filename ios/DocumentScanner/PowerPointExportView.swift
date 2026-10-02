@@ -95,8 +95,8 @@ struct PowerPointExportView: View {
                     pages += additions; message = nil
                 }
             }
-            .sheet(isPresented:$camera) {
-                WordDocumentCamera { result in
+            .fullScreenCover(isPresented:$camera) {
+                OfficeScanCamera { result in
                     camera = false
                     switch result {
                     case .success(let images): if !images.isEmpty { addScans(images) }
@@ -166,8 +166,7 @@ struct PowerPointExportView: View {
                 Section {
                     HStack(alignment:.top,spacing:12) {
                         Button {
-                            if VNDocumentCameraViewController.isSupported { camera = true }
-                            else { message = "The camera is unavailable. Choose photos or files instead." }
+                            camera = true
                         } label: { sourceLabel("Scan",icon:"camera") }.accessibilityIdentifier("office-camera")
                         Button { photoPicker = true } label: { sourceLabel("Photos",icon:"photo.on.rectangle") }.accessibilityIdentifier("ppt-photos")
                         Button { filePicker = true } label: { sourceLabel("Files",icon:"doc") }.accessibilityIdentifier("ppt-files")

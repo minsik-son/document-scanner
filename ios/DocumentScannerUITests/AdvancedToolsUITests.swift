@@ -212,6 +212,21 @@ final class AdvancedToolsUITests:XCTestCase {
         editor.tap();editor.typeText(" revised")
         app.buttons["offline-run"].tap();closePreview(app);ready(app.buttons["word-share"])
     }
+    @MainActor func testWordCameraShowsEachPageBeforeContinuing() {
+        let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"--simulate-camera"];app.launch()
+        app.buttons["home-tools"].tap();ready(app.buttons["Word export"]);app.buttons["Word export"].tap()
+        ready(app.buttons["word-camera"]);app.buttons["word-camera"].tap()
+        // Each shot is shown for checking before scanning more or continuing.
+        ready(app.buttons["Capture page"]);app.buttons["Capture page"].tap()
+        ready(app.buttons["review-add-page"]);XCTAssertTrue(app.buttons["review-done"].exists)
+        XCTAssertEqual(app.buttons["review-done"].label,"Continue")
+        let check = XCTAttachment(screenshot:app.screenshot());check.name = "Office scan page check";check.lifetime = .keepAlways;add(check)
+        app.buttons["review-add-page"].tap()
+        ready(app.buttons["Capture page"]);app.buttons["Capture page"].tap()
+        ready(app.buttons["review-done"]);app.buttons["review-done"].tap()
+        ready(app.buttons["word-extract"])
+        XCTAssertFalse(app.buttons["Capture page"].exists)
+    }
     @MainActor func testWordPDFExportHasOnePrimaryActionPerStep() {
         let app = launch(document:true);app.buttons["Word export"].tap()
         ready(app.buttons["word-extract"])

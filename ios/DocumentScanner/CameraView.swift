@@ -12,6 +12,8 @@ struct CameraView: View {
     let documentID: UUID
     var retakingPageID: UUID? = nil
     var identityCapture = false
+    /// Title of the button that ends capture after checking a page.
+    var finishTitle = "Done"
     @StateObject private var camera = CameraController()
     @StateObject private var orientation = CaptureOrientationMonitor()
     @State private var saving = false
@@ -30,7 +32,7 @@ struct CameraView: View {
             if let capturedPage {
                 PageEditor(page: capturedPage, onAddPage: !identityCapture && retakingPageID == nil && !cardComplete ? { updated in try returnToCamera(updated) } : nil, onCancelCapture: {
                     try cancelCapture(capturedPage.id)
-                }, doneTitle: identityCapture ? (reviewingFront ? (retakingPageID == nil ? "Use front · Continue" : "Use front · Preview") : "Use back · Preview") : "Done",
+                }, doneTitle: identityCapture ? (reviewingFront ? (retakingPageID == nil ? "Use front · Continue" : "Use front · Preview") : "Use back · Preview") : finishTitle,
                            dismissOnSave: !identityCapture, scanStyle: style, onSave: { updated in
                     try keepAdjustments(updated)
                     if identityCapture {

@@ -287,7 +287,7 @@ struct AdvancedOfflineToolContent:View {
             .sheet(isPresented:$sharing) { if let files { ShareSheet(items:files.urls) } }
             .fullScreenCover(isPresented:$quickLook) { if let url = files?.urls.first { OfficeQuickLook(url:url) } }
             .fullScreenCover(isPresented:$wordCamera) {
-                WordDocumentCamera { result in
+                OfficeScanCamera { result in
                     wordCamera = false
                     switch result {
                     case .success(let images): if !images.isEmpty { acceptWordImages(images, name: "Scanned document") }
@@ -454,8 +454,7 @@ struct AdvancedOfflineToolContent:View {
                 }
                 HStack(alignment:.top, spacing:8) {
                     Button {
-                        if VNDocumentCameraViewController.isSupported { wordCamera = true }
-                        else { message = "The scanner isn't available on this device. Choose a photo or file instead." }
+                        wordCamera = true
                     } label: { wordSourceLabel("Take photo", symbol:"camera") }
                         .accessibilityIdentifier("word-camera")
                     PhotosPicker(selection:$photos,maxSelectionCount:30,selectionBehavior:.ordered,matching:.images) {
@@ -833,6 +832,52 @@ enum WordFileInput {
     }
 }
 
+/// Camera for the Word, Excel and PowerPoint tools. Uses the app's own scanner:
+/// after each shot the page is shown to check its quality, then the user adds
+/// another page or finishes and continues with the export. Pages are kept in a
+/// temporary draft that is removed once the pictures are handed back.
+struct OfficeScanCamera: View {
+    @EnvironmentObject private var store: LibraryStore
+    let completion: (Result<[UIImage],Error>) -> Void
+    @State private var draftID: UUID?
+    @State private var finished = false
+    var body: some View {
+        Group {
+            if let draftID { CameraView(documentID: draftID, finishTitle: "Continue") }
+            else { Color.black.ignoresSafeArea() }
+        }
+        .onAppear {
+            guard draftID == nil else { return }
+            do {
+                let id = try store.createDraft()
+                if var doc = store.document(id) { doc.captureStyle = .document; try store.update(doc) }
+                draftID = id
+            } catch { finish(.failure(error)) }
+        }
+        .onDisappear { collect() }
+    }
+    private func collect() {
+        guard !finished else { return }
+        guard let draftID, let doc = store.document(draftID) else { finish(.success([])); return }
+        let pages = Array(doc.pages.prefix(30)), root = store.root
+        Task { @MainActor in
+            do {
+                let images = try await OfflineWork.perform { try pages.map { try Imaging.render($0, root: root) } }
+                try? store.permanentlyDelete(doc)
+                finish(.success(images))
+            } catch {
+                try? store.permanentlyDelete(doc)
+                finish(.failure(error))
+            }
+        }
+    }
+    private func finish(_ result: Result<[UIImage],Error>) {
+        guard !finished else { return }
+        finished = true
+        completion(result)
+    }
+}
+
 struct WordDocumentCamera: UIViewControllerRepresentable {
     let completion: (Result<[UIImage],Error>) -> Void
     func makeCoordinator() -> Coordinator { Coordinator(completion:completion) }
@@ -938,7 +983,7 @@ private struct WordExportIntroCard: View {
 }
 
 /// Full-screen look at a finished Word, Excel or PowerPoint file: every page
-/// at full size, pinch to zoom, with Share and Done at the top.
+/// at full size, pinch to zoom, with Share and Done.
 struct OfficeQuickLook:UIViewControllerRepresentable {
     @Environment(\.dismiss) private var dismiss
     let url:URL
@@ -947,11 +992,8 @@ struct OfficeQuickLook:UIViewControllerRepresentable {
         let view = QLPreviewController(); view.dataSource = context.coordinator
         let done = UIBarButtonItem(title:"Done",style:.done,target:context.coordinator,action:#selector(Coordinator.close))
         done.accessibilityIdentifier = "office-preview-done"
-        let share = UIBarButtonItem(barButtonSystemItem:.action,target:context.coordinator,action:#selector(Coordinator.share(_:)))
-        share.accessibilityLabel = "Share file"; share.accessibilityIdentifier = "office-preview-share"
+        // Quick Look adds its own Share button.
         view.navigationItem.rightBarButtonItem = done
-        view.navigationItem.leftBarButtonItem = share
-        context.coordinator.controller = view
         let navigation = UINavigationController(rootViewController:view)
         navigation.modalPresentationStyle = .fullScreen
         return navigation
@@ -959,14 +1001,8 @@ struct OfficeQuickLook:UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController:UINavigationController,context:Context) {}
     class Coordinator:NSObject,QLPreviewControllerDataSource {
         let url:URL;let action:()->Void
-        weak var controller:UIViewController?
         init(url:URL,close:@escaping ()->Void) { self.url = url;self.action = close }
         @objc func close() { action() }
-        @objc func share(_ sender:UIBarButtonItem) {
-            let sheet = UIActivityViewController(activityItems:[url],applicationActivities:nil)
-            sheet.popoverPresentationController?.barButtonItem = sender
-            controller?.present(sheet,animated:true)
-        }
         func numberOfPreviewItems(in controller:QLPreviewController) -> Int { 1 }
         func previewController(_ controller:QLPreviewController,previewItemAt index:Int) -> QLPreviewItem { url as NSURL }
     }

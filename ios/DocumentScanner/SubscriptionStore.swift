@@ -19,8 +19,22 @@ final class SubscriptionStore: ObservableObject {
         let value = NSDecimalNumber(decimal: rounded).intValue
         return (1...100).contains(value) ? value : nil
     }
+    /// Debug builds run by the developer have every Pro feature unlocked, so
+    /// paywalls and upgrade prompts stay out of the way while building.
+    /// Never in Release builds, and never under unit or UI tests, which check
+    /// the real free and paid behaviour.
+    static let developmentUnlock: Bool = {
+        #if DEBUG
+        let info = ProcessInfo.processInfo
+        if info.environment["XCTestConfigurationFilePath"] != nil { return false }
+        if info.arguments.contains("--ui-test-session") { return false }
+        return true
+        #else
+        return false
+        #endif
+    }()
     @Published private(set) var products: [Product] = []
-    @Published private(set) var isPro = false
+    @Published private(set) var isPro = SubscriptionStore.developmentUnlock
     @Published private(set) var entitlementsResolved = false
     @Published private(set) var busy = false
     @Published private(set) var statusText = "Free"
@@ -92,9 +106,10 @@ final class SubscriptionStore: ObservableObject {
         }
         guard generation == refreshGeneration else { return }
         if owned { active = true; nextExpiry = nil; status = "Pro is unlocked for life" }
+        if Self.developmentUnlock && !active { status = "Pro is unlocked in this development build" }
         statusText = status; expiresAt = nextExpiry
         lifetime = owned
-        isPro = active
+        isPro = active || Self.developmentUnlock
         entitlementsResolved = true
         expiryRefresh?.cancel()
         if let nextExpiry {

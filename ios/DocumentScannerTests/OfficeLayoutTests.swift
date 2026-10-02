@@ -148,6 +148,34 @@ final class OfficeLayoutTests: XCTestCase {
         XCTAssertTrue(files.xlsx.keys.contains("xl/drawings/drawing1.xml"))
     }
 
+    /// A plain camera photo of a page on a desk: flattened like a scan, then rebuilt.
+    func testRawPhotoIsFlattenedAndRebuilt() throws {
+        let photo = try image("OfficeSamplePhoto")
+        let flat = try OfficeLayoutPages.flattenedIfPhoto(photo)
+        let aspect = flat.size.height / flat.size.width
+        XCTAssertEqual(aspect, 11 / 8.5, accuracy: 0.01, "Snapped to Letter")
+        if let folder = verification {
+            let cg = try XCTUnwrap(OfficeLayoutPages.prepare(flat).image)
+            try UIImage(cgImage: cg).pngData()?.write(to: folder.appendingPathComponent("OfficeSamplePhoto.flat.png"))
+            let reading = try OfficeLayoutPages.prepare(flat, maxSide: OfficeLayoutPages.readingSide).image
+            let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+            try encoder.encode(try TextRecognition.recognize(reading)).write(to: folder.appendingPathComponent("OfficeSamplePhoto.ocr.json"))
+        }
+        // Already-flat scans are left alone.
+        let scan = try image("OfficeSamplePriceList")
+        XCTAssertEqual(try OfficeLayoutPages.flattenedIfPhoto(scan).size, Imaging.normalized(scan).size)
+        var log: [String] = []
+        OfficeLayoutPages.refineLog = { log.append($0) }
+        defer { OfficeLayoutPages.refineLog = nil }
+        let page = try OfficeLayoutPages.analyze(photo)
+        if let folder = verification { try log.joined(separator: "\n").write(to: folder.appendingPathComponent("photo-reread.txt"), atomically: true, encoding: .utf8) }
+        let tables = tables(page)
+        XCTAssertEqual(tables.first?.columnCount, 4)
+        let paragraphs = page.items.compactMap { item -> LayoutParagraph? in if case .paragraph(let p) = item { return p }; return nil }
+        XCTAssertGreaterThanOrEqual(paragraphs.filter { $0.bullet != nil }.count, 5)
+        _ = try export(page, name: "OfficeSamplePhoto")
+    }
+
     func testReviewedTextKeepsFormatting() throws {
         let page = try OfficeLayoutPages.analyze(image("OfficeSamplePriceList"))
         let text = LayoutText.text([page])

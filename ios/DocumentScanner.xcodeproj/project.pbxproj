@@ -99,6 +99,7 @@
 		FBA18B94B219B6203962B57F /* MathDocumentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF0559D3B9CA1F6C518AED3A /* MathDocumentView.swift */; };
 		FCD8B8274E750BF61B7233AC /* TranslationManualLatest.png in Resources */ = {isa = PBXBuildFile; fileRef = 6DEE6D1DFE5365491CFD7D7C /* TranslationManualLatest.png */; };
 		6D2B0F4C8E3A5B7C9D1F2A34 /* TranslationManualOriginal.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 5C1A9E3B7D2F4A6B8C0E1F23 /* TranslationManualOriginal.jpg */; };
+		33207FCF5CD2D7FE2B13AEFE /* OfficeSamplePhoto.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 5180A565D3C17A040B1CA6D0 /* OfficeSamplePhoto.jpg */; };
 		56E1241A12C8F9E62C3B2B2F /* OfficeSamplePriceList.jpg in Resources */ = {isa = PBXBuildFile; fileRef = F98948ECEFA0147D9AAD6DD5 /* OfficeSamplePriceList.jpg */; };
 		F725A19CD128426433686DA8 /* OfficeSampleTable.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 1AB0E96F65E34FA1B165A896 /* OfficeSampleTable.jpg */; };
 		FF87128E176720325C2A5AF7 /* ScannerFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9D443F9A450E2B27ED22180 /* ScannerFlowTests.swift */; };
@@ -164,6 +165,7 @@
 		6C94F784B80C8E019AA8DE7C /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		6DEE6D1DFE5365491CFD7D7C /* TranslationManualLatest.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = TranslationManualLatest.png; sourceTree = "<group>"; };
 		5C1A9E3B7D2F4A6B8C0E1F23 /* TranslationManualOriginal.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = TranslationManualOriginal.jpg; sourceTree = "<group>"; };
+		5180A565D3C17A040B1CA6D0 /* OfficeSamplePhoto.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = OfficeSamplePhoto.jpg; sourceTree = "<group>"; };
 		F98948ECEFA0147D9AAD6DD5 /* OfficeSamplePriceList.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = OfficeSamplePriceList.jpg; sourceTree = "<group>"; };
 		1AB0E96F65E34FA1B165A896 /* OfficeSampleTable.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = OfficeSampleTable.jpg; sourceTree = "<group>"; };
 		7121F12CCF29CE7873E5050C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -270,6 +272,7 @@
 			children = (
 				6DEE6D1DFE5365491CFD7D7C /* TranslationManualLatest.png */,
 				5C1A9E3B7D2F4A6B8C0E1F23 /* TranslationManualOriginal.jpg */,
+				5180A565D3C17A040B1CA6D0 /* OfficeSamplePhoto.jpg */,
 				F98948ECEFA0147D9AAD6DD5 /* OfficeSamplePriceList.jpg */,
 				1AB0E96F65E34FA1B165A896 /* OfficeSampleTable.jpg */,
 				A16718572DC331F1A27822B1 /* TranslationManualScreenshot.png */,
@@ -517,6 +520,7 @@
 				373B137684D1CBEC9632945F /* Scanner.storekit in Resources */,
 				FCD8B8274E750BF61B7233AC /* TranslationManualLatest.png in Resources */,
 				6D2B0F4C8E3A5B7C9D1F2A34 /* TranslationManualOriginal.jpg in Resources */,
+				33207FCF5CD2D7FE2B13AEFE /* OfficeSamplePhoto.jpg in Resources */,
 				56E1241A12C8F9E62C3B2B2F /* OfficeSamplePriceList.jpg in Resources */,
 				F725A19CD128426433686DA8 /* OfficeSampleTable.jpg in Resources */,
 				8E82294A831419ED8A2BCB7F /* TranslationManualScreenshot.png in Resources */,

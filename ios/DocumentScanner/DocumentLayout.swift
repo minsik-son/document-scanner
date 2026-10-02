@@ -181,6 +181,9 @@ enum DocumentLayoutAnalyzer {
         var dark: [Bool]
         let paper: (Double, Double, Double)
         var ptPerPx = 1.0
+        /// Stroke score above which a word counts as bold; set per page from
+        /// the body text so photos and scans with different blur both work.
+        var boldThreshold = 1.25
         init(_ raster: LayoutRaster) {
             self.raster = raster
             var histogram = [Int](repeating: 0, count: 256)
@@ -529,6 +532,16 @@ enum DocumentLayoutAnalyzer {
         for li in wordLines.indices { for wi in wordLines[li].indices {
             if let tight = textInk.inkColumns(wordLines[li][wi].box) { wordLines[li][wi].box.x0 = tight.0; wordLines[li][wi].box.x1 = tight.1 }
         } }
+        // Body text sets the regular stroke weight of this page.
+        var scores: [Double] = []
+        for line in wordLines {
+            let size = fontSize(line, ink: textInk, ptPerPx: ptPerPx)
+            for w in line { if let score = boldScore([w], ink: textInk, fontPt: size) { scores.append(score) } }
+        }
+        if scores.count >= 8 {
+            scores.sort()
+            textInk.boldThreshold = max(1.15, min(1.3, scores[scores.count / 2] * 1.27))
+        }
 
         var free: [Word] = []
         var tableWords: [[Word]] = Array(repeating: [], count: tables.count)
@@ -558,7 +571,7 @@ enum DocumentLayoutAnalyzer {
                 tables.append(table); group.forEach { consumed.insert($0) }
             }
         }
-        for t in tables.indices { fixCodeColumns(&tables[t]) }
+        for t in tables.indices { fixCodeColumns(&tables[t]); harmonizeRanges(&tables[t]) }
         let remaining = lines.enumerated().filter { !consumed.contains($0.offset) }.map(\.element)
         let paragraphs = buildParagraphs(remaining, ink: textInk, width: Double(W), ptPerPx: ptPerPx)
 
@@ -643,7 +656,7 @@ enum DocumentLayoutAnalyzer {
         let fontPt = fontPx * ink.ptPerPx
         var runs: [LayoutRun] = []
         for w in words {
-            let bold = (boldScore([w], ink: ink, fontPt: fontPt) ?? 1) >= 1.25
+            let bold = (boldScore([w], ink: ink, fontPt: fontPt) ?? 1) >= ink.boldThreshold
             let text = (w.spaceBefore && !runs.isEmpty ? " " : "") + w.text
             if var last = runs.last, last.bold == bold, last.underline == w.underline, last.color == w.color {
                 last.text += text; runs[runs.count - 1] = last
@@ -682,6 +695,8 @@ enum DocumentLayoutAnalyzer {
                 table.cells[i].lines = table.cells[i].lines.map { line in line.map { run in
                     var run = run
                     run.text = run.text.split(separator: " ", omittingEmptySubsequences: false).map { word -> String in
+                        // "81" in a column of codes is "B1" read as a digit.
+                        if word.count >= 2, word.count <= 4, word.first == "8", word.dropFirst().allSatisfy(\.isNumber) { return "B" + word.dropFirst() }
                         let letters = word.prefix { $0.isUppercase && $0.isASCII && $0 != "I" && $0 != "O" }
                         let rest = word.dropFirst(letters.count)
                         guard (1...3).contains(letters.count), (1...3).contains(rest.filter { $0 != "*" }.count),
@@ -691,6 +706,25 @@ enum DocumentLayoutAnalyzer {
                     return run
                 } }
             }
+        }
+    }
+    /// Ranges in one column ("518 - 689", "476-479") share the spacing most
+    /// of them use, so recognition noise does not show as uneven dashes.
+    static func harmonizeRanges(_ table: inout LayoutTable) {
+        func parts(_ text: String) -> (String, String, Bool)? {
+            let dashes: Set<Character> = ["-", "–", "—"]
+            guard let i = text.firstIndex(where: { dashes.contains($0) }), text.filter({ dashes.contains($0) }).count == 1 else { return nil }
+            let left = text[..<i], right = text[text.index(after: i)...]
+            let l = left.trimmingCharacters(in: .whitespaces), r = right.trimmingCharacters(in: .whitespaces)
+            guard !l.isEmpty, !r.isEmpty, !l.contains(" "), !r.contains(" ") else { return nil }
+            return (l, r, left.hasSuffix(" ") && right.hasPrefix(" "))
+        }
+        for c in 0..<table.columnCount {
+            let cells = table.cells.indices.filter { table.cells[$0].column == c && table.cells[$0].lines.count == 1 && table.cells[$0].lines[0].count == 1 }
+            let ranges = cells.compactMap { i in parts(table.cells[i].text).map { (i, $0) } }
+            guard ranges.count >= 3 else { continue }
+            let spaced = ranges.filter { $0.1.2 }.count * 2 >= ranges.count
+            for (i, p) in ranges { table.cells[i].lines[0][0].text = spaced ? "\(p.0) - \(p.1)" : "\(p.0)-\(p.1)" }
         }
     }
     static func fillCells(_ table: inout LayoutTable, words: [Word], ink: Ink, ptPerPx: Double) {
@@ -911,6 +945,8 @@ enum DocumentLayoutAnalyzer {
                 let sameLeft = abs(prev.textBox.x0 - next.textBox.x0) <= width * 0.012
                 let sameCenter = abs(prev.textBox.midX - next.textBox.midX) <= width * 0.015 && !sameLeft
                 guard gap <= h * 0.75, gap > -h * 0.3, sameSize, sameLeft || sameCenter else { break }
+                // A list item continues only with its own wrapped text.
+                if group[0].bullet != nil && contentRight - prev.textBox.x1 > (next.segments.first?.box.width ?? 0) + h * 1.5 { break }
                 group.append(next); j += 1
             }
             let box = LBox.around(group.map { $0.textBox })!
@@ -978,7 +1014,7 @@ enum DocumentLayoutAnalyzer {
     /// Finds a small round ink blob left of a line that OCR did not report.
     static func detectBullet(_ ink: Ink, before box: LBox) -> LBox? {
         let h = box.height
-        let region = LBox(box.x0 - h * 1.4, box.y0 + h * 0.15, box.x0 - h * 0.15, box.y1 - h * 0.15)
+        let region = LBox(box.x0 - h * 1.9, box.y0 + h * 0.15, box.x0 - h * 0.1, box.y1 - h * 0.15)
         guard region.x0 > 0 else { return nil }
         var minX = Int.max, maxX = Int.min, minY = Int.max, maxY = Int.min, count = 0
         for y in Int(region.y0)..<Int(region.y1) { for x in Int(region.x0)..<Int(region.x1) where ink.isDark(x, y) {
@@ -986,8 +1022,9 @@ enum DocumentLayoutAnalyzer {
         } }
         guard count > 4 else { return nil }
         let bw = Double(maxX - minX + 1), bh = Double(maxY - minY + 1)
-        guard bw <= h * 0.45, bh <= h * 0.45, bw >= h * 0.12, abs(bw - bh) <= max(bw, bh) * 0.5,
-              Double(count) >= bw * bh * 0.45 else { return nil }
+        // A bullet is a small, filled, roughly square dot set apart from the text.
+        guard bw <= h * 0.45, bh <= h * 0.45, bw >= h * 0.12, abs(bw - bh) <= max(bw, bh) * 0.35,
+              Double(count) >= bw * bh * 0.55, box.x0 - Double(maxX + 1) >= h * 0.25 else { return nil }
         return LBox(Double(minX), Double(minY), Double(maxX + 1), Double(maxY + 1))
     }
 
@@ -1048,5 +1085,6 @@ extension DocumentLayoutAnalyzer.Ink {
         self.dark = mask
         self.paper = other.paper
         self.ptPerPx = other.ptPerPx
+        self.boldThreshold = other.boldThreshold
     }
 }

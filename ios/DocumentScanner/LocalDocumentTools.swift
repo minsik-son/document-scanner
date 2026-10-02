@@ -13,6 +13,8 @@ struct DocumentStamp {
     var angle = -30.0
     var position = StampPosition.center
     var repeated = false
+    /// Hex RGB of the stamp text.
+    var color: UInt32 = 0x4E5968
     var valid: Bool {
         text.count <= 160 && (!text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || logo != nil) &&
         opacity.isFinite && (0.05...1).contains(opacity) && width.isFinite && (0.1...0.8).contains(width) &&
@@ -29,9 +31,16 @@ enum LocalDocumentTools {
         return size
     }
     static func stamped(_ source: Data, indices: [Int], stamp: DocumentStamp) throws -> Data {
-        guard stamp.valid, let pdf = PDFDocument(data: source), !pdf.isLocked,
-              !indices.isEmpty, indices.allSatisfy({ (0..<pdf.pageCount).contains($0) }),
-              stamp.logo == nil || UIImage(data: stamp.logo!) != nil else { throw ScannerError.message("Check the watermark and page selection.") }
+        guard stamp.valid, stamp.logo == nil || UIImage(data: stamp.logo!) != nil else { throw ScannerError.message("Check the watermark and page selection.") }
+        return try overlaid(source, indices: indices) { size, context in drawStamp(stamp, size: size, context: context) }
+    }
+    static func timestamped(_ source: Data, indices: [Int], stamp: TimestampStamp) throws -> Data {
+        try overlaid(source, indices: indices) { size, context in drawTimestamp(stamp, size: size, context: context) }
+    }
+    /// Draws an overlay on the selected pages of a PDF, keeping text and links.
+    static func overlaid(_ source: Data, indices: [Int], draw: (CGSize, CGContext) -> Void) throws -> Data {
+        guard let pdf = PDFDocument(data: source), !pdf.isLocked,
+              !indices.isEmpty, indices.allSatisfy({ (0..<pdf.pageCount).contains($0) }) else { throw ScannerError.message("Check the watermark and page selection.") }
         let output = PDFDocument()
         for i in 0..<pdf.pageCount {
             try Task.checkCancellation()
@@ -41,7 +50,7 @@ enum LocalDocumentTools {
             let data = UIGraphicsPDFRenderer(bounds: CGRect(origin: .zero, size: size)).pdfData { c in
                 c.beginPage()
                 DocumentPDF.drawPage(page, in: c.cgContext, size: size, margin: 0)
-                drawStamp(stamp, size: size, context: c.cgContext)
+                draw(size, c.cgContext)
             }
             guard let marked = PDFDocument(data: data)?.page(at: 0), let ref = page.pageRef else { throw ScannerError.message("The watermark couldn't be created.") }
             // Keep links aligned after normalizing rotated PDF pages. Form widgets are flattened.
@@ -56,7 +65,7 @@ enum LocalDocumentTools {
         guard let data = output.dataRepresentation() else { throw ScannerError.message("The PDF couldn't be created.") }
         return data
     }
-    private static func drawStamp(_ stamp: DocumentStamp, size: CGSize, context: CGContext) {
+    static func drawStamp(_ stamp: DocumentStamp, size: CGSize, context: CGContext) {
         let logo = stamp.logo.flatMap(UIImage.init(data:))
         let width = size.width * stamp.width
         let font = UIFont.systemFont(ofSize: 36, weight: .semibold)
@@ -68,7 +77,7 @@ enum LocalDocumentTools {
         let halfH = (abs(sin(radians))*w + abs(cos(radians))*h)/2
         var points: [CGPoint]
         if stamp.repeated {
-            points = [0.25, 0.5, 0.75].flatMap { y in [0.28, 0.72].map { x in CGPoint(x: size.width*x, y: size.height*y) } }
+            points = [0.12, 0.31, 0.5, 0.69, 0.88].flatMap { y in [0.25, 0.75].map { x in CGPoint(x: size.width*x, y: size.height*y) } }
         } else {
             switch stamp.position {
             case .center: points = [CGPoint(x: size.width/2, y: size.height/2)]
@@ -82,9 +91,102 @@ enum LocalDocumentTools {
             UIGraphicsPushContext(context)
             if let logo { logo.draw(in: CGRect(x: -w/2, y: -h/2, width: w, height: h)) }
             else {
-                (stamp.text as NSString).draw(in: CGRect(x: -w/2, y: -h/2, width: w+1, height: h+2), withAttributes: [.font: UIFont.systemFont(ofSize: 36*scale, weight: .semibold), .foregroundColor: UIColor.darkGray])
+                let color = UIColor(red: CGFloat((stamp.color >> 16) & 0xff) / 255, green: CGFloat((stamp.color >> 8) & 0xff) / 255, blue: CGFloat(stamp.color & 0xff) / 255, alpha: 1)
+                (stamp.text as NSString).draw(in: CGRect(x: -w/2, y: -h/2, width: w+1, height: h+2), withAttributes: [.font: UIFont.systemFont(ofSize: 36*scale, weight: .semibold), .foregroundColor: color])
             }
             UIGraphicsPopContext(); context.restoreGState()
+        }
+    }
+    /// Page preview with an overlay, for live editing screens.
+    static func renderPreview(_ page: PDFPage, maxSide: CGFloat = 1100, draw: (CGSize, CGContext) -> Void) throws -> UIImage {
+        let size = try pageSize(page)
+        let scale = min(1, maxSide / max(size.width, size.height)) * 2
+        let format = UIGraphicsImageRendererFormat(); format.scale = scale; format.opaque = true
+        return UIGraphicsImageRenderer(size: size, format: format).image { c in
+            UIColor.white.setFill(); c.fill(CGRect(origin: .zero, size: size))
+            DocumentPDF.drawPage(page, in: c.cgContext, size: size, margin: 0)
+            draw(size, c.cgContext)
+        }
+    }
+    static func drawTimestamp(_ stamp: TimestampStamp, size: CGSize, context: CGContext) {
+        let unit = min(size.width, size.height) / 612 * stamp.scale
+        let lines = stamp.lines
+        UIGraphicsPushContext(context)
+        defer { UIGraphicsPopContext() }
+        let margin = 22 * unit
+        func place(_ box: CGSize) -> CGPoint {
+            switch stamp.corner {
+            case .topLeft: return CGPoint(x: margin, y: margin)
+            case .topRight: return CGPoint(x: size.width - margin - box.width, y: margin)
+            case .bottomLeft: return CGPoint(x: margin, y: size.height - margin - box.height)
+            case .bottomRight: return CGPoint(x: size.width - margin - box.width, y: size.height - margin - box.height)
+            }
+        }
+        switch stamp.template {
+        case .dateTime:
+            let big = UIFont.systemFont(ofSize: 40 * unit, weight: .bold), small = UIFont.systemFont(ofSize: 13 * unit, weight: .semibold)
+            let a = lines.time as NSString, b = lines.date as NSString
+            let sa = a.size(withAttributes: [.font: big]), sb = b.size(withAttributes: [.font: small])
+            var note: NSString?; var sn = CGSize.zero
+            if !stamp.note.isEmpty { note = stamp.note as NSString; sn = note!.size(withAttributes: [.font: small]) }
+            let box = CGSize(width: max(sa.width, sb.width, sn.width), height: sa.height + sb.height + (note == nil ? 0 : sn.height + 2 * unit))
+            let pad = 10 * unit
+            let frame = place(CGSize(width: box.width + pad * 2, height: box.height + pad * 1.4))
+            // A soft plate keeps the label readable on both paper and photos.
+            (stamp.white ? UIColor.black.withAlphaComponent(0.32) : UIColor.white.withAlphaComponent(0.78)).setFill()
+            UIBezierPath(roundedRect: CGRect(origin: frame, size: CGSize(width: box.width + pad * 2, height: box.height + pad * 1.4)), cornerRadius: 10 * unit).fill()
+            let o = CGPoint(x: frame.x + pad, y: frame.y + pad * 0.7)
+            let shadow = NSShadow(); shadow.shadowColor = UIColor.black.withAlphaComponent(stamp.white ? 0.35 : 0); shadow.shadowBlurRadius = 2 * unit
+            a.draw(at: o, withAttributes: [.font: big, .foregroundColor: stamp.ink, .shadow: shadow])
+            b.draw(at: CGPoint(x: o.x, y: o.y + sa.height), withAttributes: [.font: small, .foregroundColor: stamp.ink, .shadow: shadow])
+            note?.draw(at: CGPoint(x: o.x, y: o.y + sa.height + sb.height + 2 * unit), withAttributes: [.font: small, .foregroundColor: stamp.ink, .shadow: shadow])
+        case .onSite:
+            let title = UIFont.systemFont(ofSize: 15 * unit, weight: .bold), body = UIFont.systemFont(ofSize: 10 * unit, weight: .medium)
+            let rows: [(String, String)] = [("Time", lines.date + " " + lines.time)] + (stamp.note.isEmpty ? [] : [("Note", stamp.note)])
+            let rowSizes = rows.map { ("\($0.0)  \($0.1)" as NSString).size(withAttributes: [.font: body]) }
+            let width = max(150 * unit, (rowSizes.map(\.width).max() ?? 0) + 20 * unit)
+            let header = 26 * unit, rowH = 17 * unit
+            let box = CGSize(width: width, height: header + rowH * CGFloat(rows.count) + 8 * unit)
+            let o = place(box)
+            UIColor(red: 0.19, green: 0.51, blue: 0.96, alpha: 1).setFill()
+            UIBezierPath(roundedRect: CGRect(x: o.x, y: o.y, width: box.width, height: header), byRoundingCorners: [.topLeft, .topRight], cornerRadii: CGSize(width: 6 * unit, height: 6 * unit)).fill()
+            UIColor.white.withAlphaComponent(0.92).setFill()
+            UIBezierPath(roundedRect: CGRect(x: o.x, y: o.y + header, width: box.width, height: box.height - header), byRoundingCorners: [.bottomLeft, .bottomRight], cornerRadii: CGSize(width: 6 * unit, height: 6 * unit)).fill()
+            ("On-site record" as NSString).draw(at: CGPoint(x: o.x + 10 * unit, y: o.y + 5 * unit), withAttributes: [.font: title, .foregroundColor: UIColor.white])
+            for (i, row) in rows.enumerated() {
+                let y = o.y + header + 4 * unit + rowH * CGFloat(i)
+                (row.0 as NSString).draw(at: CGPoint(x: o.x + 10 * unit, y: y), withAttributes: [.font: body, .foregroundColor: UIColor(red: 0.19, green: 0.51, blue: 0.96, alpha: 1)])
+                (row.1 as NSString).draw(at: CGPoint(x: o.x + 48 * unit, y: y), withAttributes: [.font: body, .foregroundColor: UIColor(white: 0.15, alpha: 1)])
+            }
+        case .clockIn:
+            let label = UIFont.systemFont(ofSize: 11 * unit, weight: .bold), big = UIFont.monospacedDigitSystemFont(ofSize: 24 * unit, weight: .bold), small = UIFont.systemFont(ofSize: 9 * unit, weight: .medium)
+            let width = 130 * unit, top = 20 * unit, mid = 36 * unit
+            let box = CGSize(width: width, height: top + mid + 16 * unit)
+            let o = place(box)
+            UIColor(red: 0.09, green: 0.73, blue: 0.6, alpha: 1).setFill()
+            UIBezierPath(roundedRect: CGRect(x: o.x, y: o.y, width: width, height: top), byRoundingCorners: [.topLeft, .topRight], cornerRadii: CGSize(width: 5 * unit, height: 5 * unit)).fill()
+            UIColor.white.setFill(); UIBezierPath(rect: CGRect(x: o.x, y: o.y + top, width: width, height: mid)).fill()
+            UIColor.black.withAlphaComponent(0.55).setFill()
+            UIBezierPath(roundedRect: CGRect(x: o.x, y: o.y + top + mid, width: width, height: 16 * unit), byRoundingCorners: [.bottomLeft, .bottomRight], cornerRadii: CGSize(width: 5 * unit, height: 5 * unit)).fill()
+            let t = (stamp.note.isEmpty ? "Clock-in" : stamp.note) as NSString
+            let ts = t.size(withAttributes: [.font: label])
+            t.draw(at: CGPoint(x: o.x + (width - ts.width) / 2, y: o.y + (top - ts.height) / 2), withAttributes: [.font: label, .foregroundColor: UIColor.white])
+            let time = lines.time as NSString, ss = time.size(withAttributes: [.font: big])
+            time.draw(at: CGPoint(x: o.x + (width - ss.width) / 2, y: o.y + top + (mid - ss.height) / 2), withAttributes: [.font: big, .foregroundColor: UIColor(white: 0.1, alpha: 1)])
+            let d = lines.date as NSString, ds = d.size(withAttributes: [.font: small])
+            d.draw(at: CGPoint(x: o.x + (width - ds.width) / 2, y: o.y + top + mid + (16 * unit - ds.height) / 2), withAttributes: [.font: small, .foregroundColor: UIColor.white])
+        case .digital:
+            let big = UIFont.monospacedDigitSystemFont(ofSize: 26 * unit, weight: .heavy), small = UIFont.monospacedSystemFont(ofSize: 9 * unit, weight: .bold)
+            let time = lines.timeSeconds as NSString, d = lines.compactDate as NSString
+            let ss = time.size(withAttributes: [.font: big]), ds = d.size(withAttributes: [.font: small])
+            let box = CGSize(width: max(ss.width, ds.width) + 20 * unit, height: ss.height + ds.height + 14 * unit)
+            let o = place(box)
+            UIColor(white: 0.85, alpha: 0.95).setFill()
+            UIBezierPath(roundedRect: CGRect(origin: o, size: box), cornerRadius: 7 * unit).fill()
+            UIColor(white: 0.25, alpha: 1).setStroke()
+            let frame = UIBezierPath(roundedRect: CGRect(origin: o, size: box).insetBy(dx: 2 * unit, dy: 2 * unit), cornerRadius: 6 * unit); frame.lineWidth = 1.5 * unit; frame.stroke()
+            d.draw(at: CGPoint(x: o.x + 10 * unit, y: o.y + 6 * unit), withAttributes: [.font: small, .foregroundColor: UIColor(white: 0.15, alpha: 1)])
+            time.draw(at: CGPoint(x: o.x + 10 * unit, y: o.y + 6 * unit + ds.height), withAttributes: [.font: big, .foregroundColor: UIColor(white: 0.1, alpha: 1)])
         }
     }
     static func identitySheet(_ source: Data, front: Int, back: Int?, paper: PaperSize) throws -> Data {
@@ -192,5 +294,34 @@ enum LocalDocumentTools {
             found = detector.features(in: CIImage(cgImage: cg)).compactMap { ($0 as? CIQRCodeFeature)?.messageString }
         }
         return Array(Set(found)).sorted()
+    }
+}
+
+enum TimestampTemplate: String, CaseIterable, Identifiable {
+    case dateTime = "Date & time", onSite = "On-site", clockIn = "Clock-in", digital = "Digital"
+    var id: String { rawValue }
+}
+enum StampCorner: String, CaseIterable, Identifiable {
+    case topLeft = "Top left", topRight = "Top right", bottomLeft = "Bottom left", bottomRight = "Bottom right"
+    var id: String { rawValue }
+}
+/// A timestamp label. This records a chosen date, not a certified capture time.
+struct TimestampStamp: Equatable {
+    var template = TimestampTemplate.dateTime
+    var date = Date()
+    var includeSeconds = false
+    var note = ""
+    var corner = StampCorner.bottomRight
+    var scale: CGFloat = 1
+    var white = true
+    var ink: UIColor { white ? .white : UIColor(white: 0.12, alpha: 1) }
+    struct Lines { let time: String; let timeSeconds: String; let date: String; let compactDate: String }
+    var lines: Lines {
+        let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = includeSeconds ? "HH:mm:ss" : "HH:mm"; let time = f.string(from: date)
+        f.dateFormat = "HH:mm:ss"; let seconds = f.string(from: date)
+        f.dateFormat = "EEE · MMM d, yyyy"; let long = f.string(from: date)
+        f.dateFormat = "yyyy/MM/dd EEE"; let compact = f.string(from: date).uppercased()
+        return Lines(time: time, timeSeconds: seconds, date: long, compactDate: compact)
     }
 }

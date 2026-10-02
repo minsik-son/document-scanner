@@ -43,7 +43,7 @@ struct DocumentView: View {
                                     if tool.pro && !subscription.isPro { pendingTool = tool; toolPaywall = true }
                                     else { activeTool = tool }
                                 }
-                            } } label: { Label("Tools", systemImage: "ellipsis.circle") }
+                            } } label: { Label("Tools", systemImage: "ellipsis.circle") }.accessibilityIdentifier("document-tools")
                             Spacer()
                             Button { store.toggleFavorite(doc) } label: { Image(systemName: doc.favorite ? "star.fill" : "star").frame(width: 44, height: 44) }.accessibilityLabel(doc.favorite ? "Remove favorite" : "Favorite")
                         }.font(.headline)
@@ -59,9 +59,9 @@ struct DocumentView: View {
                 }) { PaywallView() }
                 .sheet(item: $activeTool) { tool in
                     if tool == .offline { AdvancedOfflineHub(documentID: documentID) }
-                    else if tool.localTool { LocalDocumentToolsView(documentID: documentID, tool: tool) }
+                    else if tool == .identity { LocalDocumentToolsView(documentID: documentID, tool: tool) }
                     else if tool == .annotate { AnnotationEditor(documentID: documentID) }
-                    else { DocumentToolsView(documentID: documentID, tool: tool) }
+                    else if let flow = LibraryTool(rawValue: tool.rawValue) { PDFToolFlow(tool: flow, documentID: documentID) }
                 }
                 .fullScreenCover(isPresented: $editing) { ReviewView(documentID: documentID) }
                 .sheet(isPresented: $text) {

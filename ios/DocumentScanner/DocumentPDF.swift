@@ -8,6 +8,23 @@ enum CompressionPreset: String, CaseIterable {
   var pixels: Int { self == .smaller ? 1600 : (self == .balanced ? 2400 : 3200) }
   var quality: CGFloat { self == .smaller ? 0.55 : (self == .balanced ? 0.75 : 0.9) }
 }
+/// Draws a picture into a PDF as JPEG bytes (DCT). Drawing a decoded UIImage
+/// lets the PDF store it losslessly, which makes files many times larger.
+enum PDFJPEG {
+  static func draw(_ image: UIImage, quality: CGFloat, in rect: CGRect, context: CGContext) {
+    guard let jpeg = image.jpegData(compressionQuality: quality),
+      let provider = CGDataProvider(data: jpeg as CFData),
+      let encoded = CGImage(
+        jpegDataProviderSource: provider, decode: nil, shouldInterpolate: true,
+        intent: .defaultIntent)
+    else { image.draw(in: rect); return }
+    context.saveGState()
+    context.translateBy(x: 0, y: rect.minY * 2 + rect.height)
+    context.scaleBy(x: 1, y: -1)
+    context.draw(encoded, in: rect)
+    context.restoreGState()
+  }
+}
 enum DocumentPDF {
   static func compose(_ document: ScanDocument, root: URL, compression: CompressionPreset? = nil)
     throws -> Data
@@ -17,7 +34,7 @@ enum DocumentPDF {
       try Task.checkCancellation()
       let result: PDFPage = try autoreleasepool {
         let base: PDFPage
-        if page.preservesPDF {
+        if page.preservesPDF && compression == nil {
           guard let name = page.sourcePDF, let index = page.sourcePDFPage,
             let original = PDFDocument(url: root.appendingPathComponent(name)),
             let source = original.page(at: index), let copy = source.copy() as? PDFPage
@@ -45,14 +62,43 @@ enum DocumentPDF {
           single.pages = [scan]
           let bytes: Data
           if let compression {
-            let rendered = try Imaging.previewThumbnail(
-              Imaging.render(scan, root: root), maxDimension: compression.pixels)
-            guard let jpeg = rendered.jpegData(compressionQuality: compression.quality),
-              let image = UIImage(data: jpeg)
-            else { throw ScannerError.message("Compression couldn't finish.") }
+            // Compressing re-renders every page as a JPEG picture; the text
+            // layer below keeps it searchable.
+            let image: UIImage
+            var sourceSize: CGSize?
+            if page.preservesPDF, let name = page.sourcePDF, let index = page.sourcePDFPage,
+              let source = PDFDocument(url: root.appendingPathComponent(name))?.page(at: index)
+            {
+              source.rotation = (source.rotation + page.turns * 90) % 360
+              let side = CGFloat(compression.pixels)
+              let box = source.bounds(for: .mediaBox)
+              let natural =
+                source.rotation % 180 == 0 ? box.size : CGSize(width: box.height, height: box.width)
+              sourceSize = natural
+              let factor = side / max(1, max(natural.width, natural.height))
+              let size = CGSize(
+                width: max(1, (natural.width * factor).rounded()),
+                height: max(1, (natural.height * factor).rounded()))
+              let format = UIGraphicsImageRendererFormat()
+              format.scale = 1
+              format.opaque = true
+              image = UIGraphicsImageRenderer(size: size, format: format).image { ctx in
+                UIColor.white.setFill()
+                ctx.fill(CGRect(origin: .zero, size: size))
+                let cg = ctx.cgContext
+                cg.translateBy(x: 0, y: size.height)
+                cg.scaleBy(x: factor, y: -factor)
+                source.transform(cg, for: .mediaBox)
+                source.draw(with: .mediaBox, to: cg)
+              }
+              if scan.textBlocks.isEmpty { scan.textBlocks = DocumentPDF.textBlocks(source) }
+            } else {
+              image = try Imaging.previewThumbnail(
+                Imaging.render(scan, root: root), maxDimension: compression.pixels)
+            }
             let size =
               document.paper == .original
-              ? CGSize(width: image.size.width * 0.5, height: image.size.height * 0.5)
+              ? (sourceSize ?? CGSize(width: image.size.width * 0.5, height: image.size.height * 0.5))
               : document.outputSize
             let bounds = CGRect(origin: .zero, size: size)
             bytes = UIGraphicsPDFRenderer(bounds: bounds).pdfData { context in
@@ -66,7 +112,7 @@ enum DocumentPDF {
                 x: (size.width - image.size.width * scale) / 2,
                 y: (size.height - image.size.height * scale) / 2, width: image.size.width * scale,
                 height: image.size.height * scale)
-              image.draw(in: rect)
+              PDFJPEG.draw(image, quality: compression.quality, in: rect, context: context.cgContext)
               PDFTextLayer.draw(blocks: scan.textBlocks, in: context.cgContext, imageRect: rect)
             }
           } else {

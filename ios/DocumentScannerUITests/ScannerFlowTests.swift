@@ -47,27 +47,37 @@ final class ScannerFlowTests: XCTestCase {
         try session.buyProduct(productIdentifier: "com.documentscanner.pro.yearly")
         let app = XCUIApplication(); app.launchArguments = ["--ui-test-session", UUID().uuidString, "--seed-saved"]
         app.launch(); XCTAssertTrue(app.staticTexts["Test document"].waitForExistence(timeout: 10)); app.staticTexts["Test document"].tap()
-        for tool in ["Watermark · PRO", "Timestamp · PRO", "ID card layout", "Long image · PRO"] {
-            app.buttons["Tools"].tap(); app.buttons[tool].tap()
-            let prepare = app.buttons["local-tool-prepare"]
-            for _ in 0..<4 where !prepare.isHittable { app.swipeUp() }
-            waitEnabled(prepare); prepare.tap()
-            if tool == "Long image · PRO" {
-                XCTAssertTrue(app.buttons["Change settings"].waitForExistence(timeout: 20))
-                XCTAssertTrue(app.buttons["Share"].exists)
-            } else {
-                let save = app.buttons["local-tool-save"]
-                waitEnabled(save); save.tap()
-                let done = expectation(for: NSPredicate(format: "label == %@", "Copy saved on this iPhone."), evaluatedWith: app.staticTexts["local-tool-result"])
-                wait(for: [done], timeout: 30)
-                XCTAssertFalse(save.isEnabled)
-                let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = tool; shot.lifetime = .keepAlways; add(shot)
-            }
-            app.buttons["Close"].tap()
+        func finished(_ name: String) {
+            XCTAssertTrue(app.staticTexts["tool-done-title"].waitForExistence(timeout: 30), name)
+            let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = name; shot.lifetime = .keepAlways; add(shot)
         }
+        // Watermark: preview and options on one page, applied to a new copy.
+        app.buttons.matching(NSPredicate(format: "label == %@ AND NOT (identifier IN %@)", "Tools", ["nav-tools", "home-tools"])).firstMatch.tap(); app.buttons["Watermark · PRO"].tap()
+        waitEnabled(app.buttons["watermark-apply"]); XCTAssertTrue(app.descendants(matching: .any)["tool-preview"].exists)
+        app.buttons["watermark-apply"].tap(); finished("Watermark"); app.buttons["tool-done-primary"].tap()
+        // Timestamp: pick a style, then check the details.
+        app.buttons.matching(NSPredicate(format: "label == %@ AND NOT (identifier IN %@)", "Tools", ["nav-tools", "home-tools"])).firstMatch.tap(); app.buttons["Timestamp · PRO"].tap()
+        waitEnabled(app.buttons["timestamp-next"]); app.buttons["timestamp-next"].tap()
+        waitEnabled(app.buttons["timestamp-apply"]); app.buttons["timestamp-apply"].tap()
+        finished("Timestamp"); app.buttons["tool-done-primary"].tap()
+        // ID card layout keeps its own screen.
+        app.buttons.matching(NSPredicate(format: "label == %@ AND NOT (identifier IN %@)", "Tools", ["nav-tools", "home-tools"])).firstMatch.tap(); app.buttons["ID card layout"].tap()
+        let prepare = app.buttons["local-tool-prepare"]
+        for _ in 0..<4 where !prepare.isHittable { app.swipeUp() }
+        waitEnabled(prepare); prepare.tap()
+        let save = app.buttons["local-tool-save"]
+        waitEnabled(save); save.tap()
+        let done = expectation(for: NSPredicate(format: "label == %@", "Copy saved on this iPhone."), evaluatedWith: app.staticTexts["local-tool-result"])
+        wait(for: [done], timeout: 30)
+        app.buttons["Close"].tap()
+        // Long image: share-only result.
+        app.buttons.matching(NSPredicate(format: "label == %@ AND NOT (identifier IN %@)", "Tools", ["nav-tools", "home-tools"])).firstMatch.tap(); app.buttons["Long image · PRO"].tap()
+        waitEnabled(app.buttons["long-image-run"]); app.buttons["long-image-run"].tap()
+        finished("Long image"); XCTAssertTrue(app.buttons["tool-done-secondary"].exists)
+        app.buttons["tool-close"].tap()
         app.terminate(); app.launch()
-        XCTAssertTrue(app.staticTexts["Test document (Watermark)"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Test document (Timestamp)"].exists)
+        XCTAssertTrue(app.staticTexts["Test document (watermark)"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Test document (timestamp)"].exists)
         XCTAssertTrue(app.staticTexts["Test document (ID card layout)"].exists)
         XCTAssertTrue(app.staticTexts["Test document"].exists)
     }
@@ -127,15 +137,15 @@ final class ScannerFlowTests: XCTestCase {
         app.launchArguments = ["--ui-test-session", UUID().uuidString, "--seed-saved"]
         app.launch()
         XCTAssertTrue(app.staticTexts["Test document"].waitForExistence(timeout: 10)); app.staticTexts["Test document"].tap()
-        app.buttons["Tools"].tap(); app.buttons["Extract pages · PRO"].tap()
-        XCTAssertTrue(app.navigationBars["Extract pages"].waitForExistence(timeout: 5))
-        let range = app.textFields["All pages, or 1, 3–5"]
-        range.tap(); range.typeText("2")
-        app.buttons["Create copy"].tap()
-        XCTAssertTrue(app.staticTexts["tool-result"].waitForExistence(timeout: 15))
-        XCTAssertTrue(app.staticTexts["tool-result"].label.contains("saved"))
-        app.buttons["Close"].tap()
-        app.buttons["Tools"].tap(); app.buttons["Sign & annotate"].tap()
+        app.buttons.matching(NSPredicate(format: "label == %@ AND NOT (identifier IN %@)", "Tools", ["nav-tools", "home-tools"])).firstMatch.tap(); app.buttons["Extract pages · PRO"].tap()
+        XCTAssertTrue(app.buttons["page-cell-2"].waitForExistence(timeout: 10))
+        app.buttons["page-cell-2"].tap()
+        XCTAssertEqual(app.staticTexts["page-selection-count"].label, "1 of 2 selected")
+        waitEnabled(app.buttons["extract-run"]); app.buttons["extract-run"].tap()
+        XCTAssertTrue(app.staticTexts["tool-done-title"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["tool-done-title"].label.contains("Extracted"))
+        app.buttons["tool-done-primary"].tap()
+        app.buttons.matching(NSPredicate(format: "label == %@ AND NOT (identifier IN %@)", "Tools", ["nav-tools", "home-tools"])).firstMatch.tap(); app.buttons["Sign & annotate"].tap()
         XCTAssertTrue(app.buttons["Add text box"].waitForExistence(timeout: 10))
         app.buttons["Add text box"].tap()
         let field = app.descendants(matching: .any)["annotation-text"].firstMatch

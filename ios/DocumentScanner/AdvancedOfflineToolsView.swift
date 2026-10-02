@@ -99,7 +99,8 @@ struct AdvancedOfflineHub: View {
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(visible) { tool in
                         NavigationLink {
-                            if tool == .measure || tool == .mesh { SpatialToolsView(mesh: tool == .mesh) }
+                            if tool == .measure { MeasureToolView() }
+                            else if tool == .mesh { MeshToolView() }
                             else { AdvancedOfflineToolView(tool: tool, documentID: documentID) }
                         } label: { ToolTile(title: tool.rawValue, icon: tool.icon, pro: tool.pro) }.accessibilityLabel(tool.rawValue)
                     }
@@ -145,10 +146,16 @@ struct AdvancedOfflineToolView:View {
                             tryFree:{ if trials.consume(feature) { unlocked = true } },
                             upgrade:{ paywall = true })
                 .sheet(isPresented:$paywall) { PaywallView() }
+        } else if tool.imageTool {
+            ImageToolFlow(tool:tool, documentID:documentID)
         } else {
             AdvancedOfflineToolContent(tool:tool, documentID:documentID)
         }
     }
+}
+extension AdvancedTool {
+    /// Photo tools with their own step-by-step flow.
+    var imageTool: Bool { [.book, .portrait, .erase, .marks, .restore, .mega, .count].contains(self) }
 }
 struct ProToolLockView:View {
     let tool:AdvancedTool
@@ -157,25 +164,24 @@ struct ProToolLockView:View {
     let tryFree:() -> Void
     let upgrade:() -> Void
     var body:some View {
-        ScrollView {
-            VStack(spacing:18) {
-                ToolArtwork(name:tool.icon, size:96).padding(.top, 32)
-                Text(tool.rawValue).font(.title2.bold()).foregroundStyle(Design.ink)
-                Text("PRO").font(.caption.weight(.bold)).foregroundStyle(Design.blue)
-                Text(tool.detail).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        ToolPage(title: tool.rawValue, subtitle: tool.detail) {
+            ToolHero(art: tool.art)
+            HStack(spacing: 10) {
+                Image(systemName: "crown.fill").foregroundStyle(TK.orange)
                 Text(remaining > 0
                      ? "\(feature.title) is part of Pro. You have \(remaining) free \(remaining == 1 ? "try" : "tries") left on this iPhone."
                      : "You've used your free tries of \(feature.title.lowercased()). Upgrade to keep using it.")
-                    .font(.subheadline).multilineTextAlignment(.center).foregroundStyle(Design.ink)
+                    .font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("pro-trial-status")
-                Button("Upgrade to Pro", action:upgrade).buttonStyle(PrimaryButton())
-                    .accessibilityIdentifier("pro-upgrade")
-                if remaining > 0 {
-                    Button("Try free (\(remaining) left)", action:tryFree).font(.headline)
-                        .accessibilityIdentifier("pro-try-free")
-                }
-            }.padding(24).frame(maxWidth:520).frame(maxWidth:.infinity)
-        }.navigationTitle(tool.rawValue).navigationBarTitleDisplayMode(.inline)
+            }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(TK.orangeSoft, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        } actions: {
+            if remaining > 0 {
+                Button("Try free (\(remaining) left)", action:tryFree).buttonStyle(SecondaryCTAStyle())
+                    .accessibilityIdentifier("pro-try-free")
+            }
+            Button("Upgrade to Pro", action:upgrade).buttonStyle(CTAButtonStyle())
+                .accessibilityIdentifier("pro-upgrade")
+        }
     }
 }
 struct AdvancedOfflineToolContent:View {

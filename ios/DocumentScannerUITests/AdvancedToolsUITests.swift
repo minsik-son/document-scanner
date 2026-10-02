@@ -7,7 +7,7 @@ final class AdvancedToolsUITests:XCTestCase {
     }
     @MainActor private func launch(document:Bool = false,table:Bool = false) -> XCUIApplication {
         let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString]+(document ? ["--seed-saved"] : [])+(table ? ["--seed-office-table"] : []);app.launch()
-        if document { app.buttons["nav-documents"].tap();app.staticTexts["Test document"].tap();XCTAssertTrue(app.buttons["Share PDF"].waitForExistence(timeout:5));app.buttons["Tools"].tap();app.buttons["More offline tools"].tap() }
+        if document { app.buttons["nav-documents"].tap();app.staticTexts["Test document"].tap();XCTAssertTrue(app.buttons["Share PDF"].waitForExistence(timeout:5));app.buttons.matching(NSPredicate(format: "label == %@ AND NOT (identifier IN %@)", "Tools", ["nav-tools", "home-tools"])).firstMatch.tap();app.buttons["More offline tools"].tap();XCTAssertTrue(app.textFields["tool-search"].waitForExistence(timeout:5)) }
         else { XCTAssertTrue(app.buttons["home-tools"].isHittable);app.buttons["home-tools"].tap() }
         return app
     }
@@ -315,46 +315,36 @@ final class AdvancedToolsUITests:XCTestCase {
         _ = app.staticTexts.containing(NSPredicate(format:"label CONTAINS[c] %@","SCANNER TEST PAGE")).firstMatch.waitForExistence(timeout:15)
         let shot = XCTAttachment(screenshot:app.screenshot());shot.name = "PowerPoint editable Quick Look";shot.lifetime = .keepAlways;add(shot)
     }
-    @MainActor func testChangingBookOptionsRequiresNewPreview() {
-        let app = launch(document:true);app.buttons["Book pages"].tap()
-        ready(app.buttons["offline-run"]);app.buttons["offline-run"].tap();ready(app.buttons["offline-run"])
-        for _ in 0..<7 where !app.buttons["offline-save"].exists { app.swipeUp() }
-        XCTAssertTrue(app.buttons["offline-save"].exists)
-        let split = app.switches["Split into two pages"]
-        for _ in 0..<10 {
-            if split.exists {
-                let top = app.navigationBars.firstMatch.frame.maxY + 8
-                let bottom = app.buttons["offline-run"].frame.minY - 8
-                if split.frame.minY >= top && split.frame.maxY <= bottom { break }
-                if split.frame.maxY > bottom { app.swipeUp() } else { app.swipeDown() }
-            } else { app.swipeDown() }
-        }
-        XCTAssertEqual(split.value as? String,"1")
-        split.coordinate(withNormalizedOffset:CGVector(dx:0.93,dy:0.5)).tap()
-        XCTAssertEqual(split.value as? String,"0")
-        XCTAssertFalse(app.buttons["offline-save"].exists)
-        app.buttons["offline-run"].tap();ready(app.buttons["offline-run"])
-        for _ in 0..<7 where !app.buttons["offline-save"].exists { app.swipeUp() }
-        XCTAssertTrue(app.images["Processed result 1"].exists)
-        XCTAssertFalse(app.images["Processed result 2"].exists)
+    @MainActor func testBookOnePageOrTwoPagesFromDocument() {
+        let app = launch(document:true);let book = app.buttons["Book pages"]
+        for _ in 0..<6 where !book.isHittable { app.swipeUp() }
+        book.tap();ready(app.buttons["source-current"]);app.buttons["source-current"].tap()
+        // The test document has two pages: pick the first.
+        ready(app.buttons["page-cell-1"]);app.buttons["page-cell-1"].tap()
+        ready(app.buttons["book-next"])
+        app.buttons["book-one"].tap();app.buttons["book-next"].tap()
+        XCTAssertTrue(app.images["book-page-1"].waitForExistence(timeout:30))
+        XCTAssertFalse(app.pageIndicators.firstMatch.exists,"One page has no page dots")
+        app.buttons["tool-back"].tap();ready(app.buttons["book-two"])
+        app.buttons["book-two"].tap();app.buttons["book-next"].tap()
+        XCTAssertTrue(app.images["book-page-1"].waitForExistence(timeout:30))
+        XCTAssertTrue(app.pageIndicators.firstMatch.exists,"Two pages show page dots")
+        XCTAssertTrue(app.sliders["Flatten curve"].exists)
     }
-    @MainActor func testBookPreviewAndPowerPointExportFromDocument() {
-        let app = launch(document:true);app.buttons["Book pages"].tap()
-        ready(app.buttons["offline-run"]);app.buttons["offline-run"].tap();ready(app.buttons["offline-run"])
-        for _ in 0..<7 where !app.buttons["offline-save"].exists { app.swipeUp() }
-        XCTAssertTrue(app.buttons["offline-save"].exists)
-        XCTAssertTrue(app.images["Processed result 2"].exists)
+    @MainActor func testBookPagesSavedFromDocument() {
+        let app = launch(document:true);let book = app.buttons["Book pages"]
+        for _ in 0..<6 where !book.isHittable { app.swipeUp() }
+        book.tap();ready(app.buttons["source-current"]);app.buttons["source-current"].tap()
+        ready(app.buttons["page-cell-1"]);app.buttons["page-cell-1"].tap()
+        ready(app.buttons["book-next"]);app.buttons["book-next"].tap()
+        ready(app.buttons["book-save"])
         let shot = XCTAttachment(screenshot:app.screenshot());shot.name = "Book split preview";shot.lifetime = .keepAlways;add(shot)
-        app.navigationBars.buttons.element(boundBy:0).tap()
-        for _ in 0..<5 where !app.buttons["PowerPoint export"].isHittable { app.swipeDown() }
-        app.buttons["PowerPoint export"].tap();ready(app.buttons["offline-run"]);app.buttons["offline-run"].tap();ready(app.buttons["offline-run"])
-        for _ in 0..<7 where !app.buttons["Preview exported file"].isHittable || app.buttons["Preview exported file"].frame.maxY > app.buttons["offline-run"].frame.minY { app.swipeUp() }
-        XCTAssertTrue(app.buttons["Share export"].exists)
-        app.buttons["Preview exported file"].tap()
-        XCTAssertTrue(app.navigationBars.buttons["Done"].waitForExistence(timeout:10))
-        let loaded = XCTNSPredicateExpectation(predicate:NSPredicate(format:"exists == false"),object:app.activityIndicators.firstMatch)
-        XCTAssertEqual(XCTWaiter.wait(for:[loaded],timeout:20),.completed)
-        XCTAssertFalse(app.staticTexts["Office Open XML presentation"].exists)
-        let slide = XCTAttachment(screenshot:app.screenshot());slide.name = "PPTX Quick Look";slide.lifetime = .keepAlways;add(slide)
+        app.buttons["book-save"].tap()
+        XCTAssertTrue(app.staticTexts["tool-done-title"].waitForExistence(timeout:60))
+        app.buttons["tool-done-primary"].tap()
+        // Back in the tools hub; the pages are saved as a new document.
+        XCTAssertTrue(app.textFields["tool-search"].waitForExistence(timeout:10))
+        app.buttons["Close"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Book pages"].waitForExistence(timeout:10) || app.buttons["Share PDF"].exists)
     }
 }

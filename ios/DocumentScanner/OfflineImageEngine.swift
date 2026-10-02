@@ -176,7 +176,7 @@ enum OfflineImageEngine {
             for (index,image) in images.enumerated() {
                 if Task.isCancelled { return }
                 let size = millimeters.map { CGSize(width:$0.width/25.4*72,height:$0.height/25.4*72) } ?? CGSize(width:image.size.width*0.24,height:image.size.height*0.24)
-                ctx.beginPage(withBounds:CGRect(origin:.zero,size:size),pageInfo:[:]); image.draw(in:CGRect(origin:.zero,size:size))
+                ctx.beginPage(withBounds:CGRect(origin:.zero,size:size),pageInfo:[:]); PDFJPEG.draw(image,quality:0.9,in:CGRect(origin:.zero,size:size),context:ctx.cgContext)
                 if text.indices.contains(index) { PDFTextLayer.draw(blocks:text[index],in:ctx.cgContext,imageRect:CGRect(origin:.zero,size:size)) }
             }
         }

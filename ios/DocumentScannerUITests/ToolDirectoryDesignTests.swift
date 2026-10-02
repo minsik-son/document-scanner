@@ -124,15 +124,16 @@ final class ToolDirectoryDesignTests: XCTestCase {
         let search = app.textFields["tool-search"]
         search.tap(); search.typeText("Export images")
         app.buttons["Export images"].tap()
-        XCTAssertTrue(app.staticTexts["Choose a document"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["pdf-import"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["tool-page-title"].exists)
         app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "tool-document-")).firstMatch.tap()
-        XCTAssertTrue(app.buttons["Prepare export"].waitForExistence(timeout: 5))
-        app.buttons["document-tool-close"].tap()
-        XCTAssertTrue(app.staticTexts["Choose a document"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["images-run"].waitForExistence(timeout: 5))
+        app.buttons["tool-back"].tap()
+        XCTAssertTrue(app.buttons["pdf-import"].waitForExistence(timeout: 5))
         app.terminate()
         let empty = launch()
         empty.buttons["Text"].tap()
-        XCTAssertTrue(empty.staticTexts["No saved documents"].waitForExistence(timeout: 5))
+        XCTAssertTrue(empty.staticTexts.containing(NSPredicate(format: "label BEGINSWITH %@", "No saved documents")).firstMatch.waitForExistence(timeout: 5))
         capture(empty, "Tool without saved document")
     }
     @MainActor func testLibrarySwipeAndNavigationAfterRedesign() {

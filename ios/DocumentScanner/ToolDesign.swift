@@ -73,76 +73,9 @@ struct QuickToolView: View {
             }
         case .library(let value):
             if value == .identity { IdentityScanView() }
-            else { LibraryToolPicker(tool: value, documentID: documentID) }
+            else { PDFToolFlow(tool: value, documentID: documentID) }
         case .qr: QRCodeView()
         case .stitch: ScreenshotStitchView()
         }
-    }
-}
-
-/// Library tools share the existing editors and purchase gates; the directory
-/// only supplies document selection when no document is already open.
-struct LibraryToolPicker: View {
-    let tool: LibraryTool
-    var documentID: UUID? = nil
-    @EnvironmentObject private var store: LibraryStore
-    @EnvironmentObject private var subscription: SubscriptionStore
-    @Environment(\.dismiss) private var dismiss
-    @State private var query = ""
-    @State private var selected: ScanRoute?
-    @State private var pending: UUID?
-    @State private var paywall = false
-    @State private var started = false
-    private var documents: [ScanDocument] {
-        store.active.filter { query.isEmpty || $0.title.localizedCaseInsensitiveContains(query) }
-    }
-    var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    HStack(spacing: 12) {
-                        ToolArtwork(name: tool.icon)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Choose a document").font(.headline)
-                            Text("Select a saved PDF to get started.").font(.subheadline).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                if documents.isEmpty {
-                    ContentUnavailableView(store.active.isEmpty ? "No saved documents" : "No matching documents", systemImage: "doc", description: Text(store.active.isEmpty ? "Scan or import a document from Home first." : "Try another document name."))
-                }
-                ForEach(documents) { doc in
-                    Button { open(doc.id) } label: { DocumentRow(document: doc) }.buttonStyle(.plain)
-                        .accessibilityIdentifier("tool-document-" + doc.id.uuidString)
-                }
-            }.searchable(text: $query, prompt: "Search documents")
-                .navigationTitle(tool.rawValue).navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
-                .sheet(isPresented: $paywall, onDismiss: {
-                    if subscription.isPro, let id = pending { selected = ScanRoute(id: id) }
-                    pending = nil
-                }) { PaywallView() }
-                .fullScreenCover(item: $selected) { route in
-                    if tool == .reorder { ReviewView(documentID: route.id) }
-                    else if tool == .ocr {
-                        NavigationStack {
-                            DocumentView(documentID: route.id, openTextOnAppear: true)
-                                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { selected = nil } } }
-                        }
-                    } else if let value = tool.documentTool {
-                        if value.localTool { LocalDocumentToolsView(documentID: route.id, tool: value) }
-                        else if value == .annotate { AnnotationEditor(documentID: route.id) }
-                        else { DocumentToolsView(documentID: route.id, tool: value) }
-                    }
-                }
-                .onAppear {
-                    guard !started else { return }; started = true
-                    if let id = documentID, store.document(id) != nil { open(id) }
-                }
-        }
-    }
-    private func open(_ id: UUID) {
-        if tool.pro && !subscription.isPro { pending = id; paywall = true }
-        else { selected = ScanRoute(id: id) }
     }
 }

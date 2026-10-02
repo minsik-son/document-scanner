@@ -41,6 +41,7 @@ targets:
         OTHER_LDFLAGS: $(inherited) -ObjC
         INFOPLIST_KEY_NSCameraUsageDescription: Scan paper documents and save them on your iPhone.
         INFOPLIST_KEY_NSFaceIDUsageDescription: Unlock your documents on this iPhone.
+        INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: Save images you make with the tools to your photo library.
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UILaunchStoryboardName: LaunchScreen
         INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleLightContent

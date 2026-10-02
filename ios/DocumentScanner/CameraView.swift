@@ -21,6 +21,7 @@ struct CameraView: View {
     @State private var capturedPage: ScanPage?
     @State private var visible = false
     @State private var flash = false
+    @State private var shutter = 0
     @State private var importedPhoto: PhotosPickerItem?
     var body: some View {
         ZStack {
@@ -69,7 +70,7 @@ struct CameraView: View {
     private var liveCamera: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            CameraPreview(controller: camera, tracking: camera.tracking).ignoresSafeArea()
+            CameraPreview(controller: camera, tracking: camera.tracking, shutter: shutter).ignoresSafeArea()
             VStack {
                 HStack {
                     Button("Close") { dismiss() }.disabled(saving).accessibilityIdentifier("camera-close")
@@ -202,7 +203,7 @@ struct CameraView: View {
 
     private func capturePage() {
         guard !saving, !cardComplete, capturedPage == nil, camera.ready || testCamera else { return }
-        saving = true; error = nil
+        saving = true; error = nil; shutter += 1
         // Read the phone's orientation at the moment of the shutter, not when the
         // photo finishes processing.
         let turns = captureTurns
@@ -564,14 +565,33 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
 final class PreviewSurface: UIView {
     override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
     var preview: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
-    private let outline = CAShapeLayer()
+    private let fill = CAShapeLayer()
+    /// Page edges drawn as lines that run past the corners, so each corner
+    /// reads as a cross. They cut in like quick strokes when a page is found.
+    private let edges: [CAShapeLayer] = (0..<4).map { _ in CAShapeLayer() }
+    /// Two strokes across the page when the shutter fires.
+    private let slash = CAShapeLayer()
+    private var points: [CGPoint] = []
+    private var shownQuad = false
+    private var lastPhase: LiveDocumentSnapshot.Phase?
     var onVisibleArea: ((ScanQuad?) -> Void)?
     var tracking = LiveDocumentSnapshot() { didSet { redraw() } }
+    var shutter = 0 { didSet { if shutter != oldValue { playShutter() } } }
     override init(frame: CGRect) {
         super.init(frame: frame)
-        outline.lineWidth = 3
-        outline.fillColor = UIColor.systemBlue.withAlphaComponent(0.12).cgColor
-        layer.addSublayer(outline)
+        fill.fillColor = UIColor.systemBlue.withAlphaComponent(0.12).cgColor
+        fill.strokeColor = nil
+        layer.addSublayer(fill)
+        for edge in edges {
+            edge.lineWidth = 2.5; edge.lineCap = .round; edge.fillColor = nil
+            edge.shadowOffset = .zero; edge.shadowRadius = 5
+            layer.addSublayer(edge)
+        }
+        slash.lineWidth = 3; slash.lineCap = .round; slash.fillColor = nil
+        slash.strokeColor = UIColor.white.cgColor
+        slash.shadowColor = UIColor.white.cgColor; slash.shadowOpacity = 0.9; slash.shadowRadius = 8; slash.shadowOffset = .zero
+        slash.opacity = 0
+        layer.addSublayer(slash)
         isAccessibilityElement = false
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -583,7 +603,8 @@ final class PreviewSurface: UIView {
                 connection.automaticallyAdjustsVideoMirroring = false; connection.isVideoMirrored = false
             }
         }
-        outline.frame = bounds
+        fill.frame = bounds; slash.frame = bounds
+        edges.forEach { $0.frame = bounds }
         let rect = bounds.insetBy(dx: 8, dy: 8)
         let corners = [CGPoint(x:rect.minX,y:rect.minY), CGPoint(x:rect.maxX,y:rect.minY),
                        CGPoint(x:rect.maxX,y:rect.maxY), CGPoint(x:rect.minX,y:rect.maxY)]
@@ -594,24 +615,86 @@ final class PreviewSurface: UIView {
         onVisibleArea?(preview.connection == nil ? nil : area)
         redraw()
     }
+    private var animates: Bool { !UIAccessibility.isReduceMotionEnabled }
     private func redraw() {
-        outline.shadowColor = UIColor.systemGreen.cgColor
-        outline.shadowOpacity = tracking.phase == .steady ? 0.8 : 0
-        outline.shadowRadius = 6; outline.shadowOffset = .zero
-        guard let quad = tracking.quad else { outline.path = nil; return }
-        let points = quad.points.map {
+        guard let quad = tracking.quad else {
+            fill.path = nil; edges.forEach { $0.path = nil }
+            points = []; shownQuad = false; lastPhase = tracking.phase
+            return
+        }
+        points = quad.points.map {
             preview.layerPointConverted(fromCaptureDevicePoint: LiveDocumentTracker.captureDevicePoint(fromPortrait: $0))
         }
+        let steady = tracking.phase == .steady
+        let color: UIColor = steady ? .systemGreen : .systemBlue
+        let outline = UIBezierPath()
+        outline.move(to: points[0]); points.dropFirst().forEach { outline.addLine(to: $0) }; outline.close()
+        fill.path = outline.cgPath
+        fill.fillColor = color.withAlphaComponent(0.12).cgColor
+        for (i, edge) in edges.enumerated() {
+            let a = points[i], b = points[(i + 1) % 4]
+            let length = hypot(b.x - a.x, b.y - a.y)
+            guard length > 1 else { edge.path = nil; continue }
+            let ux = (b.x - a.x) / length, uy = (b.y - a.y) / length
+            let reach = min(34, length * 0.16)
+            let line = UIBezierPath()
+            line.move(to: CGPoint(x: a.x - ux * reach, y: a.y - uy * reach))
+            line.addLine(to: CGPoint(x: b.x + ux * reach, y: b.y + uy * reach))
+            edge.path = line.cgPath
+            edge.strokeColor = color.cgColor
+            edge.shadowColor = color.cgColor
+            edge.shadowOpacity = steady ? 0.9 : 0.5
+        }
+        // A newly found page, or a page that just became steady, gets the strokes.
+        if animates && (!shownQuad || (steady && lastPhase != .steady)) { cutIn(fast: shownQuad) }
+        shownQuad = true; lastPhase = tracking.phase
+    }
+    private func cutIn(fast: Bool) {
+        let now = CACurrentMediaTime()
+        for (i, edge) in edges.enumerated() {
+            let stroke = CABasicAnimation(keyPath: "strokeEnd")
+            stroke.fromValue = 0; stroke.toValue = 1
+            stroke.duration = fast ? 0.18 : 0.26
+            stroke.beginTime = now + Double(i) * (fast ? 0.035 : 0.06)
+            stroke.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.9, 0.3, 1)
+            stroke.fillMode = .backwards
+            edge.add(stroke, forKey: "cut")
+            let glow = CAKeyframeAnimation(keyPath: "shadowRadius")
+            glow.values = [5, 14, 5]; glow.duration = stroke.duration + 0.2; glow.beginTime = stroke.beginTime
+            edge.add(glow, forKey: "glow")
+        }
+    }
+    private func playShutter() {
+        guard animates else { return }
+        let p = points.count == 4 ? points : {
+            let r = bounds.insetBy(dx: bounds.width * 0.12, dy: bounds.height * 0.18)
+            return [CGPoint(x: r.minX, y: r.minY), CGPoint(x: r.maxX, y: r.minY), CGPoint(x: r.maxX, y: r.maxY), CGPoint(x: r.minX, y: r.maxY)]
+        }()
         let path = UIBezierPath()
-        path.move(to: points[0]); points.dropFirst().forEach { path.addLine(to: $0) }; path.close()
-        outline.path = path.cgPath
-        let color: UIColor = tracking.phase == .steady ? .systemGreen : .systemBlue
-        outline.strokeColor = color.cgColor; outline.fillColor = color.withAlphaComponent(0.12).cgColor
+        path.move(to: p[0]); path.addLine(to: p[2])
+        path.move(to: p[1]); path.addLine(to: p[3])
+        slash.path = path.cgPath
+        let now = CACurrentMediaTime()
+        let stroke = CABasicAnimation(keyPath: "strokeEnd")
+        stroke.fromValue = 0; stroke.toValue = 1; stroke.duration = 0.16
+        stroke.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        let fade = CAKeyframeAnimation(keyPath: "opacity")
+        fade.values = [1, 1, 0]; fade.keyTimes = [0, 0.45, 1]; fade.duration = 0.42
+        let group = CAAnimationGroup()
+        group.animations = [stroke, fade]; group.duration = 0.42; group.beginTime = now
+        slash.add(group, forKey: "shutter")
+        for edge in edges {
+            let flash = CAKeyframeAnimation(keyPath: "strokeColor")
+            flash.values = [UIColor.white.cgColor, edge.strokeColor ?? UIColor.white.cgColor]
+            flash.duration = 0.35
+            edge.add(flash, forKey: "flash")
+        }
     }
 }
 struct CameraPreview: UIViewRepresentable {
     let controller: CameraController
     let tracking: LiveDocumentSnapshot
+    var shutter = 0
     func makeUIView(context: Context) -> PreviewSurface {
         let view = PreviewSurface()
         view.preview.session = controller.session; view.preview.videoGravity = .resizeAspectFill
@@ -621,6 +704,7 @@ struct CameraPreview: UIViewRepresentable {
     }
     func updateUIView(_ uiView: PreviewSurface, context: Context) {
         uiView.tracking = tracking
+        uiView.shutter = shutter
         uiView.setNeedsLayout()
     }
 }

@@ -19,11 +19,14 @@ struct DocumentScannerApp: App {
                     FirstRunView().environmentObject(store)
                         .environment(\.colorScheme, .light)
                         .environment(\.startupCovered, showStartup)
-                        // Not reachable (VoiceOver, UI tests) until it is revealed.
+                        // Not reachable (VoiceOver, UI tests, touches) until it is revealed.
                         .accessibilityHidden(showStartup)
+                        .allowsHitTesting(!showStartup)
                 }
                 if showStartup {
-                    StartupView().transition(.opacity).zIndex(1)
+                    // The cover has no controls. While it fades out it must not swallow
+                    // the first tap or swipe meant for the screen underneath.
+                    StartupView().allowsHitTesting(false).transition(.opacity).zIndex(1)
                 }
             }
             .environmentObject(subscription).environmentObject(lock)

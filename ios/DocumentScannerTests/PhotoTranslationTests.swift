@@ -214,7 +214,7 @@ final class PhotoTranslationTests: XCTestCase {
         for i in regions.indices {
             let value = regions[i].source.lowercased()
             var target:String? = nil
-            if value.contains("it is much easier") { target = "데이터가 백업된 위치를 알면 더 쉽게 이용할 수 있습니다." }
+            if value.contains("it is much easier") { target = "데이터가 백업된 위치를 알면 더 쉽게 이용할 수 있습니다." + (value.contains("keyboard") ? " 키보드와 마우스를 연결해야 합니다." : "") }
             else if value.hasPrefix("keyboard and mouse") { target = "키보드와 마우스를 연결해야 합니다." }
             else if value.contains("you can still recover") { target = "운영체제로 부팅할 수 없어도 빠르게 복구할 수 있습니다." + (value.contains("keyboard") ? " 키보드와 마우스를 연결해야 합니다." : "") }
             else if value.contains("when you recover") { target = "하드 디스크를 복구하면 시스템의 모든 데이터가 삭제됩니다." + (value.contains("please save") ? " 복구 전에 중요한 데이터를 외부 저장 장치에 보관하세요." : "") }
@@ -230,9 +230,15 @@ final class PhotoTranslationTests: XCTestCase {
         let report = regions.map { "\($0.id) \($0.box) lines=\($0.sourceBoxes.count): \($0.source) → \($0.target) | \(result.reasons[$0.id]?.rawValue ?? "OK")" }.joined(separator:"\n")
         print(report)
         let log = XCTAttachment(string:report);log.name = "latest-pdf-body-report";log.lifetime = .keepAlways;add(log)
+        if let home = ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] {
+            let folder = URL(fileURLWithPath:home).appendingPathComponent("Documents/ChatGPT/정치 중립/scanner-product/ios/Verification/scan-quality-sample/translation-original")
+            try? FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true)
+            try? report.write(to:folder.appendingPathComponent("latest-pdf-report.txt"),atomically:true,encoding:.utf8)
+        }
         let shot = XCTAttachment(image:result.image);shot.name = "latest-pdf-body-output";shot.lifetime = .keepAlways;add(shot)
         XCTAssertTrue(regions.contains { $0.source.contains("Windows의 최신 백업") },"Mixed Korean/English source text must not be replaced by Latin gibberish")
-        XCTAssertGreaterThanOrEqual(selected.count,6)
+        // Adjacent lines of one paragraph may form one area ("…backed up" + "Keyboard and mouse…").
+        XCTAssertGreaterThanOrEqual(selected.count,5,report)
         XCTAssertTrue(result.issues.filter { selected.contains($0.key) }.isEmpty,report)
     }
     private func line(_ words:[(String,Double,Double)],y:Double,h:Double = 0.03) -> TextBlock {
@@ -311,6 +317,55 @@ final class PhotoTranslationTests: XCTestCase {
         if result.replaced == 1 {
             XCTAssertFalse(result.text.contains { $0.text.hasPrefix("스") },"A Korean word must not be split across lines: \(result.text.map(\.text))")
         }
+    }
+    /// The user's original camera photo of the WinClon manual (IMG_3698). Writes a region report and
+    /// images next to the project when run in the simulator, so the result can be inspected.
+    @MainActor
+    func testOriginalManualPhotoReport() async throws {
+        let url = try XCTUnwrap(Bundle(for:Self.self).url(forResource:"TranslationManualOriginal",withExtension:"jpg"))
+        let photo = try XCTUnwrap(UIImage(contentsOfFile:url.path))
+        let scan = TranslationQuality.checked(try PhotoTranslation.scan(photo),language:"en")
+        var regions = scan.regions
+        var model = "not installed"
+        if #available(iOS 26.0,*) {
+            let a = Locale.Language(identifier:"en"),b = Locale.Language(identifier:"ko")
+            if await LanguageAvailability().status(from:a,to:b) == .installed {
+                let session = TranslationSession(installedSource:a,target:b)
+                for i in regions.indices where !regions[i].keepOriginal {
+                    if let fixed = TranslationGlossary.target(for:regions[i].source,from:"en",to:"ko") { regions[i].target = fixed;continue }
+                    regions[i].target = (try? await session.translate(regions[i].source).targetText) ?? ""
+                }
+                model = "installed"
+            }
+        }
+        let result = try PhotoTranslation.compose(scan.image,regions:regions)
+        let lines = regions.map { r -> String in
+            let flags = (r.isMarker ? "M" : "-")+(r.unclear ? "U" : "-")+(r.keepOriginal ? "K" : "-")
+            let box = String(format:"%.3f,%.3f %.3fx%.3f",r.box.minX,r.box.minY,r.box.width,r.box.height)
+            return "\(r.id) [\(flags)] conf=\(r.confidence) lines=\(max(1,r.sourceBoxes.count)) \(box): \(r.source) → \(r.target) | \(result.reasons[r.id]?.rawValue ?? "OK")"
+        }
+        func f(_ v:Double) -> String { String(format:"%.3f",v) }
+        let detection = DocumentProcessing.candidates(try XCTUnwrap(Imaging.normalized(photo).cgImage)).map { c in
+            "\(c.kind) conf=\(f(Double(c.confidence))) interior=\(f(c.interior)) edge=\(f(c.edge)) strong=\(c.strongEdges) area=\(f(DocumentProcessing.area(c.quad))) accepted=\(c.accepted) score=\(f(c.score)) quad=\(c.quad.points.map { "(\(f($0.x)),\(f($0.y)))" }.joined())"
+        }
+        let report = "edges=\(scan.edgesDetected) crop=\(scan.crop.points.map { "(\(f($0.x)),\(f($0.y)))" }.joined()) image=\(scan.image.size) model=\(model) replaced=\(result.replaced) kept=\(result.kept) unclear=\(result.unclear) issues=\(result.issues.count)\n"
+            + detection.joined(separator:"\n")+"\n---\n"+lines.joined(separator:"\n")
+        print(report)
+        let log = XCTAttachment(string:report);log.name = "original-photo-report";log.lifetime = .keepAlways;add(log)
+        let shot = XCTAttachment(image:result.image);shot.name = "original-photo-translated";shot.lifetime = .keepAlways;add(shot)
+        if let home = ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] {
+            let folder = URL(fileURLWithPath:home).appendingPathComponent("Documents/ChatGPT/정치 중립/scanner-product/ios/Verification/scan-quality-sample/translation-original")
+            try? FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true)
+            try? report.write(to:folder.appendingPathComponent("report.txt"),atomically:true,encoding:.utf8)
+            try? scan.image.pngData()?.write(to:folder.appendingPathComponent("scan.png"))
+            try? scan.reading?.pngData()?.write(to:folder.appendingPathComponent("reading.png"))
+            try? result.image.pngData()?.write(to:folder.appendingPathComponent("translated.png"))
+        }
+        XCTAssertTrue(scan.regions.contains { $0.source.lowercased().contains("external storage") },report)
+        // The whole sheet, including the numbered steps at the bottom of the page.
+        XCTAssertTrue(scan.regions.contains { $0.source.contains("continue restoring") },report)
+        XCTAssertGreaterThanOrEqual(scan.regions.filter(\.isMarker).count,3,report)
+        XCTAssertTrue(scan.regions.contains { $0.source.contains("PC POST") && $0.sourceBoxes.count >= 2 },report)
     }
     private func bytes(_ image:UIImage,_ rect:CGRect) throws -> Data {
         let cg = try XCTUnwrap(image.cgImage?.cropping(to:rect));let color = CGColorSpace(name:CGColorSpace.sRGB)!

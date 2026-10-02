@@ -93,6 +93,7 @@
 		FA324BE4CB19878574B08FCD /* SubscriptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001AFDAEA6A56CFE6D7E815D /* SubscriptionTests.swift */; };
 		FBA18B94B219B6203962B57F /* MathDocumentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF0559D3B9CA1F6C518AED3A /* MathDocumentView.swift */; };
 		FCD8B8274E750BF61B7233AC /* TranslationManualLatest.png in Resources */ = {isa = PBXBuildFile; fileRef = 6DEE6D1DFE5365491CFD7D7C /* TranslationManualLatest.png */; };
+		6D2B0F4C8E3A5B7C9D1F2A34 /* TranslationManualOriginal.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 5C1A9E3B7D2F4A6B8C0E1F23 /* TranslationManualOriginal.jpg */; };
 		FF87128E176720325C2A5AF7 /* ScannerFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9D443F9A450E2B27ED22180 /* ScannerFlowTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -150,6 +151,7 @@
 		6B90DEA9BDF086BF2398EADB /* DocumentScannerUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = DocumentScannerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6C94F784B80C8E019AA8DE7C /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		6DEE6D1DFE5365491CFD7D7C /* TranslationManualLatest.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = TranslationManualLatest.png; sourceTree = "<group>"; };
+		5C1A9E3B7D2F4A6B8C0E1F23 /* TranslationManualOriginal.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = TranslationManualOriginal.jpg; sourceTree = "<group>"; };
 		7121F12CCF29CE7873E5050C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		71DCD8A16D2968388637B23A /* CompletionAdvertisementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletionAdvertisementTests.swift; sourceTree = "<group>"; };
 		7310CB426EB9702333690FE8 /* LocalDocumentTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalDocumentTools.swift; sourceTree = "<group>"; };
@@ -253,6 +255,7 @@
 			isa = PBXGroup;
 			children = (
 				6DEE6D1DFE5365491CFD7D7C /* TranslationManualLatest.png */,
+				5C1A9E3B7D2F4A6B8C0E1F23 /* TranslationManualOriginal.jpg */,
 				A16718572DC331F1A27822B1 /* TranslationManualScreenshot.png */,
 			);
 			path = Fixtures;
@@ -492,6 +495,7 @@
 			files = (
 				373B137684D1CBEC9632945F /* Scanner.storekit in Resources */,
 				FCD8B8274E750BF61B7233AC /* TranslationManualLatest.png in Resources */,
+				6D2B0F4C8E3A5B7C9D1F2A34 /* TranslationManualOriginal.jpg in Resources */,
 				8E82294A831419ED8A2BCB7F /* TranslationManualScreenshot.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

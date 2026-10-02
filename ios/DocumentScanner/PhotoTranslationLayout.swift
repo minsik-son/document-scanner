@@ -186,9 +186,12 @@ enum TranslationParagraphs {
         let b = raster.pixelBox(CGRect(x:second.x,y:second.y,width:second.width,height:second.height))
         let h = max(1,max(a.height,b.height))
         let token = first.text
-        let explicit = token.range(of:"^([•●■◆▶▪·*-]|[①-⑳]|[0-9]{1,2}[.)])$",options:.regularExpression) != nil
+        let explicit = isExplicitMarker(token)
         let misread = token.count == 1 && "IlQ@O0123456789".contains(token) && a.width >= a.height*0.6
-        guard explicit || misread,b.minX-a.maxX >= h*0.2,
+        // "@" and "Q" never start an English sentence on their own; they are circled
+        // numerals. Vision's word boxes can touch for these, so they need no gap.
+        let symbol = token == "@" || token == "Q"
+        guard explicit || symbol || (misread && b.minX-a.maxX >= h*0.2),
               let tokenRange = block.text.range(of:token),
               let range = block.text.range(of:second.text,range:tokenRange.upperBound..<block.text.endIndex) else { return (nil,block) }
         let rest = Array(words.dropFirst())
@@ -198,13 +201,30 @@ enum TranslationParagraphs {
         let marker = TextBlock(text:token,x:first.x,y:first.y,width:first.width,height:first.height,words:[first],confidence:block.confidence)
         return (marker,body)
     }
+    static func isExplicitMarker(_ token:String) -> Bool {
+        token.range(of:"^([•●■◆▶▪·*※-]|[①-⑳]|[0-9]{1,2}[.)])$",options:.regularExpression) != nil
+    }
     /// Only join aligned continuation lines. Buttons, headings, columns and ruled cells remain separate.
     static func group(_ input:[TextBlock],raster:TranslationRaster) -> [TranslationRegion] {
         var blocks:[TextBlock] = [],markers:[TextBlock] = [],itemStarts:[TextBlock] = []
+        var standalone:[TextBlock] = []
         for block in input.flatMap({ splitColumns($0,raster:raster) }) {
+            // Vision often returns a bullet as its own observation.
+            if isExplicitMarker(block.text.trimmingCharacters(in:.whitespaces)) { standalone.append(block);continue }
             let split = splitMarker(block,raster:raster)
             if let marker = split.marker { markers.append(marker);itemStarts.append(split.body) }
             blocks.append(split.body)
+        }
+        for marker in standalone {
+            markers.append(marker)
+            let m = raster.pixelBox(CGRect(x:marker.x,y:marker.y,width:marker.width,height:marker.height))
+            // The item text is the nearest block to the right on the same line.
+            let next = blocks.filter { block in
+                let b = raster.pixelBox(CGRect(x:block.x,y:block.y,width:block.width,height:block.height))
+                let shared = min(m.maxY,b.maxY)-max(m.minY,b.minY)
+                return shared > min(m.height,b.height)*0.4 && b.minX >= m.midX && b.minX-m.maxX < max(m.height,b.height)*3
+            }.min { $0.x < $1.x }
+            if let next { itemStarts.append(next) }
         }
         let obstacles = blocks+markers
         var groups:[[TextBlock]] = []
@@ -214,8 +234,10 @@ enum TranslationParagraphs {
                 guard let last = groups[i].last else { return false }
                 let previous = raster.pixelBox(CGRect(x:last.x,y:last.y,width:last.width,height:last.height))
                 let h = min(previous.height,current.height),gap = current.minY-previous.maxY
-                guard gap >= -h*0.3,gap < h*0.9,
-                      max(previous.height,current.height) < h*1.28,
+                // Line boxes of a slightly curved or tilted page overlap vertically.
+                guard gap >= -h*0.5,gap < h*0.9,
+                      // OCR line boxes vary with brackets and descenders; headings are taller still.
+                      max(previous.height,current.height) < h*1.45,
                       abs(current.minX-previous.minX) < h*0.75,
                       previous.width > h*5,current.width > h*4,
                       sameScript(last.text,block.text),
@@ -228,9 +250,14 @@ enum TranslationParagraphs {
                 guard !obstacles.contains(where:{ other in
                     if other == last || other == block { return false }
                     let b = raster.pixelBox(CGRect(x:other.x,y:other.y,width:other.width,height:other.height))
+                    // Tall OCR boxes of tightly spaced lines reach into the next line;
+                    // only something between or beside these two lines separates them.
+                    guard b.midY >= previous.midY-h*0.2,b.midY <= current.midY+h*0.2 else { return false }
                     let overlap = b.intersection(union)
                     return overlap.width > h*0.2 && overlap.height > h*0.2 && !groups[i].contains(other)
                 }) else { return false }
+                // A separating rule needs visible space; descenders fill a tight gap.
+                guard gap > h*0.15 else { return true }
                 let between = CGRect(x:union.minX,y:previous.maxY+1,width:union.width,height:max(0,gap-2))
                 return raster.empty(between)
             }

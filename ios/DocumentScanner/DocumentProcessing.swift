@@ -30,7 +30,70 @@ enum DocumentProcessing {
     }
     enum DetectionKind { case document, rectangle }
 
+    struct DetectionCandidate {
+        var quad: ScanQuad
+        var kind: DetectionKind
+        var confidence: Float
+        var interior: Double
+        var edge: Double
+        var strongEdges: Int
+        var accepted: Bool
+        var score: Double
+    }
+
     static func detect(_ image: CGImage) -> ScanQuad? {
+        guard let best = candidates(image).filter(\.accepted).max(by: { $0.score < $1.score })?.quad else { return nil }
+        guard let raster = Raster(image, maximumDimension: 384) else { return best }
+        return extendToPaperEdges(best, raster: raster)
+    }
+
+    /// Vision's rectangle can stop at a printed screenshot, a box or a fold instead of the
+    /// sheet's edge, cutting off the rest of the page. Where paper clearly continues
+    /// beyond an edge, move that edge outward until the paper ends. An edge is moved only
+    /// when the end of the paper is found inside the photo, so a sheet on a white desk
+    /// (no visible boundary) keeps its detected edge.
+    private static func extendToPaperEdges(_ quad: ScanQuad, raster: Raster) -> ScanQuad {
+        var p = quad.points
+        let span = Double(max(raster.width, raster.height))
+        for i in 0..<4 {
+            let a = p[i], b = p[(i+1)%4]
+            let dx = (b.x-a.x)*Double(raster.width), dy = (b.y-a.y)*Double(raster.height)
+            let length = max(1, hypot(dx, dy))
+            // Outward unit normal, in normalized units per raster pixel (inside is the
+            // opposite direction used by paperEvidence).
+            let nx = dy/length/Double(raster.width), ny = -dx/length/Double(raster.height)
+            func paperFraction(_ distance: Double) -> Double? {
+                var paper = 0.0, samples = 0.0
+                for j in 1...9 {
+                    let t = Double(j)/10
+                    let x = a.x+(b.x-a.x)*t+nx*distance, y = a.y+(b.y-a.y)*t+ny*distance
+                    guard (0...1).contains(x), (0...1).contains(y) else { continue }
+                    samples += 1
+                    if paperLikelihood(raster.pixel(x, y)) > 0.5 { paper += 1 }
+                }
+                return samples >= 6 ? paper/samples : nil
+            }
+            let probe = max(4, span*0.018)
+            guard let near = paperFraction(probe), near >= 0.75 else { continue }
+            var distance = probe, boundary: Double?
+            while distance < span {
+                distance += 2
+                guard let here = paperFraction(distance) else { break }
+                if here <= 0.3, let next = paperFraction(distance+3), next <= 0.3 { boundary = distance; break }
+            }
+            guard let boundary else { continue }
+            let shift = max(0, boundary-2)
+            for k in [i, (i+1)%4] {
+                p[k] = ScanPoint(x: min(1, max(0, p[k].x+nx*shift)), y: min(1, max(0, p[k].y+ny*shift)))
+            }
+        }
+        let extended = ScanQuad(points: p)
+        return extended.valid ? extended : quad
+    }
+
+    /// Every Vision observation with its paper evidence, accepted or not. `detect`
+    /// picks the best accepted one; tests use the full list to explain a crop.
+    static func candidates(_ image: CGImage) -> [DetectionCandidate] {
         let handler = VNImageRequestHandler(cgImage: image)
         let document = VNDetectDocumentSegmentationRequest()
         try? handler.perform([document])
@@ -40,26 +103,27 @@ enum DocumentProcessing {
         rectangles.minimumAspectRatio = 0.2
         rectangles.minimumSize = 0.12
         try? handler.perform([rectangles])
-        guard let raster = Raster(image, maximumDimension: 384) else { return nil }
-        let candidates = (document.results ?? []).map { ($0, DetectionKind.document) }
-            + (rectangles.results ?? []).map { ($0, DetectionKind.rectangle) }
+        guard let raster = Raster(image, maximumDimension: 384) else { return [] }
+        let observations = (document.results ?? []).map { ($0 as VNRectangleObservation, DetectionKind.document) }
+            + (rectangles.results ?? []).map { ($0 as VNRectangleObservation, DetectionKind.rectangle) }
         // A segmentation confidence is not enough: some desks form a large false polygon.
         // Compare paper on the inside with the surroundings just beyond all four edges.
-        return candidates.compactMap { observation, kind -> (ScanQuad, Double)? in
+        return observations.compactMap { observation, kind -> DetectionCandidate? in
             let quad = ScanQuad(points: [observation.topLeft, observation.topRight, observation.bottomRight, observation.bottomLeft].map {
                 ScanPoint(x: Double($0.x), y: 1-Double($0.y))
             })
             guard quad.valid else { return nil }
             let evidence = paperEvidence(quad, raster: raster)
             let supported = evidence.strongEdges >= 2 && evidence.edge > 0.10
-            guard acceptableCrop(quad, source: kind, confidence: observation.confidence, boundarySupport: supported),
-                  evidence.interior > 0.58 else { return nil }
             // Near-full-frame sheets may have no visible surroundings. Otherwise real
             // paper boundaries must be present, even for segmentation observations.
-            guard supported || (area(quad) > 0.72 && evidence.interior > 0.82) else { return nil }
+            let accepted = acceptableCrop(quad, source: kind, confidence: observation.confidence, boundarySupport: supported)
+                && evidence.interior > 0.58
+                && (supported || (area(quad) > 0.72 && evidence.interior > 0.82))
             let score = evidence.interior*0.5 + evidence.edge*0.9 + min(area(quad), 0.75)*0.2
-            return (quad, score)
-        }.max { $0.1 < $1.1 }?.0
+            return DetectionCandidate(quad: quad, kind: kind, confidence: observation.confidence, interior: evidence.interior,
+                                      edge: evidence.edge, strongEdges: evidence.strongEdges, accepted: accepted, score: score)
+        }
     }
 
     static func area(_ quad: ScanQuad) -> Double {

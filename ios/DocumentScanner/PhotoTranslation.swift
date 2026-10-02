@@ -267,8 +267,17 @@ enum TranslationQuality {
     }
     static func review(_ regions:[TranslationRegion],language:String,imageHeight:CGFloat) -> [TranslationRegion] {
         func lines(_ region:TranslationRegion) -> [CGRect] { region.sourceBoxes.isEmpty ? [region.box] : region.sourceBoxes }
-        let heights = regions.filter { !$0.isMarker }.flatMap { lines($0).map { $0.height*imageHeight } }.sorted()
-        let typical = heights.isEmpty ? 0 : heights[heights.count/2]
+        // Body text size: the median line height weighted by characters, so many short
+        // labels inside screenshots cannot pull it down.
+        var weighted:[(height:CGFloat,weight:Int)] = []
+        for region in regions where !region.isMarker {
+            let boxes = lines(region),share = max(1,region.source.count/max(1,boxes.count))
+            weighted += boxes.map { (height:$0.height*imageHeight,weight:share) }
+        }
+        weighted.sort { $0.height < $1.height }
+        var typical:CGFloat = 0,running = 0
+        let total = weighted.reduce(0) { $0+$1.weight }
+        for item in weighted { running += item.weight;if running*2 >= total { typical = item.height;break } }
         let checker = UITextChecker()
         let prefix = language.split(separator:"-").first.map(String.init) ?? language
         let spelling = UITextChecker.availableLanguages.first { $0 == prefix || $0.hasPrefix(prefix+"_") }
@@ -279,9 +288,12 @@ enum TranslationQuality {
             let lineHeight = own[own.count/2]
             // Labels inside screenshots and pictures: a few pixels tall and far
             // smaller than the page's body text.
-            let tiny = lineHeight < 11 || (typical > 0 && lineHeight < typical*0.45 && lineHeight < 16)
+            let tiny = lineHeight < 11 || (typical > 0 && lineHeight < typical*0.6)
             let garbled = spelling.map { misspelled(r.source,checker:checker,language:$0) } ?? false
-            if r.confidence < 0.5 || tiny || garbled { r.unclear = true;r.keepOriginal = true }
+            // Codes, counters and stray glyphs ("Z2.P6CS/1001042", "A" from a warning icon)
+            // have no word to translate.
+            let wordless = r.source.range(of:"\\p{L}{3,}",options:.regularExpression) == nil
+            if r.confidence < 0.5 || tiny || garbled || wordless { r.unclear = true;r.keepOriginal = true }
             return r
         }
     }

@@ -230,27 +230,14 @@ private struct RestoreArt: View {
             .accessibilityHidden(true)
     }
 }
+/// Blender-rendered loop: three overlapping photos fly onto one large canvas.
 private struct MegaArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        HStack(spacing: 22) {
-            VStack(spacing: 8) {
-                HStack(spacing: 8) { tile(0x9FD3FF); tile(0xB9E9D9) }
-                HStack(spacing: 8) { tile(0xD7CCFF); tile(0xFFD7B5) }
-            }
-            Arrow(color: TK.orange)
-            ZStack {
-                RoundedRectangle(cornerRadius: 12).fill(.white).frame(width: 128, height: 128).shadow(color: .black.opacity(0.1), radius: 10, y: 5)
-                VStack(spacing: 0) {
-                    HStack(spacing: 0) { Color(hex: 0x9FD3FF); Color(hex: 0xB9E9D9) }
-                    HStack(spacing: 0) { Color(hex: 0xD7CCFF); Color(hex: 0xFFD7B5) }
-                }.frame(width: 112, height: 112).clipShape(RoundedRectangle(cornerRadius: 8))
-                Image(systemName: "rectangle.dashed").font(.system(size: 112, weight: .ultraLight)).foregroundStyle(TK.orange)
-            }
-        }
-    }
-    private func tile(_ hex: UInt32) -> some View {
-        RoundedRectangle(cornerRadius: 8).fill(Color(hex: hex)).frame(width: 46, height: 46)
-            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.white, lineWidth: 2)).shadow(color: .black.opacity(0.08), radius: 4, y: 2)
+        AnimatedPNG(asset: "art-mega", stillFrame: 60, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
     }
 }
 private struct CountArt: View {

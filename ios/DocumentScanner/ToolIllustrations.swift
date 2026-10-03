@@ -311,25 +311,14 @@ private struct SplitArt: View {
             .accessibilityHidden(true)
     }
 }
+/// Blender-rendered loop: one page lifts out of the stack, gets selected and checked.
 private struct ExtractArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        HStack(spacing: 18) {
-            VStack(spacing: 8) {
-                HStack(spacing: 8) { cell(true); cell(false) }
-                HStack(spacing: 8) { cell(false); cell(true) }
-            }
-            Arrow()
-            ZStack(alignment: .topTrailing) {
-                Paper(width: 78, height: 102, lines: 4).offset(x: 6, y: 6)
-                Paper(width: 78, height: 102, lines: 4, accent: TK.blue.opacity(0.6))
-            }
-        }
-    }
-    private func cell(_ on: Bool) -> some View {
-        ZStack(alignment: .topTrailing) {
-            Paper(width: 48, height: 62, lines: 3)
-            if on { Badge(symbol: "checkmark", size: 22).offset(x: 6, y: -6) }
-        }.opacity(on ? 1 : 0.55)
+        AnimatedPNG(asset: "art-extract", stillFrame: 60, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
     }
 }
 private struct ReorderArt: View {

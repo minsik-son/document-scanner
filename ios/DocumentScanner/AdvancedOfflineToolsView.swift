@@ -15,7 +15,7 @@ enum AdvancedTool:String,Identifiable,CaseIterable {
     var textTool:Bool { [.word,.excel,.translate,.math].contains(self) }
     var detail:String {
         switch self {
-        case .word:return "Editable text in DOCX. OCR layout is simplified; check the text before exporting."
+        case .word:return "Editable DOCX that keeps tables, merged cells and colours. Check the text before exporting."
         case .excel:return "Editable XLSX cells. Tabs separate columns and new lines separate rows. Values are exported as text, never formulas."
         case .slides:return "Create a PPTX with one page per slide. Keep the page image or use editable OCR text."
         case .translate:return "Translate using languages already installed on this iPhone. This tool does not download models. iOS 26 or later required."
@@ -206,6 +206,8 @@ struct AdvancedOfflineToolContent:View {
     /// Reconstructed page layouts behind the review text (Word export keeps their formatting).
     @State private var wordLayouts: [PageLayout] = []
     @State private var wordLayoutText = ""
+    /// The review shows plain text instead of tables.
+    @State private var wordPlainText = false
     @FocusState private var editingText: Bool
     @State private var translated = ""
     @State private var from = "en"
@@ -395,10 +397,23 @@ struct AdvancedOfflineToolContent:View {
                         ForEach(text.components(separatedBy:"\u{000c}").indices,id:\.self) { Text("Page \($0+1)").tag($0) }
                     }
                 }
-                TextEditor(text:wordReviewText).focused($editingText).frame(minHeight:300)
-                    .accessibilityLabel("Text for your Word file").accessibilityIdentifier("offline-text")
+                if showsWordLayout {
+                    WordLayoutReview(page:wordLayoutPage(wordReviewPage))
+                        .padding(.vertical,6)
+                } else {
+                    TextEditor(text:wordReviewText).focused($editingText).frame(minHeight:300)
+                        .accessibilityLabel("Text for your Word file").accessibilityIdentifier("offline-text")
+                }
             } footer: {
-                Text("Exports editable text with separate document pages. Original fonts, pictures and table layout are not reconstructed.")
+                Text(showsWordLayout
+                     ? "Tables keep their merged cells and colours in Word. Tap a cell to correct it."
+                     : wordLayouts.isEmpty ? "Exports editable text with separate document pages." : "Keep each line and tab in place so tables stay tables in Word.")
+            }
+            if !wordLayouts.isEmpty {
+                Section {
+                    Button(wordPlainText ? "Show as tables" : "Edit as plain text") { toggleWordPlainText() }
+                        .accessibilityIdentifier("word-plain-text")
+                }
             }
         case .ready:
             if let files {
@@ -408,6 +423,30 @@ struct AdvancedOfflineToolContent:View {
                     Button("Preview Word file") { quickLook = true }.accessibilityIdentifier("word-preview")
                 }.id("prepared-export")
             }
+        }
+    }
+    private var showsWordLayout: Bool {
+        !wordPlainText && wordLayouts.indices.contains(wordReviewPage) && !wordLayouts[wordReviewPage].items.isEmpty
+    }
+    private func wordLayoutPage(_ index:Int) -> Binding<PageLayout> {
+        Binding(get: { wordLayouts.indices.contains(index) ? wordLayouts[index] : wordLayouts[0] }, set: { value in
+            guard wordLayouts.indices.contains(index) else { return }
+            wordLayouts[index] = value
+            // The export maps this text back onto the edited layouts unchanged.
+            let updated = LayoutText.text(wordLayouts)
+            wordLayoutText = updated; text = updated
+        })
+    }
+    private func toggleWordPlainText() {
+        editingText = false
+        guard wordPlainText else { wordPlainText = true; return }
+        if text == wordLayoutText { wordPlainText = false; return }
+        if LayoutText.related(text,wordLayoutText), let pages = LayoutText.apply(text,to:wordLayouts) {
+            wordLayouts = pages
+            let updated = LayoutText.text(pages)
+            wordLayoutText = updated; text = updated; wordPlainText = false; message = nil
+        } else {
+            message = "The text no longer matches the page layout, so it will be exported as plain text."
         }
     }
     private var wordReviewText: Binding<String> {
@@ -666,7 +705,7 @@ struct AdvancedOfflineToolContent:View {
                 } else if let source { results = [try read(source)] }
                 return (results.joined(separator:tool == .slides || tool == .word ? "\u{000c}" : "\n\n"), layouts)
             };try Task.checkCancellation();text = value;wordLayouts = layouts;wordLayoutText = value;message = value.isEmpty ? "No text found. Type or paste the text to continue." : (tool == .word ? nil : "Review the text before exporting.")
-            if tool == .word { wordReviewPage = 0; wordStep = .review }
+            if tool == .word { wordReviewPage = 0; wordPlainText = false; wordStep = .review }
         } catch { report(error) } }
     }
     private var portraitDimensions:CGSize { photoSize == "35 × 45 mm" ? CGSize(width:35,height:45) : CGSize(width:50.8,height:50.8) }

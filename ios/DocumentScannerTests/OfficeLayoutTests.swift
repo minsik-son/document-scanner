@@ -227,4 +227,57 @@ final class OfficeLayoutTests: XCTestCase {
         XCTAssertFalse(LayoutText.related("Something new", text))
         XCTAssertNil(LayoutText.apply(text + "\u{000c}Second", to: [page]))
     }
+
+    private func rotated(_ image: UIImage, degrees: CGFloat) -> UIImage {
+        let size = CGSize(width: image.size.width * image.scale, height: image.size.height * image.scale)
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
+        return UIGraphicsImageRenderer(size: size, format: format).image { context in
+            UIColor(white: 0.98, alpha: 1).setFill(); context.fill(CGRect(origin: .zero, size: size))
+            context.cgContext.translateBy(x: size.width / 2, y: size.height / 2)
+            context.cgContext.rotate(by: degrees * .pi / 180)
+            image.draw(in: CGRect(x: -size.width / 2, y: -size.height / 2, width: size.width, height: size.height))
+        }
+    }
+
+    /// A crooked photo of the table still gives each label its own merged cell.
+    func testCrookedTableKeepsEachMergedLabel() throws {
+        let photo = rotated(try image("OfficeSampleTable"), degrees: 1.2)
+        let raster = try OfficeLayoutPages.prepare(photo).raster
+        XCTAssertEqual(DocumentLayoutAnalyzer.skewAngle(raster), 1.0, accuracy: 0.35)
+        let page = try OfficeLayoutPages.analyze(photo)
+        let table = try XCTUnwrap(tables(page).first)
+        XCTAssertEqual(table.rowCount, 30)
+        XCTAssertEqual(table.columnCount, 5)
+        func cell(_ text: String) -> LayoutCell? { table.cells.first { $0.text.contains(text) } }
+        XCTAssertEqual(cell("TOT")?.column, 0)
+        XCTAssertEqual(cell("Toronto")?.column, 1)
+        XCTAssertEqual(cell("TOT")?.rowSpan, 7)
+        XCTAssertEqual(cell("USA1")?.rowSpan, 2)
+        XCTAssertEqual(cell("USA2")?.rowSpan, 7)
+        XCTAssertEqual(cell("Toronto")?.rowSpan, 7)
+        XCTAssertFalse(cell("TOT")?.text.contains("USA") ?? true, "Labels in neighbouring merged cells stay apart")
+        if let folder = verification {
+            try? LayoutText.text([page]).write(to: folder.appendingPathComponent("CrookedTable.txt"), atomically: true, encoding: .utf8)
+            let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+            var copy = page; for i in copy.graphics.indices { copy.graphics[i].png = nil }
+            try? encoder.encode(copy).write(to: folder.appendingPathComponent("CrookedTable.layout.json"))
+        }
+    }
+
+    func testRecognitionSlipsAreTidied() {
+        XCTAssertEqual(DocumentLayoutAnalyzer.joinedDottedNumbers("10.41.22. xx"), "10.41.22.xx")
+        XCTAssertEqual(DocumentLayoutAnalyzer.joinedDottedNumbers("192.168 .10.xx"), "192.168.10.xx")
+        XCTAssertEqual(DocumentLayoutAnalyzer.joinedDottedNumbers("It was 3.5. 4 people came"), "It was 3.5. 4 people came")
+        XCTAssertEqual(DocumentLayoutAnalyzer.joinedDottedNumbers("See section 2. Then"), "See section 2. Then")
+        func cell(_ row: Int, _ text: String) -> LayoutCell {
+            var c = LayoutCell(row: row, column: 0, box: LBox(0, Double(row), 1, Double(row + 1))); c.lines = [[LayoutRun(text: text)]]; return c
+        }
+        var names = LayoutTable(columns: [0, 1], rows: [0, 1, 2, 3, 4],
+                                cells: [cell(0, "Finch(핀치)"), cell(1, "Tigard(타이거드"), cell(2, "Steeles(스틸스)"), cell(3, "Lynwood Gmart")], ruled: true)
+        DocumentLayoutAnalyzer.tidyRecognizedText(&names)
+        XCTAssertEqual(names.cells.map(\.text), ["Finch(핀치)", "Tigard(타이거드)", "Steeles(스틸스)", "Lynwood Gmart"])
+        var prose = LayoutTable(columns: [0, 1], rows: [0, 1, 2], cells: [cell(0, "Total (see note"), cell(1, "Other")], ruled: true)
+        DocumentLayoutAnalyzer.tidyRecognizedText(&prose)
+        XCTAssertEqual(prose.cells[0].text, "Total (see note", "A single open bracket is not guessed")
+    }
 }

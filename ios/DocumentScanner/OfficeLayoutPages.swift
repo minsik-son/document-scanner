@@ -133,8 +133,15 @@ enum OfficeLayoutPages {
     /// immediately so the page image does not need to stay in memory.
     static func analyze(_ image: UIImage, pageSize: (Double, Double)? = nil) throws -> PageLayout {
         try autoreleasepool {
-            let flat = try flattenedIfPhoto(image)
-            let prepared = try prepare(flat)
+            var flat = try flattenedIfPhoto(image)
+            var prepared = try prepare(flat)
+            // A page photographed or scanned slightly crooked bends every table
+            // rule across rows; straighten it first.
+            let skew = DocumentLayoutAnalyzer.skewAngle(prepared.raster)
+            if abs(skew) >= 0.25 {
+                flat = straightened(flat, degrees: skew)
+                prepared = try prepare(flat)
+            }
             try Task.checkCancellation()
             // Small print reads better from more pixels; layout needs fewer.
             let large = max(flat.size.width, flat.size.height) * flat.scale > analysisSide * 1.1
@@ -147,6 +154,21 @@ enum OfficeLayoutPages {
                 page.graphics[i].png = png(prepared.raster, page.graphics[i])
             }
             return page
+        }
+    }
+
+    /// Turns the page back by `degrees` (positive: content falls to the right),
+    /// keeping its size; uncovered corners become paper white.
+    static func straightened(_ image: UIImage, degrees: Double) -> UIImage {
+        let size = CGSize(width: image.size.width * image.scale, height: image.size.height * image.scale)
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
+        return UIGraphicsImageRenderer(size: size, format: format).image { context in
+            UIColor.white.setFill(); context.fill(CGRect(origin: .zero, size: size))
+            let c = context.cgContext
+            c.interpolationQuality = .high
+            c.translateBy(x: size.width / 2, y: size.height / 2)
+            c.rotate(by: -CGFloat(degrees) * .pi / 180)
+            image.draw(in: CGRect(x: -size.width / 2, y: -size.height / 2, width: size.width, height: size.height))
         }
     }
 
@@ -177,6 +199,7 @@ enum OfficeLayoutPages {
                 }
                 DocumentLayoutAnalyzer.fixCodeColumns(&table)
                 DocumentLayoutAnalyzer.harmonizeRanges(&table)
+                DocumentLayoutAnalyzer.tidyRecognizedText(&table)
                 page.items[index] = .table(table)
             case .paragraph(var paragraph):
                 for l in paragraph.lines.indices { for s in paragraph.lines[l].segments.indices {

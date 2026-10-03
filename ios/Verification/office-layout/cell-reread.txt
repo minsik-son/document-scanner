@@ -1,5 +1,6 @@
 codes correct before 26 after 30
 ✓ HOC → HDC (1.00)
+✗ 10.41.22.xx → 10.41.22. xx (1.00)
 ✗ St. Catherine(세인트 캐서린) → St.Catherine(세인트 캐서린) (0.50)
 ✓ St Jacques(생자크) → St.Jacques(생자크) (1.00)
 ✓ HS) → HSJ (1.00)
@@ -9,7 +10,7 @@ codes correct before 26 after 30
 ✓ MRH → HRH (1.00)
 ✓ 10.31.11.XX → 10.31.11.xx (1.00)
 ✗ Steeles(스틸스) → Steeles(스팁스) (1.00)
-✗ Shepherd(쉐퍼드) → sheoherd(쉐퍼드) (1.00)
+✗ Shepherd(쉐퍼드) → Sheoherd(쉐퍼드) (1.00)
 ✗ Federal Way → Federal Wav (1.00)
 ✓ UW| → UW (1.00)
 ✓ 10.51.83.Xx → 10.51.83.xx (1.00)

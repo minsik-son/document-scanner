@@ -1,0 +1,31 @@
+Montreal(몬트리올)	Decarie(데카리)	HDC	10.41.22.xx
+St. Catherine(세인트 캐서린)	HSC	10.41.23.xx
+StJacques(생자크)	HSJ	10.41.21.xx
+TOT	Toronto(토론토)	Bloor(블루어)	HBL	10.31.46.xx
+Dundas(던다스)	HDD	10.31.47.xx
+Finch(핀치)	HFC	10.31.42.xx
+North York(노스 요크)	HNY	10.31.44.xx
+Richmond HII(리치몬드 입)	HRH	10.31.11.xx
+Steeles(스틸스)	HSS	10.31.45.xx
+Shepherd(쉐퍼드)	MNY	10.31.43.xx
+USA1	Oregon(오레곤)	Bevorton(비버튼)	GBV	10.54.1.xx
+Tigard(타이거드)	HTG	10.51.1.xx
+USA2	Seattle(시애틀)	Lynwood Gmart	GLW	10.59.1.xx
+Bellevue(벨뷰)	HBE	10.81.1.xx
+Federal Way	HFW	10.52.1.xx
+Lynwood	HLW	10.53.1.xx
+Redmond(레드몬드)	HRD	10.51.85.xx
+Tacoma	HTM	10.57.1.xx
+	UW|HUW	10.51.83.xx
+USA3	Denver(덴버)	Westminster	GWM	10.58.1.xx
+Aurora	HAR	10.55.1.xx
+USA4	Utah(유타)	West Jordan	HWJ	10.21.86.xx
+VAN	Vanouver(벤쿠버)	UBC	EUB	10.11.68.xx
+Coquitlam	HCQ	10.11.0.xx
+Dunbar	HDB	10.11.67.xx
+Downtown	HDN	192.168.10.xx
+Langley	HLL	192.168.20.xx
+Port Coquitlam	HPC	10.11.66.xx
+Richmond	HRM	10.64.1.xx
+Victoria	HVT	10.11.69.xx
+point

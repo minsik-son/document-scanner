@@ -372,13 +372,64 @@ enum DocumentLayoutAnalyzer {
         }
     }
 
+    // MARK: Skew
+    /// Angle in degrees that the page's text lines and rules are tilted by
+    /// (positive: they fall to the right). Rules and lines of text project to
+    /// the sharpest row profile when sheared back by the right angle.
+    static func skewAngle(_ raster: LayoutRaster, limit: Double = 4) -> Double {
+        let ink = Ink(raster)
+        let step = max(1, Int((Double(max(raster.width, raster.height)) / 900).rounded()))
+        let w = raster.width / step, h = raster.height / step
+        guard w > 40, h > 40 else { return 0 }
+        var points: [(Double, Double)] = []
+        for y in 0..<h { for x in 0..<w where ink.dark[(y * step) * raster.width + x * step] { points.append((Double(x), Double(y))) } }
+        guard points.count >= 200 else { return 0 }
+        let cx = Double(w) / 2
+        func score(_ degrees: Double) -> Double {
+            let t = tan(degrees * .pi / 180)
+            // Each point is shared between the two nearest rows so no angle is
+            // favoured by rounding.
+            var bins = [Double](repeating: 0, count: h * 2 + 2)
+            let offset = Double(h) / 2
+            for (x, y) in points {
+                let v = y - (x - cx) * t + offset
+                let i = Int(v.rounded(.down)), f = v - Double(i)
+                if i >= 0 && i + 1 < bins.count { bins[i] += 1 - f; bins[i + 1] += f }
+            }
+            return bins.reduce(0.0) { $0 + $1 * $1 }
+        }
+        var best = 0.0, bestScore = score(0)
+        let flat = bestScore
+        for a in stride(from: -limit, through: limit, by: 0.1) {
+            let s = score(a); if s > bestScore { bestScore = s; best = a }
+        }
+        let coarse = best
+        for a in stride(from: coarse - 0.1, through: coarse + 0.1, by: 0.02) {
+            let s = score(a); if s > bestScore { bestScore = s; best = a }
+        }
+        // Too little structure to tell: leave the page as it is.
+        return bestScore > flat * 1.05 ? best : 0
+    }
+
     // MARK: Ruling lines
-    struct Segment { var a0: Double; var a1: Double; var c: Double; var thickness: Double } // along, along, cross, thickness
+    struct Segment {
+        var a0: Double; var a1: Double; var c: Double; var thickness: Double // along, along, cross, stroke width
+        /// Cross distance the whole line covers (more than the stroke when it runs askew).
+        var span: Double = 0
+        var extent: Double { max(thickness, span) }
+    }
 
     static func horizontalSegments(_ ink: Ink, minLength: Int) -> [Segment] {
         let w = ink.raster.width, h = ink.raster.height
-        var open: [(x0: Int, x1: Int, y0: Int, y1: Int, last: Int)] = []
+        // `area` counts the dark pixels of the line, so a long rule that runs
+        // slightly askew keeps its real stroke width instead of the height it drifts over.
+        var open: [(x0: Int, x1: Int, y0: Int, y1: Int, last: Int, area: Int)] = []
         var done: [Segment] = []
+        func segment(_ s: (x0: Int, x1: Int, y0: Int, y1: Int, last: Int, area: Int)) -> Segment {
+            let span = s.y1 - s.y0 + 1
+            let stroke = Double(s.area) / Double(max(1, s.x1 - s.x0 + 1))
+            return Segment(a0: Double(s.x0), a1: Double(s.x1 + 1), c: Double(s.y0 + s.y1 + 1) / 2, thickness: min(Double(span), max(1, stroke.rounded())), span: Double(span))
+        }
         for y in 0..<h {
             var runs: [(Int, Int)] = []
             var start = -1, gap = 0
@@ -390,19 +441,19 @@ enum DocumentLayoutAnalyzer {
                 }
             }
             if start >= 0, w - start >= minLength { runs.append((start, w - 1)) }
-            var next: [(x0: Int, x1: Int, y0: Int, y1: Int, last: Int)] = []
+            var next: [(x0: Int, x1: Int, y0: Int, y1: Int, last: Int, area: Int)] = []
             var used = [Bool](repeating: false, count: runs.count)
             for s in open {
                 if let i = runs.indices.first(where: { !used[$0] && min(runs[$0].1, s.x1) - max(runs[$0].0, s.x0) > min(runs[$0].1 - runs[$0].0, s.x1 - s.x0) / 2 }) {
                     used[i] = true
-                    next.append((min(s.x0, runs[i].0), max(s.x1, runs[i].1), s.y0, y, y))
+                    next.append((min(s.x0, runs[i].0), max(s.x1, runs[i].1), s.y0, y, y, s.area + runs[i].1 - runs[i].0 + 1))
                 } else if y - s.last <= 2 { next.append(s) }
-                else { done.append(Segment(a0: Double(s.x0), a1: Double(s.x1 + 1), c: Double(s.y0 + s.y1 + 1) / 2, thickness: Double(s.y1 - s.y0 + 1))) }
+                else { done.append(segment(s)) }
             }
-            for (i, r) in runs.enumerated() where !used[i] { next.append((r.0, r.1, y, y, y)) }
+            for (i, r) in runs.enumerated() where !used[i] { next.append((r.0, r.1, y, y, y, r.1 - r.0 + 1)) }
             open = next
         }
-        for s in open { done.append(Segment(a0: Double(s.x0), a1: Double(s.x1 + 1), c: Double(s.y0 + s.y1 + 1) / 2, thickness: Double(s.y1 - s.y0 + 1))) }
+        for s in open { done.append(segment(s)) }
         let maxThickness = max(10.0, Double(h) * 0.006)
         return done.filter { $0.thickness <= maxThickness }
     }
@@ -452,11 +503,48 @@ enum DocumentLayoutAnalyzer {
         guard R >= 1, C >= 1, R * C <= 20000 else { return nil }
         func wallRight(_ r: Int, _ c: Int) -> Bool {   // between (r,c) and (r,c+1)
             let inset = (rows[r + 1] - rows[r]) * 0.2
-            return ink.coverage(vertical: columns[c + 1], from: rows[r] + inset, to: rows[r + 1] - inset, tolerance: tolerance) >= 0.6
+            let from = rows[r] + inset, to = rows[r + 1] - inset
+            if ink.coverage(vertical: columns[c + 1], from: from, to: to, tolerance: tolerance) >= 0.6 { return true }
+            // The same rule a little to the side (bent or tilted photo), if it is
+            // a thin solid line rather than the stroke of a letter.
+            let reach = Int(min(columns[c + 1] - columns[c], columns[c + 2] - columns[c + 1]) * 0.15)
+            guard reach > tolerance else { return false }
+            for d in stride(from: -reach, through: reach, by: max(1, tolerance)) where d != 0 {
+                let x = columns[c + 1] + Double(d)
+                let here = ink.coverage(vertical: x, from: from, to: to, tolerance: tolerance)
+                guard here >= 0.8 else { continue }
+                let clear = Double(tolerance * 2 + 3)
+                if min(ink.coverage(vertical: x - clear, from: from, to: to, tolerance: tolerance),
+                       ink.coverage(vertical: x + clear, from: from, to: to, tolerance: tolerance)) < here - 0.4 { return true }
+            }
+            return false
         }
         func wallBelow(_ r: Int, _ c: Int) -> Bool {   // between (r,c) and (r+1,c)
             let inset = (columns[c + 1] - columns[c]) * 0.08
-            return ink.coverage(horizontal: rows[r + 1], from: columns[c] + inset, to: columns[c + 1] - inset, tolerance: tolerance) >= 0.6
+            let from = columns[c] + inset, to = columns[c + 1] - inset
+            if ink.coverage(horizontal: rows[r + 1], from: from, to: to, tolerance: tolerance) >= 0.6 { return true }
+            // Photographed rules bend, so in one column the rule can sit a little
+            // above or below the row line measured across the whole table.
+            let reach = Int(min(rows[r + 1] - rows[r], rows[r + 2] - rows[r + 1]) * 0.3)
+            guard reach > tolerance else { return false }
+            func rule(_ a: Double, _ b: Double) -> Bool {
+                for d in stride(from: -reach, through: reach, by: max(1, tolerance)) {
+                    let y = rows[r + 1] + Double(d)
+                    let here = ink.coverage(horizontal: y, from: a, to: b, tolerance: tolerance)
+                    guard here >= 0.6 else { continue }
+                    // A rule is thin and solid: just beside it the path is clearly
+                    // emptier (a line of text looks the same a little higher or lower).
+                    let clear = Double(tolerance * 2 + 3)
+                    if min(ink.coverage(horizontal: y - clear, from: a, to: b, tolerance: tolerance),
+                           ink.coverage(horizontal: y + clear, from: a, to: b, tolerance: tolerance)) < here - 0.3 { return true }
+                }
+                return false
+            }
+            if rule(from, to) { return true }
+            // A tilted rule across a wide column: each quarter finds it at its own height.
+            let quarter = (to - from) / 4
+            guard quarter > Double(tolerance * 6) else { return false }
+            return (0..<4).filter { rule(from + Double($0) * quarter, from + Double($0 + 1) * quarter) }.count >= 4
         }
         var parent = Array(0..<(R * C))
         func find(_ i: Int) -> Int { var i = i; while parent[i] != i { parent[i] = parent[parent[i]]; i = parent[i] }; return i }
@@ -572,11 +660,11 @@ enum DocumentLayoutAnalyzer {
         // Text is measured without ruling lines so borders never inflate sizes.
         var textInk = ink
         for s in hSegments {
-            let r = Int((s.thickness / 2).rounded(.up)) + 1
+            let r = Int((s.extent / 2).rounded(.up)) + 1
             for y in max(0, Int(s.c) - r)...min(H - 1, Int(s.c) + r) { for x in max(0, Int(s.a0))..<min(W, Int(s.a1)) { textInk.dark[y * W + x] = false } }
         }
         for s in vSegments {
-            let r = Int((s.thickness / 2).rounded(.up)) + 1
+            let r = Int((s.extent / 2).rounded(.up)) + 1
             for x in max(0, Int(s.c) - r)...min(W - 1, Int(s.c) + r) { for y in max(0, Int(s.a0))..<min(H, Int(s.a1)) { textInk.dark[y * W + x] = false } }
         }
         // Recognized word boxes are padded; snap their sides to the ink.
@@ -612,8 +700,8 @@ enum DocumentLayoutAnalyzer {
                     + wordBoxes.filter { $0.overlapX(box) >= box.width * 0.8 }.reduce(0.0) { $0 + $1.overlapY(box) }
                 return covered >= max(box.width, box.height) * 0.6
             }
-            let keeps = (hSegments.map { LBox($0.a0, $0.c - $0.thickness / 2 - 1.5, $0.a1, $0.c + $0.thickness / 2 + 1.5) }
-                + vSegments.map { LBox($0.c - $0.thickness / 2 - 1.5, $0.a0, $0.c + $0.thickness / 2 + 1.5, $0.a1) }).filter { !inText($0) }
+            let keeps = (hSegments.map { LBox($0.a0, $0.c - $0.extent / 2 - 1.5, $0.a1, $0.c + $0.extent / 2 + 1.5) }
+                + vSegments.map { LBox($0.c - $0.extent / 2 - 1.5, $0.a0, $0.c + $0.extent / 2 + 1.5, $0.a1) }).filter { !inText($0) }
             var paragraphs: [LayoutParagraph] = []
             // Each recognized line stays one piece of text, cut where a box wall
             // or a wide gap separates its words.
@@ -688,14 +776,14 @@ enum DocumentLayoutAnalyzer {
                 tables.append(table); group.forEach { consumed.insert($0) }
             }
         }
-        for t in tables.indices { fixCodeColumns(&tables[t]); harmonizeRanges(&tables[t]) }
+        for t in tables.indices { fixCodeColumns(&tables[t]); harmonizeRanges(&tables[t]); tidyRecognizedText(&tables[t]) }
         let remaining = lines.enumerated().filter { !consumed.contains($0.offset) }.map(\.element)
         let paragraphs = buildParagraphs(remaining, ink: textInk, width: Double(W), ptPerPx: ptPerPx)
 
         // Graphics: remaining ink that is neither text nor table.
         var textBoxes = wordLines.flatMap { $0.map { $0.box } }
         textBoxes += tables.map { $0.box.inset(-12) }
-        let underlineBoxes = usedRules.map { looseRules[$0] }.map { LBox($0.a0, $0.c - $0.thickness, $0.a1, $0.c + $0.thickness) }
+        let underlineBoxes = usedRules.map { looseRules[$0] }.map { LBox($0.a0, $0.c - $0.extent, $0.a1, $0.c + $0.extent) }
         let graphics = findGraphics(ink, excluding: textBoxes + underlineBoxes, textHeight: textHeight)
 
         var items: [LayoutItem] = paragraphs.map { .paragraph($0) } + tables.map { .table($0) }
@@ -929,6 +1017,63 @@ enum DocumentLayoutAnalyzer {
                     }.joined(separator: " ")
                     return run
                 } }
+            }
+        }
+    }
+    /// Spaces that recognition puts inside dotted numbers ("10.41.22. xx",
+    /// "192.168 .10.xx") are removed; ordinary sentences are left alone because
+    /// the number needs two dots before the gap.
+    static func joinedDottedNumbers(_ text: String) -> String {
+        guard text.contains("."), text.contains(" ") else { return text }
+        let pattern = #"(?<![\w.])(\d{1,3}(?:\s?\.\s?\d{1,3}){2,4})\s?\.\s+(\d{1,3}|[xX]{1,3})(?![\w])"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return text }
+        var result = text
+        // Repeat so a number with several gaps closes up completely.
+        for _ in 0..<3 {
+            let range = NSRange(result.startIndex..., in: result)
+            var changed = false
+            for match in regex.matches(in: result, range: range).reversed() {
+                guard let whole = Range(match.range, in: result), let head = Range(match.range(at: 1), in: result), let tail = Range(match.range(at: 2), in: result) else { continue }
+                let joined = result[head].filter { !$0.isWhitespace } + "." + result[tail]
+                if joined != result[whole] { result.replaceSubrange(whole, with: joined); changed = true }
+            }
+            if !changed { break }
+        }
+        let inner = #"(?<=\d)\s+\.(?=\d)|(?<=\d\.\d{1,3})\.\s+(?=\d{1,3}\.)"#
+        if let regex = try? NSRegularExpression(pattern: inner) {
+            result = regex.stringByReplacingMatches(in: result, range: NSRange(result.startIndex..., in: result), withTemplate: ".")
+        }
+        return result
+    }
+    /// Small recognition slips in table text: spaces inside dotted numbers and,
+    /// in a column whose names end in a bracket ("Finch(핀치)"), a closing
+    /// bracket the reader dropped.
+    static func tidyRecognizedText(_ table: inout LayoutTable) {
+        for i in table.cells.indices {
+            table.cells[i].lines = table.cells[i].lines.map { line in line.map { run in
+                var run = run; run.text = joinedDottedNumbers(run.text); return run
+            } }
+        }
+        func unclosed(_ text: String) -> Bool {
+            guard let open = text.lastIndex(of: "(") else { return false }
+            let after = text[text.index(after: open)...]
+            return !after.contains(")") && !after.trimmingCharacters(in: .whitespaces).isEmpty && after.count <= 24
+        }
+        func closed(_ text: String) -> Bool {
+            let t = text.trimmingCharacters(in: .whitespaces)
+            return t.hasSuffix(")") && t.contains("(")
+        }
+        for c in 0..<table.columnCount {
+            let cells = table.cells.indices.filter { table.cells[$0].column == c && !table.cells[$0].lines.isEmpty }
+            let texts = cells.map { table.cells[$0].text }
+            let bracketed = texts.filter(closed).count
+            guard bracketed >= 2, bracketed * 2 >= texts.filter({ $0.contains("(") }).count else { continue }
+            for i in cells where unclosed(table.cells[i].text) {
+                let l = table.cells[i].lines.count - 1
+                guard let r = table.cells[i].lines[l].indices.last else { continue }
+                var text = table.cells[i].lines[l][r].text
+                while text.last == " " { text.removeLast() }
+                table.cells[i].lines[l][r].text = text + ")"
             }
         }
     }

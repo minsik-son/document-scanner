@@ -361,21 +361,14 @@ private struct ImagesArt: View {
             .accessibilityHidden(true)
     }
 }
+/// Blender-rendered loop: three screenshots snap into one tall stitched image.
 private struct LongImageArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        HStack(spacing: 22) {
-            VStack(spacing: 6) { ForEach(0..<3, id: \.self) { _ in Paper(width: 50, height: 46, lines: 2) } }
-            Arrow(color: TK.purple)
-            VStack(spacing: 0) {
-                ForEach(0..<4, id: \.self) { i in
-                    VStack(alignment: .leading, spacing: 5) {
-                        ForEach(0..<2, id: \.self) { _ in Capsule().fill(Color(hex: 0xD6DEE8)).frame(width: 40, height: 5) }
-                    }.frame(width: 62, height: 40).background(i % 2 == 0 ? Color.white : Color(hex: 0xF7F5FF))
-                }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 10)).shadow(color: .black.opacity(0.12), radius: 8, y: 4)
-            .overlay(alignment: .trailing) { Image(systemName: "arrow.down").font(.system(size: 18, weight: .heavy)).foregroundStyle(TK.purple).offset(x: 22) }
-        }
+        AnimatedPNG(asset: "art-long-image", stillFrame: 60, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
     }
 }
 private struct PrintArt: View {

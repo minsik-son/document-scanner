@@ -260,20 +260,14 @@ private struct OCRArt: View {
             .accessibilityHidden(true)
     }
 }
+/// Blender-rendered loop: a fountain pen signs the document and a comment bubble pops.
 private struct SignArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        ZStack {
-            Paper(width: 160, height: 150, lines: 5)
-            Path { p in
-                p.move(to: CGPoint(x: 0, y: 30))
-                p.addCurve(to: CGPoint(x: 40, y: 10), control1: CGPoint(x: 10, y: -10), control2: CGPoint(x: 30, y: 50))
-                p.addCurve(to: CGPoint(x: 80, y: 22), control1: CGPoint(x: 50, y: -20), control2: CGPoint(x: 60, y: 50))
-                p.addCurve(to: CGPoint(x: 110, y: 14), control1: CGPoint(x: 90, y: 0), control2: CGPoint(x: 100, y: 30))
-            }.stroke(TK.purple, style: StrokeStyle(lineWidth: 3.5, lineCap: .round, lineJoin: .round))
-                .frame(width: 110, height: 40).offset(x: 0, y: 38)
-            Capsule().fill(TK.grey300).frame(width: 110, height: 2).offset(y: 62)
-            Image(systemName: "pencil.tip").font(.system(size: 44, weight: .bold)).foregroundStyle(TK.purple).rotationEffect(.degrees(-35)).offset(x: 86, y: 12)
-        }
+        AnimatedPNG(asset: "art-sign", stillFrame: 64, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
     }
 }
 private struct WatermarkArt: View {

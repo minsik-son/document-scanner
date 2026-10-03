@@ -351,18 +351,14 @@ private struct ProtectArt: View {
             .accessibilityHidden(true)
     }
 }
+/// Blender-rendered loop: two photos fan out of the PDF page as image files.
 private struct ImagesArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        HStack(spacing: 18) {
-            Paper(width: 86, height: 112, lines: 5)
-            Arrow()
-            ZStack {
-                Landscape().frame(width: 92, height: 70).clipShape(RoundedRectangle(cornerRadius: 10)).rotationEffect(.degrees(-8)).offset(x: -10, y: -16)
-                    .shadow(color: .black.opacity(0.1), radius: 6, y: 3)
-                Landscape().frame(width: 92, height: 70).clipShape(RoundedRectangle(cornerRadius: 10)).rotationEffect(.degrees(6)).offset(x: 10, y: 22)
-                    .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
-            }
-        }
+        AnimatedPNG(asset: "art-images", stillFrame: 60, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
     }
 }
 private struct LongImageArt: View {

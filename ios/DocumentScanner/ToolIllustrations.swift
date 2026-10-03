@@ -321,39 +321,24 @@ private struct ExtractArt: View {
             .accessibilityHidden(true)
     }
 }
+/// Blender-rendered loop: two pages swap places along arcs while the swap badge spins.
 private struct ReorderArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        ZStack {
-            HStack(spacing: 14) {
-                numbered(2); numbered(1); numbered(3)
-            }
-            Path { p in p.move(to: CGPoint(x: 0, y: 30)); p.addQuadCurve(to: CGPoint(x: 66, y: 30), control: CGPoint(x: 33, y: -12)) }
-                .stroke(TK.purple, style: StrokeStyle(lineWidth: 4, lineCap: .round)).frame(width: 66, height: 30).offset(x: -34, y: -78)
-            Image(systemName: "arrowtriangle.down.fill").font(.system(size: 14)).foregroundStyle(TK.purple).offset(x: 0, y: -50)
-        }
-    }
-    private func numbered(_ n: Int) -> some View {
-        ZStack(alignment: .bottom) {
-            Paper(width: 70, height: 92, lines: 4)
-            Text("\(n)").font(.system(size: 14, weight: .heavy)).foregroundStyle(.white).frame(width: 28, height: 28).background(TK.purple, in: Circle()).offset(y: 12)
-        }
+        AnimatedPNG(asset: "art-reorder", stillFrame: 44, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
     }
 }
+/// Blender-rendered loop: press plates squeeze the PDF into a smaller file.
 private struct CompressArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: "arrow.right").font(.system(size: 24, weight: .heavy)).foregroundStyle(TK.orange)
-            Paper(width: 92, height: 120, lines: 5)
-            Image(systemName: "arrow.left").font(.system(size: 24, weight: .heavy)).foregroundStyle(TK.orange)
-        }
-        .overlay(alignment: .bottom) {
-            HStack(spacing: 6) {
-                Text("4.2 MB").strikethrough().foregroundStyle(TK.grey500)
-                Image(systemName: "arrow.right").foregroundStyle(TK.grey500)
-                Text("1.1 MB").foregroundStyle(TK.orange)
-            }.font(.system(size: 13, weight: .bold)).padding(.horizontal, 12).padding(.vertical, 6).background(.white, in: Capsule())
-                .shadow(color: .black.opacity(0.1), radius: 6, y: 3).offset(y: 22)
-        }
+        AnimatedPNG(asset: "art-compress", stillFrame: 60, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
     }
 }
 private struct ProtectArt: View {

@@ -240,19 +240,14 @@ private struct MegaArt: View {
             .accessibilityHidden(true)
     }
 }
+/// Blender-rendered loop: teal rings pop onto each object on the tray, then a check.
 private struct CountArt: View {
-    private let spots: [(CGFloat, CGFloat)] = [(-70, -30), (-25, -42), (20, -30), (64, -40), (-48, 12), (-2, 4), (44, 12), (-24, 50), (22, 50), (70, 40)]
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        ZStack {
-            ForEach(Array(spots.enumerated()), id: \.offset) { i, p in
-                ZStack {
-                    Circle().fill(Color(hex: 0xC5CDD6)).frame(width: 36)
-                    Circle().strokeBorder(TK.teal, lineWidth: 3).frame(width: 36)
-                    Text("\(i + 1)").font(.system(size: 13, weight: .heavy)).foregroundStyle(TK.grey900)
-                }.offset(x: p.0, y: p.1)
-            }
-            Pill(text: "10 objects", color: TK.teal).offset(x: 104, y: -76)
-        }
+        AnimatedPNG(asset: "art-count", stillFrame: 60, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
     }
 }
 private struct OCRArt: View {

@@ -62,6 +62,8 @@ struct LayoutParagraph: Codable, Equatable {
     var fontSize: Double          // points
     var alignment: LayoutAlignment
     var bullet: LBox? = nil       // position of the bullet glyph, if any
+    /// Literal marker printed instead of a list bullet (e.g. "□" for a checkbox).
+    var marker: String? = nil
     var letterSpacing: Double = 0 // points of extra spacing between characters
     /// Distance between baselines in pixels (single line: estimated).
     var linePitch: Double
@@ -200,6 +202,8 @@ enum DocumentLayoutAnalyzer {
         }
         return lines
     }
+    /// Box-shaped marks are checkboxes, kept as printed rather than turned into list bullets.
+    static let checkboxGlyphs: Set<String> = ["□", "☐", "❏", "▢", "■", "ㅁ", "口", "ロ"]
     static let bulletGlyphs: Set<String> = ["•", "●", "▪", "◦", "‣", "·", "∙", "■", "□", "➢", "►", "-", "–", "*"]
 
     // MARK: Pixel analysis
@@ -608,6 +612,7 @@ enum DocumentLayoutAnalyzer {
                   let fill = Ink.printedFill(color, merged: true) else { continue }
             for i in cells.indices where cells[i].row == r && cells[i].rowSpan == 1 && cells[i].columnSpan == 1 && cells[i].fill == nil { cells[i].fill = fill }
         }
+        spreadRowFills(&cells, ink: ink)
         return LayoutTable(columns: columns, rows: rows, cells: cells, ruled: true)
     }
 
@@ -754,6 +759,7 @@ enum DocumentLayoutAnalyzer {
             if let t = holders.min(by: { tables[$0].box.width * tables[$0].box.height < tables[$1].box.width * tables[$1].box.height }) { tableWords[t].append(word) }
             else { free.append(word) }
         } }
+        for t in tables.indices where tables[t].ruled { mergeCrossedWalls(&tables[t], words: tableWords[t]) }
         for t in tables.indices { fillCells(&tables[t], words: tableWords[t], ink: textInk, ptPerPx: ptPerPx) }
 
         // Underlines: short rules right below text that are not part of a table.
@@ -778,7 +784,8 @@ enum DocumentLayoutAnalyzer {
         }
         for t in tables.indices { fixCodeColumns(&tables[t]); harmonizeRanges(&tables[t]); tidyRecognizedText(&tables[t]) }
         let remaining = lines.enumerated().filter { !consumed.contains($0.offset) }.map(\.element)
-        let paragraphs = buildParagraphs(remaining, ink: textInk, width: Double(W), ptPerPx: ptPerPx)
+        var paragraphs = buildParagraphs(remaining, ink: textInk, width: Double(W), ptPerPx: ptPerPx)
+        normalizeCheckboxes(&paragraphs)
 
         // Graphics: remaining ink that is neither text nor table.
         var textBoxes = wordLines.flatMap { $0.map { $0.box } }
@@ -790,6 +797,7 @@ enum DocumentLayoutAnalyzer {
         items.sort { $0.box.y0 < $1.box.y0 }
         var page = PageLayout(width: W, height: H, pageWidth: size.0, pageHeight: size.1, items: items, graphics: graphics)
         page.positioned = form || overlaps(items)
+        tidyParagraphs(&page)
         return page
     }
 
@@ -1274,16 +1282,22 @@ enum DocumentLayoutAnalyzer {
     // MARK: Paragraphs
     static func buildParagraphs(_ lines: [VisualLine], ink: Ink, width: Double, ptPerPx: Double,
                                 gap: Double = 1.6, splitter: ((Word, Word) -> Bool)? = nil, merge: Bool = true, bullets: Bool = true) -> [LayoutParagraph] {
-        struct Info { var line: VisualLine; var size: Double; var bullet: LBox?; var textBox: LBox; var segments: [LayoutSegment] }
+        struct Info { var line: VisualLine; var size: Double; var bullet: LBox?; var marker: String?; var textBox: LBox; var segments: [LayoutSegment] }
         var infos: [Info] = []
         for line in lines {
             var words = line.words
             var bullet: LBox?
-            if !bullets {
+            var marker: String?
+            // "- 1 -" is a page number, not a list item.
+            let pageNumber = words.first?.text == "-" && words.dropFirst().allSatisfy { $0.text.allSatisfy { $0.isNumber || $0 == "-" } }
+            if !bullets || pageNumber {
+            } else if let first = words.first, checkboxGlyphs.contains(first.text), words.count > 1 {
+                bullet = first.box; marker = "□"; words.removeFirst()
             } else if let first = words.first, bulletGlyphs.contains(first.text), words.count > 1, first.text != "-" || words[1].box.x0 - first.box.x1 > first.box.height * 0.3 {
                 bullet = first.box; words.removeFirst()
             } else if let first = words.first, let b = detectBullet(ink, before: first.box) {
                 bullet = b
+                if hollow(ink, b) { marker = "□" }
             }
             var segs: [[Word]] = []
             let h = (line.words.map(\.box.height).sorted())[line.words.count / 2]
@@ -1299,7 +1313,7 @@ enum DocumentLayoutAnalyzer {
             }
             let size = segments[0].fontSize ?? 10
             guard let textBox = LBox.around(words.map(\.box)) else { continue }
-            infos.append(Info(line: line, size: size, bullet: bullet, textBox: textBox, segments: segments))
+            infos.append(Info(line: line, size: size, bullet: bullet, marker: marker, textBox: textBox, segments: segments))
         }
         let contentRight = infos.map(\.textBox.x1).max() ?? width
         var paragraphs: [LayoutParagraph] = []
@@ -1349,7 +1363,7 @@ enum DocumentLayoutAnalyzer {
             }
             fits.sort()
             let spacing = fits.isEmpty ? 0 : fits[fits.count / 2]
-            paragraphs.append(LayoutParagraph(lines: lines, box: box, fontSize: size, alignment: alignment, bullet: group[0].bullet, letterSpacing: spacing, linePitch: pitch))
+            paragraphs.append(LayoutParagraph(lines: lines, box: box, fontSize: size, alignment: alignment, bullet: group[0].bullet, marker: group[0].marker, letterSpacing: spacing, linePitch: pitch))
             i = j
         }
         return paragraphs
@@ -1398,6 +1412,158 @@ enum DocumentLayoutAnalyzer {
         guard bw <= h * 0.45, bh <= h * 0.45, bw >= h * 0.12, abs(bw - bh) <= max(bw, bh) * 0.35,
               Double(count) >= bw * bh * 0.55, box.x0 - Double(maxX + 1) >= h * 0.25 else { return nil }
         return LBox(Double(minX), Double(minY), Double(maxX + 1), Double(maxY + 1))
+    }
+
+    /// A box mark whose middle is paper: an empty checkbox rather than a dot.
+    static func hollow(_ ink: Ink, _ b: LBox) -> Bool {
+        let inner = b.inset(min(b.width, b.height) * 0.3)
+        guard inner.width >= 2, inner.height >= 2 else { return false }
+        var dark = 0, total = 0
+        for y in Int(inner.y0)..<Int(inner.y1) { for x in Int(inner.x0)..<Int(inner.x1) { total += 1; if ink.isDark(x, y) { dark += 1 } } }
+        return total > 0 && Double(dark) / Double(total) < 0.35
+    }
+
+    /// On a page of checkbox headings, a box misread as a letter or digit
+    /// ("ㅁ", "1", "]") at the start of a bold line is a checkbox too.
+    static func normalizeCheckboxes(_ paragraphs: inout [LayoutParagraph]) {
+        let lookalikes: Set<String> = ["ㅁ", "口", "ロ", "□", "☐", "1", "l", "I", "|", "]", "[]", "0", "o", "O"]
+        func leading(_ p: LayoutParagraph) -> String? {
+            guard let run = p.lines.first?.segments.first?.runs.first else { return nil }
+            let token = String(run.text.prefix { $0 != " " })
+            return token.count < run.text.count ? token : nil
+        }
+        // "1별지 제13호서식]": an opening bracket read as a digit or letter.
+        for i in paragraphs.indices { for l in paragraphs[i].lines.indices { for g in paragraphs[i].lines[l].segments.indices { for r in paragraphs[i].lines[l].segments[g].runs.indices {
+            paragraphs[i].lines[l].segments[g].runs[r].text = restoredBracket(paragraphs[i].lines[l].segments[g].runs[r].text)
+        } } } }
+        let boxes = paragraphs.filter { $0.marker == "□" || ["ㅁ", "口", "ロ", "□", "☐"].contains(leading($0) ?? "") }.count
+        guard boxes >= 2 else { return }
+        // Bullets on a checkbox page are checkboxes that printed too heavy to look hollow.
+        for i in paragraphs.indices where paragraphs[i].bullet != nil && paragraphs[i].marker == nil { paragraphs[i].marker = "□" }
+        for i in paragraphs.indices where paragraphs[i].marker == nil && paragraphs[i].alignment == .left {
+            guard let token = leading(paragraphs[i]), lookalikes.contains(token) else { continue }
+            let strong = ["ㅁ", "口", "ロ", "□", "☐"].contains(token)
+            guard strong || paragraphs[i].lines[0].segments[0].runs.contains(where: \.bold) else { continue }
+            var run = paragraphs[i].lines[0].segments[0].runs[0]
+            run.text = String(run.text.dropFirst(token.count).drop { $0 == " " })
+            if run.text.isEmpty { paragraphs[i].lines[0].segments[0].runs.removeFirst() } else { paragraphs[i].lines[0].segments[0].runs[0] = run }
+            paragraphs[i].marker = "□"
+            let b = paragraphs[i].lines[0].box
+            paragraphs[i].bullet = LBox(b.x0, b.y0, b.x0 + b.height * 0.7, b.y1)
+        }
+    }
+
+    /// Final clean-up of paragraph text after any re-reading: checkbox lines
+    /// lose a misread box glyph, brackets read as digits come back, and stray
+    /// punctuation specks at a line end are dropped.
+    static func tidyParagraphs(_ page: inout PageLayout) {
+        let lookalikes: Set<String> = ["ㅁ", "口", "ロ", "□", "☐", "1", "l", "I", "|", "]", "[]", "0", "o", "O"]
+        for index in page.items.indices {
+            guard case .paragraph(var p) = page.items[index] else { continue }
+            for l in p.lines.indices { for g in p.lines[l].segments.indices { for r in p.lines[l].segments[g].runs.indices {
+                p.lines[l].segments[g].runs[r].text = restoredBracket(p.lines[l].segments[g].runs[r].text)
+            } } }
+            for l in p.lines.indices {
+                guard let g = p.lines[l].segments.indices.last, let r = p.lines[l].segments[g].runs.indices.last else { continue }
+                var text = p.lines[l].segments[g].runs[r].text
+                if let range = text.range(of: #"\s+[.,~·`'_\-]{2,}$"#, options: .regularExpression) { text.removeSubrange(range); p.lines[l].segments[g].runs[r].text = text }
+            }
+            if p.marker != nil, var run = p.lines.first?.segments.first?.runs.first {
+                let token = String(run.text.prefix { $0 != " " })
+                if lookalikes.contains(token), token.count < run.text.count {
+                    run.text = String(run.text.dropFirst(token.count).drop { $0 == " " })
+                    p.lines[0].segments[0].runs[0] = run
+                }
+            }
+            page.items[index] = .paragraph(p)
+        }
+    }
+
+    static func restoredBracket(_ text: String) -> String {
+        guard let close = text.firstIndex(of: "]"), !text[..<close].contains("[") else { return text }
+        let chars = Array(text[..<close])
+        var k = chars.count - 2
+        while k >= 0 {
+            let spaced = chars[k + 1] == " " && k + 2 < chars.count && isWide(chars[k + 2])
+            if "1lI|".contains(chars[k]), isWide(chars[k + 1]) || spaced, k == 0 || chars[k - 1] == " " {
+                var out = chars; out[k] = "["
+                if spaced { out.remove(at: k + 1) }
+                return String(out) + text[close...]
+            }
+            k -= 1
+        }
+        return text
+    }
+
+    /// A ruled table cell wall that a recognized word runs straight across was
+    /// never there (letter strokes looked like a rule); join the two cells.
+    static func mergeCrossedWalls(_ table: inout LayoutTable, words: [Word]) {
+        var changed = true
+        // Cells stacked with no printed rule between them are one merged cell.
+        while changed {
+            changed = false
+            for a in table.cells.indices {
+                let A = table.cells[a]
+                guard !A.bottom, let b = table.cells.firstIndex(where: { $0.column == A.column && $0.columnSpan == A.columnSpan && $0.row == A.row + A.rowSpan && !$0.top }) else { continue }
+                let B = table.cells[b]
+                // Only a label sitting in one half: two labels mean two cells.
+                func filled(_ c: LayoutCell) -> Bool { words.contains { c.box.contains(x: $0.box.midX, y: $0.box.midY) } }
+                guard filled(A) != filled(B) else { continue }
+                var m = A
+                m.rowSpan = A.rowSpan + B.rowSpan
+                m.box = LBox(A.box.x0, A.box.y0, A.box.x1, B.box.y1)
+                m.bottom = B.bottom; m.left = A.left && B.left; m.right = A.right && B.right
+                m.fill = A.fill ?? B.fill
+                table.cells[a] = m
+                table.cells.remove(at: b)
+                changed = true
+                break
+            }
+        }
+        changed = true
+        while changed {
+            changed = false
+            outer: for a in table.cells.indices {
+                let A = table.cells[a]
+                let wall = table.columns[A.column + A.columnSpan]
+                guard let b = table.cells.firstIndex(where: { $0.row == A.row && $0.rowSpan == A.rowSpan && $0.column == A.column + A.columnSpan }) else { continue }
+                let B = table.cells[b]
+                let inA = words.filter { A.box.contains(x: $0.box.midX, y: $0.box.midY) }
+                let inB = words.filter { B.box.contains(x: $0.box.midX, y: $0.box.midY) }
+                guard !inA.isEmpty, !inB.isEmpty else { continue }
+                for w in words where w.box.midY > A.box.y0 && w.box.midY < A.box.y1 {
+                    let margin = max(4, w.box.height * 0.25)
+                    guard w.box.x0 < wall - margin, w.box.x1 > wall + margin, w.text.count >= 2 else { continue }
+                    // The text runs on as one line: the next word starts right after.
+                    guard let next = inB.min(by: { $0.box.x0 < $1.box.x0 }), next.box.x0 - w.box.x1 < w.box.height,
+                          abs(next.box.midY - w.box.midY) < w.box.height * 0.5 else { continue }
+                    var m = A
+                    m.columnSpan = A.columnSpan + B.columnSpan
+                    m.box = LBox(A.box.x0, A.box.y0, B.box.x1, A.box.y1)
+                    m.right = B.right; m.top = A.top && B.top; m.bottom = A.bottom && B.bottom
+                    m.fill = A.fill ?? B.fill
+                    table.cells[a] = m
+                    table.cells.remove(at: b)
+                    changed = true
+                    break outer
+                }
+            }
+        }
+    }
+
+    /// Cells in a row with a colored header cell share its color when they
+    /// measure the same tint (single cells are judged more strictly alone).
+    static func spreadRowFills(_ cells: inout [LayoutCell], ink: Ink) {
+        for i in cells.indices where cells[i].fill == nil {
+            guard let raw = ink.fill(cells[i].box) else { continue }
+            let chroma = Int(max(raw.r, raw.g, raw.b)) - Int(min(raw.r, raw.g, raw.b))
+            guard chroma >= 6 || max(raw.r, raw.g, raw.b) <= 238 else { continue }
+            let row = cells[i].row
+            guard row == 0, let src = cells.first(where: { $0.fill != nil && $0.row == row && $0.rowSpan == cells[i].rowSpan }),
+                  let srcRaw = ink.fill(src.box) else { continue }
+            let d = abs(Int(raw.r) - Int(srcRaw.r)) + abs(Int(raw.g) - Int(srcRaw.g)) + abs(Int(raw.b) - Int(srcRaw.b))
+            if d < 24 { cells[i].fill = src.fill }
+        }
     }
 
     // MARK: Graphics

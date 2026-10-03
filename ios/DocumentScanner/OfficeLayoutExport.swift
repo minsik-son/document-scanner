@@ -52,11 +52,17 @@ enum OfficeLayoutExport {
                 case .paragraph(let p):
                     let lineH = max(p.linePitch, p.fontSize / page.pointsPerPixel * 1.18)
                     let lineTop = p.lines[0].box.midY - lineH / 2
-                    let before = max(0, lineTop - cursor)
-                    body += wordParagraph(p, before: before * scale, lineHeight: lineH * scale, areaLeft: areaLeft, areaRight: areaRight, scale: scale)
+                    // Gaps give back a little room, so text that renders slightly
+                    // taller in another font still fits the page.
+                    var before = max(0, lineTop - cursor) * 0.9
+                    // Keep the last lines (often a page number) on this page.
+                    let usable = Double(pageH - 200 - 40) / scale
+                    let bottom = lineTop + lineH * Double(p.lines.count)
+                    if bottom > usable { before = max(0, before - (bottom - usable)) }
+                    body += wordParagraph(p, before: before * scale, lineHeight: lineH * scale, areaLeft: areaLeft, areaRight: areaRight, scale: scale, rightMargin: right)
                     cursor = lineTop + lineH * Double(p.lines.count)
                 case .table(let t):
-                    let gap = t.box.y0 - cursor
+                    let gap = (t.box.y0 - cursor) * 0.9
                     if gap > 1 { body += "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"\(max(20, i(gap * scale)))\" w:lineRule=\"exact\"/><w:rPr><w:sz w:val=\"2\"/></w:rPr></w:pPr></w:p>" }
                     body += wordTable(t, areaLeft: areaLeft, scale: scale, pointsPerPixel: page.pointsPerPixel)
                     cursor = max(cursor, t.box.y0) + t.box.height
@@ -66,7 +72,7 @@ enum OfficeLayoutExport {
         // A document must end with a paragraph (tables cannot be last).
         body += "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"20\" w:lineRule=\"exact\"/><w:rPr><w:sz w:val=\"2\"/></w:rPr></w:pPr></w:p>"
         let ns = "xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" xmlns:r=\"\(OfficeExport.officeNS)\" xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\" xmlns:wps=\"http://schemas.microsoft.com/office/word/2010/wordprocessingShape\""
-        let document = OfficeExport.declaration + "<w:document \(ns)><w:body>\(body)<w:sectPr><w:pgSz w:w=\"\(pageW)\" w:h=\"\(pageH)\"\(first.pageWidth > first.pageHeight ? " w:orient=\"landscape\"" : "")/><w:pgMar w:top=\"\(top)\" w:right=\"\(right)\" w:bottom=\"360\" w:left=\"\(left)\" w:header=\"0\" w:footer=\"0\" w:gutter=\"0\"/></w:sectPr></w:body></w:document>"
+        let document = OfficeExport.declaration + "<w:document \(ns)><w:body>\(body)<w:sectPr><w:pgSz w:w=\"\(pageW)\" w:h=\"\(pageH)\"\(first.pageWidth > first.pageHeight ? " w:orient=\"landscape\"" : "")/><w:pgMar w:top=\"\(top)\" w:right=\"\(right)\" w:bottom=\"200\" w:left=\"\(left)\" w:header=\"0\" w:footer=\"0\" w:gutter=\"0\"/></w:sectPr></w:body></w:document>"
         let fonts = "<w:rFonts w:ascii=\"\(latinFont)\" w:hAnsi=\"\(latinFont)\" w:eastAsia=\"\(eastAsianFont)\" w:cs=\"\(latinFont)\"/>"
         let styles = OfficeExport.declaration + "<w:styles xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:docDefaults><w:rPrDefault><w:rPr>\(fonts)<w:sz w:val=\"20\"/><w:szCs w:val=\"20\"/><w:lang w:val=\"en-US\" w:eastAsia=\"ko-KR\"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after=\"0\" w:line=\"240\" w:lineRule=\"auto\"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"Normal\"><w:name w:val=\"Normal\"/><w:qFormat/></w:style><w:style w:type=\"table\" w:default=\"1\" w:styleId=\"TableNormal\"><w:name w:val=\"Normal Table\"/><w:tblPr><w:tblInd w:w=\"0\" w:type=\"dxa\"/><w:tblCellMar><w:top w:w=\"0\" w:type=\"dxa\"/><w:left w:w=\"57\" w:type=\"dxa\"/><w:bottom w:w=\"0\" w:type=\"dxa\"/><w:right w:w=\"57\" w:type=\"dxa\"/></w:tblCellMar></w:tblPr></w:style></w:styles>"
         let numbering = OfficeExport.declaration + "<w:numbering xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:abstractNum w:abstractNumId=\"0\"><w:multiLevelType w:val=\"singleLevel\"/><w:lvl w:ilvl=\"0\"><w:start w:val=\"1\"/><w:numFmt w:val=\"bullet\"/><w:lvlText w:val=\"•\"/><w:lvlJc w:val=\"left\"/><w:pPr><w:ind w:left=\"720\" w:hanging=\"360\"/></w:pPr><w:rPr><w:rFonts w:ascii=\"\(latinFont)\" w:hAnsi=\"\(latinFont)\"/></w:rPr></w:lvl></w:abstractNum><w:num w:numId=\"1\"><w:abstractNumId w:val=\"0\"/></w:num></w:numbering>"
@@ -74,6 +80,23 @@ enum OfficeLayoutExport {
                                          ("word/_rels/document.xml.rels", Data(OfficeExport.relationships(rels).utf8))]
         entries += media
         return try OfficeExport.package(entries, main: "word/document.xml", types: [("word/document.xml", "wordprocessingml.document.main"), ("word/styles.xml", "wordprocessingml.styles"), ("word/numbering.xml", "wordprocessingml.numbering")])
+    }
+
+    /// Letter spacing that keeps text inside `width` points even when the
+    /// device substitutes a Korean font with full-width (1 em) Hangul.
+    static func safeSpacing(_ text: String, width: Double, size: Double, bold: Bool, current: Double) -> Double {
+        let count = Double(max(1, text.count - 1))
+        let natural = text.reduce(0.0) { $0 + (DocumentLayoutAnalyzer.isWide($1) ? 1.0 : DocumentLayoutAnalyzer.glyphWidth($1)) } * size * (bold ? 1.07 : 1)
+        let fit = (width * 0.985 - natural) / count
+        return max(-size * 0.15, min(current, fit))
+    }
+
+    /// Font scale (≤ 1) at which the text fits `width` with the tightest spacing.
+    static func fittingScale(_ text: String, width: Double, size: Double, bold: Bool) -> Double {
+        let ems = text.reduce(0.0) { $0 + (DocumentLayoutAnalyzer.isWide($1) ? 1.0 : DocumentLayoutAnalyzer.glyphWidth($1)) } * (bold ? 1.07 : 1)
+        let perSize = ems - 0.15 * Double(max(0, text.count - 1))
+        guard perSize > 0, size > 0 else { return 1 }
+        return min(1, max(0.75, width * 0.985 / (perSize * size)))
     }
 
     static func wordRun(_ run: LayoutRun, size: Double, spacing: Double = 0) -> String {
@@ -87,9 +110,9 @@ enum OfficeLayoutExport {
         return "<w:r><w:rPr>\(props)</w:rPr><w:t xml:space=\"preserve\">\(x(run.text))</w:t></w:r>"
     }
 
-    static func wordParagraph(_ p: LayoutParagraph, before: Double, lineHeight: Double, areaLeft: Double, areaRight: Double, scale: Double) -> String {
+    static func wordParagraph(_ p: LayoutParagraph, before: Double, lineHeight: Double, areaLeft: Double, areaRight: Double, scale: Double, rightMargin: Int = 0) -> String {
         var ppr = ""
-        if p.bullet != nil { ppr += "<w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"1\"/></w:numPr>" }
+        if p.bullet != nil && p.marker == nil { ppr += "<w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"1\"/></w:numPr>" }
         // Tab stops for lines split into separate segments (e.g. footer text and a logo).
         var tabs: [(String, Int)] = []
         if let line = p.lines.first, line.segments.count > 1 {
@@ -99,13 +122,18 @@ enum OfficeLayoutExport {
             }
         }
         if !tabs.isEmpty { ppr += "<w:tabs>" + tabs.map { "<w:tab w:val=\"\($0.0)\" w:pos=\"\($0.1)\"/>" }.joined() + "</w:tabs>" }
-        let rule = p.lines.count > 1 ? "exact" : "atLeast"
+        // Exact line heights: a substitute font with taller line metrics must
+        // not push the rest of the page down.
+        let rule = "exact"
         ppr += "<w:spacing w:before=\"\(i(before))\" w:after=\"0\" w:line=\"\(max(120, i(lineHeight)))\" w:lineRule=\"\(rule)\"/>"
         switch p.alignment {
         case .left:
             let indent = i((p.box.x0 - areaLeft) * scale)
-            if let b = p.bullet { ppr += "<w:ind w:left=\"\(max(0, indent))\" w:hanging=\"\(max(0, i((p.box.x0 - b.x0) * scale)))\"/>" }
-            else if indent > 0 { ppr += "<w:ind w:left=\"\(indent)\"/>" }
+            // Lines break where the page broke them, so the right margin can lend
+            // room to a substitute font that runs a little wider.
+            let slack = "w:right=\"-\(max(0, rightMargin - 40))\""
+            if let b = p.bullet { ppr += "<w:ind w:left=\"\(max(0, indent))\" \(slack) w:hanging=\"\(max(0, i((p.box.x0 - b.x0) * scale)))\"/>" }
+            else { ppr += "<w:ind w:left=\"\(max(0, indent))\" \(slack)/>" }
         case .center:
             let shift = (p.box.midX - (areaLeft + areaRight) / 2) * 2 * scale
             if shift > 0 { ppr += "<w:ind w:left=\"\(i(shift))\"/>" } else if shift < 0 { ppr += "<w:ind w:right=\"\(i(-shift))\"/>" }
@@ -116,15 +144,28 @@ enum OfficeLayoutExport {
             ppr += "<w:jc w:val=\"right\"/>"
         }
         var runs = ""
+        // Lines keep the breaks of the page, so a substitute font never reflows
+        // the paragraph; spacing leaves room for wider Korean fonts.
+        let ppx = scale / 20
+        var spacing = p.letterSpacing
+        var shrink = 1.0
+        for line in p.lines { for seg in line.segments {
+            let bold = seg.runs.filter(\.bold).reduce(0) { $0 + $1.text.count } * 2 > seg.text.count
+            let size = seg.fontSize ?? p.fontSize
+            spacing = safeSpacing(seg.text, width: seg.box.width * ppx, size: size, bold: bold, current: spacing)
+            shrink = min(shrink, fittingScale(seg.text, width: seg.box.width * ppx, size: size, bold: bold))
+        } }
+        if shrink < 1 { spacing = max(spacing, -p.fontSize * shrink * 0.15) }
+        if let marker = p.marker, let first = p.lines.first?.segments.first?.runs.first {
+            runs += wordRun(LayoutRun(text: marker + " ", bold: first.bold), size: p.fontSize)
+        }
         for (n, line) in p.lines.enumerated() {
             for (k, seg) in line.segments.enumerated() {
                 if k > 0 { runs += "<w:r><w:tab/></w:r>" }
-                let size = seg.fontSize ?? p.fontSize
-                for run in seg.runs { runs += wordRun(run, size: size, spacing: p.letterSpacing) }
+                let size = (seg.fontSize ?? p.fontSize) * shrink
+                for run in seg.runs { runs += wordRun(run, size: size, spacing: spacing) }
             }
-            if n + 1 < p.lines.count {
-                if line.wraps { runs += "<w:r><w:t xml:space=\"preserve\"> </w:t></w:r>" } else { runs += "<w:r><w:br/></w:r>" }
-            }
+            if n + 1 < p.lines.count { runs += "<w:r><w:br/></w:r>" }
         }
         return "<w:p><w:pPr>\(ppr)</w:pPr>\(runs)</w:p>"
     }
@@ -160,7 +201,7 @@ enum OfficeLayoutExport {
                     if align == .center { x0 -= slack / 2 } else if align == .right { x0 -= slack }
                     let jc = align == .left ? "left" : (align == .center ? "center" : "right")
                     var runs = seg.runs
-                    if k == 0, p.bullet != nil { runs.insert(LayoutRun(text: "•  "), at: 0) }
+                    if k == 0, p.bullet != nil { runs.insert(LayoutRun(text: (p.marker ?? "•") + "  "), at: 0) }
                     let paragraph = "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"240\" w:lineRule=\"auto\"/><w:jc w:val=\"\(jc)\"/></w:pPr>" + runs.map { wordRun($0, size: size, spacing: p.letterSpacing) }.joined() + "</w:p>"
                     let cx = max(1, i(width * emu)), cy = max(1, i(segH * emu))
                     boxes += "<w:r><w:drawing><wp:anchor distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\" simplePos=\"0\" relativeHeight=\"\(id)\" behindDoc=\"0\" locked=\"0\" layoutInCell=\"1\" allowOverlap=\"1\"><wp:simplePos x=\"0\" y=\"0\"/><wp:positionH relativeFrom=\"page\"><wp:posOffset>\(i(max(0, x0) * emu))</wp:posOffset></wp:positionH><wp:positionV relativeFrom=\"page\"><wp:posOffset>\(i(max(0, top) * emu))</wp:posOffset></wp:positionV><wp:extent cx=\"\(cx)\" cy=\"\(cy)\"/><wp:effectExtent l=\"0\" t=\"0\" r=\"0\" b=\"0\"/><wp:wrapNone/><wp:docPr id=\"\(id)\" name=\"Text \(id)\"/><wp:cNvGraphicFramePr/><a:graphic><a:graphicData uri=\"http://schemas.microsoft.com/office/word/2010/wordprocessingShape\"><wps:wsp><wps:cNvSpPr txBox=\"1\"/><wps:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"\(cx)\" cy=\"\(cy)\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></wps:spPr><wps:txbx><w:txbxContent>\(paragraph)</w:txbxContent></wps:txbx><wps:bodyPr rot=\"0\" vert=\"horz\" wrap=\"none\" lIns=\"0\" tIns=\"0\" rIns=\"0\" bIns=\"0\" anchor=\"ctr\" anchorCtr=\"0\"><a:noAutofit/></wps:bodyPr></wps:wsp></a:graphicData></a:graphic></wp:anchor></w:drawing></w:r>"
@@ -207,8 +248,11 @@ enum OfficeLayoutExport {
                 var content = ""
                 if cell.row == r && !cell.lines.isEmpty {
                     let jc = cell.alignment == .left ? "left" : (cell.alignment == .center ? "center" : "right")
+                    let inner = Double(width - 114) / 20
                     for line in cell.lines {
-                        content += "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"240\" w:lineRule=\"auto\"/><w:jc w:val=\"\(jc)\"/></w:pPr>" + line.map { wordRun($0, size: cell.fontSize, spacing: cell.letterSpacing) }.joined() + "</w:p>"
+                        let text = line.map(\.text).joined()
+                        let spacing = safeSpacing(text, width: inner, size: cell.fontSize, bold: line.first?.bold ?? false, current: cell.letterSpacing)
+                        content += "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"240\" w:lineRule=\"auto\"/><w:jc w:val=\"\(jc)\"/></w:pPr>" + line.map { wordRun($0, size: cell.fontSize, spacing: spacing) }.joined() + "</w:p>"
                     }
                 } else {
                     content = "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\"/><w:rPr><w:sz w:val=\"\(i(cell.fontSize * 2))\"/></w:rPr></w:pPr></w:p>"
@@ -406,7 +450,7 @@ enum OfficeLayoutExport {
                             let font = styles.font(size: size, bold: first?.bold ?? false, underline: first?.underline ?? false, color: first?.color, wide: hasWide(seg.text))
                             let style = styles.xf(font: font, fill: 0, border: 0, horizontal: line.segments.count > 1 ? .left : p.alignment, wrap: false)
                             var runs = seg.runs
-                            if k == 0 && p.bullet != nil { runs.insert(LayoutRun(text: "•  "), at: 0) }
+                            if k == 0 && p.bullet != nil { runs.insert(LayoutRun(text: (p.marker ?? "•") + "  "), at: 0) }
                             put(r, c0, "<c r=\"\(ref(r, c0))\" s=\"\(style)\" t=\"inlineStr\">\(inline(runs, size: size))</c>")
                             for c in c0...c1 { occupied.insert(r * 100000 + c) }
                             if c1 > c0 { merges.append("\(ref(r, c0)):\(ref(r, c1))") }
@@ -573,7 +617,7 @@ enum OfficeLayoutExport {
         var ppr: String
         if let bullet = p.bullet {
             let indent = i((p.box.x0 - bullet.x0) * emu)
-            ppr = "<a:pPr algn=\"ALGN\" marL=\"\(indent)\" indent=\"-\(indent)\">\(spacing)<a:buFont typeface=\"\(latinFont)\"/><a:buChar char=\"•\"/></a:pPr>"
+            ppr = "<a:pPr algn=\"ALGN\" marL=\"\(indent)\" indent=\"-\(indent)\">\(spacing)<a:buFont typeface=\"\(latinFont)\"/><a:buChar char=\"\(p.marker ?? "•")\"/></a:pPr>"
             b.x0 = bullet.x0
         } else { ppr = "<a:pPr algn=\"ALGN\">\(spacing)<a:buNone/></a:pPr>" }
         var body = "<a:p>\(ppr)"

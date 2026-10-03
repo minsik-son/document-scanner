@@ -150,6 +150,7 @@ enum OfficeLayoutPages {
             try Task.checkCancellation()
             var page = DocumentLayoutAnalyzer.analyze(prepared.raster, blocks: blocks, pageSize: pageSize)
             if refineCells { refineTableText(&page, image: reading, scale: CGFloat(reading.width) / CGFloat(prepared.raster.width)) }
+            DocumentLayoutAnalyzer.tidyParagraphs(&page)
             for i in page.graphics.indices {
                 page.graphics[i].png = png(prepared.raster, page.graphics[i])
             }

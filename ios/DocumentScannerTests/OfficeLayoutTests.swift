@@ -240,6 +240,44 @@ final class OfficeLayoutTests: XCTestCase {
     }
 
     /// A crooked photo of the table still gives each label its own merged cell.
+    /// A photographed notice: a shaded header table, a checklist and a footer.
+    /// Dumps the intermediate data for offline tuning.
+    func testNoticePhotoKeepsHeaderFillCheckboxesAndFooter() throws {
+        let (photo, root) = try privateSample("Notice.jpg")
+        let folder = root.appendingPathComponent("notice")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        var flat = try OfficeLayoutPages.flattenedIfPhoto(photo)
+        var prepared = try OfficeLayoutPages.prepare(flat)
+        let skew = DocumentLayoutAnalyzer.skewAngle(prepared.raster)
+        if abs(skew) >= 0.25 { flat = OfficeLayoutPages.straightened(flat, degrees: skew); prepared = try OfficeLayoutPages.prepare(flat) }
+        try UIImage(cgImage: try XCTUnwrap(prepared.image)).pngData()?.write(to: folder.appendingPathComponent("flat.png"))
+        let reading = try OfficeLayoutPages.prepare(flat, maxSide: OfficeLayoutPages.readingSide).image
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        try encoder.encode(try TextRecognition.recognize(reading)).write(to: folder.appendingPathComponent("ocr.json"))
+        let page = try OfficeLayoutPages.analyze(photo)
+        var copy = page; for i in copy.graphics.indices { copy.graphics[i].png = nil }
+        try encoder.encode(copy).write(to: folder.appendingPathComponent("layout.json"))
+        try OfficeLayoutExport.word([page], image: OfficeLayoutPages.missingPicture).write(to: folder.appendingPathComponent("Notice.docx"))
+        try "skew \(skew) raster \(prepared.raster.width)x\(prepared.raster.height) page \(page.pageWidth)x\(page.pageHeight)".write(to: folder.appendingPathComponent("info.txt"), atomically: true, encoding: .utf8)
+        // The shaded header row keeps its color in every cell.
+        let table = try XCTUnwrap(tables(page).first)
+        XCTAssertEqual(table.cells.filter { $0.row == 0 }.count, 3)
+        XCTAssertTrue(table.cells.filter { $0.row == 0 }.allSatisfy { $0.fill != nil })
+        // The last row's label is one cell across the first two columns.
+        XCTAssertEqual(table.cells.first { $0.text.contains("별지") }?.columnSpan, 2)
+        // Checkbox headings stay checkboxes; the page number is not a list item.
+        let paragraphs = page.items.compactMap { item -> LayoutParagraph? in if case .paragraph(let p) = item { return p }; return nil }
+        XCTAssertGreaterThanOrEqual(paragraphs.filter { $0.marker == "□" }.count, 4)
+        XCTAssertTrue(paragraphs.allSatisfy { $0.marker != nil || $0.bullet == nil })
+        for p in paragraphs where p.marker != nil {
+            let first = p.lines.first?.segments.first?.text ?? ""
+            XCTAssertFalse(first.hasPrefix("]") || first.hasPrefix("1 ") || first.hasPrefix("ㅁ"), "Misread box left in: \(first)")
+        }
+        XCTAssertFalse(paragraphs.contains { $0.lines.contains { $0.text.contains("1 별지") || $0.text.contains("1별지") } })
+        let docx = try entries(try OfficeLayoutExport.word([page], image: OfficeLayoutPages.missingPicture))["word/document.xml"] ?? ""
+        XCTAssertFalse(docx.contains("w:numId"), "Checkboxes are printed marks, not Word bullets")
+    }
+
     func testCrookedTableKeepsEachMergedLabel() throws {
         let photo = rotated(try image("OfficeSampleTable"), degrees: 1.2)
         let raster = try OfficeLayoutPages.prepare(photo).raster

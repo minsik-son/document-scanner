@@ -133,20 +133,65 @@ private struct Scribble: Shape {
 
 // MARK: - Scenes
 
+/// 3D-rendered book (art-book-* assets): a page lifts off the open book,
+/// flattens, gets a check badge, and sparkles twinkle. Loops every 3.4 s;
+/// with Reduce Motion it shows the finished state.
 private struct BookArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    struct Phase { var lift = 0.0, badge = 0.0, spark = 0.0, bob = 0.0 }
     var body: some View {
-        HStack(spacing: 18) {
-            ZStack {
-                HStack(spacing: 0) {
-                    Paper(width: 62, height: 92, lines: 4).rotation3DEffect(.degrees(14), axis: (0, 1, 0), anchor: .trailing)
-                    Paper(width: 62, height: 92, lines: 4).rotation3DEffect(.degrees(-14), axis: (0, 1, 0), anchor: .leading)
+        if reduceMotion { scene(Phase(lift: 1, badge: 1, spark: 1)) }
+        else {
+            KeyframeAnimator(initialValue: Phase(), repeating: true) { phase in scene(phase) } keyframes: { _ in
+                KeyframeTrack(\.lift) {
+                    LinearKeyframe(0, duration: 0.4)
+                    SpringKeyframe(1, duration: 0.9, spring: .bouncy)
+                    LinearKeyframe(1, duration: 1.6)
+                    CubicKeyframe(0, duration: 0.5)
                 }
-                Rectangle().fill(TK.blue).frame(width: 2, height: 112).mask(VStack(spacing: 4) { ForEach(0..<14, id: \.self) { _ in Rectangle().frame(height: 4) } })
-                Badge(symbol: "scissors", size: 32).offset(y: -62)
+                KeyframeTrack(\.badge) {
+                    LinearKeyframe(0, duration: 1.2)
+                    SpringKeyframe(1, duration: 0.5, spring: .bouncy(extraBounce: 0.25))
+                    LinearKeyframe(1, duration: 1.2)
+                    CubicKeyframe(0, duration: 0.5)
+                }
+                KeyframeTrack(\.spark) {
+                    LinearKeyframe(0, duration: 1.0)
+                    CubicKeyframe(1, duration: 0.4)
+                    CubicKeyframe(0.35, duration: 0.6)
+                    CubicKeyframe(1, duration: 0.5)
+                    CubicKeyframe(0, duration: 0.9)
+                }
+                KeyframeTrack(\.bob) {
+                    CubicKeyframe(1, duration: 1.7)
+                    CubicKeyframe(0, duration: 1.7)
+                }
             }
-            Arrow()
-            HStack(spacing: 8) { Paper(width: 52, height: 72, lines: 3); Paper(width: 52, height: 72, lines: 3) }
         }
+    }
+    private func scene(_ v: Phase) -> some View {
+        ZStack {
+            Image("art-book-base").resizable().interpolation(.high).scaledToFit().frame(width: 196)
+                .position(x: 150, y: 130 - 3 * v.bob)
+            Image("art-book-page").resizable().interpolation(.high).scaledToFit().frame(width: 104)
+                .rotation3DEffect(.degrees(40 * (1 - v.lift)), axis: (x: 1, y: 0, z: 0), anchor: .bottom, perspective: 0.6)
+                .scaleEffect(0.62 + 0.38 * v.lift)
+                .opacity(min(1, v.lift * 3))
+                .position(x: 194 + 30 * v.lift, y: 116 - 46 * v.lift - 3 * v.bob)
+            Image("art-book-badge").resizable().interpolation(.high).scaledToFit().frame(width: 38)
+                .scaleEffect(v.badge).opacity(v.badge > 0.02 ? 1 : 0)
+                // Rides on the page's top-right corner.
+                .position(x: 194 + 30 * v.lift + 40 * (0.62 + 0.38 * v.lift),
+                          y: 116 - 46 * v.lift - 46 * (0.62 + 0.38 * v.lift) - 3 * v.bob)
+            sparkle(size: 22, at: CGPoint(x: 112, y: 52), amount: v.spark)
+            sparkle(size: 16, at: CGPoint(x: 296, y: 112), amount: max(0, v.spark - 0.2) / 0.8)
+            sparkle(size: 11, at: CGPoint(x: 300, y: 50), amount: 1 - abs(v.spark - 0.5) * 2)
+        }.frame(width: 320, height: 200)
+    }
+    private func sparkle(size: CGFloat, at point: CGPoint, amount: Double) -> some View {
+        Image("art-book-sparkle").resizable().interpolation(.high).scaledToFit().frame(width: size)
+            .scaleEffect(0.4 + 0.6 * amount).opacity(amount).rotationEffect(.degrees(20 * amount))
+            .position(point)
     }
 }
 private struct PortraitArt: View {

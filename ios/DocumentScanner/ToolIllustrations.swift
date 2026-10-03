@@ -341,18 +341,14 @@ private struct CompressArt: View {
             .accessibilityHidden(true)
     }
 }
+/// Blender-rendered loop: a padlock drops onto the PDF, its shackle clicks shut, and a shield pops.
 private struct ProtectArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        ZStack {
-            Paper(width: 120, height: 150, lines: 6)
-            ZStack {
-                RoundedRectangle(cornerRadius: 12).fill(TK.teal).frame(width: 64, height: 52).offset(y: 12)
-                Circle().trim(from: 0.5, to: 1).stroke(TK.teal, lineWidth: 9).frame(width: 40, height: 40).offset(y: -12)
-                Circle().fill(.white).frame(width: 12).offset(y: 10)
-                Capsule().fill(.white).frame(width: 5, height: 13).offset(y: 20)
-            }.offset(x: 48, y: 30).shadow(color: TK.teal.opacity(0.35), radius: 8, y: 4)
-            Text("••••").font(.system(size: 22, weight: .heavy)).foregroundStyle(TK.teal).offset(x: -18, y: -46)
-        }
+        AnimatedPNG(asset: "art-protect", stillFrame: 60, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
     }
 }
 private struct ImagesArt: View {

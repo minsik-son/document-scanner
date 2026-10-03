@@ -1,4 +1,5 @@
 import SwiftUI
+import ImageIO
 
 /// Flat vector scenes that show what each tool does. Drawn in code so they
 /// stay crisp at any size and match the tool icons' blue, teal and purple.
@@ -136,62 +137,57 @@ private struct Scribble: Shape {
 /// 3D-rendered book (art-book-* assets): a page lifts off the open book,
 /// flattens, gets a check badge, and sparkles twinkle. Loops every 3.4 s;
 /// with Reduce Motion it shows the finished state.
+/// Blender-rendered loop (page lifts out of the book, unbends, check pops).
+/// Plays the bundled APNG; Reduce Motion shows the settled frame.
 private struct BookArt: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    struct Phase { var lift = 0.0, badge = 0.0, spark = 0.0, bob = 0.0 }
     var body: some View {
-        if reduceMotion { scene(Phase(lift: 1, badge: 1, spark: 1)) }
-        else {
-            KeyframeAnimator(initialValue: Phase(), repeating: true) { phase in scene(phase) } keyframes: { _ in
-                KeyframeTrack(\.lift) {
-                    LinearKeyframe(0, duration: 0.4)
-                    SpringKeyframe(1, duration: 0.9, spring: .bouncy)
-                    LinearKeyframe(1, duration: 1.6)
-                    CubicKeyframe(0, duration: 0.5)
-                }
-                KeyframeTrack(\.badge) {
-                    LinearKeyframe(0, duration: 1.2)
-                    SpringKeyframe(1, duration: 0.5, spring: .bouncy(extraBounce: 0.25))
-                    LinearKeyframe(1, duration: 1.2)
-                    CubicKeyframe(0, duration: 0.5)
-                }
-                KeyframeTrack(\.spark) {
-                    LinearKeyframe(0, duration: 1.0)
-                    CubicKeyframe(1, duration: 0.4)
-                    CubicKeyframe(0.35, duration: 0.6)
-                    CubicKeyframe(1, duration: 0.5)
-                    CubicKeyframe(0, duration: 0.9)
-                }
-                KeyframeTrack(\.bob) {
-                    CubicKeyframe(1, duration: 1.7)
-                    CubicKeyframe(0, duration: 1.7)
-                }
+        AnimatedPNG(asset: "art-book-flat", stillFrame: 60, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
+    }
+}
+
+/// Loops an APNG from a data asset with ImageIO.
+struct AnimatedPNG: UIViewRepresentable {
+    let asset: String
+    var stillFrame = 0
+    var animates = true
+
+    final class Coordinator { var token = UUID() }
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeUIView(context: Context) -> UIImageView {
+        let view = UIImageView()
+        view.contentMode = .scaleAspectFit
+        view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        view.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+        start(view, context.coordinator)
+        return view
+    }
+
+    func updateUIView(_ view: UIImageView, context: Context) {}
+
+    static func dismantleUIView(_ view: UIImageView, coordinator: Coordinator) {
+        coordinator.token = UUID()
+    }
+
+    private func start(_ view: UIImageView, _ coordinator: Coordinator) {
+        guard let data = NSDataAsset(name: asset)?.data else { return }
+        if !animates {
+            if let source = CGImageSourceCreateWithData(data as CFData, nil),
+               let frame = CGImageSourceCreateImageAtIndex(source, min(stillFrame, max(0, CGImageSourceGetCount(source) - 1)), nil) {
+                view.image = UIImage(cgImage: frame)
             }
+            return
         }
-    }
-    private func scene(_ v: Phase) -> some View {
-        ZStack {
-            Image("art-book-base").resizable().interpolation(.high).scaledToFit().frame(width: 196)
-                .position(x: 150, y: 130 - 3 * v.bob)
-            Image("art-book-page").resizable().interpolation(.high).scaledToFit().frame(width: 104)
-                .rotation3DEffect(.degrees(40 * (1 - v.lift)), axis: (x: 1, y: 0, z: 0), anchor: .bottom, perspective: 0.6)
-                .scaleEffect(0.62 + 0.38 * v.lift)
-                .opacity(min(1, v.lift * 3))
-                .position(x: 194 + 30 * v.lift, y: 116 - 46 * v.lift - 3 * v.bob)
-            Image("art-book-badge").resizable().interpolation(.high).scaledToFit().frame(width: 38)
-                .scaleEffect(v.badge).opacity(v.badge > 0.02 ? 1 : 0)
-                // Rides on the page's top-right corner.
-                .position(x: 194 + 30 * v.lift + 40 * (0.62 + 0.38 * v.lift),
-                          y: 116 - 46 * v.lift - 46 * (0.62 + 0.38 * v.lift) - 3 * v.bob)
-            sparkle(size: 22, at: CGPoint(x: 112, y: 52), amount: v.spark)
-            sparkle(size: 16, at: CGPoint(x: 296, y: 112), amount: max(0, v.spark - 0.2) / 0.8)
-            sparkle(size: 11, at: CGPoint(x: 300, y: 50), amount: 1 - abs(v.spark - 0.5) * 2)
-        }.frame(width: 320, height: 200)
-    }
-    private func sparkle(size: CGFloat, at point: CGPoint, amount: Double) -> some View {
-        Image("art-book-sparkle").resizable().interpolation(.high).scaledToFit().frame(width: size)
-            .scaleEffect(0.4 + 0.6 * amount).opacity(amount).rotationEffect(.degrees(20 * amount))
-            .position(point)
+        let token = UUID()
+        coordinator.token = token
+        CGAnimateImageDataWithBlock(data as CFData, nil) { [weak view, weak coordinator] _, frame, stop in
+            guard let view, let coordinator, coordinator.token == token else { stop.pointee = true; return }
+            view.image = UIImage(cgImage: frame)
+        }
     }
 }
 private struct PortraitArt: View {

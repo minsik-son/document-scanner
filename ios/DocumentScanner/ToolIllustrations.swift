@@ -291,33 +291,24 @@ private struct TimestampArt: View {
             .accessibilityHidden(true)
     }
 }
+/// Blender-rendered loop: two documents slide together into one stack, then a check.
 private struct MergeArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        HStack(spacing: 18) {
-            ZStack {
-                Paper(width: 70, height: 92, lines: 4, accent: TK.teal.opacity(0.6)).offset(x: -14, y: -14)
-                Paper(width: 70, height: 92, lines: 4, accent: TK.blue.opacity(0.6)).offset(x: 14, y: 14)
-            }
-            Arrow()
-            ZStack {
-                Paper(width: 84, height: 112, lines: 5).offset(x: 6, y: 6)
-                Paper(width: 84, height: 112, lines: 5, accent: TK.blue.opacity(0.6))
-                Badge(symbol: "plus", size: 30).offset(x: 42, y: -56)
-            }
-        }
+        AnimatedPNG(asset: "art-merge", stillFrame: 60, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
     }
 }
+/// Blender-rendered loop: scissors snip the stack and two pages fly out.
 private struct SplitArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        HStack(spacing: 18) {
-            ZStack {
-                Paper(width: 86, height: 116, lines: 5)
-                Rectangle().fill(TK.teal).frame(width: 110, height: 2).mask(HStack(spacing: 4) { ForEach(0..<14, id: \.self) { _ in Rectangle().frame(width: 4) } })
-                Badge(symbol: "scissors", color: TK.teal, size: 32).offset(x: -54)
-            }
-            Arrow(color: TK.teal)
-            VStack(spacing: 10) { Paper(width: 70, height: 52, lines: 2); Paper(width: 70, height: 52, lines: 2) }
-        }
+        AnimatedPNG(asset: "art-split", stillFrame: 60, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
     }
 }
 private struct ExtractArt: View {

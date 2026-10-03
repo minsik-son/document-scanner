@@ -220,25 +220,14 @@ private struct MarksArt: View {
             .accessibilityHidden(true)
     }
 }
+/// Blender-rendered loop: a magic wand flips the faded photo into a restored one.
 private struct RestoreArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        ZStack {
-            HStack(spacing: 0) {
-                ZStack {
-                    Landscape(faded: true)
-                    Path { p in p.move(to: CGPoint(x: 20, y: 10)); p.addLine(to: CGPoint(x: 60, y: 120)); p.move(to: CGPoint(x: 80, y: 0)); p.addLine(to: CGPoint(x: 50, y: 80)) }
-                        .stroke(.white.opacity(0.8), lineWidth: 2)
-                }.frame(width: 100, height: 130).clipped()
-                Landscape().frame(width: 100, height: 130).clipped()
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .padding(7).background(.white, in: RoundedRectangle(cornerRadius: 16)).shadow(color: .black.opacity(0.12), radius: 10, y: 5)
-            Rectangle().fill(.white).frame(width: 3, height: 130)
-            Image(systemName: "arrowtriangle.left.and.line.vertical.and.arrowtriangle.right").font(.system(size: 12, weight: .bold)).foregroundStyle(TK.grey800)
-                .frame(width: 34, height: 34).background(.white, in: Circle()).shadow(color: .black.opacity(0.2), radius: 4)
-            Pill(text: "Before", color: .black.opacity(0.45)).offset(x: -62, y: -50)
-            Pill(text: "After", color: TK.orange).offset(x: 66, y: -50)
-        }
+        AnimatedPNG(asset: "art-restore", stillFrame: 60, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
     }
 }
 private struct MegaArt: View {

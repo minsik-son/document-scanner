@@ -371,15 +371,14 @@ private struct LongImageArt: View {
             .accessibilityHidden(true)
     }
 }
+/// Blender-rendered loop: the printer hums and a page slides out of the slot.
 private struct PrintArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        ZStack {
-            Paper(width: 92, height: 92, lines: 4).offset(y: -42)
-            RoundedRectangle(cornerRadius: 16).fill(Color(hex: 0x3D7BEB)).frame(width: 170, height: 70)
-            RoundedRectangle(cornerRadius: 6).fill(Color(hex: 0x1B4FB8)).frame(width: 120, height: 10).offset(y: 18)
-            Circle().fill(TK.teal).frame(width: 10).offset(x: 62, y: -12)
-            Paper(width: 104, height: 54, lines: 2).offset(y: 52)
-        }
+        AnimatedPNG(asset: "art-print", stillFrame: 60, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
     }
 }
 private struct MeasureArt: View {

@@ -280,18 +280,15 @@ private struct WatermarkArt: View {
             .accessibilityHidden(true)
     }
 }
+/// Blender-rendered loop: clock hands spin, then a time chip slides onto the photo.
+/// Blender-rendered loop: clock hands spin, then a time chip slides onto the photo.
 private struct TimestampArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
-            Landscape().frame(width: 200, height: 136).clipShape(RoundedRectangle(cornerRadius: 14))
-            VStack(alignment: .leading, spacing: 2) {
-                Text("09:41").font(.system(size: 28, weight: .bold)).foregroundStyle(.white)
-                Text("Fri · Oct 2, 2026").font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.9))
-                HStack(spacing: 3) { Image(systemName: "mappin.circle.fill").foregroundStyle(TK.orange); Text("On site").foregroundStyle(.white) }.font(.system(size: 11, weight: .semibold))
-            }.padding(12).shadow(color: .black.opacity(0.35), radius: 4)
-        }
-        .padding(7).background(.white, in: RoundedRectangle(cornerRadius: 18)).shadow(color: .black.opacity(0.12), radius: 10, y: 5)
-        .overlay(alignment: .topTrailing) { Badge(symbol: "clock.fill", color: TK.orange).offset(x: 14, y: -14) }
+        AnimatedPNG(asset: "art-timestamp", stillFrame: 60, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
     }
 }
 private struct MergeArt: View {

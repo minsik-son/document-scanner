@@ -20,16 +20,16 @@ final class SubscriptionStore: ObservableObject {
         let value = NSDecimalNumber(decimal: rounded).intValue
         return (1...100).contains(value) ? value : nil
     }
-    /// Debug builds run by the developer have every Pro feature unlocked, so
-    /// paywalls and upgrade prompts stay out of the way while building.
-    /// Never in Release builds, and never under unit or UI tests, which check
-    /// the real free and paid behaviour.
+    /// Debug builds start as a free (pre-subscription) user so the paywall and
+    /// upgrade prompts can be checked. Pass `--dev-unlock-pro` as a launch
+    /// argument to unlock every Pro feature while building. Never in Release
+    /// builds, and never under unit or UI tests.
     static let developmentUnlock: Bool = {
         #if DEBUG
         let info = ProcessInfo.processInfo
         if info.environment["XCTestConfigurationFilePath"] != nil { return false }
         if info.arguments.contains("--ui-test-session") { return false }
-        return true
+        return info.arguments.contains("--dev-unlock-pro")
         #else
         return false
         #endif

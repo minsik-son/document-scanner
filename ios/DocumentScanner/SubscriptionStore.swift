@@ -1,6 +1,7 @@
 import Foundation
 import StoreKit
 import Combine
+import UserNotifications
 
 @MainActor
 final class SubscriptionStore: ObservableObject {
@@ -41,6 +42,30 @@ final class SubscriptionStore: ObservableObject {
     @Published private(set) var expiresAt: Date?
     @Published private(set) var lifetime = false
     @Published var message: String?
+    /// End of a running free trial (introductory offer), nil when not in one.
+    @Published private(set) var trialEndsAt: Date?
+    @Published private(set) var trialStartedAt: Date?
+    @Published private(set) var willRenew = false
+    /// Product of the active subscription, nil for free, lifetime and development unlock.
+    @Published private(set) var planID: String?
+    /// Whether this Apple Account can still start the yearly plan's free trial.
+    @Published private(set) var trialEligible = false
+    @Published private(set) var trialDays: Int?
+    static let trialProductID = yearlyID
+    var trialDaysLeft: Int? {
+        guard let end = trialEndsAt, end > Date() else { return nil }
+        return max(1, Int((end.timeIntervalSinceNow / 86400).rounded(.up)))
+    }
+    /// Share of the trial already used, for the countdown ring.
+    var trialProgress: Double {
+        guard let end = trialEndsAt else { return 0 }
+        let start = trialStartedAt ?? end.addingTimeInterval(-Double(trialDays ?? 7) * 86400)
+        let total = end.timeIntervalSince(start)
+        guard total > 0 else { return 1 }
+        return min(1, max(0.04, Date().timeIntervalSince(start) / total))
+    }
+    var renewalPrice: String? { products.first { $0.id == (planID ?? Self.trialProductID) }?.displayPrice }
+    var renewalUnit: String { (planID ?? Self.trialProductID) == Self.monthlyID ? "month" : "year" }
     private var listener: Task<Void, Never>?
     private var expiryRefresh: Task<Void, Never>?
     private var refreshGeneration = 0
@@ -68,6 +93,22 @@ final class SubscriptionStore: ObservableObject {
     func load() async {
         do { products = try await Product.products(for: Self.productIDs) }
         catch { message = "Plans couldn't be loaded. Connect to the internet and try again." }
+        await refreshTrialOffer()
+    }
+    /// Reads the yearly plan's free trial and whether it can still be started.
+    func refreshTrialOffer() async {
+        guard let yearly = products.first(where: { $0.id == Self.trialProductID }), let info = yearly.subscription,
+              let offer = info.introductoryOffer, offer.paymentMode == .freeTrial else { trialDays = nil; trialEligible = false; return }
+        let unit: Int
+        switch offer.period.unit {
+        case .day: unit = 1
+        case .week: unit = 7
+        case .month: unit = 30
+        case .year: unit = 365
+        @unknown default: unit = 0
+        }
+        trialDays = unit > 0 ? unit * offer.period.value * max(1, offer.periodCount) : nil
+        trialEligible = await info.isEligibleForIntroOffer
     }
     func refreshEntitlements() async {
         refreshGeneration += 1
@@ -75,6 +116,7 @@ final class SubscriptionStore: ObservableObject {
         var active = false
         var owned = false
         var nextExpiry: Date?
+        var trialEnd: Date?, trialStart: Date?, plan: String?, renews = false
         for await result in Transaction.currentEntitlements {
             if case .verified(let transaction) = result, transaction.productID == Self.lifetimeID,
                transaction.productType == .nonConsumable, transaction.revocationDate == nil {
@@ -86,6 +128,10 @@ final class SubscriptionStore: ObservableObject {
                   let expiry = transaction.expirationDate, expiry > Date() else { continue }
             active = true
             nextExpiry = min(nextExpiry ?? expiry, expiry)
+            plan = transaction.productID
+            if transaction.offer?.type == .introductory, transaction.offer?.paymentMode == .freeTrial {
+                trialEnd = expiry; trialStart = transaction.purchaseDate
+            }
         }
         var status = active ? "Pro is active" : "Free"
         for product in products {
@@ -100,6 +146,7 @@ final class SubscriptionStore: ObservableObject {
                     } else if item.state == .subscribed, let expiry = transaction.expirationDate, expiry > Date() {
                         active = true; nextExpiry = max(nextExpiry ?? expiry, expiry)
                         status = renewal.willAutoRenew ? "Pro is active" : "Pro remains active until the paid period ends. Renewal is off."
+                        renews = renewal.willAutoRenew
                     } else if !active && item.state == .inBillingRetryPeriod { status = "Payment needs attention. Manage your subscription to restore Pro." }
                 }
             } catch { if active { status = "Pro is active through the last verified paid period. Subscription status could not be refreshed." } }
@@ -109,6 +156,11 @@ final class SubscriptionStore: ObservableObject {
         if Self.developmentUnlock && !active { status = "Pro is unlocked in this development build" }
         statusText = status; expiresAt = nextExpiry
         lifetime = owned
+        planID = owned ? nil : plan
+        trialEndsAt = owned ? nil : trialEnd; trialStartedAt = owned ? nil : trialStart
+        willRenew = renews
+        updateTrialReminder()
+        await refreshTrialOffer()
         isPro = active || Self.developmentUnlock
         entitlementsResolved = true
         expiryRefresh?.cancel()
@@ -118,6 +170,28 @@ final class SubscriptionStore: ObservableObject {
                 do { try await Task.sleep(for: .seconds(delay)) } catch { return }
                 await self?.refreshEntitlements()
             }
+        }
+    }
+    /// A local reminder two days before a free trial turns into a paid plan.
+    private func updateTrialReminder() {
+        let id = "pro-trial-reminder"
+        let center = UNUserNotificationCenter.current()
+        let info = ProcessInfo.processInfo
+        let testing = info.environment["XCTestConfigurationFilePath"] != nil || info.arguments.contains("--ui-test-session")
+        guard !testing else { return }
+        guard let end = trialEndsAt, willRenew else { center.removePendingNotificationRequests(withIdentifiers: [id]); return }
+        let fire = end.addingTimeInterval(-2 * 86400)
+        guard fire > Date().addingTimeInterval(60) else { center.removePendingNotificationRequests(withIdentifiers: [id]); return }
+        let price = renewalPrice.map { "\($0)/\(renewalUnit)" } ?? "the plan price"
+        let day = end.formatted(date: .abbreviated, time: .omitted)
+        Task {
+            guard (try? await center.requestAuthorization(options: [.alert, .sound])) == true else { return }
+            let content = UNMutableNotificationContent()
+            content.title = "Your free trial ends in 2 days"
+            content.body = "On \(day) Pro renews at \(price). Open Me to keep it or cancel."
+            content.sound = .default
+            let parts = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
+            try? await center.add(UNNotificationRequest(identifier: id, content: content, trigger: UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)))
         }
     }
     func purchase(_ product: Product) async {

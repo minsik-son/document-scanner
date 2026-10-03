@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 import UniformTypeIdentifiers
 
 struct SettingsView: View {
@@ -21,23 +22,29 @@ struct SettingsView: View {
     @State private var feedback: String?
     @State private var pendingDelete: ScanDocument?
     @State private var showingTour = false
+    @State private var manageSubscription = false
     var body: some View {
         NavigationStack {
             List {
                 Section {
+                    MembershipBanner(explore: { paywall = true }, manage: { manageSubscription = true })
+                        .listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
+                }
+                Section {
+                    ProBenefitsCard()
+                        .listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
+                }
+                Section {
+                    Button("Restore purchases") { Task { await subscription.restore() } }.disabled(subscription.busy)
+                    if let message = subscription.message { Text(message).font(.caption) }
+                    if subscription.statusText != "Pro is active" && subscription.statusText != "Free" {
+                        Text(subscription.statusText).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Section {
                     Label("Saved on this iPhone", systemImage: "iphone")
                     Text("Scanning, PDF creation, and text recognition work offline. Keep a separate backup before deleting the app or changing phones.").font(.subheadline).foregroundStyle(.secondary)
                     Button("Take a quick tour") { showingTour = true }
-                }
-                Section("Pro") {
-                    Text(subscription.statusText).font(.subheadline)
-                    if let date = subscription.expiresAt { Text("Current access through " + date.formatted(date: .abbreviated, time: .shortened)).font(.caption) }
-                    Button("Restore purchases") { Task { await subscription.restore() } }.disabled(subscription.busy)
-                    if let message = subscription.message { Text(message).font(.caption) }
-                    if subscription.isPro {
-                        Label("Pro is active", systemImage: "checkmark.seal.fill")
-                        Link("Manage subscription", destination: URL(string: "https://apps.apple.com/account/subscriptions")!)
-                    } else { Button("Explore Pro") { paywall = true } }
                 }
                 Section("Library") {
                     NavigationLink {
@@ -85,7 +92,7 @@ struct SettingsView: View {
                     Text("Development preview. Subscription purchases launched through the Xcode StoreKit configuration are test purchases.").font(.subheadline).foregroundStyle(.secondary)
                 }
                 if let feedback { Section { Text(feedback) } }
-            }.navigationTitle("Settings").toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.disabled(backupBusy) } }
+            }.navigationTitle("Me").toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.disabled(backupBusy) } }
             .interactiveDismissDisabled(backupBusy)
             .fullScreenCover(isPresented: $showingTour) { OnboardingView { showingTour = false } }
             .alert("New folder", isPresented: $addingFolder) { TextField("Folder name", text: $folder); Button("Create") { store.perform { try store.addFolder(folder) }; folder = "" }; Button("Cancel", role: .cancel) {} }
@@ -102,6 +109,7 @@ struct SettingsView: View {
                 Button("Delete permanently", role: .destructive) { if let doc = pendingDelete { store.perform { try store.permanentlyDelete(doc) } }; pendingDelete = nil }
             } message: { Text("This cannot be undone.") }
             .sheet(isPresented: $paywall) { PaywallView() }
+            .manageSubscriptionsSheet(isPresented: $manageSubscription)
             .sheet(item: $share) { file in ShareSheet(items: [file.url], completion: { completed, error in
                 if completed { store.perform { try store.recordBackupCreated() } }
                 if let error { feedback = error.localizedDescription }

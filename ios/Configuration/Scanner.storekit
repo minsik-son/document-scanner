@@ -64,7 +64,12 @@
           "familyShareable": false,
           "groupNumber": 1,
           "internalID": "scanner-yearly",
-          "introductoryOffer": null,
+          "introductoryOffer": {
+            "internalID": "scanner-yearly-trial",
+            "numberOfPeriods": 1,
+            "paymentMode": "free",
+            "subscriptionPeriod": "P1W"
+          },
           "localizations": [
             {
               "description": "Batch OCR and searchable PDFs, processed on your iPhone.",

@@ -259,7 +259,7 @@ final class ScannerFlowTests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["Scan document"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["Paperwork, simplified"].exists)
-        app.buttons["Settings"].tap()
+        app.buttons["nav-settings"].tap()
         XCTAssertTrue(app.buttons["Explore Pro"].waitForExistence(timeout: 5))
         for _ in 0..<5 where !app.buttons["Export library backup"].isHittable { app.swipeUp() }
         XCTAssertTrue(app.buttons["Export library backup"].waitForExistence(timeout: 5))
@@ -282,9 +282,9 @@ final class ScannerFlowTests: XCTestCase {
 
     @MainActor
     private func resumeFirstUnfinishedScan(in app: XCUIApplication) {
-        XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["nav-settings"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.staticTexts["Continue your scan"].exists, "Unfinished scans must not accumulate as cards on Home")
-        app.buttons["Settings"].tap()
+        app.buttons["nav-settings"].tap()
         let unfinished = app.buttons["unfinished-scans"]
         XCTAssertTrue(unfinished.waitForExistence(timeout: 5))
         for _ in 0..<2 where !unfinished.isHittable { app.swipeUp() }
@@ -309,13 +309,13 @@ final class ScannerFlowTests: XCTestCase {
     private func restoreTestDocument(in app: XCUIApplication) {
         XCTAssertTrue(app.staticTexts["Paperwork, simplified"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.alerts["Move this document to Trash?"].exists, "Home gestures commit directly to recoverable Trash")
-        app.buttons["Settings"].tap()
+        app.buttons["nav-settings"].tap()
         let trashFolder = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Trash (")).firstMatch
         XCTAssertTrue(trashFolder.waitForExistence(timeout: 5)); trashFolder.tap()
         XCTAssertTrue(app.staticTexts["Test document"].waitForExistence(timeout: 5))
         app.buttons["Restore"].tap()
         XCTAssertTrue(app.staticTexts["Trash is empty"].waitForExistence(timeout: 5))
-        app.navigationBars["Trash"].buttons["Settings"].tap()
+        app.navigationBars["Trash"].buttons["Me"].tap()
         app.buttons["Done"].tap()
         XCTAssertTrue(savedDocumentRow(in: app).waitForExistence(timeout: 5))
     }
@@ -371,9 +371,9 @@ final class ScannerFlowTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-session", UUID().uuidString, "--seed-draft"]
         app.launch()
-        XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["nav-settings"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.staticTexts["Continue your scan"].exists)
-        app.buttons["Settings"].tap()
+        app.buttons["nav-settings"].tap()
         let unfinished = app.buttons["unfinished-scans"]
         XCTAssertTrue(unfinished.waitForExistence(timeout: 5)); unfinished.tap()
         let trash = app.buttons["Move Test document to Trash"]
@@ -386,13 +386,13 @@ final class ScannerFlowTests: XCTestCase {
         XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
         confirmation.buttons["Move to Trash"].tap()
         XCTAssertTrue(app.staticTexts["No unfinished scans"].waitForExistence(timeout: 5))
-        app.navigationBars["Unfinished scans"].buttons["Settings"].tap()
+        app.navigationBars["Unfinished scans"].buttons["Me"].tap()
         let trashFolder = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Trash (")).firstMatch
         XCTAssertTrue(trashFolder.waitForExistence(timeout: 5)); trashFolder.tap()
         XCTAssertTrue(app.staticTexts["Test document"].waitForExistence(timeout: 5))
         app.buttons["Restore"].tap()
         XCTAssertTrue(app.staticTexts["Trash is empty"].waitForExistence(timeout: 5))
-        app.navigationBars["Trash"].buttons["Settings"].tap()
+        app.navigationBars["Trash"].buttons["Me"].tap()
         unfinished.tap()
         let resume = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "resume-draft-")).firstMatch
         XCTAssertTrue(resume.waitForExistence(timeout: 5)); resume.tap()

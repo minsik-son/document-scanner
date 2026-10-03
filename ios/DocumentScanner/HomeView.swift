@@ -5,6 +5,8 @@ import UniformTypeIdentifiers
 struct HomeView: View {
     @EnvironmentObject var store: LibraryStore
     @EnvironmentObject private var ads: HomeAdvertisementStore
+    @EnvironmentObject private var subscription: SubscriptionStore
+    @State private var paywall = false
     @State private var query = ""
     @State private var showingDocuments = false
     @State private var advanced = false
@@ -31,23 +33,23 @@ struct HomeView: View {
         NavigationStack {
             List {
                 VStack(alignment: .leading, spacing: 18) {
-                    // Like CamScanner and Alarmy: no screen title, the search bar and
-                    // actions sit right under the status bar and the tab bar says where you are.
+                    // Like CamScanner and Alarmy: no screen title. Pro sits top left
+                    // (Get PRO, trial countdown or a crown), Import top right, search below.
                     HStack(spacing: 10) {
-                        HStack {
-                            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                            TextField(showingDocuments ? "Search your documents" : "Search documents", text: $query).autocorrectionDisabled()
-                            if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill") }.accessibilityLabel("Clear document search") }
-                        }.padding(.horizontal, 14).frame(height: 44).background(.white, in: Capsule())
+                        ProHeaderBadge(openPaywall: { paywall = true }, openMembership: { settings = true })
+                        Spacer()
                         Button { importMenu = true } label: {
                             Image(systemName: "square.and.arrow.down").font(.system(size: 17, weight: .semibold)).foregroundStyle(Design.ink)
-                                .frame(width: 44, height: 44).background(.white, in: Circle())
+                                .frame(width: 40, height: 40).background(.white, in: Circle())
                         }.accessibilityLabel("Import").disabled(importing || !store.storageAvailable)
                     }
-                    .accessibilityElement(children: .contain)
-                    .accessibilityLabel(showingDocuments ? "Documents" : "Home")
+                    HStack {
+                        Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                        TextField(showingDocuments ? "Search your documents" : "Search documents", text: $query).autocorrectionDisabled()
+                        if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill") }.accessibilityLabel("Clear document search") }
+                    }.padding(.horizontal, 14).frame(height: 44).background(.white, in: Capsule())
                     if query.isEmpty && !showingDocuments {
-                        HomeAdvertisementSlot(homeUncovered: route == nil && !advanced && quick == nil && !settings && !photos && !files && !importMenu && !importing && fileBatch == nil) {
+                        HomeAdvertisementSlot(homeUncovered: route == nil && !advanced && quick == nil && !settings && !paywall && !photos && !files && !importMenu && !importing && fileBatch == nil) {
                             scanCard
                         }
                         shortcutsCard
@@ -124,6 +126,7 @@ struct HomeView: View {
             }
             .overlay { if importing { ProgressView("Importing pages…").padding(24).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16)) } }
             .fullScreenCover(isPresented: $advanced) { AdvancedOfflineHub() }
+            .sheet(isPresented: $paywall) { PaywallView() }
             .fullScreenCover(item: $quick) { QuickToolView(tool: $0) }
             .sheet(isPresented: $settings, onDismiss: {
                 if let id = pendingResume {
@@ -179,7 +182,7 @@ struct HomeView: View {
             navigationButton("Tools", symbol: "square.grid.2x2.fill", selected: advanced, identifier: "nav-tools") {
                 advanced = true
             }
-            navigationButton("Settings", symbol: "gearshape.fill", selected: settings, identifier: "nav-settings") {
+            navigationButton("Me", symbol: "person.crop.circle.fill", selected: settings, identifier: "nav-settings") {
                 settings = true
             }
         }

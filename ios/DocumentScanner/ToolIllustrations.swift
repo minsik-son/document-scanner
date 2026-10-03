@@ -200,18 +200,14 @@ private struct PortraitArt: View {
             .accessibilityHidden(true)
     }
 }
+/// Blender-rendered loop: a scribble appears, the eraser scrubs it, it vanishes.
 private struct EraseArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        ZStack {
-            Paper(width: 150, height: 150, lines: 7)
-            Scribble().stroke(TK.red.opacity(0.85), style: StrokeStyle(lineWidth: 5, lineCap: .round)).frame(width: 74, height: 26).offset(x: -18, y: -12)
-            RoundedRectangle(cornerRadius: 10).fill(TK.purple.opacity(0.18)).frame(width: 66, height: 30).offset(x: 34, y: 28)
-            ZStack {
-                RoundedRectangle(cornerRadius: 9).fill(TK.purple).frame(width: 42, height: 64)
-                RoundedRectangle(cornerRadius: 9).fill(.white.opacity(0.9)).frame(width: 42, height: 20).offset(y: 22)
-            }.rotationEffect(.degrees(-40)).offset(x: 70, y: 8).shadow(color: TK.purple.opacity(0.3), radius: 6, y: 3)
-            Image(systemName: "sparkles").font(.system(size: 22, weight: .bold)).foregroundStyle(TK.yellow).offset(x: 98, y: -50)
-        }
+        AnimatedPNG(asset: "art-erase", stillFrame: 80, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
     }
 }
 private struct MarksArt: View {

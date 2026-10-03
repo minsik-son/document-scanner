@@ -270,17 +270,14 @@ private struct SignArt: View {
             .accessibilityHidden(true)
     }
 }
+/// Blender-rendered loop: a rubber stamp presses a watermark emblem onto the page.
 private struct WatermarkArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        ZStack {
-            Paper(width: 150, height: 156, lines: 7)
-            VStack(spacing: 18) {
-                ForEach(0..<3, id: \.self) { _ in
-                    Text("CONFIDENTIAL").font(.system(size: 15, weight: .heavy)).foregroundStyle(TK.orange.opacity(0.5))
-                }
-            }.rotationEffect(.degrees(-28)).frame(width: 150, height: 156).clipped()
-            Badge(symbol: "seal.fill", color: TK.orange, size: 40).offset(x: 72, y: -66)
-        }
+        AnimatedPNG(asset: "art-watermark", stillFrame: 60, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
     }
 }
 private struct TimestampArt: View {

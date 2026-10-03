@@ -31,19 +31,21 @@ struct HomeView: View {
         NavigationStack {
             List {
                 VStack(alignment: .leading, spacing: 18) {
-                    HStack {
-                        Text(showingDocuments ? "Documents" : "Home").font(.system(.largeTitle, weight: .bold))
-                        Spacer()
+                    // Like CamScanner and Alarmy: no screen title, the search bar and
+                    // actions sit right under the status bar and the tab bar says where you are.
+                    HStack(spacing: 10) {
+                        HStack {
+                            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                            TextField(showingDocuments ? "Search your documents" : "Search documents", text: $query).autocorrectionDisabled()
+                            if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill") }.accessibilityLabel("Clear document search") }
+                        }.padding(.horizontal, 14).frame(height: 44).background(.white, in: Capsule())
                         Button { importMenu = true } label: {
-                            Image(systemName: "square.and.arrow.down").font(.title3).foregroundStyle(Design.ink)
+                            Image(systemName: "square.and.arrow.down").font(.system(size: 17, weight: .semibold)).foregroundStyle(Design.ink)
                                 .frame(width: 44, height: 44).background(.white, in: Circle())
                         }.accessibilityLabel("Import").disabled(importing || !store.storageAvailable)
                     }
-                    HStack {
-                        Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                        TextField("Search documents", text: $query).autocorrectionDisabled()
-                        if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill") }.accessibilityLabel("Clear document search") }
-                    }.padding(14).background(.white, in: RoundedRectangle(cornerRadius: 16))
+                    .accessibilityElement(children: .contain)
+                    .accessibilityLabel(showingDocuments ? "Documents" : "Home")
                     if query.isEmpty && !showingDocuments {
                         HomeAdvertisementSlot(homeUncovered: route == nil && !advanced && quick == nil && !settings && !photos && !files && !importMenu && !importing && fileBatch == nil) {
                             scanCard
@@ -76,7 +78,7 @@ struct HomeView: View {
                             }.scrollIndicators(.hidden)
                         }
                     }
-                }.padding(.top, 12).padding(.bottom, 8)
+                }.padding(.top, 4).padding(.bottom, 8)
                     .buttonStyle(.plain)
                     .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                     .listRowSeparator(.hidden).listRowBackground(Color.clear)

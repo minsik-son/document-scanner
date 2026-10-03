@@ -49,12 +49,19 @@ struct AdvancedOfflineHub: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    HStack {
-                        Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                        TextField("Search tools", text: $query).autocorrectionDisabled()
-                            .accessibilityIdentifier("tool-search")
-                        if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill") }.accessibilityLabel("Clear search") }
-                    }.padding(16).background(.white, in: Capsule())
+                    // No large title: close and search share the top row, as in CamScanner's tools.
+                    HStack(spacing: 10) {
+                        Button { dismiss() } label: {
+                            Image(systemName: "xmark").font(.system(size: 17, weight: .semibold)).foregroundStyle(Design.ink)
+                                .frame(width: 44, height: 44).background(.white, in: Circle())
+                        }.accessibilityLabel("Close")
+                        HStack {
+                            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                            TextField("Search all tools", text: $query).autocorrectionDisabled()
+                                .accessibilityIdentifier("tool-search")
+                            if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill") }.accessibilityLabel("Clear search") }
+                        }.padding(.horizontal, 14).frame(height: 44).background(.white, in: Capsule())
+                    }
                     if query.isEmpty {
                         VStack(alignment: .leading, spacing: 10) {
                             HStack { Text("Everyday essentials").font(.headline); Spacer(); ToolArtwork(name: "all-tools", size: 30) }
@@ -81,10 +88,10 @@ struct AdvancedOfflineHub: View {
                     advancedSection("Camera utilities", tools: [.measure, .mesh])
                     if !hasMatches { ContentUnavailableView("No tools found", systemImage: "magnifyingglass", description: Text("Try another tool name.")) }
                     Label("Processed on this iPhone", systemImage: "iphone").font(.footnote).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.vertical, 8)
-                }.padding(20)
+                }.padding(.horizontal, 20).padding(.top, 4).padding(.bottom, 20)
             }.background(Design.muted)
-                .navigationTitle("All tools").navigationBarTitleDisplayMode(.large)
-                .toolbar { ToolbarItem(placement: .cancellationAction) { Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel("Close") } }
+                .navigationTitle("All tools")
+                .toolbar(.hidden, for: .navigationBar)
                 .buttonStyle(.plain)
                 .sheet(item: $quick) { QuickToolView(tool: $0, documentID: documentID) }
                 .fullScreenCover(item: $capture, onDismiss: { store.perform { try store.discardEmptyDrafts() } }) { ReviewView(documentID: $0.id, captureOnOpen: true) }

@@ -250,30 +250,14 @@ private struct CountArt: View {
             .accessibilityHidden(true)
     }
 }
+/// Blender-rendered loop: a scan frame locks on, the scan line sweeps, and an editable text card pops out.
 private struct OCRArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        HStack(spacing: 22) {
-            ZStack {
-                Paper(width: 104, height: 132, lines: 6, accent: TK.blue.opacity(0.5))
-                Corners().stroke(TK.teal, style: StrokeStyle(lineWidth: 4, lineCap: .round)).frame(width: 124, height: 152)
-            }
-            Arrow()
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Aa").font(.system(size: 30, weight: .heavy)).foregroundStyle(TK.blue)
-                ForEach(0..<4, id: \.self) { i in Capsule().fill(TK.grey300).frame(width: i == 3 ? 46 : 82, height: 7) }
-            }.padding(16).background(.white, in: RoundedRectangle(cornerRadius: 14)).shadow(color: .black.opacity(0.1), radius: 8, y: 4)
-        }
-    }
-    struct Corners: Shape {
-        func path(in r: CGRect) -> Path {
-            let l: CGFloat = 22
-            return Path { p in
-                p.move(to: CGPoint(x: r.minX, y: r.minY + l)); p.addLine(to: CGPoint(x: r.minX, y: r.minY)); p.addLine(to: CGPoint(x: r.minX + l, y: r.minY))
-                p.move(to: CGPoint(x: r.maxX - l, y: r.minY)); p.addLine(to: CGPoint(x: r.maxX, y: r.minY)); p.addLine(to: CGPoint(x: r.maxX, y: r.minY + l))
-                p.move(to: CGPoint(x: r.maxX, y: r.maxY - l)); p.addLine(to: CGPoint(x: r.maxX, y: r.maxY)); p.addLine(to: CGPoint(x: r.maxX - l, y: r.maxY))
-                p.move(to: CGPoint(x: r.minX + l, y: r.maxY)); p.addLine(to: CGPoint(x: r.minX, y: r.maxY)); p.addLine(to: CGPoint(x: r.minX, y: r.maxY - l))
-            }
-        }
+        AnimatedPNG(asset: "art-ocr", stillFrame: 60, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
     }
 }
 private struct SignArt: View {

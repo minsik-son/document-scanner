@@ -210,21 +210,14 @@ private struct EraseArt: View {
             .accessibilityHidden(true)
     }
 }
+/// Blender-rendered loop: a scan sweep lifts highlighter and pen marks off the page.
 private struct MarksArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        HStack(spacing: 18) {
-            ZStack {
-                Paper(width: 100, height: 128, lines: 6)
-                Capsule().fill(TK.yellow.opacity(0.55)).frame(width: 70, height: 12).offset(x: -2, y: -26)
-                Capsule().fill(Color(hex: 0xFF7EB6).opacity(0.5)).frame(width: 58, height: 12).offset(x: -8, y: 5)
-                Scribble().stroke(TK.blue, style: StrokeStyle(lineWidth: 3, lineCap: .round)).frame(width: 60, height: 10).offset(x: -6, y: 36)
-            }
-            Arrow(color: TK.purple)
-            ZStack(alignment: .topTrailing) {
-                Paper(width: 100, height: 128, lines: 6)
-                Badge(symbol: "sparkles", color: TK.purple, size: 34).offset(x: 12, y: -12)
-            }
-        }
+        AnimatedPNG(asset: "art-marks", stillFrame: 64, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
     }
 }
 private struct RestoreArt: View {

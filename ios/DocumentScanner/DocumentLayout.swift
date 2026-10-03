@@ -77,6 +77,8 @@ struct LayoutCell: Codable, Equatable {
     var alignment: LayoutAlignment = .left
     var fill: LayoutColor? = nil
     var letterSpacing: Double = 0
+    /// Pixels from the cell's left edge to its text, for flush-left cells.
+    var indent: Double = 0
     var top = true, left = true, bottom = true, right = true
     var text: String { lines.map { $0.map(\.text).joined() }.joined(separator: "\n") }
 }
@@ -489,9 +491,46 @@ enum DocumentLayoutAnalyzer {
         for members in groups.values {
             let hs = members.filter { items[$0].1 }.map { items[$0].0 }, vs = members.filter { !items[$0].1 }.map { items[$0].0 }
             guard hs.count >= 2, vs.count >= 2 else { continue }
-            let rows = cluster(hs.map(\.c), tolerance: tol), cols = cluster(vs.map(\.c), tolerance: tol)
+            let rows = cluster(hs.map(\.c), tolerance: tol)
+            var cols = cluster(vs.map(\.c), tolerance: tol)
             guard rows.count >= 2, cols.count >= 2 else { continue }
-            if let table = buildRuledTable(ink, rows: rows, columns: cols, tolerance: Int(max(3, tol / 2))) { tables.append(table) }
+            // Open-sided tables (rules across, walls only between columns): the
+            // ends of the row rules are the table's outer edges.
+            // A photographed rule is found in tilted pieces: each row rule spans
+            // from its leftmost to its rightmost piece.
+            let spans = rows.map { y -> (Double, Double) in
+                let pieces = hs.filter { abs($0.c - y) <= tol }
+                var a = pieces.map(\.a0).min() ?? 0, b = pieces.map(\.a1).max() ?? 0
+                var ya = pieces.min { $0.a0 < $1.a0 }?.c ?? y, yb = pieces.max { $0.a1 < $1.a1 }?.c ?? y
+                // Follow touching pieces outward; each may sit a little higher or lower.
+                var grew = true
+                while grew {
+                    grew = false
+                    if let p = horizontal.filter({ $0.a0 < a && $0.a1 >= a - tol * 3 && abs($0.c - ya) <= tol * 0.6 }).min(by: { $0.a0 < $1.a0 }) { a = p.a0; ya = p.c; grew = true }
+                    if let p = horizontal.filter({ $0.a1 > b && $0.a0 <= b + tol * 3 && abs($0.c - yb) <= tol * 0.6 }).max(by: { $0.a1 < $1.a1 }) { b = p.a1; yb = p.c; grew = true }
+                }
+                return (a, b)
+            }
+            if spans.count >= 2 {
+                let left = spans.map(\.0).sorted()[spans.count / 2], right = spans.map(\.1).sorted()[spans.count / 2]
+                if left < cols[0] - textHeight * 1.5 { cols.insert(left, at: 0) }
+                if right > cols[cols.count - 1] + textHeight * 1.5 { cols.append(right) }
+            }
+            // A band (e.g. a shaded section title) closed by a free rule just
+            // above or below the table is one more row across the table.
+            var rowsOut = rows
+            let width = cols[cols.count - 1] - cols[0]
+            let others = horizontal.filter { h in !hs.contains { $0.c == h.c && $0.a0 == h.a0 } }
+            func ruleAt(_ y: Double) -> Bool {
+                let pieces = others.filter { abs($0.c - y) <= tol }.map { (max($0.a0, cols[0]), min($0.a1, cols[cols.count - 1])) }.filter { $0.1 > $0.0 }.sorted { $0.0 < $1.0 }
+                var covered = 0.0, end = cols[0]
+                for p in pieces { if p.1 > end { covered += p.1 - max(p.0, end); end = p.1 } }
+                return covered >= width * 0.8
+            }
+            let candidates = cluster(others.map(\.c), tolerance: tol)
+            if let above = candidates.filter({ $0 < rowsOut[0] - textHeight * 1.2 && $0 > rowsOut[0] - textHeight * 3.5 }).max(), ruleAt(above) { rowsOut.insert(above, at: 0) }
+
+            if let table = buildRuledTable(ink, rows: rowsOut, columns: cols, tolerance: Int(max(3, tol / 2))) { tables.append(table) }
         }
         return tables.sorted { $0.box.y0 < $1.box.y0 }
     }
@@ -611,6 +650,23 @@ enum DocumentLayoutAnalyzer {
             guard let color = pale(r), chroma(r) >= 14, (r == 0 || chroma(r - 1) < 8), (r == R - 1 || chroma(r + 1) < 8),
                   let fill = Ink.printedFill(color, merged: true) else { continue }
             for i in cells.indices where cells[i].row == r && cells[i].rowSpan == 1 && cells[i].columnSpan == 1 && cells[i].fill == nil { cells[i].fill = fill }
+        }
+        // A faint header band (the photo washes light tints toward white): the
+        // first row clearly darker than the body rows, evenly across.
+        if R >= 2, cells.filter({ $0.row == 0 }).allSatisfy({ $0.fill == nil }) {
+            let head = cells.filter { $0.row == 0 && $0.rowSpan == 1 }.compactMap { ink.fill($0.box) }
+            let body = cells.filter { $0.row > 0 }.compactMap { ink.fill($0.box) }
+            func lum(_ c: LayoutColor) -> Double { (Double(c.r) + Double(c.g) + Double(c.b)) / 3 }
+            if head.count == cells.filter({ $0.row == 0 && $0.rowSpan == 1 }).count, head.count >= 2, !body.isEmpty {
+                let hl = head.map(lum), bl = body.map(lum).sorted()[body.count / 2]
+                if hl.allSatisfy({ bl - $0 >= 5 }), bl - hl.reduce(0, +) / Double(hl.count) >= 8, (hl.max()! - hl.min()!) < 8 {
+                    let n = Double(head.count)
+                    let avg = (head.map { Double($0.r) }.reduce(0, +) / n, head.map { Double($0.g) }.reduce(0, +) / n, head.map { Double($0.b) }.reduce(0, +) / n)
+                    func deepen(_ v: Double) -> UInt8 { UInt8(max(0, min(255, 255 - (255 - v) * 2.2))) }
+                    let tint = LayoutColor(r: deepen(avg.0), g: deepen(avg.1), b: deepen(avg.2))
+                    for i in cells.indices where cells[i].row == 0 { cells[i].fill = tint }
+                }
+            }
         }
         spreadRowFills(&cells, ink: ink)
         return LayoutTable(columns: columns, rows: rows, cells: cells, ruled: true)
@@ -791,7 +847,27 @@ enum DocumentLayoutAnalyzer {
         var textBoxes = wordLines.flatMap { $0.map { $0.box } }
         textBoxes += tables.map { $0.box.inset(-12) }
         let underlineBoxes = usedRules.map { looseRules[$0] }.map { LBox($0.a0, $0.c - $0.extent, $0.a1, $0.c + $0.extent) }
-        let graphics = findGraphics(ink, excluding: textBoxes + underlineBoxes, textHeight: textHeight)
+        var graphics = findGraphics(ink, excluding: textBoxes + underlineBoxes, textHeight: textHeight)
+        // Slivers along the photo's edge are shadow or background, not art.
+        graphics.removeAll { g in
+            let edge = g.box.x0 <= 2 || g.box.y0 <= 2 || g.box.x1 >= Double(W) - 2 || g.box.y1 >= Double(H) - 2
+            return edge && min(g.box.width, g.box.height) < textHeight
+        }
+        // A page frame (a thin border drawn around the text) is not a picture:
+        // a picture of it would carry every word inside it a second time.
+        let allWords = wordLines.flatMap { $0.map(\.box) }
+        graphics.removeAll { g in
+            let inside = allWords.filter { g.box.contains(x: $0.midX, y: $0.midY) }
+            guard inside.count >= 3 else { return false }
+            var dark = 0, total = 0
+            let step = 3
+            for y in stride(from: Int(g.box.y0), to: Int(g.box.y1), by: step) { for x in stride(from: Int(g.box.x0), to: Int(g.box.x1), by: step) {
+                guard x >= 0, y >= 0, x < W, y < H else { continue }
+                if inside.contains(where: { $0.contains(x: Double(x), y: Double(y)) }) || tables.contains(where: { $0.box.contains(x: Double(x), y: Double(y)) }) { continue }
+                total += 1; if ink.isDark(x, y) { dark += 1 }
+            } }
+            return total > 0 && Double(dark) / Double(total) < 0.05
+        }
 
         var items: [LayoutItem] = paragraphs.map { .paragraph($0) } + tables.map { .table($0) }
         items.sort { $0.box.y0 < $1.box.y0 }
@@ -988,8 +1064,8 @@ enum DocumentLayoutAnalyzer {
         let boldChars = runs.filter(\.bold).reduce(0) { $0 + $1.text.count }, total = runs.reduce(0) { $0 + $1.text.count }
         if total > 0, runs.count > 1 {
             let share = Double(boldChars) / Double(total)
-            if share > 0.75 || share < 0.25 || runs.filter({ $0.bold }).allSatisfy({ $0.text.count <= 2 }) {
-                let bold = share > 0.75
+            if share > 0.7 || share < 0.25 || runs.filter({ $0.bold }).allSatisfy({ $0.text.count <= 2 }) {
+                let bold = share > 0.7
                 var merged: [LayoutRun] = []
                 for var r in runs { r.bold = bold; if var last = merged.last, last.underline == r.underline, last.color == r.color { last.text += r.text; merged[merged.count - 1] = last } else { merged.append(r) } }
                 runs = merged
@@ -1116,8 +1192,31 @@ enum DocumentLayoutAnalyzer {
             table.cells[i].fontSize = size
             table.cells[i].lines = lines.map { runs($0.words, ink: ink, fontPx: size / ptPerPx) }
             table.cells[i].alignment = alignment(of: LBox.around(ws.map(\.box))!, in: table.cells[i].box)
+            // Several lines starting at one edge but ending apart are set flush
+            // to that edge, even when the longest line nearly fills the cell.
+            if lines.count >= 2 {
+                let boxes = lines.compactMap { LBox.around($0.words.map(\.box)) }
+                let h = boxes.map(\.height).sorted()[boxes.count / 2]
+                func spread(_ v: [Double]) -> Double { (v.max() ?? 0) - (v.min() ?? 0) }
+                let l = spread(boxes.map(\.x0)), r = spread(boxes.map(\.x1)), m = spread(boxes.map(\.midX))
+                if l <= h * 0.6 && l < m && l < r { table.cells[i].alignment = .left }
+                else if r <= h * 0.6 && r < m && r < l { table.cells[i].alignment = .right }
+            }
             scores[i] = boldScore(ws, ink: ink, fontPt: size)
         }
+        // A wide line that looks centered in a column of flush-left cells is
+        // flush left too when it starts where the others start.
+        for c in 0..<table.columnCount {
+            let idx = table.cells.indices.filter { table.cells[$0].column == c && table.cells[$0].columnSpan == 1 && byCell[$0] != nil }
+            let starts = idx.filter { table.cells[$0].alignment == .left }.map { i in LBox.around(byCell[i]!.map(\.box))!.x0 - table.cells[i].box.x0 }
+            guard starts.count >= 2 else { continue }
+            let start = starts.sorted()[starts.count / 2]
+            for i in idx where table.cells[i].alignment == .center && table.cells[i].lines.count == 1 {
+                let b = LBox.around(byCell[i]!.map(\.box))!
+                if abs((b.x0 - table.cells[i].box.x0) - start) <= b.height * 0.8 { table.cells[i].alignment = .left }
+            }
+        }
+        for (i, ws) in byCell where table.cells[i].alignment == .left { table.cells[i].indent = max(0, LBox.around(ws.map(\.box))!.x0 - table.cells[i].box.x0) }
         harmonizeSizes(&table)
         harmonizeWeight(&table, scores: scores)
         fitCells(&table, words: byCell, ptPerPx: ptPerPx)
@@ -1308,7 +1407,14 @@ enum DocumentLayoutAnalyzer {
             guard !segs.isEmpty else { continue }
             let segments = segs.map { s -> LayoutSegment in
                 var copy = s; copy[0].spaceBefore = false
-                let size = fontSize(s, ink: ink, ptPerPx: ptPerPx)
+                var size = fontSize(s, ink: ink, ptPerPx: ptPerPx)
+                // A tilted or noisy line measures too tall; its width tells the truth.
+                let text = s.enumerated().map { ($0.offset > 0 && $0.element.spaceBefore ? " " : "") + $0.element.text }.joined()
+                let ems = text.reduce(0.0) { $0 + glyphWidth($1) }
+                if text.count >= 8, ems > 0 {
+                    let byWidth = (LBox.around(s.map(\.box))!.width * ptPerPx) / ems
+                    if size > byWidth * 1.3 { size = byWidth }
+                }
                 return LayoutSegment(runs: runs(copy, ink: ink, fontPx: size / ptPerPx), box: LBox.around(s.map(\.box))!, fontSize: size)
             }
             let size = segments[0].fontSize ?? 10

@@ -278,6 +278,45 @@ final class OfficeLayoutTests: XCTestCase {
         XCTAssertFalse(docx.contains("w:numId"), "Checkboxes are printed marks, not Word bullets")
     }
 
+    /// Writes the flattened page, recognized text, layout and Word file of a
+    /// private sample to Verification/private/<folder> for offline tuning.
+    @discardableResult
+    private func dumpPrivate(_ name: String, folder: String) throws -> PageLayout {
+        let (photo, root) = try privateSample(name)
+        let out = root.appendingPathComponent(folder)
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        var flat = try OfficeLayoutPages.flattenedIfPhoto(photo)
+        var prepared = try OfficeLayoutPages.prepare(flat)
+        let skew = DocumentLayoutAnalyzer.skewAngle(prepared.raster)
+        if abs(skew) >= 0.25 { flat = OfficeLayoutPages.straightened(flat, degrees: skew); prepared = try OfficeLayoutPages.prepare(flat) }
+        try UIImage(cgImage: try XCTUnwrap(prepared.image)).pngData()?.write(to: out.appendingPathComponent("flat.png"))
+        let reading = try OfficeLayoutPages.prepare(flat, maxSide: OfficeLayoutPages.readingSide).image
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        try encoder.encode(try TextRecognition.recognize(reading)).write(to: out.appendingPathComponent("ocr.json"))
+        let page = try OfficeLayoutPages.analyze(photo)
+        var copy = page; for i in copy.graphics.indices { copy.graphics[i].png = nil }
+        try encoder.encode(copy).write(to: out.appendingPathComponent("layout.json"))
+        try OfficeLayoutExport.word([page], image: OfficeLayoutPages.missingPicture).write(to: out.appendingPathComponent("\(folder).docx"))
+        return page
+    }
+
+    /// A photographed table notice inside a page frame: two ruled tables with
+    /// shaded headers and a list of notes, no form.
+    func testFramedTableNoticeIsNotAForm() throws {
+        let page = try dumpPrivate("Notice2.jpg", folder: "notice2")
+        XCTAssertFalse(page.positioned)
+        XCTAssertTrue(page.graphics.isEmpty, "The page frame is not a picture that repeats the text")
+        let found = tables(page)
+        XCTAssertEqual(found.count, 2)
+        // Open sides: the row rules' ends make the outer columns.
+        XCTAssertEqual(found.first?.columnCount, 3)
+        XCTAssertEqual(found.first?.rowCount, 6)
+        XCTAssertTrue(found.first?.cells.filter { $0.row == 0 }.allSatisfy { $0.fill != nil } ?? false, "Faint header band keeps a fill")
+        XCTAssertEqual(found.first?.cells.first { $0.text.contains("인감증명서") }?.column, 0)
+        // The shaded section title above the second table is its first row.
+        XCTAssertEqual(found.last?.cells.first { $0.text.contains("대리인 발급서류") }?.columnSpan, 3)
+    }
+
     func testCrookedTableKeepsEachMergedLabel() throws {
         let photo = rotated(try image("OfficeSampleTable"), degrees: 1.2)
         let raster = try OfficeLayoutPages.prepare(photo).raster

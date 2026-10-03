@@ -248,11 +248,15 @@ enum OfficeLayoutExport {
                 var content = ""
                 if cell.row == r && !cell.lines.isEmpty {
                     let jc = cell.alignment == .left ? "left" : (cell.alignment == .center ? "center" : "right")
-                    let inner = Double(width - 114) / 20
+                    let inner = Double(width - 114) / 20 - (cell.alignment == .left ? max(0, cell.indent * scale - 57) / 20 : 0)
+                    let cellScale = cell.lines.map { fittingScale($0.map(\.text).joined(), width: inner, size: cell.fontSize, bold: $0.first?.bold ?? false) }.min() ?? 1
                     for line in cell.lines {
                         let text = line.map(\.text).joined()
-                        let spacing = safeSpacing(text, width: inner, size: cell.fontSize, bold: line.first?.bold ?? false, current: cell.letterSpacing)
-                        content += "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"240\" w:lineRule=\"auto\"/><w:jc w:val=\"\(jc)\"/></w:pPr>" + line.map { wordRun($0, size: cell.fontSize, spacing: spacing) }.joined() + "</w:p>"
+                        let spacing = safeSpacing(text, width: inner, size: cell.fontSize * cellScale, bold: line.first?.bold ?? false, current: cell.letterSpacing)
+                        // Keep the gap between the cell's edge and flush-left text.
+                        let ind = cell.alignment == .left ? max(0, i(cell.indent * scale) - 57) : 0
+                        let indXML = ind > 40 ? "<w:ind w:left=\"\(ind)\"/>" : ""
+                        content += "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"240\" w:lineRule=\"auto\"/>\(indXML)<w:jc w:val=\"\(jc)\"/></w:pPr>" + line.map { wordRun($0, size: cell.fontSize * cellScale, spacing: spacing) }.joined() + "</w:p>"
                     }
                 } else {
                     content = "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\"/><w:rPr><w:sz w:val=\"\(i(cell.fontSize * 2))\"/></w:rPr></w:pPr></w:p>"

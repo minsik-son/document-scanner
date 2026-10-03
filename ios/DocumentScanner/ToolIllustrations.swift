@@ -190,35 +190,14 @@ struct AnimatedPNG: UIViewRepresentable {
         }
     }
 }
+/// Blender-rendered loop: crop frame locks on, ID photo slides out, check pops.
 private struct PortraitArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        HStack(spacing: 22) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 12).fill(Color(hex: 0xC9D2DC)).frame(width: 88, height: 112)
-                Person(color: Color(hex: 0x7E8A99)).frame(width: 88, height: 112).clipShape(RoundedRectangle(cornerRadius: 12))
-            }.shadow(color: .black.opacity(0.1), radius: 8, y: 4)
-            Arrow(color: TK.teal)
-            ZStack(alignment: .topTrailing) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8).fill(Color(hex: 0x8EC5FF)).frame(width: 84, height: 108)
-                    Person(color: Color(hex: 0x2C3E57)).frame(width: 84, height: 108).clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-                .padding(6).background(.white, in: RoundedRectangle(cornerRadius: 12)).shadow(color: .black.opacity(0.12), radius: 8, y: 4)
-                Pill(text: "35×45", color: TK.teal).offset(x: 18, y: -12)
-            }
-        }
-    }
-    struct Person: View {
-        let color: Color
-        var body: some View {
-            GeometryReader { g in
-                ZStack {
-                    Circle().fill(Color(hex: 0xFFD8B5)).frame(width: g.size.width * 0.42).position(x: g.size.width / 2, y: g.size.height * 0.4)
-                    Capsule().fill(color).frame(width: g.size.width * 0.86, height: g.size.height * 0.5).position(x: g.size.width / 2, y: g.size.height * 0.98)
-                    Capsule().fill(Color(hex: 0x3B2F2A)).frame(width: g.size.width * 0.46, height: g.size.height * 0.16).position(x: g.size.width / 2, y: g.size.height * 0.27)
-                }
-            }
-        }
+        AnimatedPNG(asset: "art-id-photo", stillFrame: 56, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
     }
 }
 private struct EraseArt: View {

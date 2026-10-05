@@ -564,6 +564,8 @@ struct PhotoSourceChoices: View {
     @Environment(\.toolDocumentID) private var currentID
     var multiple = false
     var frontCamera = false
+    /// Shows the head-and-shoulder guide camera for ID photos.
+    var portraitGuide = false
     var allowCamera = true
     let picked: ([UIImage]) -> Void
     let failed: (String) -> Void
@@ -597,10 +599,17 @@ struct PhotoSourceChoices: View {
             }
         }
         .fullScreenCover(isPresented: $camera) {
-            CameraPhotoPicker(front: frontCamera) { image in
-                camera = false
-                if let image { picked([image]) }
-            }.ignoresSafeArea()
+            if portraitGuide {
+                PortraitCameraView { image in
+                    camera = false
+                    if let image { picked([image]) }
+                }
+            } else {
+                CameraPhotoPicker(front: frontCamera) { image in
+                    camera = false
+                    if let image { picked([image]) }
+                }.ignoresSafeArea()
+            }
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.image, .pdf]) { result in
             switch result {

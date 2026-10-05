@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import AVFoundation
 
 // MARK: - Shared flow plumbing
 
@@ -90,7 +91,7 @@ struct PhotoSourcePage: View {
             if let recent { recent }
             VStack(alignment: .leading, spacing: 8) {
                 SectionLabel(text: multiple ? "Add your photos" : "Add a photo")
-                PhotoSourceChoices(multiple: multiple, frontCamera: frontCamera, picked: picked,
+                PhotoSourceChoices(multiple: multiple, frontCamera: frontCamera, portraitGuide: tool == .portrait, picked: picked,
                                    failed: { work.message = $0 }, busy: { work.busy = $0 ? "Opening…" : nil })
             }
             if let message = work.message { ToastMessage(text: message) }
@@ -326,7 +327,7 @@ private struct PortraitTool: View {
     @State private var forward = true
     @State private var source: UIImage?
     @State private var subject: ImageToolEngine.PortraitSubject?
-    @State private var size = ImageToolEngine.PhotoSize.all[0]
+    @State private var size = ImageToolEngine.PhotoSize.preferred(for: ImageToolEngine.PhotoSize.homeCode)
     @State private var backdrop = ImageToolEngine.Backdrop.white
     @State private var adjust = ImageToolEngine.PortraitAdjust()
     @State private var outfit = ImageToolEngine.Outfit.none
@@ -418,9 +419,19 @@ private struct PortraitTool: View {
 
     private var sizePage: some View {
         ToolPage(title: "Which size do you need?", subtitle: "Check the rules of the office you're applying to.") {
-            ForEach(ImageToolEngine.PhotoSize.regions, id: \.self) { region in
+            ForEach(ImageToolEngine.PhotoSize.regions(for: ImageToolEngine.PhotoSize.homeCode), id: \.self) { region in
                 VStack(spacing: 10) {
-                    SectionLabel(text: region)
+                    HStack(spacing: 8) {
+                        if let flag = ImageToolEngine.PhotoSize.flag(region) {
+                            Text(flag).font(.system(size: 22)).accessibilityHidden(true)
+                        } else {
+                            Image(systemName: "person.text.rectangle").font(.system(size: 17, weight: .semibold)).foregroundStyle(TK.grey500)
+                        }
+                        Text(region).font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey600)
+                        Spacer()
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityAddTraits(.isHeader)
                     ForEach(ImageToolEngine.PhotoSize.all.filter { $0.region == region }) { option in
                         Button { size = option } label: { OptionCard(title: option.title, detail: option.detail, selected: size == option) }
                             .buttonStyle(.plain).accessibilityIdentifier("size-" + option.id)
@@ -1178,5 +1189,221 @@ private struct PortraitAlignView: View {
         }
         .frame(width: w, height: h, alignment: .topLeading)
         .allowsHitTesting(false)
+    }
+}
+
+// MARK: - ID photo camera
+
+/// Front camera with a head-and-shoulder outline and live hints, so the photo
+/// is framed for an ID photo before it's taken.
+struct PortraitCameraView: View {
+    let completion: (UIImage?) -> Void
+    @StateObject private var camera = PortraitCamera()
+    @State private var timer = 0
+    @State private var countdown: Int?
+    var body: some View {
+        GeometryReader { geo in
+            let size = geo.size
+            let hint = Self.hint(face: camera.faceRect, roll: camera.roll, in: size)
+            ZStack {
+                Color.black
+                PortraitPreview(camera: camera)
+                PortraitGuide(size: size, ready: hint.ready)
+                    .allowsHitTesting(false)
+                VStack(spacing: 0) {
+                    HStack {
+                        Button { completion(nil) } label: { Image(systemName: "xmark").font(.system(size: 18, weight: .semibold)).frame(width: 44, height: 44) }
+                            .accessibilityLabel("Close")
+                        Spacer()
+                        Button { timer = timer == 0 ? 3 : 0 } label: {
+                            Label(timer == 0 ? "Timer off" : "3 s", systemImage: "timer").font(.system(size: 15, weight: .semibold))
+                                .padding(.horizontal, 12).frame(height: 36).background(.black.opacity(0.35), in: Capsule())
+                        }
+                        .accessibilityIdentifier("portrait-camera-timer")
+                        Button { camera.flip() } label: { Image(systemName: "arrow.triangle.2.circlepath.camera").font(.system(size: 18, weight: .semibold)).frame(width: 44, height: 44) }
+                            .accessibilityLabel("Switch camera")
+                    }
+                    .foregroundStyle(.white).padding(.horizontal, 12).padding(.top, geo.safeAreaInsets.top + 4)
+                    Spacer()
+                    Text(hint.text)
+                        .font(.system(size: 16, weight: .semibold)).foregroundStyle(.white)
+                        .padding(.horizontal, 16).padding(.vertical, 9)
+                        .background(hint.ready ? TK.teal : Color.black.opacity(0.55), in: Capsule())
+                        .animation(.easeOut(duration: 0.2), value: hint.text)
+                        .accessibilityIdentifier("portrait-camera-hint")
+                    Button { shoot() } label: {
+                        Circle().strokeBorder(.white, lineWidth: 4).frame(width: 76, height: 76)
+                            .overlay(Circle().fill(hint.ready ? TK.teal : .white).padding(8))
+                    }
+                    .disabled(countdown != nil)
+                    .accessibilityLabel("Take photo")
+                    .accessibilityIdentifier("portrait-camera-shutter")
+                    .padding(.top, 18).padding(.bottom, geo.safeAreaInsets.bottom + 18)
+                }
+                if let countdown {
+                    Text("\(countdown)").font(.system(size: 96, weight: .bold, design: .rounded)).foregroundStyle(.white)
+                        .shadow(radius: 8).transition(.scale.combined(with: .opacity)).id(countdown)
+                }
+                if let failed = camera.failed {
+                    Text(failed).font(.system(size: 15)).foregroundStyle(.white).multilineTextAlignment(.center).padding(24)
+                }
+            }
+        }
+        .ignoresSafeArea()
+        .statusBarHidden()
+        .onAppear { camera.completion = completion; camera.start() }
+        .onDisappear { camera.stop() }
+    }
+    private func shoot() {
+        guard timer > 0 else { camera.capture(); return }
+        Task { @MainActor in
+            for n in stride(from: timer, through: 1, by: -1) {
+                withAnimation(.easeOut(duration: 0.2)) { countdown = n }
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+            }
+            countdown = nil
+            camera.capture()
+        }
+    }
+    /// What to tell the user, from the face box in screen points. The outline
+    /// wants the face (brows to chin) about a quarter of the screen tall,
+    /// centred a little above the middle.
+    static func hint(face: CGRect?, roll: CGFloat, in size: CGSize) -> (text: String, ready: Bool) {
+        guard let f = face, size.width > 0, size.height > 0 else { return ("Fit your head inside the outline", false) }
+        let w = size.width, h = size.height
+        let tilt = roll > 180 ? roll - 360 : roll
+        if f.height < h * 0.19 { return ("Move closer", false) }
+        if f.height > h * 0.32 { return ("Move back a little", false) }
+        if abs(f.midX - w / 2) > w * 0.08 { return (f.midX < w / 2 ? "Move right a little" : "Move left a little", false) }
+        if f.midY < h * 0.34 { return ("Lower your head in the frame", false) }
+        if f.midY > h * 0.46 { return ("Raise your head in the frame", false) }
+        if abs(tilt) > 8 { return ("Keep your head level", false) }
+        return ("Looks good. Hold still", true)
+    }
+}
+
+/// Head oval, neck and shoulder lines drawn over the camera.
+private struct PortraitGuide: View {
+    let size: CGSize
+    let ready: Bool
+    var body: some View {
+        let w = size.width, h = size.height
+        let head = CGRect(x: w * 0.27, y: h * 0.19, width: w * 0.46, height: h * 0.34)
+        ZStack {
+            // Dim everything outside the head so the outline reads clearly.
+            Path { p in
+                p.addRect(CGRect(origin: .zero, size: size))
+                p.addEllipse(in: head)
+            }
+            .fill(Color.black.opacity(0.28), style: FillStyle(eoFill: true))
+            Ellipse().path(in: head)
+                .stroke(ready ? TK.teal : .white, style: StrokeStyle(lineWidth: 3, dash: ready ? [] : [10, 7]))
+            Path { p in
+                let neckY = head.maxY + h * 0.035, shoulderY = head.maxY + h * 0.13
+                p.move(to: CGPoint(x: w / 2 - w * 0.09, y: head.maxY - h * 0.01))
+                p.addLine(to: CGPoint(x: w / 2 - w * 0.1, y: neckY))
+                p.addQuadCurve(to: CGPoint(x: w * 0.02, y: shoulderY + h * 0.08), control: CGPoint(x: w * 0.12, y: neckY + h * 0.01))
+                p.move(to: CGPoint(x: w / 2 + w * 0.09, y: head.maxY - h * 0.01))
+                p.addLine(to: CGPoint(x: w / 2 + w * 0.1, y: neckY))
+                p.addQuadCurve(to: CGPoint(x: w * 0.98, y: shoulderY + h * 0.08), control: CGPoint(x: w * 0.88, y: neckY + h * 0.01))
+            }
+            .stroke(ready ? TK.teal : .white, style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: ready ? [] : [10, 7]))
+            Path { p in p.move(to: CGPoint(x: head.minX - 14, y: head.minY)); p.addLine(to: CGPoint(x: head.maxX + 14, y: head.minY)) }
+                .stroke(Color.white.opacity(0.6), lineWidth: 1)
+            Text("Top of head").font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.85))
+                .position(x: w / 2, y: head.minY - 12)
+        }
+        .animation(.easeOut(duration: 0.2), value: ready)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct PortraitPreview: UIViewRepresentable {
+    let camera: PortraitCamera
+    func makeUIView(context: Context) -> PortraitPreviewView {
+        let view = PortraitPreviewView()
+        view.preview.session = camera.session
+        view.preview.videoGravity = .resizeAspectFill
+        camera.previewLayer = view.preview
+        return view
+    }
+    func updateUIView(_ view: PortraitPreviewView, context: Context) {}
+}
+final class PortraitPreviewView: UIView {
+    override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
+    var preview: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
+}
+
+/// Front camera session with face tracking for the guide.
+final class PortraitCamera: NSObject, ObservableObject, AVCaptureMetadataOutputObjectsDelegate, AVCapturePhotoCaptureDelegate, @unchecked Sendable {
+    let session = AVCaptureSession()
+    private let photoOutput = AVCapturePhotoOutput()
+    private let metadata = AVCaptureMetadataOutput()
+    private let queue = DispatchQueue(label: "portrait.camera")
+    private var position: AVCaptureDevice.Position = .front
+    private var configured = false
+    @Published var faceRect: CGRect?
+    @Published var roll: CGFloat = 0
+    @Published var failed: String?
+    weak var previewLayer: AVCaptureVideoPreviewLayer?
+    var completion: ((UIImage?) -> Void)?
+
+    func start() {
+        AVCaptureDevice.requestAccess(for: .video) { granted in
+            guard granted else {
+                DispatchQueue.main.async { self.failed = "Allow camera access in Settings to take an ID photo." }
+                return
+            }
+            self.queue.async {
+                if !self.configured { self.configure(); self.configured = true }
+                if !self.session.isRunning { self.session.startRunning() }
+            }
+        }
+    }
+    func stop() { queue.async { if self.session.isRunning { self.session.stopRunning() } } }
+    func flip() {
+        queue.async {
+            self.position = self.position == .front ? .back : .front
+            self.configure()
+        }
+    }
+    func capture() {
+        queue.async {
+            guard self.session.isRunning else { return }
+            let settings = AVCapturePhotoSettings()
+            self.photoOutput.capturePhoto(with: settings, delegate: self)
+        }
+    }
+    private func configure() {
+        session.beginConfiguration()
+        defer { session.commitConfiguration() }
+        session.sessionPreset = .photo
+        for input in session.inputs { session.removeInput(input) }
+        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position),
+              let input = try? AVCaptureDeviceInput(device: device), session.canAddInput(input) else {
+            DispatchQueue.main.async { self.failed = "The camera isn't available." }
+            return
+        }
+        session.addInput(input)
+        if !session.outputs.contains(photoOutput), session.canAddOutput(photoOutput) { session.addOutput(photoOutput) }
+        if !session.outputs.contains(metadata), session.canAddOutput(metadata) {
+            session.addOutput(metadata)
+            metadata.setMetadataObjectsDelegate(self, queue: .main)
+        }
+        if metadata.availableMetadataObjectTypes.contains(.face) { metadata.metadataObjectTypes = [.face] }
+        if let connection = photoOutput.connection(with: .video), connection.isVideoMirroringSupported { connection.isVideoMirrored = false }
+    }
+    func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput objects: [AVMetadataObject], from connection: AVCaptureConnection) {
+        guard let face = objects.compactMap({ $0 as? AVMetadataFaceObject }).first,
+              let shown = previewLayer?.transformedMetadataObject(for: face) else { faceRect = nil; return }
+        faceRect = shown.bounds
+        roll = face.hasRollAngle ? face.rollAngle : 0
+    }
+    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        let image = photo.fileDataRepresentation().flatMap { UIImage(data: $0) }.map { Imaging.normalized($0) }
+        DispatchQueue.main.async {
+            if image == nil { self.failed = "The photo couldn't be taken. Try again." ; return }
+            self.completion?(image)
+        }
     }
 }

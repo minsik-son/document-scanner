@@ -283,4 +283,29 @@ final class ImageToolEngineTests: XCTestCase {
         }
         if found == 0 { throw XCTSkip("No private test portraits.") }
     }
+
+    /// The user's own country is listed first and picked by default.
+    func testHomeCountryComesFirst() {
+        typealias Size = ImageToolEngine.PhotoSize
+        XCTAssertEqual(Size.regions(for: "CA").first, "Canada")
+        XCTAssertEqual(Size.preferred(for: "CA").id, "50x70")
+        XCTAssertEqual(Size.regions(for: "de").first, "Europe & UK")
+        XCTAssertEqual(Size.regions(for: "BR"), Size.regions, "Unknown countries keep the default order")
+        XCTAssertEqual(Size.preferred(for: nil).id, "35x45")
+        XCTAssertEqual(Set(Size.regions(for: "JP")), Set(Size.regions))
+        for region in Size.regions where region != "Résumé & cards" { XCTAssertNotNil(Size.flag(region), region) }
+    }
+
+    /// The camera hint guides the face into the outline.
+    func testPortraitCameraHints() {
+        let screen = CGSize(width: 400, height: 860)
+        XCTAssertFalse(PortraitCameraView.hint(face: nil, roll: 0, in: screen).ready)
+        XCTAssertEqual(PortraitCameraView.hint(face: CGRect(x: 170, y: 300, width: 60, height: 80), roll: 0, in: screen).text, "Move closer")
+        XCTAssertEqual(PortraitCameraView.hint(face: CGRect(x: 100, y: 200, width: 200, height: 320), roll: 0, in: screen).text, "Move back a little")
+        let good = CGRect(x: 120, y: 240, width: 160, height: 215)
+        XCTAssertTrue(PortraitCameraView.hint(face: good, roll: 0, in: screen).ready)
+        XCTAssertTrue(PortraitCameraView.hint(face: good, roll: 355, in: screen).ready)
+        XCTAssertEqual(PortraitCameraView.hint(face: good, roll: 20, in: screen).text, "Keep your head level")
+        XCTAssertEqual(PortraitCameraView.hint(face: good.offsetBy(dx: 80, dy: 0), roll: 0, in: screen).text, "Move left a little")
+    }
 }

@@ -627,6 +627,44 @@ enum ImageToolEngine {
         var digital: [DigitalSpec] = []
         var headTarget: Double { (headMin + headMax) / 2 }
         static let regions = ["Korea", "United States", "Canada", "Japan", "Europe & UK", "China", "India", "Résumé & cards"]
+        /// The section for a country (ISO region code), nil when none fits.
+        static func region(for code: String?) -> String? {
+            guard let code = code?.uppercased() else { return nil }
+            switch code {
+            case "KR": return "Korea"
+            case "US": return "United States"
+            case "CA": return "Canada"
+            case "JP": return "Japan"
+            case "CN": return "China"
+            case "IN": return "India"
+            case "GB", "AU", "TW", "CH", "NO", "IS", "LI", "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE",
+                 "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE": return "Europe & UK"
+            default: return nil
+            }
+        }
+        /// Sections with the user's own country first.
+        static func regions(for code: String?) -> [String] {
+            guard let home = region(for: code) else { return regions }
+            return [home] + regions.filter { $0 != home }
+        }
+        /// The first size of the user's country, or the Korean passport.
+        static func preferred(for code: String?) -> PhotoSize {
+            all.first { $0.region == regions(for: code)[0] } ?? all[0]
+        }
+        static var homeCode: String? { Locale.current.region?.identifier }
+        /// Flag shown next to a section (Apple's flag emoji), nil for non-country sections.
+        static func flag(_ region: String) -> String? {
+            switch region {
+            case "Korea": return "🇰🇷"
+            case "United States": return "🇺🇸"
+            case "Canada": return "🇨🇦"
+            case "Japan": return "🇯🇵"
+            case "Europe & UK": return "🇪🇺"
+            case "China": return "🇨🇳"
+            case "India": return "🇮🇳"
+            default: return nil
+            }
+        }
         static let all: [PhotoSize] = [
             PhotoSize(id: "35x45", title: "Passport · 35 × 45 mm", detail: "Korean passport and visa", region: "Korea", width: 35, height: 45, headMin: 32, headMax: 36, crownGap: 4,
                       digital: [DigitalSpec(id: "kr-online", title: "Online passport application · 413 × 531 px, up to 500 KB", width: 413, height: 531, maxKB: 500)]),

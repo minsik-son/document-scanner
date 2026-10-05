@@ -113,6 +113,11 @@ extension AdvancedTool {
         case .count: return .count
         case .measure: return .measure
         case .mesh: return .mesh
+        case .word: return .word
+        case .excel: return .excel
+        case .slides: return .ppt
+        case .math: return .math
+        case .translate: return .translate
         default: return .ocr
         }
     }

@@ -7,14 +7,15 @@ enum ToolArt: String, CaseIterable {
     case book, portrait, erase, marks, restore, mega, count
     case ocr, annotate, watermark, timestamp, merge, split, extract, reorder, compress, protect, images, longImage, print
     case measure, mesh
+    case word, excel, ppt, math, translate
 
     var background: LinearGradient {
         let pair: (Color, Color)
         switch self {
-        case .book, .ocr, .merge, .extract, .images, .measure: pair = (Color(hex: 0xEAF3FF), Color(hex: 0xF4F8FF))
-        case .portrait, .count, .protect, .mesh, .split: pair = (Color(hex: 0xE6F8F3), Color(hex: 0xF3FBF9))
-        case .erase, .marks, .annotate, .reorder, .longImage: pair = (Color(hex: 0xF1EEFF), Color(hex: 0xF8F6FF))
-        case .restore, .watermark, .timestamp, .compress, .print, .mega: pair = (Color(hex: 0xFFF3E9), Color(hex: 0xFFF9F3))
+        case .book, .ocr, .merge, .extract, .images, .measure, .word, .translate: pair = (Color(hex: 0xEAF3FF), Color(hex: 0xF4F8FF))
+        case .portrait, .count, .protect, .mesh, .split, .excel: pair = (Color(hex: 0xE6F8F3), Color(hex: 0xF3FBF9))
+        case .erase, .marks, .annotate, .reorder, .longImage, .math: pair = (Color(hex: 0xF1EEFF), Color(hex: 0xF8F6FF))
+        case .restore, .watermark, .timestamp, .compress, .print, .mega, .ppt: pair = (Color(hex: 0xFFF3E9), Color(hex: 0xFFF9F3))
         }
         return LinearGradient(colors: [pair.0, pair.1], startPoint: .topLeading, endPoint: .bottomTrailing)
     }
@@ -52,6 +53,11 @@ struct ToolIllustration: View {
         case .print: PrintArt()
         case .measure: MeasureArt()
         case .mesh: MeshArt()
+        case .word: WordArt()
+        case .excel: ExcelArt()
+        case .ppt: SlidesArt()
+        case .math: MathArt()
+        case .translate: TranslateArt()
         }
     }
 }
@@ -402,5 +408,60 @@ private struct MeshArt: View {
             Image(systemName: "viewfinder").font(.system(size: 176, weight: .thin)).foregroundStyle(TK.teal.opacity(0.45))
             Pill(text: "LiDAR", color: TK.teal).offset(x: 92, y: -70)
         }
+    }
+}
+
+/// Blender-rendered loop: scanned page turns into an editable Word page, table pops in, check badge
+private struct WordArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var body: some View {
+        AnimatedPNG(asset: "art-word", stillFrame: 60, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
+    }
+}
+
+/// Blender-rendered loop: paper table becomes a spreadsheet, values fill row by row, chart badge
+private struct ExcelArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var body: some View {
+        AnimatedPNG(asset: "art-excel", stillFrame: 60, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
+    }
+}
+
+/// Blender-rendered loop: page becomes a slide, more slides fan out, play badge
+private struct SlidesArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var body: some View {
+        AnimatedPNG(asset: "art-ppt", stillFrame: 62, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
+    }
+}
+
+/// Blender-rendered loop: scan frame and line read the page, symbols type into an editable card
+private struct MathArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var body: some View {
+        AnimatedPNG(asset: "art-math", stillFrame: 66, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
+    }
+}
+
+/// Blender-rendered loop: swap badge spins, translated page slides out, globe pops
+private struct TranslateArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var body: some View {
+        AnimatedPNG(asset: "art-translate", stillFrame: 60, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
     }
 }

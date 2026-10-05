@@ -143,6 +143,7 @@ struct PowerPointExportView: View {
         ToolPage(title: excel ? "Turn tables into Excel" : "Turn pages into slides",
                  subtitle: excel ? "Pick the pages with your tables. You'll check every cell next." : "Pick up to 30 pages. Each one becomes a slide.") {
             if pages.isEmpty {
+                ToolHero(art: excel ? .excel : .ppt)
                 VStack(alignment: .leading, spacing: 4) {
                     SectionLabel(text: "Add pages")
                     Button { camera = true } label: { ChoiceRow(symbol: "camera.fill", title: "Scan pages", detail: "Use the camera now") }

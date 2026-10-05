@@ -376,7 +376,7 @@ struct AdvancedOfflineToolContent:View {
                     }
                 }
             } else {
-                ToolHero(art: .ocr)
+                ToolHero(art: .word)
                 VStack(alignment: .leading, spacing: 4) {
                     SectionLabel(text: "Add your document")
                     Button { wordCamera = true } label: { ChoiceRow(symbol: "camera.fill", title: "Scan pages", detail: "Use the camera now") }

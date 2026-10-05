@@ -125,7 +125,7 @@ struct MathDocumentView: View {
                 Button { UIPasteboard.general.string = text } label: { Label("Copy", systemImage: "doc.on.doc") }.buttonStyle(ChipStyle(selected: false)).disabled(text.isEmpty)
             }
             errorRow
-            Text("Write fractions as (a+b)/(c+d), powers as x^2 and roots as sqrt(x).").font(.system(size: 13)).foregroundStyle(TK.grey500)
+            Text("Write fractions as (a+b)/(c+d), powers as x^2 and roots as sqrt(x).").font(.system(size: 13)).foregroundStyle(TK.grey500).fixedSize(horizontal: false, vertical: true)
         }
     }
     private var formatContent: some View {

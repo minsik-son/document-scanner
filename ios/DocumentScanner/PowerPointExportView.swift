@@ -162,12 +162,12 @@ struct PowerPointExportView: View {
                 }
                 VStack(alignment: .leading, spacing: 8) {
                     SectionLabel(text: "Add more")
-                    HStack(spacing: 8) {
+                    ScrollView(.horizontal, showsIndicators: false) { HStack(spacing: 8) {
                         Button { camera = true } label: { Label("Scan", systemImage: "camera") }.buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("office-camera")
                         Button { photoPicker = true } label: { Label("Photos", systemImage: "photo") }.buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("ppt-photos")
                         Button { filePicker = true } label: { Label("Files", systemImage: "doc") }.buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("ppt-files")
-                        Button { libraryPicker = true } label: { Label("Saved", systemImage: "folder") }.buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("ppt-library")
-                    }.disabled(pages.count >= 30)
+                        Button { libraryPicker = true } label: { Label("Saved", systemImage: "folder") }.buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("ppt-library").fixedSize()
+                    }.fixedSize() }.disabled(pages.count >= 30)
                 }
             }
             statusRow

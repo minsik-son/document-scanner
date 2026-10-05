@@ -772,13 +772,20 @@ enum ImageToolEngine {
             let low = i / w > chinRow
             let p = i * 4, q = ref * 4
             let d = abs(Int(r.bytes[p]) - Int(r.bytes[q])) + abs(Int(r.bytes[p + 1]) - Int(r.bytes[q + 1])) + abs(Int(r.bytes[p + 2]) - Int(r.bytes[q + 2]))
-            return d < (low ? 14 : 24)
+            return d < (low ? 20 : 24)
         }
         let mean = edge.reduce((0.0, 0.0, 0.0)) { ($0.0 + $1.0, $0.1 + $1.1, $0.2 + $1.2) }
         let m = (mean.0 / Double(edge.count), mean.1 / Double(edge.count), mean.2 / Double(edge.count))
+        // The clothes colour at the bottom centre; below the chin a pixel is wall
+        // only when it is nearer the wall than the clothes.
+        let cp = r.index(min(w - 1, max(0, (bandLo + bandHi) / 2)), max(0, h - 4))
+        let cloth = (Double(r.bytes[cp]), Double(r.bytes[cp + 1]), Double(r.bytes[cp + 2]))
         func nearWall(_ i: Int) -> Bool {
             let p = i * 4
-            return abs(Double(r.bytes[p]) - m.0) + abs(Double(r.bytes[p + 1]) - m.1) + abs(Double(r.bytes[p + 2]) - m.2) < (i / w > chinRow ? 90 : 200)
+            let px = (Double(r.bytes[p]), Double(r.bytes[p + 1]), Double(r.bytes[p + 2]))
+            let toWall = abs(px.0 - m.0) + abs(px.1 - m.1) + abs(px.2 - m.2)
+            guard i / w > chinRow else { return toWall < 200 }
+            return toWall < 200 && toWall < abs(px.0 - cloth.0) + abs(px.1 - cloth.1) + abs(px.2 - cloth.2)
         }
         for x in 0..<w { queue.append(x) }
         for y in 0..<h { if !body(0, y) { queue.append(y * w) }; if !body(w - 1, y) { queue.append(y * w + w - 1) } }
@@ -1038,16 +1045,19 @@ enum ImageToolEngine {
         return checks
     }
 
+    /// The collar line: just below the chin, moved up by lift millimetres.
+    static func outfitNeckY(_ subject: PortraitSubject, pxPerMM: CGFloat, lift: Double) -> CGFloat {
+        subject.chin - max(1, subject.crown - subject.chin) * 0.06 + CGFloat(lift) * pxPerMM
+    }
     /// Where the outfit goes: its neck on the person's neck below the chin and
     /// its shoulders as wide as theirs. lift moves it up in millimetres.
     static func outfitTransform(_ subject: PortraitSubject, pxPerMM: CGFloat, lift: Double, extent: CGRect) -> CGAffineTransform {
-        let headPx = max(1, subject.crown - subject.chin)
         let faceW = max(1, subject.face.width)
         let width = min(max(subject.shoulderWidth ?? faceW * 2.7, faceW * 2.2), faceW * 3.2) * 1.04
         let unit = extent.width / Outfit.canvas
         // Neck point in the asset, Core Image coordinates (origin bottom-left).
         let neck = CGPoint(x: extent.minX + Outfit.neck.x * unit, y: extent.minY + (Outfit.canvas - Outfit.neck.y) * unit)
-        let target = CGPoint(x: subject.centerX, y: subject.chin - headPx * 0.06 + CGFloat(lift) * pxPerMM)
+        let target = CGPoint(x: subject.centerX, y: outfitNeckY(subject, pxPerMM: pxPerMM, lift: lift))
         let scale = width / (Outfit.shoulders * unit)
         return CGAffineTransform(translationX: -neck.x, y: -neck.y).concatenating(CGAffineTransform(scaleX: scale, y: scale))
             .concatenating(CGAffineTransform(translationX: target.x, y: target.y))
@@ -1094,8 +1104,30 @@ enum ImageToolEngine {
                          outfit: Outfit = .none, outfitLift: Double = 0) throws -> UIImage {
         let base = subject.image
         let background = CIImage(color: CIColor(color: backdrop.color))
-        var composite = base.applyingFilter("CIBlendWithMask", parameters: [kCIInputBackgroundImageKey: background, kCIInputMaskImageKey: subject.mask])
         let (crop, pxPerMM) = portraitCrop(subject, size: size, adjust: adjust)
+        var personMask = subject.mask
+        if let clothes = outfit.image {
+            // With an outfit the suit is the body. Below the collar the person
+            // only stays where the suit or its neck opening covers them, so their
+            // own clothes never show around it; hair beside the neck tucks behind.
+            let place = outfitTransform(subject, pxPerMM: pxPerMM, lift: outfitLift, extent: clothes.extent)
+            let collar = outfitNeckY(subject, pxPerMM: pxPerMM, lift: outfitLift)
+            let feather = max(2, (subject.crown - subject.chin) * 0.02)
+            let step = CIFilter.linearGradient()
+            let cut = collar - (subject.crown - subject.chin) * 0.03   // a little inside the collar, no seam
+            step.point0 = CGPoint(x: 0, y: cut - feather); step.color0 = CIColor(red: 0, green: 0, blue: 0)
+            step.point1 = CGPoint(x: 0, y: cut + feather); step.color1 = CIColor(red: 1, green: 1, blue: 1)
+            let alpha = CIVector(x: 0, y: 0, z: 0, w: 1)
+            var covered = clothes.applyingFilter("CIColorMatrix", parameters: ["inputRVector": alpha, "inputGVector": alpha, "inputBVector": alpha, "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 0), "inputBiasVector": CIVector(x: 0, y: 0, z: 0, w: 1)])
+                .transformed(by: place)
+            if let neck = outfit.neckMask { covered = neck.transformed(by: place).applyingFilter("CIMaximumCompositing", parameters: [kCIInputBackgroundImageKey: covered]) }
+            let black = CIImage(color: CIColor(red: 0, green: 0, blue: 0)).cropped(to: base.extent)
+            if let above = step.outputImage?.cropped(to: base.extent) {
+                let keep = above.applyingFilter("CIMaximumCompositing", parameters: [kCIInputBackgroundImageKey: covered.composited(over: black)]).cropped(to: base.extent)
+                personMask = keep.applyingFilter("CIMultiplyCompositing", parameters: [kCIInputBackgroundImageKey: subject.mask])
+            }
+        }
+        var composite = base.applyingFilter("CIBlendWithMask", parameters: [kCIInputBackgroundImageKey: background, kCIInputMaskImageKey: personMask])
         if let clothes = outfit.image {
             let place = outfitTransform(subject, pxPerMM: pxPerMM, lift: outfitLift, extent: clothes.extent)
             if let neck = outfit.neckMask {

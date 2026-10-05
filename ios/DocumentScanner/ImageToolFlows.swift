@@ -82,10 +82,12 @@ struct PhotoSourcePage: View {
     var multiple = false
     var frontCamera = false
     @ObservedObject var work: ToolWork
+    var recent: AnyView? = nil
     let picked: ([UIImage]) -> Void
     var body: some View {
         ToolPage(title: title, subtitle: subtitle) {
             ToolHero(art: tool.art)
+            if let recent { recent }
             VStack(alignment: .leading, spacing: 8) {
                 SectionLabel(text: multiple ? "Add your photos" : "Add a photo")
                 PhotoSourceChoices(multiple: multiple, frontCamera: frontCamera, picked: picked,
@@ -139,12 +141,14 @@ struct PhotoToolDone: View {
     let title: String
     let images: [UIImage]
     let name: String
+    /// Exact files to share instead of re-encoding the images (size-limited uploads).
+    var files: [(String, Data)] = []
     let finish: () -> Void
-    @State private var files: ExportedFiles?
+    @State private var exported: ExportedFiles?
     var body: some View {
         ToolDonePage(title: title, detail: "You'll find it in Documents. The original photo is unchanged.",
-                     primary: finish, secondaryTitle: images.count > 1 ? "Share \(images.count) images" : "Share image",
-                     secondary: { files = try? PhotoToolSaving.share(images, name: name) }) {
+                     primary: finish, secondaryTitle: !files.isEmpty ? "Share file" : images.count > 1 ? "Share \(images.count) images" : "Share image",
+                     secondary: { exported = try? (files.isEmpty ? PhotoToolSaving.share(images, name: name) : ExportFiles.write(files)) }) {
             if !images.isEmpty {
                 HStack(spacing: -40) {
                     ForEach(Array(images.prefix(3).enumerated()), id: \.offset) { i, image in
@@ -157,7 +161,7 @@ struct PhotoToolDone: View {
                 }.padding(.top, 6)
             }
         }
-        .sheet(item: $files) { files in ShareSheet(items: files.urls) { _, _ in ExportFiles.remove(files.directory) } }
+        .sheet(item: $exported) { files in ShareSheet(items: files.urls) { _, _ in ExportFiles.remove(files.directory) } }
     }
 }
 
@@ -317,47 +321,118 @@ private struct PortraitTool: View {
     @EnvironmentObject private var store: LibraryStore
     @Environment(\.dismiss) private var dismiss
     @StateObject private var work = ToolWork()
+    private enum Output: String, CaseIterable { case single = "Single photo", sheet = "Print sheet", online = "Online upload" }
     @State private var step = 0
     @State private var forward = true
+    @State private var source: UIImage?
     @State private var subject: ImageToolEngine.PortraitSubject?
     @State private var size = ImageToolEngine.PhotoSize.all[0]
     @State private var backdrop = ImageToolEngine.Backdrop.white
     @State private var adjust = ImageToolEngine.PortraitAdjust()
+    @State private var outfit = ImageToolEngine.Outfit.none
+    @State private var outfitLift = 0.0
     @State private var photo: UIImage?
-    @State private var sheet = false
+    @State private var output = Output.single
+    @State private var paper = ImageToolEngine.PrintPaper.fourBySix
     @State private var sheetImage: UIImage?
+    @State private var digitalSpec: ImageToolEngine.DigitalSpec?
+    @State private var digitalData: Data?
+    @State private var checks: [ImageToolEngine.PortraitCheck] = []
+    @State private var history: [PortraitHistoryEntry] = []
+    @State private var entryID: UUID?
     @State private var saved: UIImage?
+    @State private var savedFile: [(String, Data)] = []
     var body: some View {
         StepStack(step: step, forward: forward) {
             switch step {
             case 0:
-                PhotoSourcePage(tool: .portrait, title: "Make an ID photo", subtitle: "Face the camera on a plain background. We'll do the cut-out, size and background.", frontCamera: true, work: work) { images in
+                PhotoSourcePage(tool: .portrait, title: "Make an ID photo", subtitle: "Face the camera on a plain background. We'll do the cut-out, size and background.", frontCamera: true, work: work,
+                                recent: history.isEmpty ? nil : AnyView(recentRow)) { images in
                     guard let image = images.first else { return }
                     work.run("Finding your face…") {
                         subject = try await OfflineWork.perform { try ImageToolEngine.portraitSubject(image) }
+                        source = image; entryID = nil; outfit = .none; outfitLift = 0
                         go(1)
                     }
                 }
+                .onAppear { history = PortraitHistory.list() }
             case 1: sizePage
             case 2: alignPage
             case 3: backdropPage
             case 4: resultPage
-            default: PhotoToolDone(title: "Your ID photo is saved", images: [saved].compactMap { $0 }, name: "ID photo") { dismiss() }
+            default: PhotoToolDone(title: "Your ID photo is saved", images: [saved].compactMap { $0 }, name: "ID photo", files: savedFile) { dismiss() }
             }
         }
         .stepChrome(step: $step, forward: $forward, last: 5, work: work)
     }
     private func go(_ next: Int) { forward = next > step; step = next }
+
+    // MARK: Recent
+
+    private var recentRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SectionLabel(text: "Recent ID photos")
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(history) { entry in
+                        Button { reopen(entry) } label: {
+                            VStack(spacing: 6) {
+                                Group {
+                                    if let image = PortraitHistory.photo(entry.id) { Image(uiImage: image).resizable().scaledToFit() }
+                                    else { Color(white: 0.94) }
+                                }
+                                .frame(width: 66, height: 84)
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(TK.grey200, lineWidth: 1))
+                                Text(ImageToolEngine.PhotoSize.all.first { $0.id == entry.sizeID }?.title.components(separatedBy: " · ").first ?? "ID photo")
+                                    .font(.system(size: 11, weight: .medium)).foregroundStyle(TK.grey600).lineLimit(1).frame(width: 76)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Reopen ID photo from \(entry.date.formatted(date: .abbreviated, time: .omitted))")
+                        .contextMenu {
+                            Button(role: .destructive) { PortraitHistory.remove(entry.id); history = PortraitHistory.list() } label: { Label("Remove", systemImage: "trash") }
+                        }
+                    }
+                }.padding(.vertical, 2)
+            }
+            Text("Reprint or remake in another size. Kept only on this iPhone.").font(.system(size: 12)).foregroundStyle(TK.grey500)
+        }
+        .accessibilityIdentifier("portrait-recent")
+    }
+    private func reopen(_ entry: PortraitHistoryEntry) {
+        guard let image = PortraitHistory.source(entry.id) else { PortraitHistory.remove(entry.id); history = PortraitHistory.list(); return }
+        work.run("Opening…") {
+            subject = try await OfflineWork.perform { try ImageToolEngine.portraitSubject(image) }
+            source = image; entryID = entry.id
+            size = ImageToolEngine.PhotoSize.all.first { $0.id == entry.sizeID } ?? ImageToolEngine.PhotoSize.all[0]
+            backdrop = ImageToolEngine.Backdrop(rawValue: entry.backdrop) ?? .white
+            adjust = ImageToolEngine.PortraitAdjust(zoom: entry.zoom, dx: entry.dx, dy: entry.dy)
+            outfit = ImageToolEngine.Outfit(rawValue: entry.outfit) ?? .none
+            outfitLift = entry.outfitLift
+            render(); go(4)
+        }
+    }
+
+    // MARK: Size
+
     private var sizePage: some View {
         ToolPage(title: "Which size do you need?", subtitle: "Check the rules of the office you're applying to.") {
-            VStack(spacing: 10) {
-                ForEach(ImageToolEngine.PhotoSize.all) { option in
-                    Button { size = option } label: { OptionCard(title: option.title, detail: option.detail, selected: size == option) }
-                        .buttonStyle(.plain).accessibilityIdentifier("size-" + option.id)
+            ForEach(ImageToolEngine.PhotoSize.regions, id: \.self) { region in
+                VStack(spacing: 10) {
+                    SectionLabel(text: region)
+                    ForEach(ImageToolEngine.PhotoSize.all.filter { $0.region == region }) { option in
+                        Button { size = option } label: { OptionCard(title: option.title, detail: option.detail, selected: size == option) }
+                            .buttonStyle(.plain).accessibilityIdentifier("size-" + option.id)
+                    }
                 }
             }
         } actions: {
-            Button("Next") { adjust = ImageToolEngine.PortraitAdjust(); render(); go(2) }.buttonStyle(CTAButtonStyle()).accessibilityIdentifier("portrait-size-next")
+            Button("Next") {
+                adjust = ImageToolEngine.PortraitAdjust()
+                if !size.allowsOutfit { outfit = .none }
+                render(); go(2)
+            }.buttonStyle(CTAButtonStyle()).accessibilityIdentifier("portrait-size-next")
         }
     }
     private var alignPage: some View {
@@ -388,12 +463,16 @@ private struct PortraitTool: View {
             Button("Next") { go(3) }.buttonStyle(CTAButtonStyle()).disabled(photo == nil).accessibilityIdentifier("portrait-align-next")
         }
     }
+
+    // MARK: Background and outfit
+
     private var backdropPage: some View {
-        ToolPage(title: "Pick a background", subtitle: "Most passports need white or light grey.") {
+        ToolPage(title: size.allowsOutfit ? "Background and outfit" : "Pick a background",
+                 subtitle: size.allowsOutfit ? "Pick a colour, and a suit or shirt if you like." : "Most passports need white or light grey.") {
             ZStack {
                 if let photo { Image(uiImage: photo).resizable().scaledToFit().shadow(color: .black.opacity(0.12), radius: 10, y: 4) }
                 else { ProgressView() }
-            }.frame(maxWidth: .infinity).frame(height: 320)
+            }.frame(maxWidth: .infinity).frame(height: 300)
             HStack(spacing: 14) {
                 ForEach(ImageToolEngine.Backdrop.allCases) { option in
                     Button { backdrop = option; render() } label: {
@@ -403,42 +482,169 @@ private struct PortraitTool: View {
                     }.accessibilityLabel(option.rawValue).accessibilityAddTraits(backdrop == option ? .isSelected : [])
                 }
             }.frame(maxWidth: .infinity)
+            if size.allowsOutfit {
+                VStack(alignment: .leading, spacing: 8) {
+                    SectionLabel(text: "Outfit")
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(ImageToolEngine.Outfit.allCases) { option in
+                                Button { outfit = option; render() } label: {
+                                    VStack(spacing: 4) {
+                                        Group {
+                                            if option == .none { Image(systemName: "person.crop.square").font(.system(size: 26)).foregroundStyle(TK.grey500) }
+                                            else if let image = UIImage(named: option.rawValue) { Image(uiImage: image).resizable().scaledToFit().padding(4) }
+                                            else { Image(systemName: "tshirt").foregroundStyle(TK.grey500) }
+                                        }
+                                        .frame(width: 64, height: 64)
+                                        .background(TK.grey50, in: RoundedRectangle(cornerRadius: 12))
+                                        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(outfit == option ? TK.blue : TK.grey200, lineWidth: outfit == option ? 2 : 1))
+                                        Text(option.title).font(.system(size: 11, weight: .medium)).foregroundStyle(TK.grey700).lineLimit(1).frame(width: 74)
+                                    }
+                                }
+                                .buttonStyle(.plain).accessibilityLabel(option.title).accessibilityAddTraits(outfit == option ? .isSelected : [])
+                                .accessibilityIdentifier("outfit-" + option.id)
+                            }
+                        }
+                    }
+                    if outfit != .none {
+                        HStack(spacing: 10) {
+                            Button { outfitLift += 0.5; render() } label: { Label("Higher", systemImage: "arrow.up") }.buttonStyle(ChipStyle(selected: false))
+                            Button { outfitLift -= 0.5; render() } label: { Label("Lower", systemImage: "arrow.down") }.buttonStyle(ChipStyle(selected: false))
+                        }
+                        Text("For résumés and applications. Passport offices don't accept edited clothing.")
+                            .font(.system(size: 12)).foregroundStyle(TK.grey500)
+                    }
+                }
+            }
         } actions: {
-            Button("Next") { go(4) }.buttonStyle(CTAButtonStyle()).disabled(photo == nil).accessibilityIdentifier("portrait-backdrop-next")
+            Button("Next") { checks = subject.map { ImageToolEngine.portraitChecks($0, size: size, adjust: adjust) } ?? []; prepareOutput(); go(4) }
+                .buttonStyle(CTAButtonStyle()).disabled(photo == nil).accessibilityIdentifier("portrait-backdrop-next")
         }
     }
+
+    // MARK: Result
+
     private var resultPage: some View {
-        ToolPage(title: sheet ? "Ready to print" : "Your ID photo", subtitle: sheet ? "A 4 × 6 in sheet. Print at 100% and cut along the lines." : "\(size.title). Print at 300 dpi or use it online.") {
-            if let shown = sheet ? sheetImage : photo {
-                Image(uiImage: shown).resizable().scaledToFit().frame(maxWidth: .infinity).frame(height: 320)
+        ToolPage(title: resultTitle, subtitle: resultSubtitle) {
+            if let shown = output == .sheet ? sheetImage : photo {
+                Image(uiImage: shown).resizable().scaledToFit().frame(maxWidth: .infinity).frame(height: output == .sheet ? 240 : 280)
                     .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
             }
-            HStack(spacing: 10) {
-                Button("Single photo") { sheet = false }.buttonStyle(ChipStyle(selected: !sheet))
-                Button("Print sheet") {
-                    if let photo { sheetImage = ImageToolEngine.printSheet(photo, size: size) }
-                    sheet = true
-                }.buttonStyle(ChipStyle(selected: sheet)).accessibilityIdentifier("portrait-sheet")
+            HStack(spacing: 8) {
+                ForEach(Output.allCases.filter { $0 != .online || !size.digital.isEmpty }, id: \.self) { option in
+                    Button(option.rawValue) { output = option; prepareOutput() }
+                        .buttonStyle(ChipStyle(selected: output == option))
+                        .accessibilityIdentifier("portrait-output-" + String(describing: option))
+                }
             }
+            if output == .sheet {
+                HStack(spacing: 8) {
+                    ForEach(ImageToolEngine.PrintPaper.allCases) { option in
+                        Button(option.rawValue) { paper = option; prepareOutput() }.buttonStyle(ChipStyle(selected: paper == option))
+                    }
+                }
+            }
+            if output == .online {
+                VStack(spacing: 10) {
+                    ForEach(size.digital) { spec in
+                        Button { digitalSpec = spec; prepareOutput() } label: {
+                            OptionCard(title: spec.title.components(separatedBy: " · ").first ?? spec.title,
+                                       detail: spec.title.components(separatedBy: " · ").dropFirst().joined(separator: " · "), selected: digitalSpec == spec) {
+                                if digitalSpec == spec, let digitalData {
+                                    Text(ByteCountFormatter.string(fromByteCount: Int64(digitalData.count), countStyle: .file))
+                                        .font(.footnote.weight(.semibold)).foregroundStyle(TK.teal)
+                                }
+                            }
+                        }.buttonStyle(.plain)
+                    }
+                }
+            }
+            if !checks.isEmpty { checkCard }
         } actions: {
-            Button("Save photo") { save() }.buttonStyle(CTAButtonStyle()).disabled(photo == nil).accessibilityIdentifier("portrait-save")
+            Button(output == .online ? "Save file" : "Save photo") { save() }.buttonStyle(CTAButtonStyle()).disabled(photo == nil).accessibilityIdentifier("portrait-save")
         }
     }
+    private var resultTitle: String {
+        switch output { case .single: return "Your ID photo"; case .sheet: return "Ready to print"; case .online: return "Ready to upload" }
+    }
+    private var resultSubtitle: String {
+        switch output {
+        case .single: return "\(size.title). Print at 300 dpi or use it online."
+        case .sheet:
+            let layout = ImageToolEngine.sheetLayout(size, paper: paper)
+            return "\(layout.columns * layout.rows) copies on \(paper.rawValue) paper. Print at 100% and cut along the marks."
+        case .online: return "Exact pixels and file size for the form. Share the file or save it to Documents."
+        }
+    }
+    private var checkCard: some View {
+        let failed = checks.filter { !$0.passed }.count
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Photo check").font(.system(size: 16, weight: .bold)).foregroundStyle(TK.grey900)
+                Spacer()
+                Text(failed == 0 ? "All good" : "\(failed) to fix").font(.footnote.weight(.semibold))
+                    .foregroundStyle(failed == 0 ? TK.teal : TK.orange)
+            }
+            ForEach(checks) { check in
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: check.passed ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .foregroundStyle(check.passed ? TK.teal : TK.orange)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(check.title).font(.system(size: 14, weight: .semibold)).foregroundStyle(TK.grey900)
+                        Text(check.detail).font(.system(size: 13)).foregroundStyle(TK.grey600).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+            }
+            Text("An automatic guide only. The issuing office makes the final decision.").font(.system(size: 11)).foregroundStyle(TK.grey500)
+        }
+        .padding(16)
+        .background(TK.grey50, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityIdentifier("portrait-checks")
+    }
+
     private func render() {
         guard let subject else { return }
-        let s = size, b = backdrop, a = adjust
+        let s = size, b = backdrop, a = adjust, lift = outfitLift
+        let clothes = s.allowsOutfit ? outfit : .none
         work.preview {
-            photo = try await OfflineWork.perform { try ImageToolEngine.portrait(subject, size: s, backdrop: b, adjust: a) }
+            photo = try await OfflineWork.perform { try ImageToolEngine.portrait(subject, size: s, backdrop: b, adjust: a, outfit: clothes, outfitLift: lift) }
+            prepareOutput()
+        }
+    }
+    private func prepareOutput() {
+        guard let photo else { return }
+        switch output {
+        case .single: break
+        case .sheet: sheetImage = ImageToolEngine.printSheet(photo, size: size, paper: paper)
+        case .online:
+            if digitalSpec == nil || !size.digital.contains(where: { $0 == digitalSpec }) { digitalSpec = size.digital.first }
+            if let spec = digitalSpec { digitalData = ImageToolEngine.digitalJPEG(photo, spec: spec, backdrop: backdrop.color) }
         }
     }
     private func save() {
         guard let photo else { return }
-        let s = size, asSheet = sheet
+        let s = size, mode = output, paper = paper
         work.run("Saving…") {
-            let output = asSheet ? (sheetImage ?? ImageToolEngine.printSheet(photo, size: s)) : photo
-            let mm = asSheet ? CGSize(width: 152.4, height: 101.6) : CGSize(width: s.width, height: s.height)
-            _ = try await PhotoToolSaving.save([output], title: "ID photo", millimeters: mm, recognize: false, store: store)
-            saved = output; go(4)
+            var entry = PortraitHistoryEntry(sizeID: s.id, backdrop: backdrop.rawValue, zoom: adjust.zoom, dx: adjust.dx, dy: adjust.dy,
+                                             outfit: outfit.rawValue, outfitLift: outfitLift)
+            if let entryID { entry.id = entryID }
+            if let source { try? PortraitHistory.save(entry, source: source, photo: photo); entryID = entry.id }
+            switch mode {
+            case .single:
+                _ = try await PhotoToolSaving.save([photo], title: "ID photo", millimeters: CGSize(width: s.width, height: s.height), recognize: false, store: store)
+                saved = photo; savedFile = []
+            case .sheet:
+                let sheet = sheetImage ?? ImageToolEngine.printSheet(photo, size: s, paper: paper)
+                let mm = ImageToolEngine.sheetLayout(s, paper: paper).sheet
+                _ = try await PhotoToolSaving.save([sheet], title: "ID photo sheet", millimeters: mm, recognize: false, store: store)
+                saved = sheet; savedFile = []
+            case .online:
+                guard let spec = digitalSpec, let data = digitalData, let image = UIImage(data: data) else { return }
+                _ = try await PhotoToolSaving.save([image], title: "ID photo \(spec.width)x\(spec.height)", millimeters: CGSize(width: s.width, height: s.height), recognize: false, store: store)
+                saved = image; savedFile = [("ID photo \(spec.width)x\(spec.height).jpg", data)]
+            }
+            go(5)
         }
     }
 }

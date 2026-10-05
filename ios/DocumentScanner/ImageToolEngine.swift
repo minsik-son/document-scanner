@@ -3,6 +3,7 @@ import CoreImage
 import CoreImage.CIFilterBuiltins
 import Vision
 import Accelerate
+import CoreML
 
 /// Image algorithms behind the photo tools. Everything runs on this iPhone.
 enum ImageToolEngine {
@@ -600,10 +601,20 @@ enum ImageToolEngine {
 
     // MARK: ID photo
 
+    /// A file for an online application: exact pixels and a size limit.
+    struct DigitalSpec: Identifiable, Equatable, Hashable {
+        let id: String
+        let title: String
+        let width: Int
+        let height: Int
+        let maxKB: Int
+        var minKB: Int = 0
+    }
     struct PhotoSize: Identifiable, Equatable, Hashable {
         let id: String
         let title: String
         let detail: String
+        let region: String
         let width: Double   // millimetres
         let height: Double
         /// Allowed head height, chin to crown (top of the hair), in millimetres.
@@ -611,15 +622,72 @@ enum ImageToolEngine {
         let headMax: Double
         /// Space between the top of the head and the top edge, in millimetres.
         let crownGap: Double
+        /// Clothing can be swapped only where edited photos are accepted.
+        var allowsOutfit = false
+        var digital: [DigitalSpec] = []
         var headTarget: Double { (headMin + headMax) / 2 }
+        static let regions = ["Korea", "United States", "Canada", "Japan", "Europe & UK", "China", "India", "Résumé & cards"]
         static let all: [PhotoSize] = [
-            PhotoSize(id: "35x45", title: "Passport · 35 × 45 mm", detail: "Korea, UK, EU, Canada visa and most IDs", width: 35, height: 45, headMin: 32, headMax: 36, crownGap: 4),
-            PhotoSize(id: "2x2", title: "US passport · 2 × 2 in", detail: "United States passport and visa", width: 50.8, height: 50.8, headMin: 25.4, headMax: 34.9, crownGap: 7),
-            PhotoSize(id: "50x70", title: "Canada passport · 50 × 70 mm", detail: "Canadian passport photo", width: 50, height: 70, headMin: 31, headMax: 36, crownGap: 12),
-            PhotoSize(id: "33x48", title: "China visa · 33 × 48 mm", detail: "Chinese visa applications", width: 33, height: 48, headMin: 28, headMax: 33, crownGap: 4),
-            PhotoSize(id: "30x40", title: "Resume · 3 × 4 cm", detail: "Résumés and certificates", width: 30, height: 40, headMin: 24, headMax: 28, crownGap: 4),
-            PhotoSize(id: "25x30", title: "Small ID · 25 × 30 mm", detail: "Licences and membership cards", width: 25, height: 30, headMin: 18, headMax: 22, crownGap: 3)
+            PhotoSize(id: "35x45", title: "Passport · 35 × 45 mm", detail: "Korean passport and visa", region: "Korea", width: 35, height: 45, headMin: 32, headMax: 36, crownGap: 4,
+                      digital: [DigitalSpec(id: "kr-online", title: "Online passport application · 413 × 531 px, up to 500 KB", width: 413, height: 531, maxKB: 500)]),
+            PhotoSize(id: "kr-id", title: "ID card & driver's licence · 35 × 45 mm", detail: "Resident registration card and driver's licence", region: "Korea", width: 35, height: 45, headMin: 32, headMax: 36, crownGap: 4),
+            PhotoSize(id: "2x2", title: "US passport · 2 × 2 in", detail: "United States passport and visa", region: "United States", width: 50.8, height: 50.8, headMin: 25.4, headMax: 34.9, crownGap: 7,
+                      digital: [DigitalSpec(id: "us-renewal", title: "Online passport renewal · 1200 × 1200 px", width: 1200, height: 1200, maxKB: 10_240, minKB: 54),
+                                DigitalSpec(id: "us-dv", title: "Diversity visa (DV) · 600 × 600 px, up to 240 KB", width: 600, height: 600, maxKB: 240)]),
+            PhotoSize(id: "50x70", title: "Canada passport · 50 × 70 mm", detail: "Canadian passport photo", region: "Canada", width: 50, height: 70, headMin: 31, headMax: 36, crownGap: 12),
+            PhotoSize(id: "jp-35x45", title: "Japan passport · 35 × 45 mm", detail: "Japanese passport", region: "Japan", width: 35, height: 45, headMin: 32, headMax: 36, crownGap: 4),
+            PhotoSize(id: "eu-35x45", title: "Biometric · 35 × 45 mm", detail: "Schengen visa, UK, Germany, France, Australia, Taiwan", region: "Europe & UK", width: 35, height: 45, headMin: 32, headMax: 36, crownGap: 4,
+                      digital: [DigitalSpec(id: "uk-online", title: "UK online passport · 600 × 771 px", width: 600, height: 771, maxKB: 10_240, minKB: 50)]),
+            PhotoSize(id: "33x48", title: "China visa · 33 × 48 mm", detail: "Chinese visa applications", region: "China", width: 33, height: 48, headMin: 28, headMax: 33, crownGap: 4,
+                      digital: [DigitalSpec(id: "cn-visa", title: "Online visa form · 354 × 472 px, 40–120 KB", width: 354, height: 472, maxKB: 120, minKB: 40)]),
+            PhotoSize(id: "in-2x2", title: "India passport & visa · 51 × 51 mm", detail: "Indian passport and visa", region: "India", width: 51, height: 51, headMin: 25, headMax: 35, crownGap: 6,
+                      digital: [DigitalSpec(id: "in-evisa", title: "e-Visa upload · 600 × 600 px, up to 1 MB", width: 600, height: 600, maxKB: 1024, minKB: 10)]),
+            PhotoSize(id: "30x40", title: "Résumé · 3 × 4 cm", detail: "Résumés, applications and certificates", region: "Résumé & cards", width: 30, height: 40, headMin: 24, headMax: 28, crownGap: 4, allowsOutfit: true,
+                      digital: [DigitalSpec(id: "resume-upload", title: "Job site upload · 300 × 400 px, up to 300 KB", width: 300, height: 400, maxKB: 300)]),
+            PhotoSize(id: "25x30", title: "Small ID · 25 × 30 mm", detail: "Membership cards and student IDs", region: "Résumé & cards", width: 25, height: 30, headMin: 18, headMax: 22, crownGap: 3, allowsOutfit: true)
         ]
+    }
+    /// Paper for a print sheet; sizes are landscape, in millimetres.
+    enum PrintPaper: String, CaseIterable, Identifiable {
+        case fourBySix = "4 × 6 in", threeHalfByFive = "3.5 × 5 in", fiveBySeven = "5 × 7 in", a4 = "A4"
+        var id: String { rawValue }
+        var millimeters: CGSize {
+            switch self {
+            case .fourBySix: return CGSize(width: 152.4, height: 101.6)
+            case .threeHalfByFive: return CGSize(width: 127, height: 88.9)
+            case .fiveBySeven: return CGSize(width: 177.8, height: 127)
+            case .a4: return CGSize(width: 297, height: 210)
+            }
+        }
+    }
+    /// Clothing laid over the body for résumé photos. Each asset is a 1024²
+    /// transparent picture with the neck at (512, 230) and shoulders 884 px wide.
+    enum Outfit: String, CaseIterable, Identifiable {
+        case none, menNavyTie = "outfit-men-navy-tie", menCharcoalOpen = "outfit-men-charcoal-open", menBlackTie = "outfit-men-black-tie"
+        case womenBlackBlazer = "outfit-women-black-blazer", womenNavyBlazer = "outfit-women-navy-blazer", whiteShirt = "outfit-white-shirt"
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .none: return "My clothes"
+            case .menNavyTie: return "Navy suit"
+            case .menCharcoalOpen: return "Grey suit, no tie"
+            case .menBlackTie: return "Black suit"
+            case .womenBlackBlazer: return "Black blazer"
+            case .womenNavyBlazer: return "Navy blazer"
+            case .whiteShirt: return "White shirt"
+            }
+        }
+        var image: CIImage? {
+            guard self != .none, let cg = UIImage(named: rawValue)?.cgImage else { return nil }
+            return CIImage(cgImage: cg)
+        }
+        /// White where the neck opening is: filled with the person's skin so
+        /// their own clothes never show through the collar.
+        var neckMask: CIImage? {
+            guard self != .none, let cg = UIImage(named: rawValue + "-neck")?.cgImage else { return nil }
+            return CIImage(cgImage: cg)
+        }
+        static let neck = CGPoint(x: 512, y: 230), shoulders: CGFloat = 884, canvas: CGFloat = 1024
     }
     /// The user's fine-tuning on top of the automatic fit: zoom scales the
     /// head; offsets move it in millimetres of the finished photo (up, right).
@@ -661,11 +729,95 @@ enum ImageToolEngine {
         var chin: CGFloat = 0
         var shoulder: CGFloat? = nil
         var centerX: CGFloat = 0
+        /// Widest part of the shoulders, in pixels.
+        var shoulderWidth: CGFloat? = nil
+        var quality = PortraitQuality()
+    }
+    /// Raw measurements behind the photo checks; nil when not measurable.
+    struct PortraitQuality: Equatable {
+        var roll: Double?          // degrees, head tilt
+        var yaw: Double?           // degrees, head turn
+        var eyeOpenness: Double?   // eye height ÷ width, the more closed eye
+        var mouthOpen: Double?     // inner lip gap ÷ mouth width
+        var lightBalance: Double?  // left/right brightness difference ÷ mean
+        var brightness: Double?    // mean face brightness, 0...1
+        var glare: Double?         // share of blown-out pixels around the eyes
+    }
+    struct PortraitCheck: Identifiable, Equatable {
+        let id: String
+        let title: String
+        let passed: Bool
+        let detail: String
+    }
+    /// Last resort when Vision can't cut the person out (older devices, the
+    /// simulator): flood the plain wall in from the top and side edges.
+    static func plainBackgroundMask(_ cg: CGImage, extent: CGRect, face: CGRect) -> CIImage? {
+        guard let r = try? raster(UIImage(cgImage: cg), maxSide: 320) else { return nil }
+        let w = r.width, h = r.height
+        // Below the chin the neck is always the person; elsewhere below the
+        // chin the wall must match more closely (clothes are often wall-coloured).
+        let sx = CGFloat(w) / extent.width, sy = CGFloat(h) / extent.height
+        let bandLo = Int((face.midX - face.width * 0.45 - extent.minX) * sx), bandHi = Int((face.midX + face.width * 0.45 - extent.minX) * sx)
+        let chinRow = Int((extent.maxY - face.minY) * sy)
+        func body(_ x: Int, _ y: Int) -> Bool { y > chinRow && x >= bandLo && x <= bandHi }
+        var edge: [(Double, Double, Double)] = []
+        for x in stride(from: 0, to: w, by: 2) { let p = r.index(x, 1); edge.append((Double(r.bytes[p]), Double(r.bytes[p + 1]), Double(r.bytes[p + 2]))) }
+        for y in stride(from: 0, to: h * 2 / 3, by: 2) {
+            for x in [1, w - 2] { let p = r.index(x, y); edge.append((Double(r.bytes[p]), Double(r.bytes[p + 1]), Double(r.bytes[p + 2]))) }
+        }
+        guard !edge.isEmpty else { return nil }
+        var wall = [UInt8](repeating: 0, count: w * h)   // 1 = background
+        var queue: [Int] = []
+        func similar(_ i: Int, _ ref: Int) -> Bool {
+            let low = i / w > chinRow
+            let p = i * 4, q = ref * 4
+            let d = abs(Int(r.bytes[p]) - Int(r.bytes[q])) + abs(Int(r.bytes[p + 1]) - Int(r.bytes[q + 1])) + abs(Int(r.bytes[p + 2]) - Int(r.bytes[q + 2]))
+            return d < (low ? 14 : 24)
+        }
+        let mean = edge.reduce((0.0, 0.0, 0.0)) { ($0.0 + $1.0, $0.1 + $1.1, $0.2 + $1.2) }
+        let m = (mean.0 / Double(edge.count), mean.1 / Double(edge.count), mean.2 / Double(edge.count))
+        func nearWall(_ i: Int) -> Bool {
+            let p = i * 4
+            return abs(Double(r.bytes[p]) - m.0) + abs(Double(r.bytes[p + 1]) - m.1) + abs(Double(r.bytes[p + 2]) - m.2) < (i / w > chinRow ? 90 : 200)
+        }
+        for x in 0..<w { queue.append(x) }
+        for y in 0..<h { if !body(0, y) { queue.append(y * w) }; if !body(w - 1, y) { queue.append(y * w + w - 1) } }
+        for i in queue { wall[i] = 1 }
+        var head = 0
+        while head < queue.count {
+            let i = queue[head]; head += 1
+            let x = i % w, y = i / w
+            for (nx, ny) in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)] where nx >= 0 && ny >= 0 && nx < w && ny < h {
+                let j = ny * w + nx
+                if wall[j] == 0 && !body(nx, ny) && similar(j, i) && nearWall(j) { wall[j] = 1; queue.append(j) }
+            }
+        }
+        let person = wall.filter { $0 == 0 }.count
+        guard person > w * h / 10, person < w * h * 9 / 10 else { return nil }
+        let pixels = wall.map { $0 == 1 ? UInt8(0) : UInt8(255) }
+        guard let provider = CGDataProvider(data: Data(pixels) as CFData),
+              let maskCG = CGImage(width: w, height: h, bitsPerComponent: 8, bitsPerPixel: 8, bytesPerRow: w, space: CGColorSpaceCreateDeviceGray(),
+                                   bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue), provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)
+        else { return nil }
+        let small = CIImage(cgImage: maskCG)
+        return small.transformed(by: CGAffineTransform(scaleX: extent.width / CGFloat(w), y: extent.height / CGFloat(h)))
+            .clampedToExtent().applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: extent.width / CGFloat(w) * 0.6]).cropped(to: extent)
+    }
+    /// The simulator has no Neural Engine: run Vision on the CPU there.
+    static func simulatorSafe<R: VNRequest>(_ request: R) -> R {
+        #if targetEnvironment(simulator)
+        if let stages = try? request.supportedComputeStageDevices {
+            for (stage, devices) in stages {
+                if let cpu = devices.first(where: { if case .cpu = $0 { return true } else { return false } }) { request.setComputeDevice(cpu, for: stage) }
+            }
+        }
+        #endif
+        return request
     }
     static func portraitSubject(_ input: UIImage) throws -> PortraitSubject {
         guard let cg = Imaging.limited(Imaging.normalized(input), maxPixels: 16_000_000).cgImage else { throw ScannerError.message("This photo is unavailable.") }
         let handler = VNImageRequestHandler(cgImage: cg)
-        let faces = VNDetectFaceRectanglesRequest()
+        let faces = simulatorSafe(VNDetectFaceRectanglesRequest())
         do { try handler.perform([faces]) }
         catch { throw ScannerError.message("This photo couldn't be analysed on this device. Try another photo.") }
         try Task.checkCancellation()
@@ -674,7 +826,7 @@ enum ImageToolEngine {
         let box = observations[0].boundingBox
         let base = CIImage(cgImage: cg)
         let face = CGRect(x: box.minX * base.extent.width, y: box.minY * base.extent.height, width: box.width * base.extent.width, height: box.height * base.extent.height)
-        let segmentation = VNGeneratePersonSegmentationRequest()
+        let segmentation = simulatorSafe(VNGeneratePersonSegmentationRequest())
         segmentation.qualityLevel = .accurate
         segmentation.outputPixelFormat = kCVPixelFormatType_OneComponent8
         var mask: CIImage?
@@ -686,20 +838,23 @@ enum ImageToolEngine {
             }
         } catch { mask = nil }
         if mask == nil {
-            let foreground = VNGenerateForegroundInstanceMaskRequest()
+            let foreground = simulatorSafe(VNGenerateForegroundInstanceMaskRequest())
             if (try? handler.perform([foreground])) != nil, let observation = foreground.results?.first, !observation.allInstances.isEmpty,
                let buffer = try? observation.generateScaledMaskForImage(forInstances: observation.allInstances, from: handler) {
                 mask = CIImage(cvPixelBuffer: buffer)
             }
         }
+        if mask == nil { mask = plainBackgroundMask(cg, extent: base.extent, face: face) }
         guard let mask else { throw ScannerError.message("The person couldn't be separated from the background. Use a plain background.") }
         // Soften the edge of the cut-out slightly for natural hair.
         let soft = mask.clampedToExtent().applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: 1.2]).cropped(to: base.extent)
         var subject = PortraitSubject(image: base, mask: soft, face: face)
         // Chin: the lowest point of the face outline (the box stops short of it).
         subject.chin = face.minY
-        let landmarks = VNDetectFaceLandmarksRequest()
-        if (try? handler.perform([landmarks])) != nil, let contour = landmarks.results?.first?.landmarks?.faceContour {
+        let landmarks = simulatorSafe(VNDetectFaceLandmarksRequest())
+        var observation: VNFaceObservation?
+        if (try? handler.perform([landmarks])) != nil { observation = landmarks.results?.first }
+        if let contour = observation?.landmarks?.faceContour {
             let points = contour.pointsInImage(imageSize: base.extent.size)
             if let low = points.map(\.y).min(), low > face.minY - face.height * 0.4 { subject.chin = min(face.minY, low) }
         }
@@ -707,30 +862,32 @@ enum ImageToolEngine {
         let lines = headLines(mask: soft, extent: base.extent, face: face, chin: subject.chin)
         subject.crown = lines.crown
         subject.shoulder = lines.shoulder
+        subject.shoulderWidth = lines.shoulderWidth
+        subject.quality = portraitQuality(cg, face: face, observation: observation ?? observations[0])
         return subject
     }
 
     /// Reads the cut-out: the first rows of the person above the face are the
     /// top of the hair; the row where the person widens to about twice the
     /// face below the chin is the shoulder line.
-    static func headLines(mask: CIImage, extent: CGRect, face: CGRect, chin: CGFloat) -> (crown: CGFloat, shoulder: CGFloat?) {
+    static func headLines(mask: CIImage, extent: CGRect, face: CGRect, chin: CGFloat) -> (crown: CGFloat, shoulder: CGFloat?, shoulderWidth: CGFloat?) {
         let fallback = face.maxY + face.height * 0.35
         let scale = min(1, 512 / max(extent.width, extent.height))
         let w = max(1, Int(extent.width * scale)), h = max(1, Int(extent.height * scale))
         let small = mask.transformed(by: CGAffineTransform(translationX: -extent.minX, y: -extent.minY)).transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-        guard let cg = context.createCGImage(small, from: CGRect(x: 0, y: 0, width: w, height: h)) else { return (fallback, nil) }
+        guard let cg = context.createCGImage(small, from: CGRect(x: 0, y: 0, width: w, height: h)) else { return (fallback, nil, nil) }
         var gray = [UInt8](repeating: 0, count: w * h)
         let drawn = gray.withUnsafeMutableBytes { buffer -> Bool in
             guard let ctx = CGContext(data: buffer.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w,
                                       space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue) else { return false }
             ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h)); return true
         }
-        guard drawn else { return (fallback, nil) }
+        guard drawn else { return (fallback, nil, nil) }
         // Row r of the bitmap is the top of the image first; y = maxY - r / scale.
         func y(_ row: Int) -> CGFloat { extent.maxY - (CGFloat(row) + 0.5) / scale }
         func row(_ y: CGFloat) -> Int { max(0, min(h - 1, Int((extent.maxY - y) * scale))) }
         let x0 = max(0, Int((face.minX - extent.minX) * scale)), x1 = min(w - 1, Int((face.maxX - extent.minX) * scale))
-        guard x1 > x0 else { return (fallback, nil) }
+        guard x1 > x0 else { return (fallback, nil, nil) }
         var crown = fallback
         let faceTop = row(face.maxY)
         for r in 0..<faceTop {
@@ -739,14 +896,23 @@ enum ImageToolEngine {
             if Double(on) >= Double(x1 - x0 + 1) * 0.15 { crown = y(r); break }
         }
         if crown < face.maxY { crown = fallback }
-        var shoulder: CGFloat?
+        var shoulder: CGFloat?, shoulderRow = h
         let faceWidth = face.width * scale
         for r in row(chin)..<h {
             var on = 0
             for x in 0..<w where gray[r * w + x] > 128 { on += 1 }
-            if Double(on) >= Double(faceWidth) * 2.0 { shoulder = y(r); break }
+            if Double(on) >= Double(faceWidth) * 2.0 { shoulder = y(r); shoulderRow = r; break }
         }
-        return (crown, shoulder)
+        // The widest span a little below the shoulder line is the shoulder width.
+        var widest = 0
+        if shoulder != nil {
+            for r in shoulderRow..<min(h, shoulderRow + max(2, Int(faceWidth * 0.8))) {
+                var first = -1, last = -1
+                for x in 0..<w where gray[r * w + x] > 128 { if first < 0 { first = x }; last = x }
+                if first >= 0 { widest = max(widest, last - first + 1) }
+            }
+        }
+        return (crown, shoulder, widest > 0 ? CGFloat(widest) / scale : nil)
     }
 
     /// The crop (Core Image coordinates) that puts the head at the size's
@@ -769,14 +935,183 @@ enum ImageToolEngine {
         return PortraitMetrics(head: Double((subject.crown - subject.chin) / k), crown: fromTop(subject.crown), chin: fromTop(subject.chin),
                                shoulder: subject.shoulder.map(fromTop), centerOffset: Double((subject.centerX - crop.midX) / k))
     }
+    /// Measures what makes ID photos get rejected: tilt, closed eyes, an open
+    /// mouth, uneven light, under/over exposure and glare on glasses.
+    static func portraitQuality(_ cg: CGImage, face: CGRect, observation: VNFaceObservation) -> PortraitQuality {
+        var q = PortraitQuality()
+        if let roll = observation.roll?.doubleValue { q.roll = roll * 180 / .pi }
+        if let yaw = observation.yaw?.doubleValue { q.yaw = yaw * 180 / .pi }
+        let imageSize = CGSize(width: cg.width, height: cg.height)
+        func box(_ region: VNFaceLandmarkRegion2D?) -> CGRect? {
+            guard let points = region?.pointsInImage(imageSize: imageSize), points.count > 2 else { return nil }
+            let xs = points.map(\.x), ys = points.map(\.y)
+            return CGRect(x: xs.min()!, y: ys.min()!, width: xs.max()! - xs.min()!, height: ys.max()! - ys.min()!)
+        }
+        // Landmarks are only trusted where a face has them: eyes in the upper
+        // half of the face box, the mouth in its lower part, near the middle.
+        let eyes = [box(observation.landmarks?.leftEye), box(observation.landmarks?.rightEye)].compactMap { $0 }
+            .filter { $0.width > 1 && $0.midY > face.midY && $0.midY < face.maxY && face.contains(CGPoint(x: $0.midX, y: face.midY)) }
+        if eyes.count == 2, abs(eyes[0].midX - eyes[1].midX) > face.width * 0.25 { q.eyeOpenness = eyes.map { Double($0.height / $0.width) }.min() }
+        if let inner = box(observation.landmarks?.innerLips), let outer = box(observation.landmarks?.outerLips), outer.width > face.width * 0.2,
+           outer.midY < face.minY + face.height * 0.42, outer.midY > face.minY - face.height * 0.1, abs(outer.midX - face.midX) < face.width * 0.15 {
+            q.mouthOpen = Double(inner.height / outer.width)
+        }
+        // Brightness inside the face, from a small grey copy (top-left origin).
+        let crop = CGRect(x: face.minX, y: imageSize.height - face.maxY, width: face.width, height: face.height).integral
+            .intersection(CGRect(origin: .zero, size: imageSize))
+        guard crop.width > 8, crop.height > 8, let part = cg.cropping(to: crop) else { return q }
+        let n = 128
+        var gray = [UInt8](repeating: 0, count: n * n)
+        let drawn = gray.withUnsafeMutableBytes { buffer -> Bool in
+            guard let ctx = CGContext(data: buffer.baseAddress, width: n, height: n, bitsPerComponent: 8, bytesPerRow: n,
+                                      space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue) else { return false }
+            ctx.interpolationQuality = .medium
+            ctx.draw(part, in: CGRect(x: 0, y: 0, width: n, height: n)); return true
+        }
+        guard drawn else { return q }
+        func mean(_ xs: Range<Int>, _ ys: Range<Int>) -> Double {
+            var sum = 0, count = 0
+            for y in ys { for x in xs { sum += Int(gray[y * n + x]); count += 1 } }
+            return count > 0 ? Double(sum) / Double(count) / 255 : 0
+        }
+        // Cheeks and eyes, clear of hair and background: rows 30–80 % from the top.
+        let rows = Int(Double(n) * 0.4)..<Int(Double(n) * 0.75)
+        let left = mean(Int(Double(n) * 0.22)..<Int(Double(n) * 0.42), rows)
+        let right = mean(Int(Double(n) * 0.58)..<Int(Double(n) * 0.78), rows)
+        let middle = mean(Int(Double(n) * 0.15)..<Int(Double(n) * 0.85), rows)
+        q.brightness = middle
+        if middle > 0.02 { q.lightBalance = abs(left - right) / middle }
+        if eyes.count == 2 {
+            var blown = 0, total = 0
+            for eye in eyes {
+                // Eye box widened to the lens of a pair of glasses, in grid cells.
+                let lens = eye.insetBy(dx: -eye.width * 0.45, dy: -eye.width * 0.35)
+                let gx0 = max(0, Int((lens.minX - face.minX) / face.width * CGFloat(n)))
+                let gx1 = min(n, Int((lens.maxX - face.minX) / face.width * CGFloat(n)))
+                let gy0 = max(0, Int((face.maxY - lens.maxY) / face.height * CGFloat(n)))
+                let gy1 = min(n, Int((face.maxY - lens.minY) / face.height * CGFloat(n)))
+                guard gx1 > gx0, gy1 > gy0 else { continue }
+                for y in gy0..<gy1 { for x in gx0..<gx1 { total += 1; if gray[y * n + x] >= 245 { blown += 1 } } }
+            }
+            if total > 0 { q.glare = Double(blown) / Double(total) }
+        }
+        return q
+    }
+
+    static func portraitChecks(_ subject: PortraitSubject, size: PhotoSize, adjust: PortraitAdjust) -> [PortraitCheck] {
+        let q = subject.quality
+        var checks: [PortraitCheck] = []
+        let m = portraitMetrics(subject, size: size, adjust: adjust)
+        let fits = m.head >= size.headMin - 0.05 && m.head <= size.headMax + 0.05
+        checks.append(PortraitCheck(id: "head", title: "Head size", passed: fits,
+                                    detail: fits ? String(format: "%.1f mm, within %g–%g mm", m.head, size.headMin, size.headMax)
+                                                 : String(format: "%.1f mm. Needs %g–%g mm; adjust it on the guide", m.head, size.headMin, size.headMax)))
+        checks.append(PortraitCheck(id: "centre", title: "Centred", passed: abs(m.centerOffset) <= 1.5,
+                                    detail: abs(m.centerOffset) <= 1.5 ? "The face is in the middle" : "Move the face to the centre line"))
+        if q.roll != nil || q.yaw != nil {
+            let roll = abs(q.roll ?? 0), yaw = abs(q.yaw ?? 0)
+            let ok = roll <= 5 && yaw <= 10
+            checks.append(PortraitCheck(id: "straight", title: "Head straight", passed: ok,
+                                        detail: ok ? "Facing the camera, not tilted" : (roll > 5 ? "The head is tilted. Keep it level" : "The head is turned. Look straight at the camera")))
+        }
+        if let eyes = q.eyeOpenness {
+            checks.append(PortraitCheck(id: "eyes", title: "Eyes open", passed: eyes >= 0.16,
+                                        detail: eyes >= 0.16 ? "Both eyes are open" : "An eye looks closed. Retake with eyes wide open"))
+        }
+        if let mouth = q.mouthOpen {
+            checks.append(PortraitCheck(id: "mouth", title: "Mouth closed", passed: mouth <= 0.08,
+                                        detail: mouth <= 0.08 ? "Neutral expression" : "The mouth looks open. Keep a neutral face"))
+        }
+        if let balance = q.lightBalance {
+            checks.append(PortraitCheck(id: "light", title: "Even light", passed: balance <= 0.25,
+                                        detail: balance <= 0.25 ? "No strong shadow on the face" : "One side of the face is darker. Face a window or soft light"))
+        }
+        if let bright = q.brightness {
+            let ok = bright >= 0.28 && bright <= 0.9
+            checks.append(PortraitCheck(id: "exposure", title: "Exposure", passed: ok,
+                                        detail: ok ? "The face is well lit" : (bright < 0.28 ? "The face is too dark" : "The face is too bright")))
+        }
+        if let glare = q.glare {
+            checks.append(PortraitCheck(id: "glare", title: "No glare", passed: glare <= 0.03,
+                                        detail: glare <= 0.03 ? "Eyes are clearly visible" : "Light reflects near the eyes. Tilt glasses or remove them"))
+        }
+        return checks
+    }
+
+    /// Where the outfit goes: its neck on the person's neck below the chin and
+    /// its shoulders as wide as theirs. lift moves it up in millimetres.
+    static func outfitTransform(_ subject: PortraitSubject, pxPerMM: CGFloat, lift: Double, extent: CGRect) -> CGAffineTransform {
+        let headPx = max(1, subject.crown - subject.chin)
+        let faceW = max(1, subject.face.width)
+        let width = min(max(subject.shoulderWidth ?? faceW * 2.7, faceW * 2.2), faceW * 3.2) * 1.04
+        let unit = extent.width / Outfit.canvas
+        // Neck point in the asset, Core Image coordinates (origin bottom-left).
+        let neck = CGPoint(x: extent.minX + Outfit.neck.x * unit, y: extent.minY + (Outfit.canvas - Outfit.neck.y) * unit)
+        let target = CGPoint(x: subject.centerX, y: subject.chin - headPx * 0.06 + CGFloat(lift) * pxPerMM)
+        let scale = width / (Outfit.shoulders * unit)
+        return CGAffineTransform(translationX: -neck.x, y: -neck.y).concatenating(CGAffineTransform(scaleX: scale, y: scale))
+            .concatenating(CGAffineTransform(translationX: target.x, y: target.y))
+    }
+
+    /// The colour of the neck just below the chin, slightly shaded.
+    static func neckTone(_ subject: PortraitSubject) -> CIColor {
+        let head = max(1, subject.crown - subject.chin), w = max(4, subject.face.width * 0.16)
+        let rect = CGRect(x: subject.centerX - w / 2, y: subject.chin - head * 0.09, width: w, height: max(2, head * 0.06)).intersection(subject.image.extent)
+        guard !rect.isEmpty else { return CIColor(red: 0.8, green: 0.65, blue: 0.55) }
+        let average = subject.image.applyingFilter("CIAreaAverage", parameters: [kCIInputExtentKey: CIVector(cgRect: rect)])
+        var px = [UInt8](repeating: 0, count: 4)
+        context.render(average, toBitmap: &px, rowBytes: 4, bounds: CGRect(x: 0, y: 0, width: 1, height: 1), format: .RGBA8, colorSpace: CGColorSpaceCreateDeviceRGB())
+        return CIColor(red: CGFloat(px[0]) / 255 * 0.97, green: CGFloat(px[1]) / 255 * 0.97, blue: CGFloat(px[2]) / 255 * 0.97)
+    }
+
+    /// The photo as a JPEG for an online form: the exact pixels, compressed
+    /// until it is under the limit. Uneven aspect ratios pad with the backdrop.
+    static func digitalJPEG(_ photo: UIImage, spec: DigitalSpec, backdrop: UIColor) -> Data {
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
+        let canvas = CGSize(width: spec.width, height: spec.height)
+        let fit = min(canvas.width / max(1, photo.size.width), canvas.height / max(1, photo.size.height))
+        let drawn = CGSize(width: photo.size.width * fit, height: photo.size.height * fit)
+        let image = UIGraphicsImageRenderer(size: canvas, format: format).image { ctx in
+            backdrop.setFill(); ctx.fill(CGRect(origin: .zero, size: canvas))
+            photo.draw(in: CGRect(x: (canvas.width - drawn.width) / 2, y: (canvas.height - drawn.height) / 2, width: drawn.width, height: drawn.height))
+        }
+        let limit = spec.maxKB * 1024
+        if let best = image.jpegData(compressionQuality: 0.95), best.count <= limit { return best }
+        var lo = 0.05, hi = 0.95
+        var found = image.jpegData(compressionQuality: lo) ?? Data()
+        for _ in 0..<9 {
+            let q = (lo + hi) / 2
+            guard let data = image.jpegData(compressionQuality: q) else { break }
+            if data.count <= limit { found = data; lo = q } else { hi = q }
+        }
+        return found
+    }
+
     /// The finished photo at 300 dpi: the head from chin to crown at the
     /// size's required height, the crown at its gap from the top, centred.
     /// Space beyond the original photo takes the background colour.
-    static func portrait(_ subject: PortraitSubject, size: PhotoSize, backdrop: Backdrop, adjust: PortraitAdjust = PortraitAdjust()) throws -> UIImage {
+    static func portrait(_ subject: PortraitSubject, size: PhotoSize, backdrop: Backdrop, adjust: PortraitAdjust = PortraitAdjust(),
+                         outfit: Outfit = .none, outfitLift: Double = 0) throws -> UIImage {
         let base = subject.image
         let background = CIImage(color: CIColor(color: backdrop.color))
-        let composite = base.applyingFilter("CIBlendWithMask", parameters: [kCIInputBackgroundImageKey: background, kCIInputMaskImageKey: subject.mask])
-        let crop = portraitCrop(subject, size: size, adjust: adjust).rect
+        var composite = base.applyingFilter("CIBlendWithMask", parameters: [kCIInputBackgroundImageKey: background, kCIInputMaskImageKey: subject.mask])
+        let (crop, pxPerMM) = portraitCrop(subject, size: size, adjust: adjust)
+        if let clothes = outfit.image {
+            let place = outfitTransform(subject, pxPerMM: pxPerMM, lift: outfitLift, extent: clothes.extent)
+            if let neck = outfit.neckMask {
+                // Fade the skin in below the collar line so the real neck runs into it.
+                let unit = neck.extent.width / Outfit.canvas
+                let top = neck.extent.maxY - Outfit.neck.y * unit
+                let ramp = CIFilter.linearGradient()
+                ramp.point0 = CGPoint(x: 0, y: top); ramp.color0 = CIColor(red: 0, green: 0, blue: 0)
+                ramp.point1 = CGPoint(x: 0, y: top - 70 * unit); ramp.color1 = CIColor(red: 1, green: 1, blue: 1)
+                let faded = (ramp.outputImage ?? CIImage(color: .white)).cropped(to: neck.extent)
+                    .applyingFilter("CIMultiplyCompositing", parameters: [kCIInputBackgroundImageKey: neck])
+                let skin = CIImage(color: neckTone(subject)).cropped(to: composite.extent)
+                composite = skin.applyingFilter("CIBlendWithMask", parameters: [kCIInputBackgroundImageKey: composite, kCIInputMaskImageKey: faded.transformed(by: place)])
+            }
+            composite = clothes.transformed(by: place).composited(over: composite)
+        }
         let x = crop.minX, y = crop.minY, w = crop.width, h = crop.height
         let pixelsW = size.width / 25.4 * 300, pixelsH = size.height / 25.4 * 300
         let out = composite.cropped(to: crop)
@@ -784,24 +1119,46 @@ enum ImageToolEngine {
             .transformed(by: CGAffineTransform(scaleX: pixelsW / w, y: pixelsH / h))
         return try output(out, extent: CGRect(x: 0, y: 0, width: pixelsW.rounded(), height: pixelsH.rounded()))
     }
-    /// A 4 × 6 inch print sheet with as many copies as fit, cut lines included.
-    static func printSheet(_ photo: UIImage, size: PhotoSize) -> UIImage {
-        let dpi: CGFloat = 300
-        let sheet = CGSize(width: 6 * dpi, height: 4 * dpi)
-        let cell = CGSize(width: CGFloat(size.width) / 25.4 * dpi, height: CGFloat(size.height) / 25.4 * dpi)
-        let gap: CGFloat = 24
-        let columns = max(1, Int((sheet.width - gap) / (cell.width + gap)))
-        let rows = max(1, Int((sheet.height - gap) / (cell.height + gap)))
-        let used = CGSize(width: CGFloat(columns) * cell.width + CGFloat(columns - 1) * gap, height: CGFloat(rows) * cell.height + CGFloat(rows - 1) * gap)
+    /// How many copies fit on a paper and which way round it goes.
+    static func sheetLayout(_ size: PhotoSize, paper: PrintPaper) -> (sheet: CGSize, columns: Int, rows: Int) {
+        let gap = 2.0, margin = 3.0
+        func count(_ sheet: CGSize) -> (Int, Int) {
+            (max(0, Int((Double(sheet.width) - 2 * margin + gap) / (size.width + gap))), max(0, Int((Double(sheet.height) - 2 * margin + gap) / (size.height + gap))))
+        }
+        let landscape = paper.millimeters, portrait = CGSize(width: landscape.height, height: landscape.width)
+        let a = count(landscape), b = count(portrait)
+        return a.0 * a.1 >= b.0 * b.1 ? (landscape, max(1, a.0), max(1, a.1)) : (portrait, max(1, b.0), max(1, b.1))
+    }
+    /// A print sheet at 300 dpi with as many copies as fit, cut lines included.
+    static func printSheet(_ photo: UIImage, size: PhotoSize, paper: PrintPaper = .fourBySix) -> UIImage {
+        let dpi: CGFloat = 300, px = dpi / 25.4
+        let layout = sheetLayout(size, paper: paper)
+        let sheet = CGSize(width: (layout.sheet.width * px).rounded(), height: (layout.sheet.height * px).rounded())
+        let cell = CGSize(width: CGFloat(size.width) * px, height: CGFloat(size.height) * px)
+        let gap = 2 * px
+        let used = CGSize(width: CGFloat(layout.columns) * cell.width + CGFloat(layout.columns - 1) * gap, height: CGFloat(layout.rows) * cell.height + CGFloat(layout.rows - 1) * gap)
         let origin = CGPoint(x: (sheet.width - used.width) / 2, y: (sheet.height - used.height) / 2)
         let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
         return UIGraphicsImageRenderer(size: sheet, format: format).image { ctx in
             UIColor.white.setFill(); ctx.fill(CGRect(origin: .zero, size: sheet))
-            for r in 0..<rows { for c in 0..<columns {
+            let cg = ctx.cgContext
+            for r in 0..<layout.rows { for c in 0..<layout.columns {
                 let rect = CGRect(x: origin.x + CGFloat(c) * (cell.width + gap), y: origin.y + CGFloat(r) * (cell.height + gap), width: cell.width, height: cell.height)
                 photo.draw(in: rect)
-                UIColor(white: 0.75, alpha: 1).setStroke(); ctx.cgContext.setLineWidth(1); ctx.cgContext.stroke(rect.insetBy(dx: -0.5, dy: -0.5))
+                UIColor(white: 0.75, alpha: 1).setStroke(); cg.setLineWidth(1); cg.stroke(rect.insetBy(dx: -0.5, dy: -0.5))
             } }
+            // Cut marks in the margin, in line with every edge.
+            UIColor(white: 0.55, alpha: 1).setStroke(); cg.setLineWidth(2)
+            let mark = min(origin.x, origin.y, 6 * px) * 0.8
+            var xs: [CGFloat] = [], ys: [CGFloat] = []
+            for c in 0..<layout.columns { let x = origin.x + CGFloat(c) * (cell.width + gap); xs += [x, x + cell.width] }
+            for r in 0..<layout.rows { let y = origin.y + CGFloat(r) * (cell.height + gap); ys += [y, y + cell.height] }
+            if mark > 2 {
+                for x in xs { cg.strokeLineSegments(between: [CGPoint(x: x, y: origin.y - mark - 4), CGPoint(x: x, y: origin.y - 4),
+                                                              CGPoint(x: x, y: origin.y + used.height + 4), CGPoint(x: x, y: origin.y + used.height + mark + 4)]) }
+                for y in ys { cg.strokeLineSegments(between: [CGPoint(x: origin.x - mark - 4, y: y), CGPoint(x: origin.x - 4, y: y),
+                                                              CGPoint(x: origin.x + used.width + 4, y: y), CGPoint(x: origin.x + used.width + mark + 4, y: y)]) }
+            }
         }
     }
 
@@ -1164,4 +1521,49 @@ enum ImageToolEngine {
     static func pdf(_ images: [UIImage], millimeters: CGSize? = nil, text: [[TextBlock]] = []) throws -> Data {
         try OfflineImageEngine.pdf(images, millimeters: millimeters, text: text)
     }
+}
+
+/// ID photos made before, kept on this iPhone so they can be printed again or
+/// remade in another size: the source photo, the finished photo and the settings.
+struct PortraitHistoryEntry: Codable, Identifiable, Equatable {
+    var id = UUID()
+    var date = Date()
+    var sizeID: String
+    var backdrop: String
+    var zoom: Double = 1
+    var dx: Double = 0
+    var dy: Double = 0
+    var outfit: String = ImageToolEngine.Outfit.none.rawValue
+    var outfitLift: Double = 0
+}
+
+enum PortraitHistory {
+    static let limit = 12
+    static var root: URL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        .appendingPathComponent("IDPhotoHistory", isDirectory: true)
+    private static func folder(_ id: UUID) -> URL { root.appendingPathComponent(id.uuidString, isDirectory: true) }
+
+    static func list() -> [PortraitHistoryEntry] {
+        let folders = (try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)) ?? []
+        return folders.compactMap { url in
+            guard let data = try? Data(contentsOf: url.appendingPathComponent("entry.json")) else { return nil }
+            return try? JSONDecoder().decode(PortraitHistoryEntry.self, from: data)
+        }.sorted { $0.date > $1.date }
+    }
+    /// Saves or updates an entry; the oldest beyond the limit are removed.
+    static func save(_ entry: PortraitHistoryEntry, source: UIImage, photo: UIImage) throws {
+        let dir = folder(entry.id)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let sourceURL = dir.appendingPathComponent("source.jpg")
+        if !FileManager.default.fileExists(atPath: sourceURL.path) {
+            let small = Imaging.limited(Imaging.normalized(source), maxPixels: 6_000_000)
+            try (small.jpegData(compressionQuality: 0.9) ?? Data()).write(to: sourceURL, options: [.atomic, .completeFileProtection])
+        }
+        try (photo.jpegData(compressionQuality: 0.85) ?? Data()).write(to: dir.appendingPathComponent("photo.jpg"), options: [.atomic, .completeFileProtection])
+        try JSONEncoder().encode(entry).write(to: dir.appendingPathComponent("entry.json"), options: [.atomic, .completeFileProtection])
+        for old in list().dropFirst(limit) { remove(old.id) }
+    }
+    static func source(_ id: UUID) -> UIImage? { UIImage(contentsOfFile: folder(id).appendingPathComponent("source.jpg").path) }
+    static func photo(_ id: UUID) -> UIImage? { UIImage(contentsOfFile: folder(id).appendingPathComponent("photo.jpg").path) }
+    static func remove(_ id: UUID) { try? FileManager.default.removeItem(at: folder(id)) }
 }

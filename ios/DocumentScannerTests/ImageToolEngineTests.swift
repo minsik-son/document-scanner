@@ -165,4 +165,122 @@ final class ImageToolEngineTests: XCTestCase {
         let crop = ImageToolEngine.portraitCrop(subject, size: size, adjust: ImageToolEngine.PortraitAdjust()).rect
         XCTAssertEqual(Double(crop.width / crop.height), size.width / size.height, accuracy: 0.001)
     }
+
+    private func portraitSubjectFixture() -> ImageToolEngine.PortraitSubject {
+        let base = CIImage(color: CIColor(red: 0.5, green: 0.5, blue: 0.5)).cropped(to: CGRect(x: 0, y: 0, width: 1000, height: 1400))
+        var subject = ImageToolEngine.PortraitSubject(image: base, mask: base, face: CGRect(x: 380, y: 640, width: 240, height: 280))
+        subject.crown = 1000; subject.chin = 600; subject.centerX = 500; subject.shoulder = 480; subject.shoulderWidth = 640
+        return subject
+    }
+
+    /// Online files have the form's exact pixels and stay under its size limit.
+    func testDigitalPhotoMeetsPixelsAndSizeLimit() throws {
+        let noisy = image(CGSize(width: 700, height: 900)) { c in
+            for y in stride(from: 0, to: 900, by: 6) { for x in stride(from: 0, to: 700, by: 6) {
+                UIColor(hue: CGFloat((x * 7 + y * 13) % 360) / 360, saturation: 0.7, brightness: 0.8, alpha: 1).setFill()
+                c.fill(CGRect(x: x, y: y, width: 6, height: 6))
+            } }
+        }
+        let spec = ImageToolEngine.DigitalSpec(id: "t", title: "Test", width: 413, height: 531, maxKB: 60)
+        let data = ImageToolEngine.digitalJPEG(noisy, spec: spec, backdrop: .white)
+        XCTAssertLessThanOrEqual(data.count, 60 * 1024)
+        let decoded = try XCTUnwrap(UIImage(data: data)?.cgImage)
+        XCTAssertEqual(decoded.width, 413); XCTAssertEqual(decoded.height, 531)
+        for size in ImageToolEngine.PhotoSize.all { for spec in size.digital { XCTAssertGreaterThan(spec.maxKB, spec.minKB, spec.id) } }
+    }
+
+    /// Sheets turn the paper whichever way fits more copies.
+    func testPrintSheetFitsMostCopiesOnEachPaper() {
+        let passport = ImageToolEngine.PhotoSize.all.first { $0.id == "35x45" }!
+        let six = ImageToolEngine.sheetLayout(passport, paper: .fourBySix)
+        XCTAssertEqual(six.columns * six.rows, 8)
+        XCTAssertGreaterThan(six.sheet.width, six.sheet.height)
+        let a4 = ImageToolEngine.sheetLayout(passport, paper: .a4)
+        XCTAssertEqual(a4.columns * a4.rows, 30)
+        XCTAssertLessThan(a4.sheet.width, a4.sheet.height)
+        let photo = image(CGSize(width: 413, height: 531)) { c in UIColor.gray.setFill(); c.fill(CGRect(x: 0, y: 0, width: 413, height: 531)) }
+        let sheet = ImageToolEngine.printSheet(photo, size: passport, paper: .a4)
+        XCTAssertEqual(sheet.size.width, 2480, accuracy: 1)
+        XCTAssertEqual(sheet.size.height, 3508, accuracy: 1)
+    }
+
+    /// The photo check flags what offices reject and passes a clean photo.
+    func testPortraitChecksFlagCommonRejections() {
+        var subject = portraitSubjectFixture()
+        let size = ImageToolEngine.PhotoSize.all[0]
+        subject.quality = ImageToolEngine.PortraitQuality(roll: 1, yaw: 2, eyeOpenness: 0.32, mouthOpen: 0.02, lightBalance: 0.05, brightness: 0.6, glare: 0)
+        XCTAssertTrue(ImageToolEngine.portraitChecks(subject, size: size, adjust: ImageToolEngine.PortraitAdjust()).allSatisfy(\.passed))
+        subject.quality = ImageToolEngine.PortraitQuality(roll: 12, yaw: 2, eyeOpenness: 0.05, mouthOpen: 0.3, lightBalance: 0.5, brightness: 0.15, glare: 0.2)
+        let failed = Set(ImageToolEngine.portraitChecks(subject, size: size, adjust: ImageToolEngine.PortraitAdjust(zoom: 1.3)).filter { !$0.passed }.map(\.id))
+        XCTAssertEqual(failed, ["head", "straight", "eyes", "mouth", "light", "exposure", "glare"])
+    }
+
+    /// The outfit's neck lands just below the chin and its shoulders match the person's.
+    func testOutfitSitsBelowChinAtShoulderWidth() {
+        let subject = portraitSubjectFixture()
+        let extent = CGRect(x: 0, y: 0, width: 1024, height: 1024)
+        let t = ImageToolEngine.outfitTransform(subject, pxPerMM: 10, lift: 0, extent: extent)
+        let neck = CGPoint(x: 512, y: 1024 - 230).applying(t)
+        XCTAssertEqual(neck.x, 500, accuracy: 0.5)
+        XCTAssertLessThan(neck.y, 600); XCTAssertGreaterThan(neck.y, 560)
+        let left = CGPoint(x: 70, y: 0).applying(t), right = CGPoint(x: 954, y: 0).applying(t)
+        XCTAssertEqual(right.x - left.x, 640 * 1.04, accuracy: 1)
+        let lifted = CGPoint(x: 512, y: 1024 - 230).applying(ImageToolEngine.outfitTransform(subject, pxPerMM: 10, lift: 1, extent: extent))
+        XCTAssertEqual(lifted.y - neck.y, 10, accuracy: 0.01)
+    }
+
+    /// Made photos are kept for reprinting, newest first, up to the limit.
+    func testPortraitHistoryKeepsRecentPhotos() throws {
+        let saved = PortraitHistory.root
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        PortraitHistory.root = root
+        defer { PortraitHistory.root = saved; try? FileManager.default.removeItem(at: root) }
+        let photo = image(CGSize(width: 60, height: 80)) { c in UIColor.gray.setFill(); c.fill(CGRect(x: 0, y: 0, width: 60, height: 80)) }
+        var first = PortraitHistoryEntry(sizeID: "2x2", backdrop: "White", zoom: 1.1)
+        first.date = Date(timeIntervalSince1970: 1)
+        try PortraitHistory.save(first, source: photo, photo: photo)
+        for i in 0..<PortraitHistory.limit {
+            var entry = PortraitHistoryEntry(sizeID: "35x45", backdrop: "Blue")
+            entry.date = Date(timeIntervalSince1970: TimeInterval(10 + i))
+            try PortraitHistory.save(entry, source: photo, photo: photo)
+        }
+        let list = PortraitHistory.list()
+        XCTAssertEqual(list.count, PortraitHistory.limit)
+        XCTAssertFalse(list.contains { $0.id == first.id }, "The oldest is dropped")
+        XCTAssertNotNil(PortraitHistory.source(list[0].id))
+        XCTAssertEqual(list[0].backdrop, "Blue")
+    }
+
+    /// Runs the whole ID photo on private test portraits (AI-generated
+    /// people) and writes the results to Verification/private/id-check for review.
+    func testPrivatePortraitsEndToEnd() throws {
+        guard let home = ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] else { throw XCTSkip("Private samples are only on the developer Mac.") }
+        let folder = URL(fileURLWithPath: home).appendingPathComponent("Documents/ChatGPT/정치 중립/scanner-product/ios/Verification/private")
+        let out = folder.appendingPathComponent("id-check")
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        var found = 0
+        for name in ["test-portrait-1", "test-portrait-2"] {
+            guard let input = UIImage(contentsOfFile: folder.appendingPathComponent("testimg/\(name).png").path) else { continue }
+            found += 1
+            let subject: ImageToolEngine.PortraitSubject
+            do { subject = try ImageToolEngine.portraitSubject(input) }
+            catch { try "\(error)".write(to: out.appendingPathComponent("\(name)-error.txt"), atomically: true, encoding: .utf8); throw error }
+            XCTAssertNotNil(subject.shoulder, name); XCTAssertNotNil(subject.shoulderWidth, name)
+            XCTAssertGreaterThan(subject.crown, subject.face.maxY, name)
+            XCTAssertLessThanOrEqual(subject.chin, subject.face.minY, name)
+            let checks = ImageToolEngine.portraitChecks(subject, size: ImageToolEngine.PhotoSize.all[0], adjust: ImageToolEngine.PortraitAdjust())
+            let report = checks.map { "\($0.passed ? "PASS" : "WARN") \($0.title): \($0.detail)" }.joined(separator: "\n") + "\n\(subject.quality)"
+            try report.write(to: out.appendingPathComponent("\(name)-checks.txt"), atomically: true, encoding: .utf8)
+            XCTAssertTrue(checks.filter { ["head", "centre", "straight", "exposure", "glare"].contains($0.id) }.allSatisfy(\.passed), "\(name):\n\(report)")
+            let passport = try ImageToolEngine.portrait(subject, size: ImageToolEngine.PhotoSize.all[0], backdrop: .white)
+            try passport.jpegData(compressionQuality: 0.9)?.write(to: out.appendingPathComponent("\(name)-passport.jpg"))
+            let resume = try XCTUnwrap(ImageToolEngine.PhotoSize.all.first { $0.id == "30x40" })
+            for outfit in ImageToolEngine.Outfit.allCases where outfit != .none {
+                XCTAssertNotNil(outfit.image, outfit.rawValue); XCTAssertNotNil(outfit.neckMask, outfit.rawValue)
+                let photo = try ImageToolEngine.portrait(subject, size: resume, backdrop: .sky, outfit: outfit)
+                try photo.jpegData(compressionQuality: 0.9)?.write(to: out.appendingPathComponent("\(name)-\(outfit.rawValue).jpg"))
+            }
+        }
+        if found == 0 { throw XCTSkip("No private test portraits.") }
+    }
 }

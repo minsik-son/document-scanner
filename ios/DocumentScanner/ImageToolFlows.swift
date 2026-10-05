@@ -1,6 +1,7 @@
 import SwiftUI
 import PhotosUI
 import AVFoundation
+import StoreKit
 
 // MARK: - Shared flow plumbing
 
@@ -327,7 +328,9 @@ private struct PortraitTool: View {
     @State private var forward = true
     @State private var source: UIImage?
     @State private var subject: ImageToolEngine.PortraitSubject?
+    @State private var home = ImageToolEngine.PhotoSize.homeCode
     @State private var size = ImageToolEngine.PhotoSize.preferred(for: ImageToolEngine.PhotoSize.homeCode)
+    @State private var sizeChosen = false
     @State private var backdrop = ImageToolEngine.Backdrop.white
     @State private var adjust = ImageToolEngine.PortraitAdjust()
     @State private var outfit = ImageToolEngine.Outfit.none
@@ -365,6 +368,13 @@ private struct PortraitTool: View {
             }
         }
         .stepChrome(step: $step, forward: $forward, last: 5, work: work)
+        .task {
+            // The App Store country is the best sign of where the user lives.
+            let store = await Storefront.current?.countryCode
+            let code = ImageToolEngine.PhotoSize.homeCode(storefront: store)
+            home = code
+            if !sizeChosen && entryID == nil { size = ImageToolEngine.PhotoSize.preferred(for: code) }
+        }
     }
     private func go(_ next: Int) { forward = next > step; step = next }
 
@@ -406,7 +416,7 @@ private struct PortraitTool: View {
         work.run("Opening…") {
             subject = try await OfflineWork.perform { try ImageToolEngine.portraitSubject(image) }
             source = image; entryID = entry.id
-            size = ImageToolEngine.PhotoSize.all.first { $0.id == entry.sizeID } ?? ImageToolEngine.PhotoSize.all[0]
+            size = ImageToolEngine.PhotoSize.all.first { $0.id == entry.sizeID } ?? ImageToolEngine.PhotoSize.all[0]; sizeChosen = true
             backdrop = ImageToolEngine.Backdrop(rawValue: entry.backdrop) ?? .white
             adjust = ImageToolEngine.PortraitAdjust(zoom: entry.zoom, dx: entry.dx, dy: entry.dy)
             outfit = ImageToolEngine.Outfit(rawValue: entry.outfit) ?? .none
@@ -419,7 +429,7 @@ private struct PortraitTool: View {
 
     private var sizePage: some View {
         ToolPage(title: "Which size do you need?", subtitle: "Check the rules of the office you're applying to.") {
-            ForEach(ImageToolEngine.PhotoSize.regions(for: ImageToolEngine.PhotoSize.homeCode), id: \.self) { region in
+            ForEach(ImageToolEngine.PhotoSize.regions(for: home), id: \.self) { region in
                 VStack(spacing: 10) {
                     HStack(spacing: 8) {
                         if let flag = ImageToolEngine.PhotoSize.flag(region) {
@@ -433,7 +443,7 @@ private struct PortraitTool: View {
                     .accessibilityElement(children: .combine)
                     .accessibilityAddTraits(.isHeader)
                     ForEach(ImageToolEngine.PhotoSize.all.filter { $0.region == region }) { option in
-                        Button { size = option } label: { OptionCard(title: option.title, detail: option.detail, selected: size == option) }
+                        Button { size = option; sizeChosen = true } label: { OptionCard(title: option.title, detail: option.detail, selected: size == option) }
                             .buttonStyle(.plain).accessibilityIdentifier("size-" + option.id)
                     }
                 }

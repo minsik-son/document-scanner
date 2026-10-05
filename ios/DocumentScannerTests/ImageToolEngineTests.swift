@@ -294,6 +294,13 @@ final class ImageToolEngineTests: XCTestCase {
         XCTAssertEqual(Size.preferred(for: nil).id, "35x45")
         XCTAssertEqual(Set(Size.regions(for: "JP")), Set(Size.regions))
         for region in Size.regions where region != "Résumé & cards" { XCTAssertNotNil(Size.flag(region), region) }
+        // A Korean living in Canada: region set to Korea, but App Store and time zone say Canada.
+        let korean = Locale(identifier: "ko_KR")
+        XCTAssertEqual(Size.homeCode(storefront: "CAN", timeZone: TimeZone(identifier: "Asia/Seoul")!, locale: korean), "CA")
+        XCTAssertEqual(Size.homeCode(storefront: nil, timeZone: TimeZone(identifier: "America/Vancouver")!, locale: korean), "CA")
+        XCTAssertEqual(Size.homeCode(storefront: nil, timeZone: TimeZone(identifier: "Asia/Seoul")!, locale: Locale(identifier: "en_CA")), "KR")
+        XCTAssertEqual(Size.homeCode(storefront: "BRA", timeZone: TimeZone(identifier: "America/Sao_Paulo")!, locale: korean), "KR")
+        XCTAssertEqual(Size.regions(for: Size.homeCode(storefront: nil, timeZone: TimeZone(identifier: "Europe/Paris")!, locale: korean)).first, "Europe & UK")
     }
 
     /// The camera hint guides the face into the outline.

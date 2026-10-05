@@ -651,7 +651,42 @@ enum ImageToolEngine {
         static func preferred(for code: String?) -> PhotoSize {
             all.first { $0.region == regions(for: code)[0] } ?? all[0]
         }
-        static var homeCode: String? { Locale.current.region?.identifier }
+        /// Where the user lives. The iPhone's region setting is often the
+        /// home country of an expat (Korea for a Korean in Canada), so the App
+        /// Store country and the time zone come first.
+        static func homeCode(storefront: String? = nil, timeZone: TimeZone = .current, locale: Locale = .current) -> String? {
+            if let code = storefront.flatMap(alpha2), region(for: code) != nil { return code }
+            if let code = country(of: timeZone) { return code }
+            return locale.region?.identifier
+        }
+        static var homeCode: String? { homeCode() }
+        /// App Store country codes are three letters (CAN, KOR…).
+        static func alpha2(_ code: String) -> String? {
+            let map = ["KOR": "KR", "USA": "US", "CAN": "CA", "JPN": "JP", "CHN": "CN", "IND": "IN", "GBR": "GB", "AUS": "AU", "TWN": "TW",
+                       "DEU": "DE", "FRA": "FR", "ITA": "IT", "ESP": "ES", "NLD": "NL", "BEL": "BE", "AUT": "AT", "CHE": "CH", "SWE": "SE",
+                       "NOR": "NO", "DNK": "DK", "FIN": "FI", "IRL": "IE", "PRT": "PT", "POL": "PL", "CZE": "CZ", "GRC": "GR", "HUN": "HU"]
+            let upper = code.uppercased()
+            return upper.count == 2 ? upper : map[upper]
+        }
+        /// The country of a time zone, for the countries with their own sizes.
+        static func country(of zone: TimeZone) -> String? {
+            let id = zone.identifier
+            let exact: [String: String] = ["Asia/Seoul": "KR", "Asia/Tokyo": "JP", "Asia/Shanghai": "CN", "Asia/Hong_Kong": "CN", "Asia/Kolkata": "IN",
+                                           "Asia/Calcutta": "IN", "Asia/Taipei": "TW", "Europe/London": "GB", "Europe/Dublin": "IE"]
+            if let code = exact[id] { return code }
+            let canada = ["Vancouver", "Edmonton", "Calgary", "Winnipeg", "Regina", "Toronto", "Montreal", "Halifax", "St_Johns", "Moncton",
+                          "Whitehorse", "Yellowknife", "Iqaluit", "Glace_Bay", "Goose_Bay", "Dawson_Creek", "Fort_Nelson", "Creston", "Swift_Current",
+                          "Cambridge_Bay", "Inuvik", "Rankin_Inlet", "Resolute", "Atikokan", "Blanc-Sablon", "Dawson"]
+            if id.hasPrefix("America/"), canada.contains(String(id.dropFirst(8))) { return "CA" }
+            if id.hasPrefix("Canada/") { return "CA" }
+            let us = ["New_York", "Chicago", "Denver", "Los_Angeles", "Phoenix", "Anchorage", "Detroit", "Boise", "Juneau", "Adak", "Nome",
+                      "Indiana/Indianapolis", "Kentucky/Louisville", "Sitka", "Menominee", "Metlakatla", "Yakutat"]
+            if id.hasPrefix("America/"), us.contains(String(id.dropFirst(8))) { return "US" }
+            if id.hasPrefix("US/") || id == "Pacific/Honolulu" { return "US" }
+            if id.hasPrefix("Australia/") { return "AU" }
+            if id.hasPrefix("Europe/") { return "DE" }   // any EU-style biometric country
+            return nil
+        }
         /// Flag shown next to a section (Apple's flag emoji), nil for non-country sections.
         static func flag(_ region: String) -> String? {
             switch region {

@@ -42,6 +42,7 @@ final class IdentityCaptureTests: XCTestCase {
         XCTAssertTrue(app.buttons["id-retake-front"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.buttons["id-save-pdf"].waitForExistence(timeout: 15))
         shot(app, "Both ID sides on one sheet")
+        designShot(app, "id-1-sides")
         XCTAssertTrue(app.buttons["id-retake-front"].isHittable)
         app.buttons["id-retake-front"].tap()
         XCTAssertTrue(app.staticTexts["Front of card"].waitForExistence(timeout: 10))
@@ -59,6 +60,7 @@ final class IdentityCaptureTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Saved on this iPhone"].waitForExistence(timeout: 60))
         XCTAssertTrue(app.staticTexts["Front and back on one page"].exists)
         shot(app, "Saved single-page ID PDF")
+        designShot(app, "id-2-saved")
         app.buttons["id-saved-done"].tap()
         XCTAssertTrue(app.textFields["tool-search"].waitForExistence(timeout: 10))
         app.navigationBars.buttons["Close"].tap()
@@ -84,5 +86,13 @@ final class IdentityCaptureTests: XCTestCase {
         app.buttons["nav-documents"].tap()
         XCTAssertFalse(app.staticTexts["ID card"].exists)
         XCTAssertFalse(app.staticTexts["Saved on this iPhone"].exists)
+    }
+
+    @MainActor private func designShot(_ app: XCUIApplication, _ name: String) {
+        guard let home = ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] else { return }
+        let folder = URL(fileURLWithPath: home).appendingPathComponent("Documents/ChatGPT/정치 중립/scanner-product/ios/Verification/private/design-shots")
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        sleep(1)
+        try? app.screenshot().pngRepresentation.write(to: folder.appendingPathComponent(name + ".png"))
     }
 }

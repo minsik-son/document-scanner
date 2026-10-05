@@ -391,4 +391,54 @@ final class AdvancedToolsUITests:XCTestCase {
         app.buttons["Close"].firstMatch.tap()
         XCTAssertTrue(app.staticTexts["Book pages"].waitForExistence(timeout:10) || app.buttons["Share PDF"].exists)
     }
+
+    /// Writes screenshots of the redesigned tool pages to Verification/private/design-shots on the developer Mac.
+    @MainActor private func designShot(_ app:XCUIApplication,_ name:String) {
+        guard let home = ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] else { return }
+        let folder = URL(fileURLWithPath:home).appendingPathComponent("Documents/ChatGPT/정치 중립/scanner-product/ios/Verification/private/design-shots")
+        try? FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true)
+        sleep(1)
+        try? app.screenshot().pngRepresentation.write(to:folder.appendingPathComponent(name+".png"))
+    }
+    @MainActor func testDesignSystemScreens() throws {
+        guard ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] != nil else { throw XCTSkip("Developer Mac only.") }
+        // Word: source, review, ready.
+        var app = launch(document:true);app.buttons["Word export"].tap()
+        ready(app.buttons["word-extract"]);designShot(app,"word-1-source")
+        app.buttons["word-extract"].tap();ready(app.buttons["offline-run"]);designShot(app,"word-2-review")
+        app.buttons["offline-run"].tap();closePreview(app);ready(app.buttons["word-share"]);designShot(app,"word-3-ready")
+        app.terminate()
+        // PowerPoint: pages, look, ready.
+        app = launch(document:true);app.buttons["PowerPoint export"].tap()
+        ready(app.buttons["office-continue"]);designShot(app,"ppt-1-pages")
+        app.buttons["office-continue"].tap();ready(app.buttons["ppt-create"]);designShot(app,"ppt-2-look")
+        app.buttons["ppt-create"].tap();closePreview(app);ready(app.buttons["ppt-share"]);designShot(app,"ppt-3-ready")
+        app.terminate()
+        // Excel: check cells.
+        app = launch(document:true,table:true);app.buttons["Excel export"].tap()
+        ready(app.buttons["office-continue"]);app.buttons["office-continue"].tap()
+        XCTAssertTrue(app.buttons["excel-cell-0-0"].waitForExistence(timeout:60));designShot(app,"excel-2-review")
+        app.terminate()
+        // Photo translation: camera, language, result.
+        app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"--simulate-camera"]
+        app.launch();app.buttons["home-tools"].tap();app.buttons["Photo translation"].tap()
+        XCTAssertTrue(app.buttons["text-tool-capture"].waitForExistence(timeout:5));designShot(app,"translate-0-camera")
+        app.buttons["text-tool-capture"].tap()
+        XCTAssertTrue(app.buttons["translation-run"].waitForExistence(timeout:45));designShot(app,"translate-1-language")
+        app.buttons["translation-edit-areas"].tap()
+        let target = app.textViews["translation-target-text"]
+        if target.waitForExistence(timeout:5) { target.tap();target.typeText("Bienvenue");app.buttons["translation-apply-areas"].tap() }
+        app.buttons["translation-run"].tap()
+        if app.buttons["translation-share"].waitForExistence(timeout:30) { designShot(app,"translate-2-result") }
+        app.terminate()
+        // Math: corrected scan and text.
+        app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"--simulate-camera"]
+        app.launch();app.buttons["home-tools"].tap();app.buttons["Math scan"].tap()
+        XCTAssertTrue(app.buttons["text-tool-capture"].waitForExistence(timeout:5));app.buttons["text-tool-capture"].tap()
+        XCTAssertTrue(app.buttons["math-scan-preview"].waitForExistence(timeout:40));designShot(app,"math-1-scan")
+        app.buttons["math-primary"].tap()
+        XCTAssertTrue(app.textViews["math-text"].waitForExistence(timeout:60));designShot(app,"math-2-text")
+        app.buttons["math-primary"].tap();designShot(app,"math-3-format")
+        app.terminate()
+    }
 }

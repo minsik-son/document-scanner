@@ -10,39 +10,35 @@ struct OCRTextEditor: View {
   @State private var error: String?
   var body: some View {
     NavigationStack {
-      Form {
-        Section {
-          Text(
-            "Correct recognition errors below. The photographed page stays unchanged; corrections update copied text, search and the PDF text layer."
-          )
-          if let doc = store.document(documentID), doc.pages.indices.contains(pageIndex),
-            doc.pages[pageIndex].sourcePDF != nil
-          {
-            Text(
-              "Editing text in an imported PDF creates an image-based page with a corrected text layer. Original links and forms on that page will not be retained."
-            ).foregroundStyle(.orange)
-          }
+      ToolPage(title: "Correct the text", subtitle: "Fixes update copied text, search and the PDF text layer. The photo stays as it is.") {
+        if let doc = store.document(documentID), doc.pages.indices.contains(pageIndex), doc.pages[pageIndex].sourcePDF != nil {
+          HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(TK.orange)
+            Text("This imported PDF page becomes an image page with corrected text. Its links and forms are not kept.")
+              .font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800).fixedSize(horizontal: false, vertical: true)
+          }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(TK.orangeSoft, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         ForEach(blocks.indices, id: \.self) { index in
-          Section("Text region \(index+1)") {
+          VStack(alignment: .leading, spacing: 8) {
+            SectionLabel(text: "Text \(index+1)")
             TextField("Recognized text", text: $blocks[index].text, axis: .vertical)
+              .font(.system(size: 17)).padding(.horizontal, 16).padding(.vertical, 14)
+              .background(TK.grey50, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
               .accessibilityIdentifier("ocr-region-\(index)")
           }
         }
-        if let error { Text(error).foregroundStyle(.red) }
-      }.navigationTitle("Correct text").toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          Button("Cancel") { dismiss() }.disabled(busy)
+        if let error { Text(error).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.red) }
+      } actions: {
+        Button("Save") { save() }.buttonStyle(CTAButtonStyle()).disabled(busy)
+      }
+      .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Close") { dismiss() }.disabled(busy) } }
+      .overlay { if busy { BusyOverlay(text: "Updating PDF text…") } }
+      .interactiveDismissDisabled(busy)
+      .onAppear {
+        if let doc = store.document(documentID), doc.pages.indices.contains(pageIndex) {
+          blocks = doc.pages[pageIndex].textBlocks
         }
-        ToolbarItem(placement: .confirmationAction) { Button("Save") { save() }.disabled(busy) }
-      }.overlay {
-        if busy { ProgressView("Updating PDF text…").padding().background(.regularMaterial) }
-      }.interactiveDismissDisabled(busy)
-        .onAppear {
-          if let doc = store.document(documentID), doc.pages.indices.contains(pageIndex) {
-            blocks = doc.pages[pageIndex].textBlocks
-          }
-        }
+      }
     }
   }
   private func save() {

@@ -477,7 +477,7 @@ private struct PresentationLibraryPicker: View {
                                     Text("Page \(index+1)").foregroundStyle(.primary)
                                     Spacer()
                                     if let position = selected.firstIndex(of:page.id) {
-                                        Text("\(position+1)").font(.subheadline.bold()).foregroundStyle(Design.blueInk)
+                                        Text("\(position+1)").font(.subheadline.bold()).foregroundStyle(TK.blueDeep)
                                     }
                                     Image(systemName:selected.contains(page.id) || existing.contains(page.id) ? "checkmark.circle.fill" : "circle")
                                 }.padding(.vertical,4).contentShape(Rectangle())

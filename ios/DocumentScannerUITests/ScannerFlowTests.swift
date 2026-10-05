@@ -118,7 +118,7 @@ final class ScannerFlowTests: XCTestCase {
         selectEditorTool("crop", in: app)
         for _ in 0..<3 where !trim.isHittable { app.swipeUp() };trim.tap()
         XCTAssertTrue(app.staticTexts["trim-value-top"].waitForExistence(timeout:15));XCTAssertEqual(app.staticTexts["trim-value-top"].label,"5.0%")
-        let result = app.switches["trim-show-result"];result.tap()
+        let result = app.buttons["trim-show-result"];result.tap()
         let shot = XCTAttachment(screenshot:app.screenshot());shot.name="Trim margins preview";shot.lifetime = .keepAlways;add(shot)
         for _ in 0..<4 where !app.buttons["trim-reset"].isHittable { app.swipeUp() }
         app.buttons["trim-reset"].tap();app.buttons["trim-apply"].tap()
@@ -151,8 +151,9 @@ final class ScannerFlowTests: XCTestCase {
         let field = app.descendants(matching: .any)["annotation-text"].firstMatch
         for _ in 0..<3 where !field.isHittable { app.swipeUp() }
         XCTAssertTrue(field.waitForExistence(timeout: 5)); field.tap(); field.typeText(" APPROVED")
+        designShot(app, "annotate-1-canvas")
         waitEnabled(app.buttons["Save"]); app.buttons["Save"].tap()
-        let annotationDismissed = expectation(for:NSPredicate(format:"exists == false"),evaluatedWith:app.navigationBars["Sign & annotate"])
+        let annotationDismissed = expectation(for:NSPredicate(format:"exists == false"),evaluatedWith:app.staticTexts["Sign & annotate"])
         wait(for:[annotationDismissed],timeout:60)
         XCTAssertTrue(app.buttons["Share PDF"].isHittable)
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = "Annotated document"; shot.lifetime = .keepAlways; add(shot)
@@ -597,5 +598,13 @@ final class ScannerFlowTests: XCTestCase {
         selectEditorTool("adjust", in: app)
         for _ in 0..<3 where !slider.isHittable { app.swipeUp() }
         XCTAssertEqual(app.staticTexts["adjustment-value"].label, editedValue)
+    }
+
+    @MainActor private func designShot(_ app: XCUIApplication, _ name: String) {
+        guard let home = ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] else { return }
+        let folder = URL(fileURLWithPath: home).appendingPathComponent("Documents/ChatGPT/정치 중립/scanner-product/ios/Verification/private/design-shots")
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        sleep(1)
+        try? app.screenshot().pngRepresentation.write(to: folder.appendingPathComponent(name + ".png"))
     }
 }

@@ -15,17 +15,17 @@ struct OfficeTableEditor: View {
                     HStack(spacing:1) {
                         Text("").frame(width:34,height:32)
                         ForEach(0..<table.columnCount,id:\.self) { column in
-                            Text(OfficeExport.column(column)).font(.caption.bold()).frame(width:140,height:32).background(Design.softBlue)
+                            Text(OfficeExport.column(column)).font(.caption.bold()).frame(width:140,height:32).background(TK.blueSoft)
                         }
                     }
                     ForEach(table.cells.indices,id:\.self) { row in
                         HStack(spacing:1) {
-                            Text("\(row+1)").font(.caption).frame(width:34,height:52).background(Design.muted)
+                            Text("\(row+1)").font(.caption).frame(width:34,height:52).background(TK.grey100)
                             ForEach(table.cells[row].indices,id:\.self) { column in
                                 Button { selected = CellSelection(row:row,column:column) } label: {
                                     Text(table.isCovered(row:row,column:column) ? "Merged" : table.cells[row][column])
                                         .font(.subheadline).lineLimit(2).frame(width:132,height:44,alignment:.leading).padding(4)
-                                        .background(table.isCovered(row:row,column:column) ? Design.muted : Color(uiColor:.systemBackground))
+                                        .background(table.isCovered(row:row,column:column) ? TK.grey100 : Color(uiColor:.systemBackground))
                                 }.buttonStyle(.plain)
                                     .disabled(table.isCovered(row:row,column:column))
                                     .accessibilityLabel("\(OfficeExport.column(column))\(row+1), \(table.cells[row][column])")
@@ -62,13 +62,17 @@ private struct OfficeCellEditor:View {
     let onSave:(String)->Void
     var body:some View {
         NavigationStack {
-            Form { TextEditor(text:$value).frame(minHeight:180).accessibilityIdentifier("excel-cell-value") }
-                .navigationTitle("Edit \(title)").navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement:.cancellationAction) { Button("Cancel") { dismiss() } }
-                    ToolbarItem(placement:.confirmationAction) { Button("Done") { onSave(value);dismiss() }.accessibilityIdentifier("excel-cell-save") }
-                }
+            ToolPage(title: "Edit \(title)") {
+                TextEditor(text:$value).font(.system(size: 17)).scrollContentBackground(.hidden)
+                    .padding(12).frame(minHeight:180)
+                    .background(TK.grey50, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .accessibilityIdentifier("excel-cell-value")
+            } actions: {
+                Button("Done") { onSave(value);dismiss() }.buttonStyle(CTAButtonStyle()).accessibilityIdentifier("excel-cell-save")
+            }
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Close") { dismiss() } } }
         }
+        .presentationDetents([.medium, .large])
     }
 }
 
@@ -192,16 +196,15 @@ private struct WordCellEditor: View {
     let onSave: (String) -> Void
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    TextEditor(text: $value).frame(minHeight: 140).accessibilityIdentifier("word-cell-value")
-                } footer: { Text("The cell keeps its size, colour and merged area in Word.") }
+            ToolPage(title: title, subtitle: "The cell keeps its size, colour and merged area in Word.") {
+                TextEditor(text: $value).font(.system(size: 17)).scrollContentBackground(.hidden)
+                    .padding(12).frame(minHeight: 140)
+                    .background(TK.grey50, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .accessibilityIdentifier("word-cell-value")
+            } actions: {
+                Button("Done") { onSave(value); dismiss() }.buttonStyle(CTAButtonStyle()).accessibilityIdentifier("word-cell-save")
             }
-            .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { onSave(value); dismiss() }.accessibilityIdentifier("word-cell-save") }
-            }
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Close") { dismiss() } } }
         }
         .presentationDetents([.medium, .large])
     }

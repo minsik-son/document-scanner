@@ -24,95 +24,138 @@ struct IdentityScanView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    if let savedID, let result = store.document(savedID) {
-                        Image(systemName: "checkmark.circle.fill").font(.system(size: 54)).foregroundStyle(Design.blue)
-                        Text("Saved on this iPhone").font(.title2.bold())
-                        Text("Front and back on one page").foregroundStyle(.secondary)
-                        if let file = result.pdfFile { PDFPreview(url: store.url(file), singlePage: true).frame(height: 420) }
-                        if let file = result.pdfFile { ShareLink("Share PDF", item: store.url(file)).buttonStyle(PrimaryButton()) }
-                        Button("Done") { finish() }.accessibilityIdentifier("id-saved-done")
-                    } else {
-                        Text(complete ? "Both sides. One clean page." : "Scan the front, then the back.")
-                            .font(.title2.bold()).frame(maxWidth: .infinity, alignment: .leading)
-                        HStack(alignment: .top, spacing: 16) {
-                            side(0, title: "Front")
-                            side(1, title: "Back")
-                        }
-                        if let file = preview?.urls.first {
-                            PDFPreview(url: file, singlePage: true).frame(height: 340).accessibilityIdentifier("id-sheet-preview")
-                        } else if preparing { ProgressView("Preparing your ID sheet…").frame(height: 240) }
-                        TextField("Document name", text: $title).textFieldStyle(.roundedBorder)
-                            .accessibilityIdentifier("id-document-name")
-                        Picker("Paper size", selection: $paper) {
-                            Text("A4").tag(PaperSize.a4); Text("US Letter").tag(PaperSize.letter)
-                        }.pickerStyle(.segmented)
-                        Text("Both sides are fitted inside standard card-size areas. Pinch the PDF preview to check details.")
-                            .font(.footnote).foregroundStyle(.secondary)
-                        if !complete {
-                            Button(draft?.pages.isEmpty == false ? "Scan back" : "Scan front") { openCamera() }
-                                .buttonStyle(PrimaryButton()).disabled(draftID == nil)
-                        }
-                    }
-                    if let error { Text(error).font(.subheadline).foregroundStyle(.red).accessibilityIdentifier("id-error") }
-                }.padding(20)
-            }.background(Design.muted)
-                .navigationTitle("ID scan").navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        if savedID == nil { Button("Cancel") { if draft?.pages.isEmpty == false { discard = true } else { finish() } }.disabled(saving).accessibilityIdentifier("id-cancel") }
-                    }
+            Group {
+                if let savedID, let result = store.document(savedID) { savedPage(result) } else { sidesPage }
+            }
+            .navigationTitle("").navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    if savedID == nil { Button("Close") { if draft?.pages.isEmpty == false { discard = true } else { finish() } }.disabled(saving).accessibilityIdentifier("id-cancel") }
                 }
-                .safeAreaInset(edge: .bottom) {
-                    if savedID == nil && complete {
-                        Button { save() } label: {
-                            if saving { ProgressView("Saving ID PDF…") } else { Text("Save PDF") }
-                        }.buttonStyle(PrimaryButton()).disabled(preparing || saving || preview == nil)
-                            .accessibilityIdentifier("id-save-pdf").padding(20).background(.white)
-                    }
+            }
+            .overlay { if saving { BusyOverlay(text: "Saving ID PDF…") } }
+            .disabled(saving)
+            .interactiveDismissDisabled()
+            .task {
+                guard draftID == nil, savedID == nil else { return }
+                do {
+                    var document = ScanDocument(title: "ID card")
+                    document.captureStyle = .card; document.paper = .original; document.margin = .none
+                    try store.update(document); draftID = document.id; camera = true
+                } catch { self.error = error.localizedDescription }
+            }
+            .onChange(of: paper) { _, _ in preparePreview() }
+            .fullScreenCover(isPresented: $camera, onDismiss: { preparePreview() }) {
+                if let draftID { CameraView(documentID: draftID, retakingPageID: retaking, identityCapture: true) }
+            }
+            .sheet(item: $editing, onDismiss: { preparePreview() }) { page in
+                PageEditor(page: page, scanStyle: .card) { updated in
+                    guard var document = draft, let index = document.pages.firstIndex(where: { $0.id == updated.id }) else { return }
+                    document.pages[index] = updated; try store.update(document)
                 }
-                .disabled(saving)
-                .interactiveDismissDisabled()
-                .task {
-                    guard draftID == nil, savedID == nil else { return }
-                    do {
-                        var document = ScanDocument(title: "ID card")
-                        document.captureStyle = .card; document.paper = .original; document.margin = .none
-                        try store.update(document); draftID = document.id; camera = true
-                    } catch { self.error = error.localizedDescription }
-                }
-                .onChange(of: paper) { _, _ in preparePreview() }
-                .fullScreenCover(isPresented: $camera, onDismiss: { preparePreview() }) {
-                    if let draftID { CameraView(documentID: draftID, retakingPageID: retaking, identityCapture: true) }
-                }
-                .sheet(item: $editing, onDismiss: { preparePreview() }) { page in
-                    PageEditor(page: page, scanStyle: .card) { updated in
-                        guard var document = draft, let index = document.pages.firstIndex(where: { $0.id == updated.id }) else { return }
-                        document.pages[index] = updated; try store.update(document)
+            }
+            .confirmationDialog("Discard this ID scan?", isPresented: $discard, titleVisibility: .visible) {
+                Button("Discard scan", role: .destructive) { finish() }
+                Button("Keep editing", role: .cancel) {}
+            } message: { Text("Neither side has been saved to your document library.") }
+        }
+    }
+    @ViewBuilder private var errorRow: some View {
+        if let error {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "exclamationmark.circle.fill").foregroundStyle(TK.red)
+                Text(error).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("id-error")
+                Spacer(minLength: 0)
+            }.padding(16).background(TK.grey100, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+    }
+    /// One page: both sides, the sheet and its paper.
+    private var sidesPage: some View {
+        ToolPage(title: complete ? "Both sides, one page" : "Scan both sides of your ID",
+                 subtitle: complete ? "Check the sheet, then save it as a PDF." : "Front first, then the back. Each side fits a card-size area.") {
+            HStack(alignment: .top, spacing: 12) {
+                side(0, title: "Front")
+                side(1, title: "Back")
+            }
+            if complete {
+                Group {
+                    if let file = preview?.urls.first {
+                        PDFPreview(url: file, singlePage: true).frame(height: 320)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .accessibilityIdentifier("id-sheet-preview")
+                    } else if preparing {
+                        ProgressView().frame(maxWidth: .infinity).frame(height: 240)
                     }
                 }
-                .confirmationDialog("Discard this ID scan?", isPresented: $discard, titleVisibility: .visible) {
-                    Button("Discard scan", role: .destructive) { finish() }
-                    Button("Keep editing", role: .cancel) {}
-                } message: { Text("Neither side has been saved to your document library.") }
+                .padding(10).background(TK.grey50, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                VStack(alignment: .leading, spacing: 8) {
+                    SectionLabel(text: "Paper")
+                    HStack(spacing: 8) {
+                        Button("A4") { paper = .a4 }.buttonStyle(ChipStyle(selected: paper == .a4))
+                        Button("US Letter") { paper = .letter }.buttonStyle(ChipStyle(selected: paper == .letter))
+                    }
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    SectionLabel(text: "Name")
+                    TextField("Document name", text: $title).font(.system(size: 17))
+                        .padding(.horizontal, 16).frame(height: 52)
+                        .background(TK.grey50, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .accessibilityIdentifier("id-document-name")
+                }
+            }
+            errorRow
+            Label("Processed on this iPhone", systemImage: "lock.shield").font(.system(size: 13)).foregroundStyle(TK.grey500)
+        } actions: {
+            if complete {
+                Button("Save PDF") { save() }.buttonStyle(CTAButtonStyle()).disabled(preparing || saving || preview == nil)
+                    .accessibilityIdentifier("id-save-pdf")
+            } else {
+                Button(draft?.pages.isEmpty == false ? "Scan back" : "Scan front") { openCamera() }
+                    .buttonStyle(CTAButtonStyle()).disabled(draftID == nil)
+            }
+        }
+    }
+    private func savedPage(_ result: ScanDocument) -> some View {
+        ToolPage(title: "") {
+            VStack(spacing: 20) {
+                ZStack {
+                    Circle().fill(TK.blueSoft).frame(width: 132, height: 132)
+                    Circle().fill(TK.blue).frame(width: 84, height: 84)
+                    Image(systemName: "checkmark").font(.system(size: 38, weight: .bold)).foregroundStyle(.white)
+                }.padding(.top, 16).accessibilityHidden(true)
+                VStack(spacing: 8) {
+                    Text("Saved on this iPhone").font(.system(size: 24, weight: .bold)).foregroundStyle(TK.grey900)
+                    Text("Front and back on one page").font(.system(size: 16)).foregroundStyle(TK.grey600).multilineTextAlignment(.center)
+                }
+                if let file = result.pdfFile {
+                    PDFPreview(url: store.url(file), singlePage: true).frame(height: 300)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                errorRow
+            }.frame(maxWidth: .infinity)
+        } actions: {
+            if let file = result.pdfFile {
+                ShareLink(item: store.url(file)) { Text("Share PDF") }.buttonStyle(SecondaryCTAStyle())
+            }
+            Button("Done") { finish() }.buttonStyle(CTAButtonStyle()).accessibilityIdentifier("id-saved-done")
         }
     }
     @ViewBuilder private func side(_ index: Int, title: String) -> some View {
         VStack(spacing: 10) {
-            Text(title).font(.headline)
+            Text(title).font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey600)
             if let document = draft, document.pages.indices.contains(index) {
                 let page = document.pages[index]
-                Button { editing = page } label: { PageThumbnail(page: page).frame(height: 64).frame(maxWidth: .infinity) }
-                    .accessibilityLabel("Edit " + title.lowercased())
-                Button("Retake " + title.lowercased()) { openCamera(retaking: page.id) }
+                Button { editing = page } label: { PageThumbnail(page: page).frame(height: 72).frame(maxWidth: .infinity) }
+                    .buttonStyle(.plain).accessibilityLabel("Edit " + title.lowercased())
+                Button("Retake") { openCamera(retaking: page.id) }.buttonStyle(ChipStyle(selected: false))
                     .accessibilityIdentifier("id-retake-" + title.lowercased())
             } else {
-                Image(systemName: "rectangle.dashed").font(.system(size: 44)).frame(height: 64)
-                    .foregroundStyle(.secondary)
-                Text("Not captured").font(.caption).foregroundStyle(.secondary)
+                RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(TK.grey300, style: StrokeStyle(lineWidth: 1.5, dash: [6, 5]))
+                    .frame(height: 72).overlay(Image(systemName: "creditcard").font(.system(size: 24)).foregroundStyle(TK.grey400))
+                Text("Not scanned").font(.system(size: 13)).foregroundStyle(TK.grey500).frame(height: 40)
             }
-        }.frame(maxWidth: .infinity).padding(12).background(.white, in: RoundedRectangle(cornerRadius: 18))
+        }.frame(maxWidth: .infinity).padding(14).background(TK.grey50, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
     private func openCamera(retaking page: UUID? = nil) {
         previewTask?.cancel(); revision = UUID(); clearPreview()

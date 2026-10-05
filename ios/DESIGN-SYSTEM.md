@@ -81,16 +81,8 @@ change to an existing one must follow it. Code lives in `ToolKit.swift`
 Follows the system:
 - Photo tools in `ImageToolFlows.swift`: Book pages, ID photo, Smart erase, Remove colored marks, Restore photo, Mega scan, Count objects.
 - PDF tools in `PDFToolFlows.swift`: Merge, Split, Extract, Reorder, Compress, Protect, Export images, Print, Watermark, Timestamp, Long image.
+- Photo translation, Word / Excel export, PowerPoint export, Math scan, ID card layout, Sign & annotate (+ signature), Measure / 3D scan, OCR text editor, Excel/Word cell editors, Trim margins.
 
-Does not follow it yet (old gradient header, `PrimaryButton`, `Design.*`, own nav bar), to migrate in this order:
+Remaining exceptions: the tools hub ("All tools") and a few modal pickers (`Review text areas`, `Choose pages`) keep a system nav title on purpose; they are sheets, not tool pages.
 
-| # | Tool | File | Problem |
-|---|---|---|---|
-| 1 | Photo translation | `PhotoTranslationView.swift` | own nav bar and bottom bar, not `ToolPage`/`StepStack` |
-| 2 | Word / Excel export | `AdvancedOfflineToolsView.swift` | gradient header, `PrimaryButton`, settings mixed on one page |
-| 3 | PowerPoint export | `PowerPointExportView.swift` | gradient header, `PrimaryButton` |
-| 4 | Math scan | `MathDocumentView.swift` | gradient header, `Design.*` |
-| 5 | ID card layout | `IdentityScanView.swift` | `PrimaryButton`, own layout |
-| 6 | Sign & annotate | `AnnotationEditor.swift` | own nav title/toolbar |
-| 7 | Measure / 3D scan | `SpatialToolsView.swift` | `ToolPage` but nav title text |
-| 8 | Text and table editors used by the tools | `OCRTextEditor.swift`, `OfficeTableEditor.swift`, `TrimMarginsView.swift` | own nav title, `Design.*` |
+Real-app screenshots of the migrated screens: `Verification/private/design-shots/` (made by `designShot` in the UI tests; not in git).

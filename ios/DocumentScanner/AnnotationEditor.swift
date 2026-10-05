@@ -23,14 +23,27 @@ struct AnnotationEditor: View {
   @State private var drawing: UUID?
   @State private var history: [[PageAnnotation]] = []
   private var marks: [PageAnnotation] { document?.pages[index].annotations ?? [] }
+  private func icon(_ kind: AnnotationKind) -> String {
+    switch kind {
+    case .signature: return "signature"
+    case .text: return "textformat"
+    case .pen: return "pencil.tip"
+    case .highlight: return "highlighter"
+    }
+  }
+  private let colors: [(String, Color)] = [("black", .black), ("blue", TK.blue), ("red", TK.red), ("yellow", TK.yellow)]
   var body: some View {
     NavigationStack {
-      ScrollView {
-        VStack(spacing: 16) {
-          if let doc = document {
-            Picker("Page", selection: $index) {
-              ForEach(doc.pages.indices, id: \.self) { Text("Page \($0+1)").tag($0) }
+      ToolPage(title: "Sign & annotate", subtitle: nil) {
+        if let doc = document {
+          if doc.pages.count > 1 {
+            ScrollView(.horizontal, showsIndicators: false) {
+              HStack(spacing: 8) {
+                ForEach(doc.pages.indices, id: \.self) { i in Button("Page \(i+1)") { index = i }.buttonStyle(ChipStyle(selected: index == i)) }
+              }
             }
+          }
+          Group {
             if let preview {
               GeometryReader { geometry in
                 let size = geometry.size
@@ -96,97 +109,95 @@ struct AnnotationEditor: View {
                   })
               }.aspectRatio(preview.size.width / preview.size.height, contentMode: .fit)
             } else {
-              ProgressView("Loading page…").frame(height: 260)
+              ProgressView().frame(height: 300)
             }
-            Picker("Tool", selection: $mode) {
-              ForEach(AnnotationKind.allCases, id: \.self) { Text($0.rawValue) }
-            }.pickerStyle(.segmented)
-              .onChange(of: mode) { old, new in
-                if !allowed(new) { mode = allowed(old) ? old : .signature; paywall = true }
+          }
+          .frame(maxHeight: 360)
+          .padding(12).frame(maxWidth: .infinity)
+          .background(TK.grey100, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+          // Tools: one row of chips; Pro tools show a crown.
+          ScrollView(.horizontal, showsIndicators: false) {
+          HStack(spacing: 8) {
+            ForEach(AnnotationKind.allCases, id: \.self) { kind in
+              Button {
+                if allowed(kind) { mode = kind } else { paywall = true }
+              } label: {
+                Label(kind.rawValue, systemImage: allowed(kind) ? icon(kind) : "crown.fill").labelStyle(.titleAndIcon)
               }
-            if !subscription.isPro {
-              Text("Signatures are free. Text, pen and highlight are Pro.").font(.caption)
-                .foregroundStyle(.secondary).accessibilityIdentifier("annotate-free-limit")
+              .buttonStyle(ChipStyle(selected: mode == kind))
+              .fixedSize()
+              .accessibilityLabel(kind.rawValue)
             }
+          }
+          }
+          HStack(spacing: 8) {
             if mode == .text {
-              Button("Add text box") {
+              Button {
                 remember()
                 let item = PageAnnotation(kind: .text, text: "Your text")
                 setMarks(marks + [item])
                 selected = item.id
+              } label: { Label("Add text box", systemImage: "plus") }.buttonStyle(ChipStyle(selected: false))
+            }
+            if mode == .signature { Button { signature = true } label: { Label("Add signature", systemImage: "plus") }.buttonStyle(ChipStyle(selected: false)) }
+            if mode == .pen || mode == .highlight { Text("Draw on the page").font(.system(size: 15)).foregroundStyle(TK.grey600) }
+            Spacer(minLength: 0)
+            Button {
+              if let old = history.popLast() { setMarks(old); selected = nil }
+            } label: { Label("Undo", systemImage: "arrow.uturn.backward") }.buttonStyle(ChipStyle(selected: false)).disabled(history.isEmpty)
+          }
+          if !subscription.isPro {
+            Text("Signatures are free. Text, pen and highlight are Pro.").font(.system(size: 13)).foregroundStyle(TK.grey500)
+              .accessibilityIdentifier("annotate-free-limit")
+          }
+          if let id = selected, let item = marks.first(where: { $0.id == id }) {
+            VStack(alignment: .leading, spacing: 14) {
+              HStack {
+                Text(item.kind.rawValue).font(.system(size: 16, weight: .semibold)).foregroundStyle(TK.grey900)
+                Spacer()
+                Button(role: .destructive) {
+                  remember(); setMarks(marks.filter { $0.id != id }); selected = nil
+                } label: { Label("Remove", systemImage: "trash") }.buttonStyle(ChipStyle(selected: false))
               }
-            }
-            if mode == .signature { Button("Add signature") { signature = true } }
-            if mode == .pen || mode == .highlight {
-              Text("Draw on the page. Each stroke remains editable.").font(.caption)
-            }
-            ForEach(marks) { item in
-              Button {
-                selected = item.id
-                if allowed(item.kind) { mode = item.kind }
-              } label: {
-                HStack {
-                  Text(item.kind.rawValue + (item.text.isEmpty ? "" : ": " + item.text)).lineLimit(
-                    1)
-                  Spacer()
-                  if selected == item.id { Image(systemName: "checkmark") }
-                }
-              }.padding(8)
-            }
-            if let id = selected, let item = marks.first(where: { $0.id == id }) {
               if item.kind == .text {
                 TextField("Text", text: field(id, \.text, default: ""), axis: .vertical)
-                  .textFieldStyle(.roundedBorder).accessibilityIdentifier("annotation-text")
+                  .font(.system(size: 17)).padding(.horizontal, 14).padding(.vertical, 12)
+                  .background(Color.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                  .accessibilityIdentifier("annotation-text")
               }
-              Picker("Color", selection: field(id, \.color, default: "black")) {
-                ForEach(["black", "blue", "red", "yellow"], id: \.self) { Text($0.capitalized) }
-              }
-              Text("Size / stroke weight").font(.caption)
-              Slider(value: field(id, \.lineWidth, default: 2), in: 1...8).accessibilityLabel(
-                "Stroke weight")
-              if item.kind == .signature || item.kind == .text {
-                Text("Position and size").font(.caption)
-                Slider(value: field(id, \.x, default: 0), in: 0...max(0.01, 1 - item.width))
-                  .accessibilityLabel("Horizontal position")
-                Slider(value: field(id, \.y, default: 0), in: 0...max(0.01, 1 - item.height))
-                  .accessibilityLabel("Vertical position")
-                Slider(value: field(id, \.width, default: 0.4), in: 0.1...max(0.1, 1 - item.x))
-                  .accessibilityLabel("Annotation width")
-                Slider(value: field(id, \.height, default: 0.12), in: 0.05...max(0.05, 1 - item.y))
-                  .accessibilityLabel("Annotation height")
-              }
-              Button("Remove selected", role: .destructive) {
-                remember()
-                setMarks(marks.filter { $0.id != id })
-                selected = nil
-              }
-            }
-            HStack {
-              Button("Undo") {
-                if let old = history.popLast() {
-                  setMarks(old)
-                  selected = nil
+              HStack(spacing: 12) {
+                ForEach(colors, id: \.0) { name, color in
+                  Button { field(id, \.color, default: "black").wrappedValue = name } label: {
+                    Circle().fill(color).frame(width: 30, height: 30)
+                      .overlay(Circle().strokeBorder(item.color == name ? TK.blue : TK.grey200, lineWidth: item.color == name ? 3 : 1).padding(-4))
+                  }.accessibilityLabel(name.capitalized).accessibilityAddTraits(item.color == name ? .isSelected : [])
                 }
-              }.disabled(history.isEmpty)
-              Spacer()
-              Text(
-                "Annotations do not securely redact text. PDF forms are flattened in the output; the imported original is retained."
-              ).font(.caption).foregroundStyle(.secondary)
+              }
+              ToolSlider(title: item.kind == .text ? "Text size" : "Stroke", value: field(id, \.lineWidth, default: 2), range: 1...8, format: { String(format: "%.0f", $0) })
+              if item.kind == .signature || item.kind == .text {
+                ToolSlider(title: "Width", value: field(id, \.width, default: 0.4), range: 0.1...max(0.1, 1 - item.x))
+                ToolSlider(title: "Height", value: field(id, \.height, default: 0.12), range: 0.05...max(0.05, 1 - item.y))
+                Text("Drag on the page to move it.").font(.system(size: 13)).foregroundStyle(TK.grey500)
+              }
             }
-            if let error { Text(error).foregroundStyle(.red) }
+            .padding(16).background(TK.grey50, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
           }
-        }.padding(20)
-      }.navigationTitle("Sign & annotate").navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-          ToolbarItem(placement: .cancellationAction) {
-            Button("Cancel") { dismiss() }.disabled(busy)
+          if let error {
+            HStack(alignment: .top, spacing: 10) {
+              Image(systemName: "exclamationmark.circle.fill").foregroundStyle(TK.red)
+              Text(error).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800)
+              Spacer(minLength: 0)
+            }.padding(16).background(TK.grey100, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
           }
-          ToolbarItem(placement: .confirmationAction) {
-            Button("Save") { save() }.disabled(busy || preview == nil)
-          }
-        }.overlay {
-          if busy { ProgressView("Saving annotations…").padding().background(.regularMaterial) }
+          Text("Marks don't securely redact text. PDF forms are flattened; the original is kept.").font(.system(size: 13)).foregroundStyle(TK.grey500)
         }
+      } actions: {
+        Button("Save") { save() }.buttonStyle(CTAButtonStyle()).disabled(busy || preview == nil)
+      }
+        .toolbar {
+          ToolbarItem(placement: .topBarTrailing) { Button("Close") { dismiss() }.disabled(busy) }
+        }
+        .overlay { if busy { BusyOverlay(text: "Saving annotations…") } }
         .interactiveDismissDisabled(busy)
         .sheet(isPresented: $paywall) { PaywallView() }
         .sheet(isPresented: $signature) {
@@ -279,101 +290,84 @@ struct SignatureEditor: View {
   @State private var saveReusable = false
   @State private var saved: [PageAnnotation] = []
   @State private var error: String?
+  private var empty: Bool { strokes.allSatisfy { $0.isEmpty } && photoData == nil }
   var body: some View {
     NavigationStack {
-      Form {
-        Section("Draw your signature") {
-          GeometryReader { g in
-            Canvas { context, size in
-              if let data = photoData, let image = UIImage(data: data) {
-                context.draw(Image(uiImage: image), in: CGRect(origin: .zero, size: size))
+      ToolPage(title: "Draw your signature", subtitle: "A handwritten signature, not a certified digital one.") {
+        GeometryReader { g in
+          Canvas { context, size in
+            if let data = photoData, let image = UIImage(data: data) {
+              context.draw(Image(uiImage: image), in: CGRect(origin: .zero, size: size))
+            }
+            for stroke in strokes {
+              var path = Path()
+              for (i, p) in stroke.enumerated() {
+                if i == 0 { path.move(to: CGPoint(x: p.x * size.width, y: p.y * size.height)) }
+                else { path.addLine(to: CGPoint(x: p.x * size.width, y: p.y * size.height)) }
               }
-              for stroke in strokes {
-                var path = Path()
-                for (i, p) in stroke.enumerated() {
-                  if i == 0 {
-                    path.move(to: CGPoint(x: p.x * size.width, y: p.y * size.height))
-                  } else {
-                    path.addLine(to: CGPoint(x: p.x * size.width, y: p.y * size.height))
-                  }
-                }
-                context.stroke(path, with: .color(.black), lineWidth: 2)
-              }
-            }.background(.white).contentShape(Rectangle()).gesture(
-              DragGesture(minimumDistance: 0).onChanged { value in
-                photoData = nil
-                if !active {
-                  strokes.append([])
-                  active = true
-                }
-                strokes[strokes.count - 1].append(
-                  .init(
-                    x: min(1, max(0, value.location.x / g.size.width)),
-                    y: min(1, max(0, value.location.y / g.size.height))))
-              }.onEnded { _ in active = false })
-          }.frame(height: 180)
-          HStack {
-            Button("Clear") {
-              strokes = []
+              context.stroke(path, with: .color(.black), lineWidth: 2.5)
+            }
+          }
+          .contentShape(Rectangle()).gesture(
+            DragGesture(minimumDistance: 0).onChanged { value in
               photoData = nil
-            }
-            Spacer()
-            PhotosPicker("Import signature", selection: $photo, matching: .images)
-          }
-          Text(
-            "Imported images retain their background. Use a transparent signature image for a clean result. This is a handwritten signature, not a certified digital signature."
-          ).font(.caption)
-          Toggle("Save signature for reuse on this iPhone", isOn: $saveReusable)
-            .onChange(of: saveReusable) { _, on in
-              if on && !canSaveMore { saveReusable = false; paywall = true }
-            }
-          if !subscription.isPro {
-            Text("Free: 1 saved signature. Pro: unlimited.").font(.caption).foregroundStyle(.secondary)
-          }
+              if !active { strokes.append([]); active = true }
+              strokes[strokes.count - 1].append(
+                .init(x: min(1, max(0, value.location.x / g.size.width)), y: min(1, max(0, value.location.y / g.size.height))))
+            }.onEnded { _ in active = false })
+        }
+        .frame(height: 190)
+        .background(TK.grey50, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(TK.grey300, style: StrokeStyle(lineWidth: 1, dash: [6, 5])))
+        .overlay { if empty { Text("Sign here").font(.system(size: 17)).foregroundStyle(TK.grey400).allowsHitTesting(false) } }
+        HStack(spacing: 8) {
+          Button { strokes = []; photoData = nil } label: { Label("Clear", systemImage: "eraser") }.buttonStyle(ChipStyle(selected: false)).disabled(empty)
+          PhotosPicker(selection: $photo, matching: .images) { Label("Import", systemImage: "photo") }.buttonStyle(ChipStyle(selected: false))
+          Button { saveReusable.toggle() } label: { Label("Keep for next time", systemImage: saveReusable ? "checkmark" : "bookmark") }
+            .buttonStyle(ChipStyle(selected: saveReusable))
+            .onChange(of: saveReusable) { _, on in if on && !canSaveMore { saveReusable = false; paywall = true } }
         }
         if !saved.isEmpty {
-          Section("Saved signatures") {
+          VStack(alignment: .leading, spacing: 8) {
+            SectionLabel(text: "Saved signatures")
             ForEach(saved) { item in
-              Button("Use signature \((saved.firstIndex(where: { $0.id == item.id }) ?? 0)+1)") {
-                var copy = item
-                copy.id = UUID()
-                apply(copy)
-                dismiss()
+              let number = (saved.firstIndex(where: { $0.id == item.id }) ?? 0) + 1
+              HStack {
+                Button { var copy = item; copy.id = UUID(); apply(copy); dismiss() } label: {
+                  ChoiceRow(symbol: "signature", title: "Signature \(number)", detail: "Tap to use")
+                }.buttonStyle(.plain)
+                Button(role: .destructive) { saved.removeAll { $0.id == item.id }; persist() } label: { Image(systemName: "trash") }
+                  .buttonStyle(ChipStyle(selected: false)).accessibilityLabel("Delete signature \(number)")
               }
             }
-            .onDelete { indices in
-              saved.remove(atOffsets: indices)
-              persist()
-            }
           }
         }
-        if let error { Text(error).foregroundStyle(.red) }
-      }.navigationTitle("Signature").sheet(isPresented: $paywall) { PaywallView() }.toolbar {
-        ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-        ToolbarItem(placement: .confirmationAction) {
-          Button("Use signature") {
-            var item = PageAnnotation(kind: .signature)
-            item.strokes = strokes
-            item.imageData = photoData
-            if saveReusable {
-              saved.append(item)
-              guard persist() else { return }
-            }
-            apply(item)
-            dismiss()
-          }.disabled(strokes.allSatisfy { $0.isEmpty } && photoData == nil)
-        }
-      }.onAppear { saved = store.manifest.signatures ?? [] }
-        .onChange(of: photo) { _, item in
-          Task {
-            if let data = try? await item?.loadTransferable(type: Data.self),
-              let image = UIImage(data: data)
-            {
-              photoData = image.pngData()
-              strokes = []
-            }
+        if !subscription.isPro { Text("Free: 1 saved signature. Pro: unlimited.").font(.system(size: 13)).foregroundStyle(TK.grey500) }
+        if let error { Text(error).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.red) }
+      } actions: {
+        Button("Use signature") {
+          var item = PageAnnotation(kind: .signature)
+          item.strokes = strokes
+          item.imageData = photoData
+          if saveReusable {
+            saved.append(item)
+            guard persist() else { return }
+          }
+          apply(item)
+          dismiss()
+        }.buttonStyle(CTAButtonStyle()).disabled(empty)
+      }
+      .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Close") { dismiss() } } }
+      .sheet(isPresented: $paywall) { PaywallView() }
+      .onAppear { saved = store.manifest.signatures ?? [] }
+      .onChange(of: photo) { _, item in
+        Task {
+          if let data = try? await item?.loadTransferable(type: Data.self), let image = UIImage(data: data) {
+            photoData = image.pngData()
+            strokes = []
           }
         }
+      }
     }
   }
   @discardableResult private func persist() -> Bool {

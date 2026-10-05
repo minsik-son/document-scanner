@@ -25,112 +25,206 @@ struct PhotoTranslationView: View {
     private var ready:Bool { composition != nil }
     private var complete:Bool { !scan.regions.isEmpty && scan.regions.allSatisfy { $0.keepOriginal || !$0.target.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty } }
     private var displayed:UIImage { original ? scan.image : composition?.image ?? scan.image }
+    @State private var choosing: LanguageSide?
+    private enum LanguageSide: String, Identifiable { case from, to; var id: String { rawValue } }
+    private func name(_ code: String) -> String { Locale.current.localizedString(forIdentifier: code) ?? code }
+    private var areaCount: Int { scan.regions.filter { !$0.isMarker }.count }
     var body: some View {
         ScrollView {
-            VStack(alignment:.leading,spacing:18) {
-                VStack(alignment:.leading,spacing:8) {
-                    Text(ready ? "Review translation" : "Review scan").font(.caption.weight(.semibold)).foregroundStyle(Design.blueInk)
-                    Text(ready ? "Your translation preview" : "Keep the page.\nChange the language.").font(.system(size:28,weight:.bold))
-                    Text(ready ? "Compare the page and check each text area before sharing." : "We'll replace the text in place, keeping the scanned page underneath.").font(.subheadline).foregroundStyle(.secondary)
-                }.padding(22).frame(maxWidth:.infinity,alignment:.leading)
-                    .background(OfficeHeaderPalette.word.gradient,in:RoundedRectangle(cornerRadius:24))
-                if let notice = scan.notice { Text(notice).font(.footnote).foregroundStyle(.secondary) }
-                if ready {
-                    Picker("Page preview",selection:$original) { Text("Translated").tag(false);Text("Original scan").tag(true) }.pickerStyle(.segmented)
-                }
-                Button { zoom = true } label: {
-                    Image(uiImage:displayed).resizable().scaledToFit().frame(maxWidth:.infinity).frame(maxHeight:470)
-                        .padding(10).background(.white,in:RoundedRectangle(cornerRadius:18))
-                }.buttonStyle(.plain).accessibilityLabel("Enlarge document preview").accessibilityIdentifier("translation-document-preview")
-                HStack {
-                    if !ready { Button { crop = true } label: { Label("Crop",systemImage:"crop") } }
-                    Spacer()
-                    Button { reviewIssuesOnly = false;editAreas = true } label: { Label("Review \(scan.regions.filter { !$0.isMarker }.count) text areas",systemImage:"text.viewfinder") }
-                        .accessibilityIdentifier("translation-edit-areas")
-                }.font(.subheadline)
-                if let composition {
-                    Text("\(composition.replaced) text areas replaced").font(.subheadline.weight(.semibold))
-                    if !composition.issues.isEmpty {
-                        VStack(alignment:.leading,spacing:10) {
-                            Text("\(composition.issues.count) areas need review").font(.subheadline.weight(.semibold))
-                                .accessibilityIdentifier("translation-partial")
-                            ForEach(TranslationIssue.allCases,id:\.self) { reason in
-                                let count = composition.reasons.values.filter { $0 == reason }.count
-                                if count > 0 { Text("\(count) · \(reason.rawValue)").font(.footnote) }
-                            }
-                            Button("Review these areas") { reviewIssuesOnly = true;editAreas = true }
-                                .accessibilityIdentifier("translation-review-issues")
-                            Text("Available translations can be copied even when they don't fit on the page.").font(.footnote)
-                            if composition.reasons.values.contains(.missing) {
-                                Button("Retry missing translations") { translate() }.accessibilityIdentifier("translation-retry")
-                            }
-                        }.padding(16).frame(maxWidth:.infinity,alignment:.leading)
-                            .background(Color.orange.opacity(0.08),in:RoundedRectangle(cornerRadius:16))
-                    }
-                    if composition.kept > 0 { Text("\(composition.kept) kept by you").font(.footnote).foregroundStyle(.secondary) }
-                    if composition.unclear > 0 {
-                        Text("\(composition.unclear) small or unclear areas stayed in the original language, so no guessed translation was added. To translate one anyway, open Review and turn off Keep original.")
-                            .font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("translation-unclear")
-                    }
-                    if composition.unchanged > 0 { Text("\(composition.unchanged) translations match the original. Check names, numbers and any text still in the source language.").font(.footnote).foregroundStyle(.secondary) }
-                    ShareLink(item:translationText) { Label("Share translation text",systemImage:"text.page") }
-                        .accessibilityIdentifier("translation-share-text")
-                    Text("Original fonts are approximated. Unrecognized text stays in the scan.").font(.footnote).foregroundStyle(.secondary)
-                    Button(saved ? "Saved to Documents" : "Save PDF copy to Documents") { export(save:true) }.disabled(saved)
-                        .accessibilityIdentifier("translation-save")
+            VStack(alignment: .leading, spacing: 20) {
+                if ready { resultContent } else { languageContent }
+            }
+            .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
+        }
+        .background(Color.white).disabled(busy)
+        .navigationTitle("Photo translation").navigationBarTitleDisplayMode(.inline).navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    if ready { invalidate(); error = nil } else { onRetake() }
+                } label: { Label("Back", systemImage: "chevron.left") }.disabled(busy).accessibilityIdentifier("translation-back")
+            }
+            ToolbarItem(placement: .topBarTrailing) { Button("Close") { dismiss() }.disabled(busy) }
+        }
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 10) {
+                if let error { Text(error).font(.footnote).foregroundStyle(TK.red).frame(maxWidth: .infinity, alignment: .leading).accessibilityIdentifier("text-tool-error") }
+                if busy {
+                    HStack(spacing: 10) {
+                        ProgressView(); Text(phase).font(.subheadline).foregroundStyle(TK.grey700); Spacer()
+                        Button("Cancel") { job?.cancel() }.foregroundStyle(TK.grey600)
+                    }.frame(minHeight: 56)
+                } else if ready {
+                    Button(composition?.issues.isEmpty == false ? "Share PDF" : "Share translated PDF") { export(save: false) }
+                        .buttonStyle(CTAButtonStyle()).accessibilityIdentifier("translation-share")
                 } else {
-                    HStack {
-                        Picker("From",selection:$from) { ForEach(languages,id:\.self) { Text(Locale.current.localizedString(forIdentifier:$0) ?? $0).tag($0) } }
-                        Image(systemName:"arrow.right")
-                        Picker("To",selection:$to) { ForEach(languages,id:\.self) { Text(Locale.current.localizedString(forIdentifier:$0) ?? $0).tag($0) } }
-                    }.frame(maxWidth:.infinity).tint(Design.blueInk)
+                    Button(complete ? "Preview translation" : "Translate to \(name(to))") { translate() }
+                        .buttonStyle(CTAButtonStyle()).disabled(scan.regions.isEmpty || from == to)
+                        .accessibilityIdentifier("translation-run")
+                }
+            }
+            .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 8).background(Color.white)
+        }
+        .sheet(isPresented: $editAreas) {
+            TranslationAreasEditor(regions: scan.regions, image: scan.image, issues: composition?.issues ?? [:], issuesOnly: reviewIssuesOnly) { changed in
+                scan.regions = changed; invalidate(); error = nil
+            }
+        }
+        .sheet(isPresented: $crop) {
+            CropView(page: ScanPage(imageFile: "", crop: scan.crop), temporaryImage: scan.original) { quad in rescan(quad) }
+        }
+        .sheet(item: $choosing) { side in
+            TranslationLanguageList(title: side == .from ? "Translate from" : "Translate to", languages: languages,
+                                    selected: side == .from ? from : to) { code in
+                if side == .from { if code == to { to = from }; from = code } else { if code == from { from = to }; to = code }
+                choosing = nil
+            }
+            .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
+        }
+        .fullScreenCover(isPresented: $zoom) { EnlargedScanPreview(initialImage: displayed) { displayed } }
+        .sheet(isPresented: $sharing) { if let files { ShareSheet(items: files.urls) } }
+        .onChange(of: from) { _, _ in rereadSourceLanguage() }
+        .onChange(of: to) { _, _ in rereadSourceLanguage() }
+        .onAppear { if !scan.clarityChecked { scan = TranslationQuality.checked(scan, language: scan.recognitionLanguage ?? from) } }
+        .task {
+            let supported = await LanguageAvailability().supportedLanguages.map(\.minimalIdentifier)
+            languages = Array(Set(supported + [from, to])).sorted { name($0) < name($1) }
+        }
+        .onDisappear { if !zoom && !sharing && !crop && !editAreas { job?.cancel(); if let files { ExportFiles.remove(files.directory) } } }
+    }
+
+    // MARK: Page 1 — pick the languages
+
+    private var languageContent: some View {
+        Group {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Which language?").font(.system(size: 28, weight: .bold)).foregroundStyle(TK.grey900)
+                Text("We'll replace the text in place and keep the page as it is.").font(.system(size: 16)).foregroundStyle(TK.grey600)
+            }
+            VStack(spacing: 0) {
+                languageRow(label: "From", code: from, side: .from)
+                ZStack {
+                    Rectangle().fill(TK.grey100).frame(height: 1)
+                    Button { let a = from; from = to; to = a } label: {
+                        Image(systemName: "arrow.up.arrow.down").font(.system(size: 15, weight: .bold)).foregroundStyle(TK.blue)
+                            .frame(width: 40, height: 40).background(Color.white, in: Circle())
+                            .overlay(Circle().strokeBorder(TK.grey200, lineWidth: 1))
+                    }
+                    .accessibilityLabel("Swap languages").accessibilityIdentifier("translation-swap")
+                    .frame(maxWidth: .infinity, alignment: .trailing).padding(.trailing, 20)
+                }
+                languageRow(label: "To", code: to, side: .to)
+            }
+            .background(TK.grey50, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(TK.grey100, lineWidth: 1))
+            if from == to {
+                Text("Pick two different languages.").font(.footnote).foregroundStyle(TK.orange)
+            }
+            HStack(alignment: .top, spacing: 14) {
+                Button { zoom = true } label: {
+                    Image(uiImage: scan.image).resizable().scaledToFit().frame(width: 96, height: 128)
+                        .background(Color.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(TK.grey200, lineWidth: 1))
+                        .shadow(color: .black.opacity(0.06), radius: 6, y: 2)
+                }
+                .buttonStyle(.plain).accessibilityLabel("Enlarge document preview").accessibilityIdentifier("translation-document-preview")
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(scan.regions.isEmpty ? "No text found" : (areaCount == 1 ? "1 text area found" : "\(areaCount) text areas found"))
+                        .font(.system(size: 17, weight: .semibold)).foregroundStyle(TK.grey900)
+                    Text(scan.regions.isEmpty ? "Adjust the crop or retake a closer photo." : "Tap the page to look closer.")
+                        .font(.system(size: 14)).foregroundStyle(TK.grey600)
                     if !scan.edgesDetected {
-                        Text("Paper edges weren't found. Check the crop before translating.").font(.footnote).foregroundStyle(.orange)
+                        Label("Check the crop", systemImage: "exclamationmark.triangle.fill").font(.system(size: 13, weight: .medium)).foregroundStyle(TK.orange)
                     }
-                    if scan.regions.isEmpty { Text("No text found. Adjust the crop or retake a closer photo.").foregroundStyle(.secondary) }
-                    Text("Works offline with installed languages on iOS 26+. Complex backgrounds and text that won't fit are kept in the original language for review.").font(.footnote).foregroundStyle(.secondary)
+                    if let notice = scan.notice { Text(notice).font(.system(size: 13)).foregroundStyle(TK.grey500) }
+                    HStack(spacing: 8) {
+                        Button { crop = true } label: { Label("Crop", systemImage: "crop") }.buttonStyle(ChipStyle(selected: false))
+                        Button { reviewIssuesOnly = false; editAreas = true } label: { Label("Text", systemImage: "text.viewfinder") }
+                            .buttonStyle(ChipStyle(selected: false)).disabled(scan.regions.isEmpty)
+                            .accessibilityLabel("Review \(areaCount) text areas").accessibilityIdentifier("translation-edit-areas")
+                    }.padding(.top, 4)
                 }
-            }.padding(20)
-        }.background(Design.muted).disabled(busy)
-            .navigationTitle("Photo translation").navigationBarTitleDisplayMode(.inline).navigationBarBackButtonHidden(true)
-            .toolbar {
-                ToolbarItem(placement:.topBarLeading) {
-                    Button {
-                        if ready { invalidate(); error = nil } else { onRetake() }
-                    } label: { Label("Back",systemImage:"chevron.left") }.disabled(busy).accessibilityIdentifier("translation-back")
-                }
-                ToolbarItem(placement:.topBarTrailing) { Button("Close") { dismiss() }.disabled(busy) }
+                Spacer(minLength: 0)
             }
-            .safeAreaInset(edge:.bottom) {
-                VStack(spacing:10) {
-                    if let error { Text(error).font(.footnote).foregroundStyle(.red).frame(maxWidth:.infinity,alignment:.leading).accessibilityIdentifier("text-tool-error") }
-                    if busy { HStack { ProgressView();Text(phase).font(.subheadline);Spacer();Button("Cancel") { job?.cancel() } } }
-                    else {
-                        Button(ready ? (composition?.issues.isEmpty == false ? "Share PDF with original areas" : "Share translated PDF") : complete ? "Preview translation" : "Translate scan") {
-                            if ready { export(save:false) } else { translate() }
-                        }.buttonStyle(PrimaryButton()).disabled(scan.regions.isEmpty)
-                            .accessibilityIdentifier(ready ? "translation-share" : "translation-run")
+            .padding(14)
+            .background(TK.grey50, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            Label("Offline with languages installed in Apple's Translate app.", systemImage: "lock.shield")
+                .font(.system(size: 13)).foregroundStyle(TK.grey500)
+        }
+    }
+    private func languageRow(label: String, code: String, side: LanguageSide) -> some View {
+        Button { choosing = side } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(label).font(.system(size: 13, weight: .medium)).foregroundStyle(TK.grey500)
+                    Text(name(code)).font(.system(size: 22, weight: .bold)).foregroundStyle(TK.grey900)
+                }
+                Spacer()
+                Image(systemName: "chevron.down").font(.system(size: 14, weight: .semibold)).foregroundStyle(TK.grey400)
+                    .padding(.trailing, side == .from ? 0 : 0)
+            }
+            .padding(.horizontal, 20).padding(.vertical, 18)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(label) \(name(code))").accessibilityHint("Choose a language")
+        .accessibilityIdentifier("translation-" + side.rawValue)
+    }
+
+    // MARK: Page 2 — the translated page
+
+    private var resultContent: some View {
+        Group {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Translated to \(name(to))").font(.system(size: 28, weight: .bold)).foregroundStyle(TK.grey900)
+                if let composition {
+                    Text((composition.replaced == 1 ? "1 text area replaced" : "\(composition.replaced) text areas replaced") + (composition.issues.isEmpty ? "" : " · \(composition.issues.count) to check"))
+                        .font(.system(size: 16)).foregroundStyle(TK.grey600)
+                }
+            }
+            Picker("Page preview", selection: $original) { Text("Translated").tag(false); Text("Original").tag(true) }.pickerStyle(.segmented)
+            Button { zoom = true } label: {
+                Image(uiImage: displayed).resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 440)
+                    .padding(8).background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(TK.grey200, lineWidth: 1))
+            }.buttonStyle(.plain).accessibilityLabel("Enlarge document preview").accessibilityIdentifier("translation-document-preview")
+            if let composition, !composition.issues.isEmpty {
+                Button { reviewIssuesOnly = true; editAreas = true } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(TK.orange)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(composition.issues.count) areas need a look").font(.system(size: 16, weight: .semibold)).foregroundStyle(TK.grey900)
+                                .accessibilityIdentifier("translation-partial")
+                            Text(issueSummary(composition)).font(.system(size: 13)).foregroundStyle(TK.grey600).lineLimit(2)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(TK.grey400)
                     }
-                }.padding().background(.regularMaterial)
-            }
-            .sheet(isPresented:$editAreas) {
-                TranslationAreasEditor(regions:scan.regions,image:scan.image,issues:composition?.issues ?? [:],issuesOnly:reviewIssuesOnly) { changed in
-                    scan.regions = changed; invalidate();error = nil
+                    .padding(16).background(TK.orangeSoft, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain).accessibilityIdentifier("translation-review-issues")
+                if composition.reasons.values.contains(.missing) {
+                    Button("Retry missing translations") { translate() }.font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.blue)
+                        .accessibilityIdentifier("translation-retry")
                 }
             }
-            .sheet(isPresented:$crop) {
-                CropView(page:ScanPage(imageFile:"",crop:scan.crop),temporaryImage:scan.original) { quad in rescan(quad) }
+            HStack(spacing: 8) {
+                Button { export(save: true) } label: { Label(saved ? "Saved" : "Save PDF", systemImage: saved ? "checkmark" : "tray.and.arrow.down") }
+                    .buttonStyle(ChipStyle(selected: saved)).disabled(saved).accessibilityIdentifier("translation-save")
+                ShareLink(item: translationText) { Label("Text only", systemImage: "text.page") }
+                    .buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("translation-share-text")
+                Button { reviewIssuesOnly = false; editAreas = true } label: { Label("Edit", systemImage: "pencil") }
+                    .buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("translation-edit-areas")
             }
-            .fullScreenCover(isPresented:$zoom) { EnlargedScanPreview(initialImage:displayed) { displayed } }
-            .sheet(isPresented:$sharing) { if let files { ShareSheet(items:files.urls) } }
-            .onChange(of:from) { _,_ in rereadSourceLanguage() }
-            .onChange(of:to) { _,_ in rereadSourceLanguage() }
-            .onAppear { if !scan.clarityChecked { scan = TranslationQuality.checked(scan,language:scan.recognitionLanguage ?? from) } }
-            .task {
-                let supported = await LanguageAvailability().supportedLanguages.map(\.minimalIdentifier)
-                languages = Array(Set(supported+[from,to])).sorted()
-            }
-            .onDisappear { if !zoom && !sharing && !crop && !editAreas { job?.cancel(); if let files { ExportFiles.remove(files.directory) } } }
+            Text("Fonts are approximated. Text we couldn't read stays as in the scan.").font(.system(size: 13)).foregroundStyle(TK.grey500)
+        }
+    }
+    private func issueSummary(_ composition: TranslationComposition) -> String {
+        TranslationIssue.allCases.compactMap { reason in
+            let count = composition.reasons.values.filter { $0 == reason }.count
+            return count > 0 ? "\(count) \(reason.rawValue.lowercased())" : nil
+        }.joined(separator: " · ")
     }
     private var translationText:String {
         scan.regions.filter { !$0.isMarker }.map { region in
@@ -150,7 +244,7 @@ struct PhotoTranslationView: View {
         } catch { report(error) } }
     }
     private func rereadSourceLanguage() {
-        clearTranslations();busy = true;phase = "Reading the source language…"
+        job?.cancel();clearTranslations();busy = true;phase = "Reading the source language…"
         let image = scan.reading ?? scan.image,language = from,target = to
         job = Task { defer { busy = false };do {
             let regions = try await OfflineWork.perform {
@@ -283,5 +377,44 @@ private struct TranslationAreasEditor: View {
                     ToolbarItem(placement:.confirmationAction) { Button("Apply") { apply(regions);dismiss() }.accessibilityIdentifier("translation-apply-areas") }
                 }
         }
+    }
+}
+
+/// Full-height language list with search; installed system languages first.
+private struct TranslationLanguageList: View {
+    let title: String
+    let languages: [String]
+    let selected: String
+    let pick: (String) -> Void
+    @State private var query = ""
+    private func name(_ code: String) -> String { Locale.current.localizedString(forIdentifier: code) ?? code }
+    private var preferred: [String] {
+        let mine = Locale.preferredLanguages.map { Locale.Language(identifier: $0).minimalIdentifier }
+        return languages.filter { code in mine.contains { $0 == code || $0.hasPrefix(code + "-") || code.hasPrefix($0 + "-") } }
+    }
+    private func matches(_ code: String) -> Bool { query.isEmpty || name(code).localizedCaseInsensitiveContains(query) }
+    var body: some View {
+        NavigationStack {
+            List {
+                let suggested = preferred.filter(matches)
+                if !suggested.isEmpty {
+                    Section("Your languages") { ForEach(suggested, id: \.self) { row($0) } }
+                }
+                Section("All languages") { ForEach(languages.filter(matches), id: \.self) { row($0) } }
+            }
+            .listStyle(.insetGrouped)
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search languages")
+            .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
+        }
+    }
+    private func row(_ code: String) -> some View {
+        Button { pick(code) } label: {
+            HStack {
+                Text(name(code)).font(.system(size: 17)).foregroundStyle(TK.grey900)
+                Spacer()
+                if code == selected { Image(systemName: "checkmark").font(.system(size: 15, weight: .bold)).foregroundStyle(TK.blue) }
+            }
+        }
+        .accessibilityAddTraits(code == selected ? .isSelected : [])
     }
 }

@@ -163,7 +163,7 @@ final class AdvancedToolsUITests:XCTestCase {
         app.buttons["translation-apply-areas"].tap()
         app.buttons["translation-run"].tap()
         XCTAssertTrue(app.buttons["translation-share"].waitForExistence(timeout:20))
-        XCTAssertTrue(app.staticTexts["1 text areas replaced"].exists)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format:"label BEGINSWITH '1 text area replaced'")).firstMatch.exists)
         saveShot(app,"photo-translation-layout-preview")
         app.buttons["translation-share"].tap()
         XCTAssertTrue(app.cells["Copy"].waitForExistence(timeout:15))

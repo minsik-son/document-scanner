@@ -322,6 +322,7 @@ private struct PortraitTool: View {
     @State private var subject: ImageToolEngine.PortraitSubject?
     @State private var size = ImageToolEngine.PhotoSize.all[0]
     @State private var backdrop = ImageToolEngine.Backdrop.white
+    @State private var adjust = ImageToolEngine.PortraitAdjust()
     @State private var photo: UIImage?
     @State private var sheet = false
     @State private var sheetImage: UIImage?
@@ -338,12 +339,13 @@ private struct PortraitTool: View {
                     }
                 }
             case 1: sizePage
-            case 2: backdropPage
-            case 3: resultPage
+            case 2: alignPage
+            case 3: backdropPage
+            case 4: resultPage
             default: PhotoToolDone(title: "Your ID photo is saved", images: [saved].compactMap { $0 }, name: "ID photo") { dismiss() }
             }
         }
-        .stepChrome(step: $step, forward: $forward, last: 4, work: work)
+        .stepChrome(step: $step, forward: $forward, last: 5, work: work)
     }
     private func go(_ next: Int) { forward = next > step; step = next }
     private var sizePage: some View {
@@ -355,7 +357,35 @@ private struct PortraitTool: View {
                 }
             }
         } actions: {
-            Button("Next") { render(); go(2) }.buttonStyle(CTAButtonStyle()).accessibilityIdentifier("portrait-size-next")
+            Button("Next") { adjust = ImageToolEngine.PortraitAdjust(); render(); go(2) }.buttonStyle(CTAButtonStyle()).accessibilityIdentifier("portrait-size-next")
+        }
+    }
+    private var alignPage: some View {
+        let metrics = subject.map { ImageToolEngine.portraitMetrics($0, size: size, adjust: adjust) }
+        let fits = metrics.map { $0.head >= size.headMin - 0.05 && $0.head <= size.headMax + 0.05 } ?? false
+        return ToolPage(title: "Line up head and shoulders", subtitle: "Drag to move and pinch to resize until the head sits inside the guide.") {
+            PortraitAlignView(photo: photo, size: size, metrics: metrics, adjust: $adjust) { render() }
+                .frame(maxWidth: .infinity).frame(height: 340)
+            if let metrics {
+                HStack(spacing: 8) {
+                    Image(systemName: fits ? "checkmark.circle.fill" : "exclamationmark.triangle.fill").foregroundStyle(fits ? TK.teal : TK.orange)
+                    Text("Head \(String(format: "%.1f", metrics.head)) mm · needs \(String(format: "%g", size.headMin))–\(String(format: "%g", size.headMax)) mm")
+                        .font(.footnote.weight(.semibold)).foregroundStyle(TK.grey700)
+                }
+                .frame(maxWidth: .infinity)
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("portrait-head-size")
+            }
+            HStack(spacing: 10) {
+                Button { adjust.zoom = max(0.7, adjust.zoom / 1.03); render() } label: { Image(systemName: "minus.magnifyingglass") }
+                    .buttonStyle(ChipStyle(selected: false)).accessibilityLabel("Smaller head")
+                Button("Auto fit") { adjust = ImageToolEngine.PortraitAdjust(); render() }
+                    .buttonStyle(ChipStyle(selected: adjust == ImageToolEngine.PortraitAdjust())).accessibilityIdentifier("portrait-auto-fit")
+                Button { adjust.zoom = min(1.4, adjust.zoom * 1.03); render() } label: { Image(systemName: "plus.magnifyingglass") }
+                    .buttonStyle(ChipStyle(selected: false)).accessibilityLabel("Larger head")
+            }.frame(maxWidth: .infinity)
+        } actions: {
+            Button("Next") { go(3) }.buttonStyle(CTAButtonStyle()).disabled(photo == nil).accessibilityIdentifier("portrait-align-next")
         }
     }
     private var backdropPage: some View {
@@ -374,7 +404,7 @@ private struct PortraitTool: View {
                 }
             }.frame(maxWidth: .infinity)
         } actions: {
-            Button("Next") { go(3) }.buttonStyle(CTAButtonStyle()).disabled(photo == nil).accessibilityIdentifier("portrait-backdrop-next")
+            Button("Next") { go(4) }.buttonStyle(CTAButtonStyle()).disabled(photo == nil).accessibilityIdentifier("portrait-backdrop-next")
         }
     }
     private var resultPage: some View {
@@ -396,9 +426,9 @@ private struct PortraitTool: View {
     }
     private func render() {
         guard let subject else { return }
-        let s = size, b = backdrop
+        let s = size, b = backdrop, a = adjust
         work.preview {
-            photo = try await OfflineWork.perform { try ImageToolEngine.portrait(subject, size: s, backdrop: b) }
+            photo = try await OfflineWork.perform { try ImageToolEngine.portrait(subject, size: s, backdrop: b, adjust: a) }
         }
     }
     private func save() {
@@ -846,5 +876,101 @@ private struct CountTool: View {
 enum OfflineWorkHelpers {
     static func annotate(_ image: UIImage, _ points: [CGPoint], _ radius: CGFloat) async -> UIImage {
         await Task.detached { ImageToolEngine.annotated(image, points: points, radius: radius) }.value
+    }
+}
+
+/// The ID photo with the size's guide on top: crown and chin lines with the
+/// allowed head range, a head outline, the shoulder line and the centre
+/// line. Dragging moves the photo, pinching resizes the head.
+private struct PortraitAlignView: View {
+    let photo: UIImage?
+    let size: ImageToolEngine.PhotoSize
+    let metrics: ImageToolEngine.PortraitMetrics?
+    @Binding var adjust: ImageToolEngine.PortraitAdjust
+    let changed: () -> Void
+    @State private var drag: CGSize = .zero
+    @State private var pinch: CGFloat = 1
+    var body: some View {
+        GeometryReader { geo in
+            let aspect = CGFloat(size.width / size.height)
+            let h = min(geo.size.height, geo.size.width / aspect), w = h * aspect
+            let k = w / CGFloat(size.width)   // points per millimetre
+            ZStack {
+                Color(white: 0.96)
+                if let photo {
+                    Image(uiImage: photo).resizable().scaledToFill()
+                        .frame(width: w, height: h)
+                        .scaleEffect(pinch, anchor: .center)
+                        .offset(drag)
+                }
+                guide(k: k, w: w, h: h)
+            }
+            .frame(width: w, height: h)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(TK.grey300, lineWidth: 1))
+            .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture()
+                    .onChanged { drag = $0.translation }
+                    .onEnded { value in
+                        adjust.dx += Double(value.translation.width / k)
+                        adjust.dy -= Double(value.translation.height / k)
+                        drag = .zero
+                        changed()
+                    }
+                    .simultaneously(with: MagnificationGesture()
+                        .onChanged { pinch = $0 }
+                        .onEnded { value in
+                            adjust.zoom = min(1.4, max(0.7, adjust.zoom * Double(value)))
+                            pinch = 1
+                            changed()
+                        })
+            )
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("ID photo with head and shoulder guide")
+            .accessibilityAdjustableAction { direction in
+                adjust.zoom = direction == .increment ? min(1.4, adjust.zoom * 1.03) : max(0.7, adjust.zoom / 1.03)
+                changed()
+            }
+            .accessibilityIdentifier("portrait-align")
+        }
+    }
+    @ViewBuilder private func guide(k: CGFloat, w: CGFloat, h: CGFloat) -> some View {
+        let crown = CGFloat(size.crownGap) * k
+        let chinNear = crown + CGFloat(size.headMin) * k, chinFar = crown + CGFloat(size.headMax) * k
+        let target = crown + CGFloat(size.headTarget) * k
+        let headW = CGFloat(size.headTarget) * k * 0.74
+        let fits = metrics.map { $0.head >= size.headMin - 0.05 && $0.head <= size.headMax + 0.05 } ?? false
+        let tint = fits ? TK.teal : TK.orange
+        ZStack(alignment: .topLeading) {
+            // Allowed band for the chin.
+            Rectangle().fill(tint.opacity(0.12)).frame(width: w, height: max(1, chinFar - chinNear)).offset(y: chinNear)
+            Path { p in p.move(to: CGPoint(x: 0, y: crown)); p.addLine(to: CGPoint(x: w, y: crown)) }
+                .stroke(tint, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+            Path { p in p.move(to: CGPoint(x: 0, y: target)); p.addLine(to: CGPoint(x: w, y: target)) }
+                .stroke(tint, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+            Path { p in p.move(to: CGPoint(x: w / 2, y: 0)); p.addLine(to: CGPoint(x: w / 2, y: h)) }
+                .stroke(Color.white.opacity(0.7), style: StrokeStyle(lineWidth: 1, dash: [3, 5]))
+            // Head outline and shoulders.
+            Ellipse().stroke(Color.white.opacity(0.95), lineWidth: 2)
+                .frame(width: headW, height: target - crown).offset(x: (w - headW) / 2, y: crown)
+            Path { p in
+                let neck = target + (target - crown) * 0.12, shoulder = target + (target - crown) * 0.42
+                p.move(to: CGPoint(x: w / 2 - headW * 0.32, y: neck))
+                p.addQuadCurve(to: CGPoint(x: max(0, w / 2 - headW * 1.35), y: min(h, shoulder + headW * 0.25)), control: CGPoint(x: w / 2 - headW * 0.45, y: shoulder))
+                p.move(to: CGPoint(x: w / 2 + headW * 0.32, y: neck))
+                p.addQuadCurve(to: CGPoint(x: min(w, w / 2 + headW * 1.35), y: min(h, shoulder + headW * 0.25)), control: CGPoint(x: w / 2 + headW * 0.45, y: shoulder))
+            }.stroke(Color.white.opacity(0.95), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+            Text("Top of head").font(.caption2.weight(.semibold)).foregroundStyle(.white)
+                .padding(.horizontal, 5).padding(.vertical, 2).background(tint, in: Capsule())
+                .offset(x: 6, y: max(0, crown - 18))
+            Text("Chin").font(.caption2.weight(.semibold)).foregroundStyle(.white)
+                .padding(.horizontal, 5).padding(.vertical, 2).background(tint, in: Capsule())
+                .offset(x: 6, y: min(h - 18, chinFar + 2))
+        }
+        .frame(width: w, height: h, alignment: .topLeading)
+        .allowsHitTesting(false)
     }
 }

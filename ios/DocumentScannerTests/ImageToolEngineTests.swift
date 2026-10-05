@@ -1,6 +1,7 @@
 import XCTest
 import UIKit
 import PDFKit
+import CoreImage
 @testable import DocumentScanner
 
 /// Engines behind the rebuilt photo and PDF tools.
@@ -141,5 +142,27 @@ final class ImageToolEngineTests: XCTestCase {
         let data = try ImageToolEngine.pdf([photo])
         let jpeg = try XCTUnwrap(photo.jpegData(compressionQuality: 0.9))
         XCTAssertLessThan(data.count, jpeg.count * 3 / 2, "Pictures are embedded as JPEG, not as lossless data")
+    }
+
+    /// The ID photo fit puts the head (chin to crown) at the size's target
+    /// height with the crown at its gap from the top, and the user's zoom
+    /// and moves land where the guide shows them.
+    func testPortraitFitMatchesHeadSpec() {
+        let base = CIImage(color: CIColor(red: 0.5, green: 0.5, blue: 0.5)).cropped(to: CGRect(x: 0, y: 0, width: 1000, height: 1400))
+        var subject = ImageToolEngine.PortraitSubject(image: base, mask: base, face: CGRect(x: 380, y: 640, width: 240, height: 280))
+        subject.crown = 1000; subject.chin = 600; subject.centerX = 500; subject.shoulder = 480
+        let size = ImageToolEngine.PhotoSize.all.first { $0.id == "35x45" }!
+        var m = ImageToolEngine.portraitMetrics(subject, size: size, adjust: ImageToolEngine.PortraitAdjust())
+        XCTAssertEqual(m.head, size.headTarget, accuracy: 0.01)
+        XCTAssertEqual(m.crown, size.crownGap, accuracy: 0.01)
+        XCTAssertEqual(m.chin, size.crownGap + size.headTarget, accuracy: 0.01)
+        XCTAssertEqual(m.centerOffset, 0, accuracy: 0.01)
+        XCTAssertNotNil(m.shoulder)
+        m = ImageToolEngine.portraitMetrics(subject, size: size, adjust: ImageToolEngine.PortraitAdjust(zoom: 1.05, dx: 1, dy: 2))
+        XCTAssertEqual(m.head, size.headTarget * 1.05, accuracy: 0.01)
+        XCTAssertEqual(m.centerOffset, 1, accuracy: 0.01, "Moved right")
+        XCTAssertEqual((m.crown + m.chin) / 2, size.crownGap + size.headTarget / 2 - 2, accuracy: 0.01, "Moved up, head centre kept while zooming")
+        let crop = ImageToolEngine.portraitCrop(subject, size: size, adjust: ImageToolEngine.PortraitAdjust()).rect
+        XCTAssertEqual(Double(crop.width / crop.height), size.width / size.height, accuracy: 0.001)
     }
 }

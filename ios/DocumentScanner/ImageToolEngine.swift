@@ -606,14 +606,36 @@ enum ImageToolEngine {
         let detail: String
         let width: Double   // millimetres
         let height: Double
+        /// Allowed head height, chin to crown (top of the hair), in millimetres.
+        let headMin: Double
+        let headMax: Double
+        /// Space between the top of the head and the top edge, in millimetres.
+        let crownGap: Double
+        var headTarget: Double { (headMin + headMax) / 2 }
         static let all: [PhotoSize] = [
-            PhotoSize(id: "35x45", title: "Passport · 35 × 45 mm", detail: "Korea, UK, EU, Canada visa and most IDs", width: 35, height: 45),
-            PhotoSize(id: "2x2", title: "US passport · 2 × 2 in", detail: "United States passport and visa", width: 50.8, height: 50.8),
-            PhotoSize(id: "50x70", title: "Canada passport · 50 × 70 mm", detail: "Canadian passport photo", width: 50, height: 70),
-            PhotoSize(id: "33x48", title: "China visa · 33 × 48 mm", detail: "Chinese visa applications", width: 33, height: 48),
-            PhotoSize(id: "30x40", title: "Resume · 3 × 4 cm", detail: "Résumés and certificates", width: 30, height: 40),
-            PhotoSize(id: "25x30", title: "Small ID · 25 × 30 mm", detail: "Licences and membership cards", width: 25, height: 30)
+            PhotoSize(id: "35x45", title: "Passport · 35 × 45 mm", detail: "Korea, UK, EU, Canada visa and most IDs", width: 35, height: 45, headMin: 32, headMax: 36, crownGap: 4),
+            PhotoSize(id: "2x2", title: "US passport · 2 × 2 in", detail: "United States passport and visa", width: 50.8, height: 50.8, headMin: 25.4, headMax: 34.9, crownGap: 7),
+            PhotoSize(id: "50x70", title: "Canada passport · 50 × 70 mm", detail: "Canadian passport photo", width: 50, height: 70, headMin: 31, headMax: 36, crownGap: 12),
+            PhotoSize(id: "33x48", title: "China visa · 33 × 48 mm", detail: "Chinese visa applications", width: 33, height: 48, headMin: 28, headMax: 33, crownGap: 4),
+            PhotoSize(id: "30x40", title: "Resume · 3 × 4 cm", detail: "Résumés and certificates", width: 30, height: 40, headMin: 24, headMax: 28, crownGap: 4),
+            PhotoSize(id: "25x30", title: "Small ID · 25 × 30 mm", detail: "Licences and membership cards", width: 25, height: 30, headMin: 18, headMax: 22, crownGap: 3)
         ]
+    }
+    /// The user's fine-tuning on top of the automatic fit: zoom scales the
+    /// head; offsets move it in millimetres of the finished photo (up, right).
+    struct PortraitAdjust: Equatable {
+        var zoom: Double = 1
+        var dx: Double = 0
+        var dy: Double = 0
+    }
+    /// Where the head and shoulders land in the finished photo, in
+    /// millimetres from the top edge.
+    struct PortraitMetrics: Equatable {
+        var head: Double
+        var crown: Double
+        var chin: Double
+        var shoulder: Double?
+        var centerOffset: Double   // head centre from the photo's centre line
     }
     enum Backdrop: String, CaseIterable, Identifiable {
         case white = "White", lightGrey = "Light grey", sky = "Light blue", blue = "Blue", red = "Red"
@@ -633,6 +655,12 @@ enum ImageToolEngine {
         let image: CIImage
         let mask: CIImage
         let face: CGRect   // Core Image coordinates
+        /// Top of the hair, bottom of the chin and the shoulder line (y, Core
+        /// Image coordinates), and the head's centre line (x).
+        var crown: CGFloat = 0
+        var chin: CGFloat = 0
+        var shoulder: CGFloat? = nil
+        var centerX: CGFloat = 0
     }
     static func portraitSubject(_ input: UIImage) throws -> PortraitSubject {
         guard let cg = Imaging.limited(Imaging.normalized(input), maxPixels: 16_000_000).cgImage else { throw ScannerError.message("This photo is unavailable.") }
@@ -667,25 +695,89 @@ enum ImageToolEngine {
         guard let mask else { throw ScannerError.message("The person couldn't be separated from the background. Use a plain background.") }
         // Soften the edge of the cut-out slightly for natural hair.
         let soft = mask.clampedToExtent().applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: 1.2]).cropped(to: base.extent)
-        return PortraitSubject(image: base, mask: soft, face: face)
+        var subject = PortraitSubject(image: base, mask: soft, face: face)
+        // Chin: the lowest point of the face outline (the box stops short of it).
+        subject.chin = face.minY
+        let landmarks = VNDetectFaceLandmarksRequest()
+        if (try? handler.perform([landmarks])) != nil, let contour = landmarks.results?.first?.landmarks?.faceContour {
+            let points = contour.pointsInImage(imageSize: base.extent.size)
+            if let low = points.map(\.y).min(), low > face.minY - face.height * 0.4 { subject.chin = min(face.minY, low) }
+        }
+        subject.centerX = face.midX
+        let lines = headLines(mask: soft, extent: base.extent, face: face, chin: subject.chin)
+        subject.crown = lines.crown
+        subject.shoulder = lines.shoulder
+        return subject
     }
-    /// The finished photo at 300 dpi: head centred, eyes in the upper part.
-    static func portrait(_ subject: PortraitSubject, size: PhotoSize, backdrop: Backdrop) throws -> UIImage {
+
+    /// Reads the cut-out: the first rows of the person above the face are the
+    /// top of the hair; the row where the person widens to about twice the
+    /// face below the chin is the shoulder line.
+    static func headLines(mask: CIImage, extent: CGRect, face: CGRect, chin: CGFloat) -> (crown: CGFloat, shoulder: CGFloat?) {
+        let fallback = face.maxY + face.height * 0.35
+        let scale = min(1, 512 / max(extent.width, extent.height))
+        let w = max(1, Int(extent.width * scale)), h = max(1, Int(extent.height * scale))
+        let small = mask.transformed(by: CGAffineTransform(translationX: -extent.minX, y: -extent.minY)).transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        guard let cg = context.createCGImage(small, from: CGRect(x: 0, y: 0, width: w, height: h)) else { return (fallback, nil) }
+        var gray = [UInt8](repeating: 0, count: w * h)
+        let drawn = gray.withUnsafeMutableBytes { buffer -> Bool in
+            guard let ctx = CGContext(data: buffer.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w,
+                                      space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue) else { return false }
+            ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h)); return true
+        }
+        guard drawn else { return (fallback, nil) }
+        // Row r of the bitmap is the top of the image first; y = maxY - r / scale.
+        func y(_ row: Int) -> CGFloat { extent.maxY - (CGFloat(row) + 0.5) / scale }
+        func row(_ y: CGFloat) -> Int { max(0, min(h - 1, Int((extent.maxY - y) * scale))) }
+        let x0 = max(0, Int((face.minX - extent.minX) * scale)), x1 = min(w - 1, Int((face.maxX - extent.minX) * scale))
+        guard x1 > x0 else { return (fallback, nil) }
+        var crown = fallback
+        let faceTop = row(face.maxY)
+        for r in 0..<faceTop {
+            var on = 0
+            for x in x0...x1 where gray[r * w + x] > 128 { on += 1 }
+            if Double(on) >= Double(x1 - x0 + 1) * 0.15 { crown = y(r); break }
+        }
+        if crown < face.maxY { crown = fallback }
+        var shoulder: CGFloat?
+        let faceWidth = face.width * scale
+        for r in row(chin)..<h {
+            var on = 0
+            for x in 0..<w where gray[r * w + x] > 128 { on += 1 }
+            if Double(on) >= Double(faceWidth) * 2.0 { shoulder = y(r); break }
+        }
+        return (crown, shoulder)
+    }
+
+    /// The crop (Core Image coordinates) that puts the head at the size's
+    /// target height, the crown at its gap from the top, centred.
+    static func portraitCrop(_ subject: PortraitSubject, size: PhotoSize, adjust: PortraitAdjust) -> (rect: CGRect, pxPerMM: CGFloat) {
+        let headPx = max(1, subject.crown - subject.chin)
+        let pxPerMM = headPx / CGFloat(size.headTarget * max(0.5, adjust.zoom))
+        let w = CGFloat(size.width) * pxPerMM, h = CGFloat(size.height) * pxPerMM
+        // The head's centre stays put while zooming.
+        let headCentre = (subject.crown + subject.chin) / 2
+        let centreFromTop = CGFloat(size.crownGap + size.headTarget / 2) * pxPerMM
+        let top = headCentre + centreFromTop - CGFloat(adjust.dy) * pxPerMM
+        let x = subject.centerX - w / 2 - CGFloat(adjust.dx) * pxPerMM
+        return (CGRect(x: x, y: top - h, width: w, height: h), pxPerMM)
+    }
+
+    static func portraitMetrics(_ subject: PortraitSubject, size: PhotoSize, adjust: PortraitAdjust) -> PortraitMetrics {
+        let (crop, k) = portraitCrop(subject, size: size, adjust: adjust)
+        func fromTop(_ y: CGFloat) -> Double { Double((crop.maxY - y) / k) }
+        return PortraitMetrics(head: Double((subject.crown - subject.chin) / k), crown: fromTop(subject.crown), chin: fromTop(subject.chin),
+                               shoulder: subject.shoulder.map(fromTop), centerOffset: Double((subject.centerX - crop.midX) / k))
+    }
+    /// The finished photo at 300 dpi: the head from chin to crown at the
+    /// size's required height, the crown at its gap from the top, centred.
+    /// Space beyond the original photo takes the background colour.
+    static func portrait(_ subject: PortraitSubject, size: PhotoSize, backdrop: Backdrop, adjust: PortraitAdjust = PortraitAdjust()) throws -> UIImage {
         let base = subject.image
-        let background = CIImage(color: CIColor(color: backdrop.color)).cropped(to: base.extent)
+        let background = CIImage(color: CIColor(color: backdrop.color))
         let composite = base.applyingFilter("CIBlendWithMask", parameters: [kCIInputBackgroundImageKey: background, kCIInputMaskImageKey: subject.mask])
-        let aspect = size.width / size.height
-        // Face (chin to forehead, ~ detection box × 1.45) fills about 62% of the height.
-        let faceHeight = subject.face.height * 1.45
-        var h = faceHeight / 0.62
-        var w = h * aspect
-        if w > base.extent.width { w = base.extent.width; h = w / aspect }
-        if h > base.extent.height { h = base.extent.height; w = h * aspect }
-        let x = min(base.extent.width - w, max(0, subject.face.midX - w / 2))
-        // Eyes about 58% from the bottom of the photo.
-        let eyes = subject.face.minY + subject.face.height * 0.62
-        let y = min(base.extent.height - h, max(0, eyes - h * 0.58))
-        let crop = CGRect(x: x, y: y, width: w, height: h)
+        let crop = portraitCrop(subject, size: size, adjust: adjust).rect
+        let x = crop.minX, y = crop.minY, w = crop.width, h = crop.height
         let pixelsW = size.width / 25.4 * 300, pixelsH = size.height / 25.4 * 300
         let out = composite.cropped(to: crop)
             .transformed(by: CGAffineTransform(translationX: -x, y: -y))

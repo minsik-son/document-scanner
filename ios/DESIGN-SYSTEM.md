@@ -4,6 +4,10 @@ Every tool screen in the app uses this one template. A new screen or a
 change to an existing one must follow it. Code lives in `ToolKit.swift`
 (tokens, buttons, page scaffold) and `ImageToolFlows.swift` (step flow).
 
+## Mockups
+
+`../design/system/`: `0-foundations.png` (tokens and parts) and one board per tool type: `1-photo-tools`, `2-document-tools`, `3-converters`, `4-camera-tools`, `5-editors`. New screens copy the board of their type.
+
 ## 1. Principle: one page, one job (Toss style)
 
 - A page answers one question ("Which language?", "Which size do you need?").

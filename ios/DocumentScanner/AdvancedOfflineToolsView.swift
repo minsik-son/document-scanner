@@ -275,161 +275,191 @@ struct AdvancedOfflineToolContent:View {
         else if tool == .translate || tool == .math { CameraTextToolView(tool:tool, documentID:documentID) }
         else { standardBody }
     }
-    private var standardBody:some View {
-        ScrollViewReader { proxy in
-        toolForm
-            .safeAreaInset(edge:.bottom) { bottomActions }
-            .navigationTitle(tool.rawValue).navigationBarTitleDisplayMode(.inline)
-            .navigationBarBackButtonHidden(busy || (tool == .word && wordStep != .source)).interactiveDismissDisabled(busy)
-            .toolbar {
-                if tool == .word && wordStep != .source && !busy {
-                    ToolbarItem(placement:.topBarLeading) {
-                        Button { 
-                            editingText = false
-                            if wordStep == .ready { clearOutput(); wordStep = .review }
-                            else { message = nil; wordStep = .source }
-                        } label: { Label("Back",systemImage:"chevron.left") }
-                        .accessibilityIdentifier("word-step-back")
-                    }
+    // MARK: Word export: one page per step (DESIGN-SYSTEM.md)
+
+    @State private var wordForward = true
+    private var wordStepIndex: Int { wordStep == .source ? 0 : wordStep == .review ? 1 : 2 }
+    private var standardBody: some View {
+        StepStack(step: wordStepIndex, forward: wordForward) {
+            switch wordStep {
+            case .source: wordSourcePage
+            case .review: wordReviewStepPage
+            case .ready: wordReadyPage
+            }
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(busy || wordStep != .source).interactiveDismissDisabled(busy)
+        .toolbar {
+            if wordStep != .source && !busy {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        editingText = false; wordForward = false
+                        if wordStep == .ready { clearOutput(); wordStep = .review }
+                        else { message = nil; wordStep = .source }
+                    } label: { Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold)) }
+                        .accessibilityLabel("Back").accessibilityIdentifier("word-step-back")
                 }
             }
-            .sheet(isPresented:$sharing) { if let files { ShareSheet(items:files.urls) } }
-            .fullScreenCover(isPresented:$quickLook) { if let url = files?.urls.first { OfficeQuickLook(url:url) } }
-            .fullScreenCover(isPresented:$wordCamera) {
-                OfficeScanCamera { result in
-                    wordCamera = false
-                    switch result {
-                    case .success(let images): if !images.isEmpty { acceptWordImages(images, name: "Scanned document") }
-                    case .failure(let error): report(error)
-                    }
-                }
-            }
-            .fileImporter(isPresented:$wordFilePicker, allowedContentTypes:[.pdf, .image]) { result in
+        }
+        .overlay { if busy { BusyOverlay(text: phase) { cancelWork() } } }
+        .sheet(isPresented: $sharing) { if let files { ShareSheet(items: files.urls) } }
+        .fullScreenCover(isPresented: $quickLook) { if let url = files?.urls.first { OfficeQuickLook(url: url) } }
+        .fullScreenCover(isPresented: $wordCamera) {
+            OfficeScanCamera { result in
+                wordCamera = false
                 switch result {
-                case .success(let url): loadWordFile(url)
-                case .failure(let error): if (error as NSError).code != NSUserCancelledError { report(error) }
+                case .success(let images): if !images.isEmpty { acceptWordImages(images, name: "Scanned document") }
+                case .failure(let error): report(error)
                 }
             }
-            .fullScreenCover(isPresented:$zoom) { if let image = zoomImage { EnlargedScanPreview(initialImage:image) { image } } }
-            .onChange(of:photos) { _,items in loadPhotos(items) }
-            .onChange(of:options) { _,_ in clearOutput(clearMessage: false) }
-            .onChange(of:allPages) { _,_ in text = "" }
-            .onChange(of:text) { _,value in if value.isEmpty { wordLayouts = []; wordLayoutText = "" } }
-            .onChange(of:countPoints) { _,_ in if tool == .count { clearOutput(clearMessage: false) } }
-            .task {
-                if inputs.isEmpty,doc != nil { loadPage() }
-                if tool == .translate { languages = await LanguageAvailability().supportedLanguages.map { $0.minimalIdentifier }.sorted() }
-            }
-            .onDisappear { if !zoom && !sharing && !quickLook && !wordCamera && !wordFilePicker { job?.cancel(); if let files { ExportFiles.remove(files.directory) }; clearWordPDF() } }
-            .onChange(of: files?.directory) { _, directory in if directory != nil { withAnimation { proxy.scrollTo("prepared-export", anchor: .center) } } }
-            .onChange(of: output.count) { _, count in if count > 0 { withAnimation { proxy.scrollTo("processed-output", anchor: .center) } } }
         }
-    }
-    private var bottomActions: some View {
-                VStack(spacing: 12) {
-                if busy { HStack { ProgressView(); Text(phase).font(.subheadline); Spacer(); Button("Cancel", action: cancelWork).disabled(cancelling).accessibilityIdentifier("offline-cancel") } }
-                if tool == .word {
-                    if !busy { wordPrimaryAction }
-                } else {
-                Button(tool.office ? "Create Office file" : tool == .translate ? "Translate offline" : tool == .math ? "Calculate" : tool == .count ? "Find objects" : "Preview result") { run() }.buttonStyle(PrimaryButton()).disabled(busy || (doc != nil && inputs.isEmpty)).accessibilityIdentifier("offline-run")
-                }
-                }.padding().background(.regularMaterial)
+        .fileImporter(isPresented: $wordFilePicker, allowedContentTypes: [.pdf, .image]) { result in
+            switch result {
+            case .success(let url): loadWordFile(url)
+            case .failure(let error): if (error as NSError).code != NSUserCancelledError { report(error) }
+            }
+        }
+        .fullScreenCover(isPresented: $zoom) { if let image = zoomImage { EnlargedScanPreview(initialImage: image) { image } } }
+        .onChange(of: photos) { _, items in loadPhotos(items) }
+        .onChange(of: options) { _, _ in clearOutput(clearMessage: false) }
+        .onChange(of: allPages) { _, _ in text = "" }
+        .onChange(of: text) { _, value in if value.isEmpty { wordLayouts = []; wordLayoutText = "" } }
+        .task { if inputs.isEmpty, doc != nil { loadPage() } }
+        .onDisappear { if !zoom && !sharing && !quickLook && !wordCamera && !wordFilePicker { job?.cancel(); if let files { ExportFiles.remove(files.directory) }; clearWordPDF() } }
     }
 
-    private var toolForm: some View {
-        Form {
-            if tool == .word { wordContent } else {
-            Section { Text(tool.detail).font(.subheadline).foregroundStyle(.secondary) }
-            inputSection
+    /// Step 1: the document. Without one, the ways to add it are the page.
+    private var wordSourcePage: some View {
+        ToolPage(title: "Make a Word file", subtitle: "Scan or import a page. We keep its tables, colours and layout.") {
             if let image = input {
-                Section("Input") {
-                    imageEditor(image)
-                    if inputs.count > 1 { Picker("Image",selection:$current) { ForEach(inputs.indices,id:\.self) { Text("Image \($0+1)").tag($0) } }.onChange(of:current) { _,_ in selection = .zero } }
-                }
-            }
-            controls
-            if tool.textTool || (tool == .slides && editableSlides) {
-                Section("Review recognized text") {
-                    Button("Read text from input") { readText() }.disabled(input == nil && doc == nil)
-                    TextEditor(text:$text).focused($editingText).frame(minHeight:180).accessibilityIdentifier("offline-text")
-                    if tool == .excel { Button("Insert column separator") { text += "\t" };Text("Use tabs between cells. OCR groups nearby lines; complex tables need correction.").font(.caption) }
-                }
-            }
-            if !translated.isEmpty { Section("Result") { Text(translated).textSelection(.enabled);ShareLink(item:translated) { Label("Share result",systemImage:"square.and.arrow.up") } } }
-            if !output.isEmpty {
-                Section("Preview") {
-                    ForEach(output.indices,id:\.self) { i in Image(uiImage:output[i]).resizable().scaledToFit().frame(maxHeight:300).accessibilityLabel("Processed result \(i+1)").onTapGesture { zoomImage = output[i];zoom = true } }
-                    Text("Tap a result to zoom.").font(.caption).foregroundStyle(.secondary)
-                    Button("Save PDF copy") { saveCopy() }.disabled(saved).accessibilityIdentifier("offline-save")
-                    Button("Prepare image export") { exportImages() }
-                }.id("processed-output")
-            }
-            if let files { Section("Export ready") { Text(files.urls.map(\.lastPathComponent).joined(separator:"\n")).font(.caption);Button("Preview exported file") { quickLook = true };Button("Share export") { sharing = true } }.id("prepared-export") }
-            
-            }
-            if let message { Text(message).foregroundStyle(.secondary).accessibilityIdentifier("offline-status") }
-        }.disabled(busy).scrollDismissesKeyboard(.interactively)
-    }
-
-    @ViewBuilder private var wordContent: some View {
-        Section {
-            WordExportIntroCard(
-                step: wordStep == .source ? 1 : wordStep == .review ? 2 : 3,
-                title: wordStep == .source ? "Choose your document" : wordStep == .review ? "Check your text" : "Your Word file is ready",
-                detail: wordStep == .source ? "We'll extract the text first." : wordStep == .review ? "Correct any recognition errors before creating your file." : "Preview it, then save or send a copy."
-            )
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
-        }
-        switch wordStep {
-        case .source:
-            wordSourceSection
-            Section {
-                Menu {
-                    ForEach(store.active) { document in
-                        Button(document.title) {
-                            clearWordPDF(); allPages = false
-                            selectedDocument = document.id; pageIndex = 0; loadPage()
+                HStack(alignment: .top, spacing: 14) {
+                    Button { zoomImage = image; zoom = true } label: {
+                        Image(uiImage: image).resizable().scaledToFit().frame(width: 96, height: 128)
+                            .background(Color.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(TK.grey200, lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Preview selected document").accessibilityHint("Opens a larger preview with zoom")
+                    .accessibilityIdentifier("word-input-preview")
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(doc?.title ?? wordSourceName).font(.system(size: 17, weight: .semibold)).foregroundStyle(TK.grey900).lineLimit(2)
+                        Text(wordPageCount > 1 ? "\(wordPageCount) pages" : "1 page").font(.system(size: 14)).foregroundStyle(TK.grey600)
+                        if wordPageCount > 1 {
+                            HStack(spacing: 8) {
+                                Button { wordPageSelection.wrappedValue = max(0, wordPageSelection.wrappedValue - 1) } label: { Image(systemName: "chevron.left") }
+                                    .buttonStyle(ChipStyle(selected: false)).disabled(wordPageSelection.wrappedValue == 0).accessibilityLabel("Previous page")
+                                Text("\(wordPageSelection.wrappedValue + 1) / \(wordPageCount)").font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey700)
+                                Button { wordPageSelection.wrappedValue = min(wordPageCount - 1, wordPageSelection.wrappedValue + 1) } label: { Image(systemName: "chevron.right") }
+                                    .buttonStyle(ChipStyle(selected: false)).disabled(wordPageSelection.wrappedValue >= wordPageCount - 1).accessibilityLabel("Next page")
+                            }.padding(.top, 4)
                         }
                     }
-                } label: { Label("Choose from saved documents", systemImage:"folder") }
-                .disabled(store.active.isEmpty)
-                Button("Type or paste text instead") { message = nil; wordReviewPage = 0; wordStep = .review }
-                    .accessibilityIdentifier("word-type-text")
-            }
-        case .review:
-            Section {
-                if text.components(separatedBy:"\u{000c}").count > 1 {
-                    Picker("Page",selection:$wordReviewPage) {
-                        ForEach(text.components(separatedBy:"\u{000c}").indices,id:\.self) { Text("Page \($0+1)").tag($0) }
+                    Spacer(minLength: 0)
+                }
+                .padding(14).background(TK.grey50, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                if wordPageCount > 1 {
+                    VStack(spacing: 10) {
+                        Button { allPages = true } label: { OptionCard(title: "All \(wordPageCount) pages", detail: "One Word file with every page", selected: allPages) }
+                            .buttonStyle(.plain).accessibilityIdentifier("word-all-pages")
+                        Button { allPages = false } label: { OptionCard(title: "This page only", detail: "Page \(wordPageSelection.wrappedValue + 1)", selected: !allPages) }
+                            .buttonStyle(.plain).accessibilityIdentifier("word-one-page")
                     }
                 }
-                if showsWordLayout {
-                    WordLayoutReview(page:wordLayoutPage(wordReviewPage))
-                        .padding(.vertical,6)
-                } else {
-                    TextEditor(text:wordReviewText).focused($editingText).frame(minHeight:300)
-                        .accessibilityLabel("Text for your Word file").accessibilityIdentifier("offline-text")
+                VStack(alignment: .leading, spacing: 8) {
+                    SectionLabel(text: "Use another document")
+                    HStack(spacing: 8) {
+                        Button { wordCamera = true } label: { Label("Scan", systemImage: "camera") }.buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("word-camera")
+                        PhotosPicker(selection: $photos, maxSelectionCount: 30, selectionBehavior: .ordered, matching: .images) { Label("Photos", systemImage: "photo") }
+                            .buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("word-photo")
+                        Button { wordFilePicker = true } label: { Label("File", systemImage: "doc") }.buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("word-file")
+                    }
                 }
-            } footer: {
-                Text(showsWordLayout
-                     ? "Tables keep their merged cells and colours in Word. Tap a cell to correct it."
-                     : wordLayouts.isEmpty ? "Exports editable text with separate document pages." : "Keep each line and tab in place so tables stay tables in Word.")
+            } else {
+                ToolHero(art: .ocr)
+                VStack(alignment: .leading, spacing: 4) {
+                    SectionLabel(text: "Add your document")
+                    Button { wordCamera = true } label: { ChoiceRow(symbol: "camera.fill", title: "Scan pages", detail: "Use the camera now") }
+                        .buttonStyle(.plain).accessibilityIdentifier("word-camera")
+                    PhotosPicker(selection: $photos, maxSelectionCount: 30, selectionBehavior: .ordered, matching: .images) {
+                        ChoiceRow(symbol: "photo.on.rectangle.angled", title: "Choose photos", detail: "Up to 30 pages, in order", tint: TK.teal, soft: TK.tealSoft)
+                    }.buttonStyle(.plain).accessibilityIdentifier("word-photo")
+                    Button { wordFilePicker = true } label: {
+                        ChoiceRow(symbol: "folder.fill", title: "Choose a file", detail: "A PDF or an image", tint: TK.orange, soft: TK.orangeSoft)
+                    }.buttonStyle(.plain).accessibilityIdentifier("word-file")
+                    if !store.active.isEmpty {
+                        Menu {
+                            ForEach(store.active) { document in
+                                Button(document.title) { clearWordPDF(); allPages = false; selectedDocument = document.id; pageIndex = 0; loadPage() }
+                            }
+                        } label: {
+                            ChoiceRow(symbol: "doc.text.fill", title: "Use a saved scan", detail: "From your documents", tint: TK.purple, soft: TK.purpleSoft)
+                        }.buttonStyle(.plain)
+                    }
+                    Button { message = nil; wordReviewPage = 0; wordForward = true; wordStep = .review } label: {
+                        ChoiceRow(symbol: "keyboard", title: "Type or paste text", detail: "No scan needed", tint: TK.grey600, soft: TK.grey100)
+                    }.buttonStyle(.plain).accessibilityIdentifier("word-type-text")
+                }
+            }
+            if let message { ToastMessage(text: message).accessibilityIdentifier("offline-status") }
+            Label("Processed on this iPhone", systemImage: "lock.shield").font(.system(size: 13)).foregroundStyle(TK.grey500)
+        } actions: {
+            Button("Extract text") { readText() }.buttonStyle(CTAButtonStyle())
+                .disabled(input == nil).accessibilityIdentifier("word-extract")
+        }
+    }
+
+    /// Step 2: check the text, as tables when the page has them.
+    private var wordReviewStepPage: some View {
+        let pageTexts = text.components(separatedBy: "\u{000c}")
+        return ToolPage(title: "Check your text", subtitle: showsWordLayout ? "Tap a cell to correct it. Tables stay tables in Word." : "Correct anything we misread before making the file.") {
+            if pageTexts.count > 1 {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(pageTexts.indices, id: \.self) { i in
+                            Button("Page \(i + 1)") { editingText = false; wordReviewPage = i }.buttonStyle(ChipStyle(selected: wordReviewPage == i))
+                        }
+                    }
+                }
+            }
+            if showsWordLayout {
+                WordLayoutReview(page: wordLayoutPage(wordReviewPage))
+            } else {
+                TextEditor(text: wordReviewText).focused($editingText)
+                    .font(.system(size: 16)).scrollContentBackground(.hidden)
+                    .padding(12).frame(minHeight: 320)
+                    .background(TK.grey50, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .accessibilityLabel("Text for your Word file").accessibilityIdentifier("offline-text")
             }
             if !wordLayouts.isEmpty {
-                Section {
-                    Button(wordPlainText ? "Show as tables" : "Edit as plain text") { toggleWordPlainText() }
-                        .accessibilityIdentifier("word-plain-text")
+                Button { toggleWordPlainText() } label: { Label(wordPlainText ? "Show as tables" : "Edit as plain text", systemImage: wordPlainText ? "tablecells" : "text.alignleft") }
+                    .buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("word-plain-text")
+            }
+            if let message { ToastMessage(text: message).accessibilityIdentifier("offline-status") }
+        } actions: {
+            Button("Create Word file") { run() }.buttonStyle(CTAButtonStyle())
+                .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .accessibilityIdentifier("offline-run")
+        }
+    }
+
+    /// Step 3: the file is ready.
+    private var wordReadyPage: some View {
+        ToolPage(title: "") {
+            VStack(spacing: 20) {
+                ZStack {
+                    Circle().fill(TK.blueSoft).frame(width: 132, height: 132)
+                    Circle().fill(TK.blue).frame(width: 84, height: 84)
+                    Image(systemName: "checkmark").font(.system(size: 38, weight: .bold)).foregroundStyle(.white)
+                }.padding(.top, 24).accessibilityHidden(true)
+                VStack(spacing: 8) {
+                    Text("Your Word file is ready").font(.system(size: 24, weight: .bold)).foregroundStyle(TK.grey900)
+                    Text(files?.urls.first?.lastPathComponent ?? "Document.docx").font(.system(size: 16)).foregroundStyle(TK.grey600)
                 }
-            }
-        case .ready:
-            if let files {
-                Section {
-                    Label(files.urls.first?.lastPathComponent ?? "Document.docx",systemImage:"doc.text")
-                        .font(.headline).padding(.vertical,12)
-                    Button("Preview Word file") { quickLook = true }.accessibilityIdentifier("word-preview")
-                }.id("prepared-export")
-            }
+            }.frame(maxWidth: .infinity)
+        } actions: {
+            Button("Preview") { quickLook = true }.buttonStyle(SecondaryCTAStyle()).disabled(files == nil).accessibilityIdentifier("word-preview")
+            Button("Share Word file") { sharing = true }.buttonStyle(CTAButtonStyle()).disabled(files == nil).accessibilityIdentifier("word-share")
         }
     }
     private var showsWordLayout: Bool {
@@ -474,135 +504,6 @@ struct AdvancedOfflineToolContent:View {
             else if wordPDF != nil { loadWordPDFPage(index) }
             else { current = index }
         })
-    }
-    private var wordSourceSection: some View {
-        Section {
-            VStack(spacing: 16) {
-                if let image = input {
-                    Button { zoomImage = image; zoom = true } label: {
-                        Image(uiImage:image).resizable().scaledToFit()
-                            .frame(maxWidth:.infinity).frame(height:260)
-                            .padding(12).background(Design.muted, in:RoundedRectangle(cornerRadius:18))
-                    }.buttonStyle(.plain)
-                        .accessibilityLabel("Preview selected document")
-                        .accessibilityHint("Opens a larger preview with zoom")
-                        .accessibilityIdentifier("word-input-preview")
-                    Text(doc?.title ?? wordSourceName).font(.subheadline.weight(.medium))
-                        .lineLimit(2).frame(maxWidth:.infinity, alignment:.leading)
-                } else {
-                    VStack(spacing:12) {
-                        ToolArtwork(name:"scan", size:80)
-                        Text("Add your document").font(.headline)
-                        Text("Scan a page, choose a photo,\nor import a PDF or image.")
-                            .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                    }.frame(maxWidth:.infinity).padding(.vertical,30)
-                        .background(Design.muted, in:RoundedRectangle(cornerRadius:18))
-                }
-                HStack(alignment:.top, spacing:8) {
-                    Button {
-                        wordCamera = true
-                    } label: { wordSourceLabel("Take photo", symbol:"camera") }
-                        .accessibilityIdentifier("word-camera")
-                    PhotosPicker(selection:$photos,maxSelectionCount:30,selectionBehavior:.ordered,matching:.images) {
-                        wordSourceLabel("Choose photo", symbol:"photo")
-                    }.accessibilityIdentifier("word-photo")
-                    Button { wordFilePicker = true } label: { wordSourceLabel("Choose file", symbol:"doc") }
-                        .accessibilityIdentifier("word-file")
-                }.buttonStyle(.plain)
-                if wordPageCount > 1 {
-                    Picker("Preview page", selection:wordPageSelection) {
-                        ForEach(0..<wordPageCount,id:\.self) { Text("Page \($0+1) of \(wordPageCount)").tag($0) }
-                    }
-                    Toggle("Extract all pages", isOn:$allPages)
-                }
-            }.padding(.vertical,8)
-        }
-    }
-    private func wordSourceLabel(_ title:String, symbol:String) -> some View {
-        VStack(spacing:8) {
-            Image(systemName:symbol).font(.system(size:21,weight:.medium))
-                .frame(width:48,height:44).background(Design.softBlue,in:RoundedRectangle(cornerRadius:14))
-            Text(title).font(.caption.weight(.medium)).multilineTextAlignment(.center)
-                .fixedSize(horizontal:false,vertical:true)
-        }.foregroundStyle(Design.blueInk).frame(maxWidth:.infinity).contentShape(Rectangle())
-    }
-    @ViewBuilder private var wordPrimaryAction: some View {
-        switch wordStep {
-        case .source:
-            Button("Extract text") { readText() }.buttonStyle(PrimaryButton())
-                .disabled(input == nil).accessibilityIdentifier("word-extract")
-        case .review:
-            Button("Create Word file") { run() }.buttonStyle(PrimaryButton())
-                .disabled(text.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)
-                .accessibilityIdentifier("offline-run")
-        case .ready:
-            Button("Share Word file") { sharing = true }.buttonStyle(PrimaryButton())
-                .disabled(files == nil).accessibilityIdentifier("word-share")
-        }
-    }
-
-    @ViewBuilder private var inputSection:some View {
-        Section("Source") {
-            PhotosPicker(selection:$photos,maxSelectionCount:tool == .mega ? 8 : 1,selectionBehavior:.ordered,matching:.images) { Label(tool == .mega ? "Choose overlapping photos" : "Choose photo",systemImage:"photo") }
-            Picker("Library document",selection:Binding(get: { selectedDocument }, set: { selectedDocument = $0; pageIndex = 0; loadPage() })) { Text("Choose a document").tag(nil as UUID?);ForEach(store.active) { doc in Text(doc.title).tag(doc.id as UUID?) } }
-            if let doc {
-                Picker("Page",selection:Binding(get: { pageIndex }, set: { pageIndex = $0; loadPage() })) { ForEach(doc.pages.indices,id:\.self) { Text("Page \($0+1)").tag($0) } }
-                if tool.office { Toggle("Use all document pages (up to 30)",isOn:$allPages) }
-            }
-        }
-    }
-    @ViewBuilder private func imageEditor(_ image:UIImage) -> some View {
-        let aspect = image.size.width/image.size.height
-        HStack { Spacer(minLength:0);GeometryReader { geo in
-            Image(uiImage:image).resizable().scaledToFit()
-                .overlay {
-                    if tool == .erase && !selection.isEmpty { Rectangle().stroke(.blue,lineWidth:2).background(.blue.opacity(0.1)).frame(width:selection.width*geo.size.width,height:selection.height*geo.size.height).position(x:selection.midX*geo.size.width,y:selection.midY*geo.size.height) }
-                    if tool == .count { ForEach(Array(countPoints.enumerated()),id:\.offset) { i,p in Text("\(i+1)").font(.caption2.bold()).foregroundStyle(.white).padding(4).background(.blue,in:Circle()).position(x:p.x*geo.size.width,y:p.y*geo.size.height) } }
-                    if tool == .book && twoPages { Rectangle().fill(.blue).frame(width:2).position(x:split*geo.size.width,y:geo.size.height/2) }
-                }
-                .contentShape(Rectangle())
-                .gesture(DragGesture(minimumDistance:0).onEnded { value in
-                    if tool == .erase {
-                        let x1 = min(1,max(0,value.startLocation.x/geo.size.width)), y1 = min(1,max(0,value.startLocation.y/geo.size.height)),x2 = min(1,max(0,value.location.x/geo.size.width)),y2 = min(1,max(0,value.location.y/geo.size.height))
-                        selection = CGRect(x:min(x1,x2),y:min(y1,y2),width:abs(x1-x2),height:abs(y1-y2))
-                    } else if tool == .count {
-                        let p = CGPoint(x:min(1,max(0,value.location.x/geo.size.width)),y:min(1,max(0,value.location.y/geo.size.height)))
-                        if let i = countPoints.indices.min(by:{ hypot(countPoints[$0].x-p.x,countPoints[$0].y-p.y) < hypot(countPoints[$1].x-p.x,countPoints[$1].y-p.y) }),hypot(countPoints[i].x-p.x,countPoints[i].y-p.y) < 0.04 { countPoints.remove(at:i) }
-                        else if countPoints.count < 500 { countPoints.append(p) }
-                    }
-                },including:tool == .erase || tool == .count ? .all : .subviews)
-        }.aspectRatio(aspect,contentMode:.fit).frame(maxWidth:min(320,280*aspect));Spacer(minLength:0) }
-    }
-    @ViewBuilder private var controls:some View {
-        if ![AdvancedTool.word, .excel, .math, .erase].contains(tool) {
-        Section("Options") {
-            switch tool {
-            case .book:
-                Toggle("Split into two pages",isOn:$twoPages)
-                if twoPages { Text("Gutter: \(Int(split*100))%");Slider(value:$split,in:0.2...0.8) }
-                Text("Page curve: \(Int(curve*100))%");Slider(value:$curve,in:-0.2...0.2);Button("Reset curve") { curve = 0 }
-            case .portrait:
-                Picker("Size",selection:$photoSize) { Text("35 × 45 mm").tag("35 × 45 mm");Text("2 × 2 inches").tag("2 × 2 inches") };Toggle("Blue background",isOn:$blue)
-            case .restore,.marks: Text("Strength");Slider(value:$strength,in:0...1)
-            case .count:
-                Text("\(countPoints.count) objects").font(.headline);Toggle("Light objects on dark background",isOn:$lightObjects);Text("Threshold");Slider(value:$threshold,in:0.05...0.95);Text("Minimum size");Slider(value:$minimumArea,in:0.0001...0.02)
-                Button("Preview corrected count") { if let input { output = [annotatedCount(input)];saved = false } }.disabled(input == nil);Button("Clear markers") { countPoints = [] }
-            case .mega:
-                if offsets.indices.contains(current),current > 0 {
-                    Button("Align with previous image") { align() }
-                    Stepper("Horizontal: \(Int(offsets[current].x)) px",value:$offsets[current].x,in:-16000...16000,step:1)
-                    Slider(value:$offsets[current].x,in:-16000...16000,step:1).accessibilityLabel("Horizontal position")
-                    Stepper("Vertical: \(Int(offsets[current].y)) px",value:$offsets[current].y,in:-16000...16000,step:1)
-                    Slider(value:$offsets[current].y,in:-16000...16000,step:1).accessibilityLabel("Vertical position")
-                };Text("Select Image 2 or later to set its position. Later images cover earlier ones in overlapping areas.").font(.caption)
-            case .slides: Toggle("Editable text instead of page images",isOn:$editableSlides)
-            case .translate:
-                Picker("From",selection:$from) { ForEach(languages,id:\.self) { Text(Locale.current.localizedString(forIdentifier:$0) ?? $0).tag($0) } }
-                Picker("To",selection:$to) { ForEach(languages,id:\.self) { Text(Locale.current.localizedString(forIdentifier:$0) ?? $0).tag($0) } }
-            default: EmptyView()
-            }
-        }
-    }
     }
     private func clearOutput(clearMessage: Bool = true) { output = [];translated = "";saved = false;if clearMessage { message = nil };if let files { ExportFiles.remove(files.directory) };files = nil }
     private func align() {
@@ -712,7 +613,7 @@ struct AdvancedOfflineToolContent:View {
                 } else if let source { results = [try read(source)] }
                 return (results.joined(separator:tool == .slides || tool == .word ? "\u{000c}" : "\n\n"), layouts)
             };try Task.checkCancellation();text = value;wordLayouts = layouts;wordLayoutText = value;message = value.isEmpty ? "No text found. Type or paste the text to continue." : (tool == .word ? nil : "Review the text before exporting.")
-            if tool == .word { wordReviewPage = 0; wordPlainText = false; wordStep = .review }
+            if tool == .word { wordReviewPage = 0; wordPlainText = false; wordForward = true; wordStep = .review }
         } catch { report(error) } }
     }
     private var portraitDimensions:CGSize { photoSize == "35 × 45 mm" ? CGSize(width:35,height:45) : CGSize(width:50.8,height:50.8) }
@@ -754,7 +655,7 @@ struct AdvancedOfflineToolContent:View {
                     }
                     return ("Slides.pptx",data)
                 };try Task.checkCancellation();files = try ExportFiles.write([result])
-                if tool == .word { wordStep = .ready; message = nil }
+                if tool == .word { wordForward = true; wordStep = .ready; message = nil }
                 else { message = "File created on this iPhone. Preview before sharing." }
                 // Show the finished file at full size right away, like a scan result.
                 quickLook = true
@@ -1092,7 +993,7 @@ struct CameraTextToolView: View {
             else if !math, let documentScan { PhotoTranslationView(scan:documentScan,from:from,to:to,onRetake:returnToCamera) }
             else { reviewScreen }
         }
-        .navigationTitle(tool.rawValue).navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .toolbar(step == .camera ? .hidden : .visible, for:.navigationBar)
         .toolbar {
@@ -1101,8 +1002,8 @@ struct CameraTextToolView: View {
                     Button {
                         editing = false; error = nil
                         if step == .result { result = ""; step = .review } else { returnToCamera() }
-                    } label: { Label("Back",systemImage:"chevron.left") }
-                    .disabled(busy).accessibilityIdentifier("text-tool-back")
+                    } label: { Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold)) }
+                    .disabled(busy).accessibilityLabel("Back").accessibilityIdentifier("text-tool-back")
                 }
                 ToolbarItem(placement:.topBarTrailing) { Button("Close") { dismiss() }.disabled(busy) }
             }
@@ -1139,41 +1040,47 @@ struct CameraTextToolView: View {
             }
         }
     }
+    /// Full-screen camera (DESIGN-SYSTEM.md, camera tools): close and flash on
+    /// top, one hint above the shutter, library left and more options right.
     private var captureScreen: some View {
         ZStack {
             Color.black.ignoresSafeArea()
             CameraPreview(controller:camera,tracking:camera.tracking).ignoresSafeArea()
-            VStack(spacing:18) {
+            VStack(spacing: 0) {
                 HStack {
-                    Button { dismiss() } label: { Image(systemName:"xmark").font(.title3).frame(width:44,height:44) }
+                    Button { dismiss() } label: { Image(systemName:"xmark").font(.system(size: 18, weight: .semibold)).frame(width:44,height:44) }
                         .accessibilityLabel("Close camera").accessibilityIdentifier("text-tool-close")
-                    Spacer(); Text(tool.rawValue).font(.headline); Spacer()
-                    Button { flash.toggle() } label: { Image(systemName:flash ? "bolt.fill" : "bolt.slash").frame(width:44,height:44) }
+                    Spacer()
+                    Text(tool.rawValue).font(.system(size: 15, weight: .semibold))
+                        .padding(.horizontal, 12).frame(height: 36).background(.black.opacity(0.35), in: Capsule())
+                    Spacer()
+                    Button { flash.toggle() } label: { Image(systemName:flash ? "bolt.fill" : "bolt.slash").font(.system(size: 18, weight: .semibold)).frame(width:44,height:44) }
                         .accessibilityLabel(flash ? "Turn flash off" : "Turn flash on")
-                }
-                if !math { languagePicker.padding(10).background(.black.opacity(0.65),in:Capsule()) }
+                }.padding(.horizontal, 12)
                 Spacer()
                 if !simulatedCamera, let problem = camera.problem {
                     VStack(spacing:12) {
-                        Text("Camera unavailable").font(.headline)
-                        Text(problem).font(.subheadline).multilineTextAlignment(.center)
-                        HStack {
-                            Button("Try again") { startCamera() }
-                            Button("Settings") { if let url = URL(string:UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } }
+                        Text("Camera unavailable").font(.system(size: 17, weight: .semibold))
+                        Text(problem).font(.system(size: 15)).multilineTextAlignment(.center)
+                        HStack(spacing: 8) {
+                            Button("Try again") { startCamera() }.buttonStyle(ChipStyle(selected: false))
+                            Button("Settings") { if let url = URL(string:UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } }.buttonStyle(ChipStyle(selected: false))
                         }
-                    }.padding().background(.black.opacity(0.75),in:RoundedRectangle(cornerRadius:20))
+                    }.padding(20).background(.black.opacity(0.75),in:RoundedRectangle(cornerRadius:20, style: .continuous)).padding(.horizontal, 24)
+                    Spacer()
                 }
-                Text(math ? "Point at the math on your page" : "Point at the document to translate")
-                    .font(.title3.weight(.semibold)).multilineTextAlignment(.center)
-                Text(math ? "Straighten the scan, then review and export the text." : "Scan the page, then replace its text in place.")
-                    .font(.subheadline).foregroundStyle(.white.opacity(0.8)).multilineTextAlignment(.center)
-                if let error { Text(error).font(.footnote).accessibilityIdentifier("text-tool-error") }
+                Text(error ?? (math ? "Point at the math on your page" : "Point at the page to translate"))
+                    .font(.system(size: 16, weight: .semibold)).multilineTextAlignment(.center)
+                    .padding(.horizontal, 16).padding(.vertical, 9)
+                    .background(error == nil ? Color.black.opacity(0.55) : TK.red, in: Capsule())
+                    .accessibilityIdentifier(error == nil ? "text-tool-hint" : "text-tool-error")
+                    .padding(.horizontal, 24)
                 HStack {
-                    PhotosPicker(selection:$photo,matching:.images) { Image(systemName:"photo").font(.title2).frame(width:64,height:64) }
+                    PhotosPicker(selection:$photo,matching:.images) { Image(systemName:"photo").font(.system(size: 22, weight: .semibold)).frame(width:56,height:56).background(.black.opacity(0.35), in: Circle()) }
                         .accessibilityLabel("Choose photo").accessibilityIdentifier("text-tool-photo")
                     Spacer()
                     Button(action:capture) {
-                        Circle().fill(.white).frame(width:76,height:76).overlay(Circle().stroke(.black,lineWidth:3).padding(5))
+                        Circle().strokeBorder(.white, lineWidth: 4).frame(width:76,height:76).overlay(Circle().fill(.white).padding(8))
                     }.disabled(!camera.ready && !simulatedCamera)
                         .accessibilityLabel(math ? "Capture expression" : "Capture text").accessibilityIdentifier("text-tool-capture")
                     Spacer()
@@ -1189,75 +1096,59 @@ struct CameraTextToolView: View {
                                 }
                             }
                         }
-                    } label: { Image(systemName:"ellipsis").font(.title2).frame(width:64,height:64) }
+                    } label: { Image(systemName:"ellipsis").font(.system(size: 22, weight: .semibold)).frame(width:56,height:56).background(.black.opacity(0.35), in: Circle()) }
                         .accessibilityLabel("More input options").accessibilityIdentifier("text-tool-more")
-                }.padding(.horizontal,22).padding(.bottom,12)
-            }.padding(.horizontal,20).foregroundStyle(.white)
-                .background(alignment:.bottom) { LinearGradient(colors:[.clear,.black.opacity(0.9)],startPoint:.center,endPoint:.bottom).ignoresSafeArea() }
-                .disabled(busy)
-            if busy {
-                VStack(spacing:18) {
-                    ProgressView().tint(.white); Text(phase).foregroundStyle(.white)
-                    Button("Cancel") { job?.cancel() }.tint(.white).disabled(phase == "Capturing…")
-                }.padding(28).background(.black.opacity(0.9),in:RoundedRectangle(cornerRadius:22))
+                }.padding(.horizontal, 28).padding(.top, 18).padding(.bottom, 12)
             }
+            .foregroundStyle(.white)
+            .disabled(busy)
+            if busy { BusyOverlay(text: phase, cancel: phase == "Capturing…" ? nil : { job?.cancel() }) }
         }
     }
+    /// Typed or recognized expression (math) and the answer, as tool pages.
     private var reviewScreen: some View {
-        ScrollView {
-            VStack(alignment:.leading,spacing:22) {
-                VStack(alignment:.leading,spacing:8) {
-                    Text(step == .result ? "Ready" : "Review").font(.caption.weight(.semibold)).foregroundStyle(Design.blueInk)
-                    Text(step == .result ? (math ? "Your answer" : "Your translation") : (math ? "Check your expression" : "Check your text"))
-                        .font(.system(size:28,weight:.bold)).foregroundStyle(.primary)
-                    Text(step == .result ? "Ready to copy or share." : "Correct anything the camera may have missed.").font(.subheadline).foregroundStyle(.secondary)
-                }.frame(maxWidth:.infinity,alignment:.leading).padding(22)
-                    .background(OfficeHeaderPalette.word.gradient,in:RoundedRectangle(cornerRadius:24))
-                if step == .review {
+        StepStack(step: step == .result ? 1 : 0, forward: step == .result) {
+            if step == .result {
+                ToolPage(title: math ? "Your answer" : "Your translation", subtitle: text) {
+                    Text(result).font(.system(size: math ? 40 : 22, weight: .bold)).foregroundStyle(TK.grey900)
+                        .textSelection(.enabled).accessibilityIdentifier("text-tool-result")
+                    HStack(spacing: 8) {
+                        Button { UIPasteboard.general.string = result } label: { Label("Copy", systemImage: "doc.on.doc") }.buttonStyle(ChipStyle(selected: false))
+                        ShareLink(item: result) { Label("Share", systemImage: "square.and.arrow.up") }.buttonStyle(ChipStyle(selected: false))
+                    }
+                } actions: {
+                    Button("Scan another") { returnToCamera() }.buttonStyle(CTAButtonStyle()).accessibilityIdentifier("text-tool-another")
+                }
+            } else {
+                ToolPage(title: math ? "Check your expression" : "Check your text", subtitle: math ? "Arithmetic only: + − × ÷, powers, parentheses and functions like sqrt(81)." : "Correct anything the camera may have missed.") {
                     if let image {
                         Button { zoom = true } label: {
-                            Image(uiImage:image).resizable().scaledToFit().frame(maxWidth:.infinity).frame(maxHeight:220)
-                                .padding(12).background(Design.muted,in:RoundedRectangle(cornerRadius:20))
+                            Image(uiImage: image).resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 200)
+                                .padding(10).background(TK.grey50, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                         }.buttonStyle(.plain).accessibilityLabel("Enlarge captured image")
                     }
-                    if !math { languagePicker.foregroundStyle(Design.blueInk) }
                     if math && lines.count > 1 {
-                        Menu("Choose a recognized line") { ForEach(Array(lines.enumerated()),id:\.offset) { _, line in Button(line) { text = line } } }
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) { ForEach(Array(lines.enumerated()), id: \.offset) { _, line in Button(line) { text = line }.buttonStyle(ChipStyle(selected: text == line)) } }
+                        }
                     }
-                    TextEditor(text:$text).focused($editing).frame(minHeight:150).padding(12)
-                        .background(.white,in:RoundedRectangle(cornerRadius:18))
+                    TextEditor(text: $text).focused($editing).font(.system(size: 17)).scrollContentBackground(.hidden)
+                        .padding(12).frame(minHeight: 150)
+                        .background(TK.grey50, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                         .accessibilityIdentifier("offline-text").accessibilityLabel(math ? "Expression" : "Recognized text")
-                    Text(math ? "Arithmetic only: + − × ÷, powers, parentheses and functions such as sqrt(81). Trigonometry uses radians. Word problems and algebra equations aren't supported." : "Translation stays on this iPhone. Both languages must already be installed in Apple's Translate app. Requires iOS 26 or later.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                } else {
-                    Text(text).font(.subheadline).foregroundStyle(.secondary).textSelection(.enabled)
-                    Text(result).font(math ? .system(size:40,weight:.bold) : .title3).textSelection(.enabled).accessibilityIdentifier("text-tool-result")
-                    HStack(spacing:24) {
-                        Button { UIPasteboard.general.string = result } label: { Label("Copy",systemImage:"doc.on.doc") }
-                        ShareLink(item:result) { Label("Share",systemImage:"square.and.arrow.up") }
-                    }.buttonStyle(.bordered)
-                }
-            }.padding(20)
-        }.background(Design.muted).scrollDismissesKeyboard(.interactively).disabled(busy)
-            .safeAreaInset(edge:.bottom) {
-                VStack(spacing:12) {
-                    if let error { Text(error).font(.footnote).foregroundStyle(.red).frame(maxWidth:.infinity,alignment:.leading).accessibilityIdentifier("text-tool-error") }
-                    if busy { HStack { ProgressView(); Text(phase); Spacer(); Button("Cancel") { job?.cancel() } } }
-                    else {
-                        Button(step == .result ? "Scan another" : math ? "Calculate" : "Translate") {
-                            if step == .result { returnToCamera() } else { run() }
-                        }.buttonStyle(PrimaryButton()).disabled(step == .review && !canRun)
-                            .accessibilityIdentifier(step == .result ? "text-tool-another" : "offline-run")
+                    if let error {
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "exclamationmark.circle.fill").foregroundStyle(TK.red)
+                            Text(error).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800).accessibilityIdentifier("text-tool-error")
+                            Spacer(minLength: 0)
+                        }.padding(16).background(TK.grey100, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
-                }.padding().background(.regularMaterial)
+                } actions: {
+                    Button(math ? "Calculate" : "Translate") { run() }.buttonStyle(CTAButtonStyle()).disabled(!canRun).accessibilityIdentifier("offline-run")
+                }
             }
-    }
-    private var languagePicker: some View {
-        HStack {
-            Picker("From",selection:$from) { ForEach(languages,id:\.self) { Text(Locale.current.localizedString(forIdentifier:$0) ?? $0).tag($0) } }.accessibilityIdentifier("text-tool-from")
-            Image(systemName:"arrow.right").accessibilityHidden(true)
-            Picker("To",selection:$to) { ForEach(languages,id:\.self) { Text(Locale.current.localizedString(forIdentifier:$0) ?? $0).tag($0) } }.accessibilityIdentifier("text-tool-to")
-        }.pickerStyle(.menu).tint(step == .camera ? .white : Design.blueInk).frame(maxWidth:.infinity)
+        }
+        .overlay { if busy { BusyOverlay(text: phase) { job?.cancel() } } }
     }
     private func startCamera() {
         guard visible,step == .camera,scenePhase == .active,!busy,!importing,!simulatedCamera else { return }

@@ -30,41 +30,31 @@ struct PhotoTranslationView: View {
     private func name(_ code: String) -> String { Locale.current.localizedString(forIdentifier: code) ?? code }
     private var areaCount: Int { scan.regions.filter { !$0.isMarker }.count }
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                if ready { resultContent } else { languageContent }
+        StepStack(step: ready ? 1 : 0, forward: ready) {
+            if ready {
+                ToolPage(title: "Translated to \(name(to))", subtitle: resultSummary) { resultContent } actions: {
+                    Button(composition?.issues.isEmpty == false ? "Share PDF" : "Share translated PDF") { export(save: false) }
+                        .buttonStyle(CTAButtonStyle()).disabled(busy).accessibilityIdentifier("translation-share")
+                }
+            } else {
+                ToolPage(title: "Which language?", subtitle: "We'll replace the text in place and keep the page as it is.") { languageContent } actions: {
+                    Button(complete ? "Preview translation" : "Translate to \(name(to))") { translate() }
+                        .buttonStyle(CTAButtonStyle()).disabled(busy || scan.regions.isEmpty || from == to)
+                        .accessibilityIdentifier("translation-run")
+                }
             }
-            .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
         }
-        .background(Color.white).disabled(busy)
-        .navigationTitle("Photo translation").navigationBarTitleDisplayMode(.inline).navigationBarBackButtonHidden(true)
+        .navigationTitle("").navigationBarTitleDisplayMode(.inline).navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button {
                     if ready { invalidate(); error = nil } else { onRetake() }
-                } label: { Label("Back", systemImage: "chevron.left") }.disabled(busy).accessibilityIdentifier("translation-back")
+                } label: { Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold)) }
+                    .disabled(busy).accessibilityLabel("Back").accessibilityIdentifier("translation-back")
             }
-            ToolbarItem(placement: .topBarTrailing) { Button("Close") { dismiss() }.disabled(busy) }
+            if !ready { ToolbarItem(placement: .topBarTrailing) { Button("Close") { dismiss() }.disabled(busy) } }
         }
-        .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 10) {
-                if let error { Text(error).font(.footnote).foregroundStyle(TK.red).frame(maxWidth: .infinity, alignment: .leading).accessibilityIdentifier("text-tool-error") }
-                if busy {
-                    HStack(spacing: 10) {
-                        ProgressView(); Text(phase).font(.subheadline).foregroundStyle(TK.grey700); Spacer()
-                        Button("Cancel") { job?.cancel() }.foregroundStyle(TK.grey600)
-                    }.frame(minHeight: 56)
-                } else if ready {
-                    Button(composition?.issues.isEmpty == false ? "Share PDF" : "Share translated PDF") { export(save: false) }
-                        .buttonStyle(CTAButtonStyle()).accessibilityIdentifier("translation-share")
-                } else {
-                    Button(complete ? "Preview translation" : "Translate to \(name(to))") { translate() }
-                        .buttonStyle(CTAButtonStyle()).disabled(scan.regions.isEmpty || from == to)
-                        .accessibilityIdentifier("translation-run")
-                }
-            }
-            .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 8).background(Color.white)
-        }
+        .overlay { if busy { BusyOverlay(text: phase) { job?.cancel() } } }
         .sheet(isPresented: $editAreas) {
             TranslationAreasEditor(regions: scan.regions, image: scan.image, issues: composition?.issues ?? [:], issuesOnly: reviewIssuesOnly) { changed in
                 scan.regions = changed; invalidate(); error = nil
@@ -93,14 +83,26 @@ struct PhotoTranslationView: View {
         .onDisappear { if !zoom && !sharing && !crop && !editAreas { job?.cancel(); if let files { ExportFiles.remove(files.directory) } } }
     }
 
+    @ViewBuilder private var errorRow: some View {
+        if let error {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "exclamationmark.circle.fill").foregroundStyle(TK.red)
+                Text(error).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("text-tool-error")
+                Spacer(minLength: 0)
+            }.padding(16).background(TK.grey100, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+    }
+    private var resultSummary: String {
+        guard let composition else { return "" }
+        let replaced = composition.replaced == 1 ? "1 text area replaced" : "\(composition.replaced) text areas replaced"
+        return replaced + (composition.issues.isEmpty ? "" : " · \(composition.issues.count) to check")
+    }
+
     // MARK: Page 1 — pick the languages
 
     private var languageContent: some View {
         Group {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Which language?").font(.system(size: 28, weight: .bold)).foregroundStyle(TK.grey900)
-                Text("We'll replace the text in place and keep the page as it is.").font(.system(size: 16)).foregroundStyle(TK.grey600)
-            }
             VStack(spacing: 0) {
                 languageRow(label: "From", code: from, side: .from)
                 ZStack {
@@ -149,6 +151,7 @@ struct PhotoTranslationView: View {
             }
             .padding(14)
             .background(TK.grey50, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            errorRow
             Label("Offline with languages installed in Apple's Translate app.", systemImage: "lock.shield")
                 .font(.system(size: 13)).foregroundStyle(TK.grey500)
         }
@@ -176,13 +179,6 @@ struct PhotoTranslationView: View {
 
     private var resultContent: some View {
         Group {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Translated to \(name(to))").font(.system(size: 28, weight: .bold)).foregroundStyle(TK.grey900)
-                if let composition {
-                    Text((composition.replaced == 1 ? "1 text area replaced" : "\(composition.replaced) text areas replaced") + (composition.issues.isEmpty ? "" : " · \(composition.issues.count) to check"))
-                        .font(.system(size: 16)).foregroundStyle(TK.grey600)
-                }
-            }
             Picker("Page preview", selection: $original) { Text("Translated").tag(false); Text("Original").tag(true) }.pickerStyle(.segmented)
             Button { zoom = true } label: {
                 Image(uiImage: displayed).resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 440)
@@ -217,6 +213,7 @@ struct PhotoTranslationView: View {
                 Button { reviewIssuesOnly = false; editAreas = true } label: { Label("Edit", systemImage: "pencil") }
                     .buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("translation-edit-areas")
             }
+            errorRow
             Text("Fonts are approximated. Text we couldn't read stays as in the scan.").font(.system(size: 13)).foregroundStyle(TK.grey500)
         }
     }

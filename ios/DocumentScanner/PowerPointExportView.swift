@@ -64,24 +64,30 @@ struct PowerPointExportView: View {
     @State private var sharing = false
     @State private var editMode: EditMode = .inactive
 
+    @State private var forward = true
+    private var pageIndex: Int { export != nil ? 3 : stage }
     var body: some View {
-        content
-            .navigationTitle("\(formatName) export").navigationBarTitleDisplayMode(.inline)
+        StepStack(step: pageIndex, forward: forward) {
+            if export != nil { readyPage }
+            else if stage == 2 { reviewPage }
+            else if stage == 1 { modePage }
+            else { sourcePage }
+        }
+            .navigationTitle("").navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(busy || export != nil || stage > 0)
             .interactiveDismissDisabled(busy)
             .toolbar {
                 if (export != nil || stage > 0) && !busy {
                     ToolbarItem(placement:.topBarLeading) {
-                        Button { if export != nil { clearExport() } else { stage = 0; tables = []; slideTexts = []; layouts = [] }; message = nil } label: { Label("Back",systemImage:"chevron.left") }
-                            .accessibilityIdentifier("ppt-edit")
-                    }
-                } else if pages.count > 1 && !busy && stage == 0 {
-                    ToolbarItem(placement:.topBarTrailing) {
-                        Button(editMode == .active ? "Done" : "Reorder") { editMode = editMode == .active ? .inactive : .active }
+                        Button {
+                            forward = false
+                            if export != nil { clearExport() } else { stage = 0; tables = []; slideTexts = []; layouts = [] }; message = nil
+                        } label: { Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold)) }
+                            .accessibilityLabel("Back").accessibilityIdentifier("ppt-edit")
                     }
                 }
             }
-            .safeAreaInset(edge:.bottom) { primaryAction }
+            .overlay { if busy { BusyOverlay(text: phase) { job?.cancel() } } }
             .photosPicker(isPresented:$photoPicker,selection:$photos,maxSelectionCount:max(1,30-pages.count),selectionBehavior:.ordered,matching:.images)
             .onChange(of:photos) { _,items in if !items.isEmpty { addPhotos(items) } }
             .fileImporter(isPresented:$filePicker,allowedContentTypes:[.pdf,.image],allowsMultipleSelection:true) { result in
@@ -121,134 +127,145 @@ struct PowerPointExportView: View {
             }
     }
 
-    private var content: some View {
-        List {
-            Section { introduction.listRowInsets(EdgeInsets()).listRowBackground(Color.clear) }
-            if let export {
-                Section {
-                    Label(excel ? "\(tables.count) tables ready" : "\(pages.count) \(pages.count == 1 ? "slide" : "slides") ready",systemImage:"checkmark.circle.fill")
-                        .foregroundStyle(Design.blueInk).accessibilityIdentifier("ppt-ready")
-                    Text(export.urls.first?.lastPathComponent ?? "Slides.pptx").font(.subheadline)
-                    Button("Preview \(formatName)") { preview = true }.accessibilityIdentifier("ppt-preview")
-                }
-            } else if stage == 2 {
-                if excel {
-                    Section {
-                        Picker("Table",selection:$tableIndex) {
-                            ForEach(tables.indices,id:\.self) { Text(tables[$0].name).tag($0) }
-                        }
-                        if tables.indices.contains(tableIndex) { OfficeTableEditor(table:$tables[tableIndex]) }
-                    } footer: { Text("Check names, numbers and merged cells. Each page becomes a worksheet that keeps its layout: merged cells, fills, borders, fonts and pictures. Values are exported as text to preserve leading zeros.") }
-                } else {
-                    ForEach(slideTexts.indices,id:\.self) { index in
-                        Section("Slide \(index+1)") {
-                            TextEditor(text:$slideTexts[index]).frame(minHeight:180).accessibilityIdentifier("ppt-text-\(index+1)")
-                        }
-                    }
-                    Section { Text("Creates editable text slides. Original pictures, fonts and page layout are not included.").font(.footnote).foregroundStyle(.secondary) }
-                }
-            } else if stage == 1 {
-                Section("Choose your slide content") {
-                    Button { mode = .layout } label: {
-                        Label("Editable, same layout",systemImage:mode == .layout ? "checkmark.circle.fill" : "circle")
-                    }.accessibilityIdentifier("ppt-mode-layout")
-                    Text("Text, tables and pictures stay where they are on the page, with their sizes, colors and borders. Everything stays editable.").font(.subheadline).foregroundStyle(.secondary)
-                    Button { mode = .image } label: {
-                        Label("Keep original appearance",systemImage:mode == .image ? "checkmark.circle.fill" : "circle")
-                    }.accessibilityIdentifier("ppt-mode-image")
-                    Text("Each selected page becomes a full-resolution image on a slide.").font(.subheadline).foregroundStyle(.secondary)
-                    Button { mode = .text } label: {
-                        Label("Editable text",systemImage:mode == .text ? "checkmark.circle.fill" : "circle")
-                    }.accessibilityIdentifier("ppt-mode-text")
-                    Text("Extract and check the text first. Pictures and original layout won't be included.").font(.subheadline).foregroundStyle(.secondary)
+    @ViewBuilder private var statusRow: some View {
+        if let message {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "info.circle.fill").foregroundStyle(TK.grey500)
+                Text(message).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("ppt-status")
+                Spacer(minLength: 0)
+            }.padding(16).background(TK.grey100, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+    }
+
+    /// Step 1: the pages, in slide order.
+    private var sourcePage: some View {
+        ToolPage(title: excel ? "Turn tables into Excel" : "Turn pages into slides",
+                 subtitle: excel ? "Pick the pages with your tables. You'll check every cell next." : "Pick up to 30 pages. Each one becomes a slide.") {
+            if pages.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    SectionLabel(text: "Add pages")
+                    Button { camera = true } label: { ChoiceRow(symbol: "camera.fill", title: "Scan pages", detail: "Use the camera now") }
+                        .buttonStyle(.plain).accessibilityIdentifier("office-camera")
+                    Button { photoPicker = true } label: { ChoiceRow(symbol: "photo.on.rectangle.angled", title: "Choose photos", detail: "Several at once, in order", tint: TK.teal, soft: TK.tealSoft) }
+                        .buttonStyle(.plain).accessibilityIdentifier("ppt-photos")
+                    Button { filePicker = true } label: { ChoiceRow(symbol: "folder.fill", title: "Choose files", detail: "PDFs or images", tint: TK.orange, soft: TK.orangeSoft) }
+                        .buttonStyle(.plain).accessibilityIdentifier("ppt-files")
+                    Button { libraryPicker = true } label: { ChoiceRow(symbol: "doc.text.fill", title: "Use saved pages", detail: "From your documents", tint: TK.purple, soft: TK.purpleSoft) }
+                        .buttonStyle(.plain).accessibilityIdentifier("ppt-library")
                 }
             } else {
-                Section {
-                    HStack(alignment:.top,spacing:12) {
-                        Button {
-                            camera = true
-                        } label: { sourceLabel("Scan",icon:"camera") }.accessibilityIdentifier("office-camera")
-                        Button { photoPicker = true } label: { sourceLabel("Photos",icon:"photo.on.rectangle") }.accessibilityIdentifier("ppt-photos")
-                        Button { filePicker = true } label: { sourceLabel("Files",icon:"doc") }.accessibilityIdentifier("ppt-files")
-                        Button { libraryPicker = true } label: { sourceLabel("Saved pages",icon:"folder") }.accessibilityIdentifier("ppt-library")
-                    }.buttonStyle(.plain).padding(.vertical,8).disabled(pages.count >= 30)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("\(pages.count) selected · in this order").font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey600)
+                        .accessibilityIdentifier("ppt-selection-count")
+                    ForEach(Array(pages.enumerated()), id: \.element.id) { index, page in slideRow(page, index: index) }
                 }
-                if pages.isEmpty {
-                    Section {
-                        ContentUnavailableView("Choose your pages",systemImage:"photo.stack",description:Text(excel ? "Select photos or PDF pages containing tables." : "Select several photos or document pages at once. Each one becomes a slide."))
+                VStack(alignment: .leading, spacing: 8) {
+                    SectionLabel(text: "Add more")
+                    HStack(spacing: 8) {
+                        Button { camera = true } label: { Label("Scan", systemImage: "camera") }.buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("office-camera")
+                        Button { photoPicker = true } label: { Label("Photos", systemImage: "photo") }.buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("ppt-photos")
+                        Button { filePicker = true } label: { Label("Files", systemImage: "doc") }.buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("ppt-files")
+                        Button { libraryPicker = true } label: { Label("Saved", systemImage: "folder") }.buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("ppt-library")
+                    }.disabled(pages.count >= 30)
+                }
+            }
+            statusRow
+            Label("Processed on this iPhone", systemImage: "lock.shield").font(.system(size: 13)).foregroundStyle(TK.grey500)
+        } actions: {
+            Button(excel ? "Extract tables" : "Continue") {
+                if !excel { forward = true; stage = 1 } else { recognize() }
+            }.buttonStyle(CTAButtonStyle()).disabled(busy || pages.isEmpty).accessibilityIdentifier("office-continue")
+        }
+    }
+
+    /// Step 2 (PowerPoint): how pages become slides.
+    private var modePage: some View {
+        ToolPage(title: "How should slides look?", subtitle: "You can change this and make the file again.") {
+            VStack(spacing: 10) {
+                Button { mode = .layout } label: { OptionCard(title: "Editable, same layout", detail: "Text, tables and pictures stay where they are, all editable", selected: mode == .layout) }
+                    .buttonStyle(.plain).accessibilityIdentifier("ppt-mode-layout")
+                Button { mode = .image } label: { OptionCard(title: "Keep original look", detail: "Each page as a full-resolution picture", selected: mode == .image) }
+                    .buttonStyle(.plain).accessibilityIdentifier("ppt-mode-image")
+                Button { mode = .text } label: { OptionCard(title: "Editable text only", detail: "Check the text first; no pictures or layout", selected: mode == .text) }
+                    .buttonStyle(.plain).accessibilityIdentifier("ppt-mode-text")
+            }
+            statusRow
+        } actions: {
+            Button(editable ? "Extract text" : "Create \(formatName)") { if editable { recognize() } else { create() } }
+                .buttonStyle(CTAButtonStyle()).disabled(busy || pages.isEmpty)
+                .accessibilityIdentifier(editable ? "office-extract" : "ppt-create")
+        }
+    }
+
+    /// Step 3: check cells (Excel) or slide text.
+    private var reviewPage: some View {
+        ToolPage(title: excel ? "Check your tables" : "Check your slide text", subtitle: excel ? "Tap a cell to correct it. Merged cells, fills and fonts are kept." : "Pictures and page layout aren't included in text slides.") {
+            if excel {
+                if tables.count > 1 {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) { ForEach(tables.indices, id: \.self) { i in Button(tables[i].name) { tableIndex = i }.buttonStyle(ChipStyle(selected: tableIndex == i)) } }
                     }
-                } else {
-                    Section {
-                        ForEach(Array(pages.enumerated()),id:\.element.id) { index,page in
-                            slideRow(page,index:index)
-                        }
-                        .onMove { from,to in pages.move(fromOffsets:from,toOffset:to) }
-                        .onDelete { indices in pages.remove(atOffsets:indices) }
-                    } header: {
-                        Text("\(pages.count) selected · Page order").accessibilityIdentifier("ppt-selection-count")
-                    } footer: {
-                        Text(excel ? "Select the pages containing your tables. You can check every cell before exporting." : "Choose pages now. Choose how your slides will look next.")
+                }
+                if tables.indices.contains(tableIndex) { OfficeTableEditor(table: $tables[tableIndex]) }
+            } else {
+                ForEach(slideTexts.indices, id: \.self) { index in
+                    VStack(alignment: .leading, spacing: 8) {
+                        SectionLabel(text: "Slide \(index + 1)")
+                        TextEditor(text: $slideTexts[index]).font(.system(size: 16)).scrollContentBackground(.hidden)
+                            .padding(12).frame(minHeight: 160)
+                            .background(TK.grey50, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                            .accessibilityIdentifier("ppt-text-\(index+1)")
                     }
                 }
             }
-            if let message { Section { Text(message).foregroundStyle(.secondary).accessibilityIdentifier("ppt-status") } }
+            statusRow
+        } actions: {
+            Button("Create \(formatName)") { create() }.buttonStyle(CTAButtonStyle())
+                .disabled(busy || (!excel && slideTexts.allSatisfy { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }))
+                .accessibilityIdentifier("ppt-create")
         }
-        .environment(\.editMode,$editMode).disabled(busy)
     }
 
-    private var headerPalette: OfficeHeaderPalette { excel ? .excel : .slides }
-    private var introduction: some View {
-        HStack(spacing:16) {
-            VStack(alignment:.leading,spacing:10) {
-                Text(export != nil ? "Your \(formatName) is ready" : stage == 2 ? (excel ? "Check your tables" : "Check your slide text") : stage == 1 ? "Make it your presentation" : excel ? "Turn tables into Excel" : "Turn pages into slides")
-                    .font(.system(.title2,design:.rounded,weight:.bold)).foregroundStyle(headerPalette.ink)
-                    .fixedSize(horizontal:false,vertical:true)
-                Text(export != nil ? "Preview your file, then save or share." : stage == 2 ? "Tap to correct anything before exporting." : stage == 1 ? "Keep the page design and edit everything on it." : "Choose up to 30 pages. Everything is processed on this iPhone.")
-                    .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
-            }.frame(maxWidth:.infinity,alignment:.leading)
-            ToolArtwork(name:excel ? "excel" : "slides",size:72)
-        }.padding(22)
-            .background(headerPalette.gradient,in:RoundedRectangle(cornerRadius:24))
-    }
-    private func sourceLabel(_ label:String,icon:String) -> some View {
-        VStack(spacing:8) {
-            Image(systemName:icon).font(.title3).frame(height:36)
-            Text(label).font(.caption.weight(.medium)).fixedSize(horizontal:false,vertical:true)
-        }.frame(maxWidth:.infinity).foregroundStyle(Design.blueInk).contentShape(Rectangle())
+    /// Done: the file is ready.
+    private var readyPage: some View {
+        ToolPage(title: "") {
+            VStack(spacing: 20) {
+                ZStack {
+                    Circle().fill(TK.blueSoft).frame(width: 132, height: 132)
+                    Circle().fill(TK.blue).frame(width: 84, height: 84)
+                    Image(systemName: "checkmark").font(.system(size: 38, weight: .bold)).foregroundStyle(.white)
+                }.padding(.top, 24).accessibilityHidden(true)
+                VStack(spacing: 8) {
+                    Text(excel ? "\(tables.count) \(tables.count == 1 ? "table" : "tables") ready" : "\(pages.count) \(pages.count == 1 ? "slide" : "slides") ready")
+                        .font(.system(size: 24, weight: .bold)).foregroundStyle(TK.grey900).accessibilityIdentifier("ppt-ready")
+                    Text(export?.urls.first?.lastPathComponent ?? (excel ? "Table.xlsx" : "Slides.pptx")).font(.system(size: 16)).foregroundStyle(TK.grey600)
+                }
+            }.frame(maxWidth: .infinity)
+        } actions: {
+            Button("Preview") { preview = true }.buttonStyle(SecondaryCTAStyle()).accessibilityIdentifier("ppt-preview")
+            Button("Share \(formatName)") { sharing = true }.buttonStyle(CTAButtonStyle()).accessibilityIdentifier("ppt-share")
+        }
     }
     private func slideRow(_ page:PresentationPage,index:Int) -> some View {
         HStack(spacing:14) {
             PresentationThumbnail(page:page,root:store.root).frame(width:88,height:66)
-                .background(Design.muted,in:RoundedRectangle(cornerRadius:8)).clipped()
-            VStack(alignment:.leading,spacing:5) {
-                Text("Page \(index+1)").font(.headline)
-                Text(page.title).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                .background(TK.grey100,in:RoundedRectangle(cornerRadius:8)).clipped()
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            VStack(alignment:.leading,spacing:4) {
+                Text(excel ? "Page \(index+1)" : "Slide \(index+1)").font(.system(size: 16, weight: .semibold)).foregroundStyle(TK.grey900)
+                Text(page.title).font(.system(size: 13)).foregroundStyle(TK.grey600).lineLimit(2)
                     .accessibilityIdentifier("ppt-source-\(index+1)")
             }.frame(maxWidth:.infinity,alignment:.leading)
             Menu {
                 Button("Move earlier",systemImage:"arrow.up") { pages.swapAt(index,index-1) }.disabled(index == 0)
                 Button("Move later",systemImage:"arrow.down") { pages.swapAt(index,index+1) }.disabled(index == pages.count-1)
                 Button(excel ? "Remove page" : "Remove slide",systemImage:"trash",role:.destructive) { pages.remove(at:index) }
-            } label: { Image(systemName:"ellipsis").frame(width:44,height:44).contentShape(Rectangle()) }
+            } label: { Image(systemName:"ellipsis").font(.system(size: 17, weight: .semibold)).foregroundStyle(TK.grey600).frame(width:44,height:44).contentShape(Rectangle()) }
                 .accessibilityLabel("Options for page \(index+1)")
                 .accessibilityIdentifier("ppt-options-\(index+1)")
-        }.padding(.vertical,6)
-    }
-    private var primaryAction: some View {
-        VStack(spacing:12) {
-            if busy {
-                HStack { ProgressView();Text(phase).font(.subheadline);Spacer();Button("Cancel") { job?.cancel() } }
-            } else if export != nil {
-                Button("Share \(formatName)") { sharing = true }.buttonStyle(PrimaryButton()).accessibilityIdentifier("ppt-share")
-            } else {
-                Button(stage == 0 ? (excel ? "Extract tables" : "Continue") : stage == 1 && editable ? "Extract text" : "Create \(formatName)") {
-                    if stage == 0 && !excel { stage = 1; editMode = .inactive }
-                    else if stage == 0 || (stage == 1 && editable) { recognize() }
-                    else { create() }
-                }.buttonStyle(PrimaryButton()).disabled(pages.isEmpty || (stage == 2 && !excel && slideTexts.allSatisfy { $0.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty }))
-                    .accessibilityIdentifier(stage == 0 ? "office-continue" : stage == 1 && editable ? "office-extract" : "ppt-create")
-            }
-        }.padding().background(.regularMaterial)
+        }
+        .padding(12).background(TK.grey50, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
     private func clearExport() {
         if let export { ExportFiles.remove(export.directory) }; export = nil
@@ -355,7 +372,7 @@ struct PowerPointExportView: View {
                 }
                 try Task.checkCancellation()
                 if excel && pageLayouts.allSatisfy({ $0.items.isEmpty }) { message = "No text was found. Try a clearer scan or another page."; return }
-                tables = foundTables; tableIndex = 0; slideTexts = texts; layouts = pageLayouts; stage = 2
+                tables = foundTables; tableIndex = 0; slideTexts = texts; layouts = pageLayouts; forward = true; stage = 2
                 if excel && foundTables.isEmpty { message = "No tables were found. Each page's text keeps its layout on its worksheet." }
                 if !excel && texts.contains(where: { $0.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty }) { message = "Some pages contain no readable text. Add text before creating your presentation, or use original appearance." }
             } catch { message = error is CancellationError ? "Canceled. Your selected pages are unchanged." : error.localizedDescription }
@@ -391,7 +408,7 @@ struct PowerPointExportView: View {
                         try selection[index].image(root:root)
                     }
                 }
-                try Task.checkCancellation(); export = try ExportFiles.write([(excel ? "Tables.xlsx" : "Slides.pptx",data)])
+                try Task.checkCancellation(); forward = true; export = try ExportFiles.write([(excel ? "Tables.xlsx" : "Slides.pptx",data)])
                 // Show the finished file at full size right away, like a scan result.
                 preview = true
             } catch { message = error is CancellationError ? "Canceled. Your selected pages are unchanged." : error.localizedDescription }

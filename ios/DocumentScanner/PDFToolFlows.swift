@@ -1,5 +1,6 @@
 import SwiftUI
 import PDFKit
+import QuickLook
 import UniformTypeIdentifiers
 
 extension LibraryTool {
@@ -260,6 +261,7 @@ private struct PDFToolDone: View {
 private struct ResultReview: View {
     let urls: [URL]
     @State private var zoom: ResultZoom?
+    @State private var office: URL?
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionLabel(text: "Check the result")
@@ -268,14 +270,28 @@ private struct ResultReview: View {
                     Text(url.deletingPathExtension().lastPathComponent).font(.system(size: 15, weight: .bold)).foregroundStyle(TK.grey800)
                         .padding(.top, 6)
                 }
-                if url.pathExtension.lowercased() == "pdf" {
-                    ResultPDFPages(url: url) { zoom = ResultZoom(url: url, page: $0) }
-                } else {
-                    ResultPageImage(url: url, page: nil)
+                switch url.pathExtension.lowercased() {
+                case "pdf": ResultPDFPages(url: url) { zoom = ResultZoom(url: url, page: $0) }
+                case "jpg", "jpeg", "png": ResultPageImage(url: url, page: nil)
+                case "txt":
+                    Text((try? String(contentsOf: url, encoding: .utf8)) ?? "").font(.system(size: 15)).foregroundStyle(TK.grey900)
+                        .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(16)
+                        .background(TK.grey50, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(TK.grey200))
+                default:
+                    // Word, Excel and PowerPoint files: Quick Look shows every page inline.
+                    InlineQuickLook(url: url).frame(height: 560)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(TK.grey200))
+                    Button { office = url } label: { Label("Open full screen", systemImage: "arrow.up.left.and.arrow.down.right") }
+                        .font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.blue)
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .fullScreenCover(isPresented: Binding(get: { office != nil }, set: { if !$0 { office = nil } })) {
+            if let office { OfficeQuickLook(url: office) }
+        }
         .fullScreenCover(item: $zoom) { target in
             NavigationStack {
                 PDFPreview(url: target.url, initialPage: target.page).ignoresSafeArea(edges: .bottom)
@@ -286,6 +302,24 @@ private struct ResultReview: View {
     }
 }
 private struct ResultZoom: Identifiable { let id = UUID(); let url: URL; let page: Int }
+
+/// Quick Look embedded in the page (no navigation bar) for Office results.
+private struct InlineQuickLook: UIViewControllerRepresentable {
+    let url: URL
+    func makeCoordinator() -> Source { Source(url: url) }
+    func makeUIViewController(context: Context) -> QLPreviewController {
+        let view = QLPreviewController(); view.dataSource = context.coordinator; return view
+    }
+    func updateUIViewController(_ view: QLPreviewController, context: Context) {
+        if context.coordinator.url != url { context.coordinator.url = url; view.reloadData() }
+    }
+    final class Source: NSObject, QLPreviewControllerDataSource {
+        var url: URL
+        init(url: URL) { self.url = url }
+        func numberOfPreviewItems(in controller: QLPreviewController) -> Int { 1 }
+        func previewController(_ controller: QLPreviewController, previewItemAt index: Int) -> QLPreviewItem { url as NSURL }
+    }
+}
 
 private struct ResultPDFPages: View {
     let url: URL
@@ -831,27 +865,152 @@ private struct PageSelection: View {
     }
 }
 
+/// What extracted pages become.
+private enum ExtractFormat: String, CaseIterable, Identifiable {
+    case pdf, word, powerpoint, excel, images, text
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .pdf: return "Keep as PDF"
+        case .word: return "Word document"
+        case .powerpoint: return "PowerPoint slides"
+        case .excel: return "Excel spreadsheet"
+        case .images: return "Images (JPG)"
+        case .text: return "Plain text"
+        }
+    }
+    var detail: String {
+        switch self {
+        case .pdf: return "Same look as the original. Saved as a new document."
+        case .word: return "Editable text with the page layout (.docx)."
+        case .powerpoint: return "One slide per page, with editable text (.pptx)."
+        case .excel: return "Tables become cells you can edit (.xlsx)."
+        case .images: return "One picture per page, ready for Photos or chat."
+        case .text: return "Just the words, as a .txt file."
+        }
+    }
+    var symbol: String {
+        switch self {
+        case .pdf: return "doc.richtext"
+        case .word: return "doc.text"
+        case .powerpoint: return "rectangle.on.rectangle"
+        case .excel: return "tablecells"
+        case .images: return "photo.on.rectangle"
+        case .text: return "text.alignleft"
+        }
+    }
+}
+
 private struct ExtractToolStep: View {
     @EnvironmentObject private var store: LibraryStore
     let document: ScanDocument
     @ObservedObject var work: ToolWork
     let finish: (PDFToolResult) -> Void
     @State private var selected: [Int] = []
+    @State private var choosing = false
+    @State private var format = ExtractFormat.pdf
+    private var count: String { "\(selected.count) \(selected.count == 1 ? "page" : "pages")" }
     var body: some View {
+        ZStack {
+            if choosing { formatPage.transition(.move(edge: .trailing).combined(with: .opacity)) }
+            else { pagesPage.transition(.move(edge: .leading).combined(with: .opacity)) }
+        }
+        .animation(.snappy(duration: 0.3), value: choosing)
+    }
+    private var pagesPage: some View {
         ToolPage(title: "Which pages?", subtitle: "Pages are saved in the order you tap them.") {
             PageSelection(document: document, selected: $selected, numbered: true)
         } actions: {
-            Button(selected.isEmpty ? "Select pages" : "Extract \(selected.count) \(selected.count == 1 ? "page" : "pages")") { extract() }
-                .buttonStyle(CTAButtonStyle()).disabled(selected.isEmpty).accessibilityIdentifier("extract-run")
+            Button(selected.isEmpty ? "Select pages" : "Next · \(count)") { choosing = true }
+                .buttonStyle(CTAButtonStyle()).disabled(selected.isEmpty).accessibilityIdentifier("extract-next")
+        }
+    }
+    private var formatPage: some View {
+        ToolPage(title: "Save \(count) as", subtitle: "Keep the PDF, or turn the pages into another kind of file.") {
+            VStack(spacing: 10) {
+                ForEach(ExtractFormat.allCases) { option in
+                    Button { format = option } label: {
+                        OptionCard(title: option.title, detail: option.detail, selected: format == option) {
+                            Image(systemName: option.symbol).font(.system(size: 20, weight: .semibold))
+                                .foregroundStyle(format == option ? TK.blue : TK.grey400)
+                        }
+                    }.buttonStyle(.plain).accessibilityIdentifier("extract-format-" + option.rawValue)
+                }
+            }
+            if let message = work.message { ToastMessage(text: message) }
+        } actions: {
+            Button("Change pages") { choosing = false }.buttonStyle(SecondaryCTAStyle())
+            Button("Extract \(count)") { extract() }.buttonStyle(CTAButtonStyle()).accessibilityIdentifier("extract-run")
         }
     }
     private func extract() {
-        let doc = document, picks = selected
+        let doc = document, picks = selected, kind = format
+        if kind == .pdf {
+            work.run("Extracting…") {
+                var copy = doc; copy.title = PDFTools.named(doc.title, "extracted"); copy.pages = picks.map { doc.pages[$0] }
+                let saved = try await PDFTools.saveCopies([copy], store: store)
+                finish(PDFToolResult(title: "Extracted \(picks.count) \(picks.count == 1 ? "page" : "pages")", detail: "Saved as \(copy.title). The original is unchanged.",
+                                     files: PDFTools.share(saved.map { ($0.0.title + ".pdf", $0.1) })))
+            }
+            return
+        }
+        guard let file = doc.pdfFile else { work.message = "Save this document as a PDF first."; return }
+        let url = store.url(file), name = PDFTools.named(doc.title, "extracted")
+        let known = picks.map { doc.pages.indices.contains($0) && doc.pages[$0].ocrComplete ? doc.pages[$0].plainText : nil }
         work.run("Extracting…") {
-            var copy = doc; copy.title = PDFTools.named(doc.title, "extracted"); copy.pages = picks.map { doc.pages[$0] }
-            let saved = try await PDFTools.saveCopies([copy], store: store)
-            finish(PDFToolResult(title: "Extracted \(picks.count) \(picks.count == 1 ? "page" : "pages")", detail: "Saved as \(copy.title). The original is unchanged.",
-                                 files: PDFTools.share(saved.map { ($0.0.title + ".pdf", $0.1) })))
+            var images: [UIImage] = []
+            for (n, index) in picks.enumerated() {
+                work.busy = "Reading page \(n + 1) of \(picks.count)…"
+                images.append(try await OfflineWork.perform { try ExtractRender.page(url, index: index) })
+            }
+            work.busy = "Creating the file…"
+            let snapshot = images
+            let files: [(String, Data)] = try await OfflineWork.perform {
+                switch kind {
+                case .images:
+                    return snapshot.enumerated().map { i, image in
+                        (snapshot.count == 1 ? "\(name).jpg" : "\(name)-\(i + 1).jpg", image.jpegData(compressionQuality: 0.92) ?? Data())
+                    }
+                case .text:
+                    let text = try snapshot.enumerated().map { i, image in
+                        try known[i] ?? Imaging.recognize(image).map(\.text).joined(separator: "\n")
+                    }.joined(separator: "\n\n")
+                    guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw ScannerError.message("No text was found on these pages.") }
+                    return [(name + ".txt", Data(text.utf8))]
+                default:
+                    let layouts = try snapshot.map { try OfficeLayoutPages.analyze($0) }
+                    switch kind {
+                    case .word: return [(name + ".docx", try OfficeLayoutExport.word(layouts, image: OfficeLayoutPages.missingPicture))]
+                    case .excel: return [(name + ".xlsx", try OfficeLayoutExport.excel(layouts, image: OfficeLayoutPages.missingPicture))]
+                    default: return [(name + ".pptx", try OfficeLayoutExport.powerpoint(layouts, theme: OfficeLayoutPages.theme(), image: OfficeLayoutPages.missingPicture))]
+                    }
+                }
+            }
+            let title = kind == .images ? (files.count == 1 ? "Your image is ready" : "\(files.count) images are ready") : "\(kind.title) is ready"
+            finish(PDFToolResult(title: title,
+                                 detail: "Made from \(picks.count) \(picks.count == 1 ? "page" : "pages") of \(doc.title). The original is unchanged.",
+                                 files: PDFTools.share(files), shareTitle: kind == .images ? "Share images" : "Share file"))
+        }
+    }
+}
+
+/// Renders one page of a saved PDF as a picture for conversion.
+enum ExtractRender {
+    nonisolated static func page(_ url: URL, index: Int, maxSide: CGFloat = 2400) throws -> UIImage {
+        guard let doc = CGPDFDocument(url as CFURL), let page = doc.page(at: index + 1) else { throw ScannerError.message("This PDF can't be opened.") }
+        let box = page.getBoxRect(.cropBox)
+        let turned = abs(page.rotationAngle) % 180 == 90
+        let size = turned ? CGSize(width: box.height, height: box.width) : box.size
+        guard size.width > 0, size.height > 0 else { throw ScannerError.message("Unsupported PDF page dimensions.") }
+        let scale = min(maxSide / max(size.width, size.height), 4)
+        let target = CGSize(width: (size.width * scale).rounded(), height: (size.height * scale).rounded())
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
+        return UIGraphicsImageRenderer(size: target, format: format).image { c in
+            UIColor.white.setFill(); c.fill(CGRect(origin: .zero, size: target))
+            let cg = c.cgContext
+            cg.translateBy(x: 0, y: target.height); cg.scaleBy(x: 1, y: -1)
+            cg.concatenate(page.getDrawingTransform(.cropBox, rect: CGRect(origin: .zero, size: target), rotate: 0, preserveAspectRatio: true))
+            cg.drawPDFPage(page)
         }
     }
 }

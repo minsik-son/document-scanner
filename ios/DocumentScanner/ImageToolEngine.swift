@@ -78,13 +78,43 @@ enum ImageToolEngine {
                 ctx.strokePath()
             }
         }
+        var any = false
+        for i in 0..<(w * h) { if mask[i] > 40 { mask[i] = 255; any = true } else { mask[i] = 0 } }
+        guard any else { throw ScannerError.message("Paint over what you want to erase.") }
+        // Fill each painted cluster on its own. One box around spots spread over
+        // a page would cover nearly the whole page and need hundreds of MB.
+        var boxes: [(Int, Int, Int, Int)] = strokes.compactMap { stroke in
+            guard !stroke.points.isEmpty else { return nil }
+            let pad = Int(max(2, stroke.width * CGFloat(w)) * 0.6) + 2
+            let xs = stroke.points.map { Int($0.x * CGFloat(w)) }, ys = stroke.points.map { Int($0.y * CGFloat(h)) }
+            return (max(0, xs.min()! - pad), max(0, ys.min()! - pad), min(w - 1, xs.max()! + pad), min(h - 1, ys.max()! + pad))
+        }
+        var merged = true
+        while merged {
+            merged = false
+            outer: for i in 0..<boxes.count { for j in (i + 1)..<boxes.count {
+                let a = boxes[i], b = boxes[j]
+                let gap = 24
+                if a.0 <= b.2 + gap && b.0 <= a.2 + gap && a.1 <= b.3 + gap && b.1 <= a.3 + gap {
+                    boxes[i] = (min(a.0, b.0), min(a.1, b.1), max(a.2, b.2), max(a.3, b.3)); boxes.remove(at: j); merged = true; break outer
+                }
+            } }
+        }
+        for box in boxes {
+            try Task.checkCancellation()
+            try fillRegion(&r, mask: mask, box: box)
+        }
+        return try image(r)
+    }
+
+    /// Fills the masked pixels inside one painted cluster from its surroundings.
+    private static func fillRegion(_ r: inout Raster, mask: [UInt8], box: (Int, Int, Int, Int)) throws {
+        let w = r.width, h = r.height
         var minX = w, minY = h, maxX = -1, maxY = -1
-        for y in 0..<h { for x in 0..<w where mask[y * w + x] > 40 {
-            mask[y * w + x] = 255
+        for y in box.1...box.3 { for x in box.0...box.2 where mask[y * w + x] != 0 {
             minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y)
         } }
-        guard maxX >= minX else { throw ScannerError.message("Paint over what you want to erase.") }
-        try Task.checkCancellation()
+        guard maxX >= minX else { return }
         // Work on the painted area plus a margin of known pixels.
         let margin = max(12, (maxX - minX + maxY - minY) / 6)
         let x0 = max(0, minX - margin), y0 = max(0, minY - margin), x1 = min(w - 1, maxX + margin), y1 = min(h - 1, maxY + margin)
@@ -131,7 +161,6 @@ enum ImageToolEngine {
             let dst = r.index(x + x0, y + y0), i = (y * rw + x) * 3
             for c in 0..<3 { r.bytes[dst + c] = UInt8(max(0, min(255, filled[i + c] + g))) }
         } }
-        return try image(r)
     }
 
     /// Solves Laplace's equation inside unknown pixels on an image pyramid.

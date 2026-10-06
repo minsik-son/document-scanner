@@ -48,14 +48,14 @@ enum Imaging {
         guard let cg = DocumentProcessing.context.createCGImage(output, from: output.extent) else { throw ScannerError.message("The page could not be processed.") }
         return try applyErasures(UIImage(cgImage: cg), page: page)
     }
-    /// Fills the spots painted out in the page editor, in the order they were painted.
+    /// Fills the spots painted out in the page editor.
     static func applyErasures(_ image: UIImage, page: ScanPage) throws -> UIImage {
-        var result = image
-        for erasure in page.activeErasures where !erasure.strokes.isEmpty {
-            try Task.checkCancellation()
-            result = try ImageToolEngine.erase(result, strokes: erasure.strokes.map { ImageToolEngine.Stroke(points: $0.points, width: CGFloat($0.width)) })
-        }
-        return result
+        // One pass for all erasures: the page is rasterized once, and each
+        // painted cluster is filled on its own.
+        let strokes = page.activeErasures.flatMap(\.strokes).filter { !$0.points.isEmpty }
+        guard !strokes.isEmpty else { return image }
+        try Task.checkCancellation()
+        return try autoreleasepool { try ImageToolEngine.erase(image, strokes: strokes.map { ImageToolEngine.Stroke(points: $0.points, width: CGFloat($0.width)) }) }
     }
     static func trim(_ image: CIImage, edges: PageTrim) throws -> CIImage {
         guard edges.valid else { throw ScannerError.message("The margin settings are invalid. Reset margins and try again.") }

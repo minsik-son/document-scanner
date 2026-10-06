@@ -385,19 +385,15 @@ private struct WatermarkToolStep: View {
             Button("Add to \(document.pages.count) \(document.pages.count == 1 ? "page" : "pages")") { apply() }
                 .buttonStyle(CTAButtonStyle()).disabled(!stamp.valid).accessibilityIdentifier("watermark-apply")
         }
-        .task(id: stampKey) { render() }
+        .task(id: stampKey) { await render() }
     }
     private var stampKey: String { "\(stamp.text)|\(stamp.color)|\(stamp.width)|\(stamp.opacity)|\(stamp.angle)|\(stamp.repeated)" }
-    private func render() {
-        guard stamp.valid, let file = document.pdfFile else { return }
-        let url = store.url(file), s = stamp
-        work.preview {
-            try await Task.sleep(nanoseconds: 120_000_000)
-            preview = try await OfflineWork.perform {
-                guard let page = PDFDocument(url: url)?.page(at: 0) else { throw ScannerError.message("This PDF can't be opened.") }
-                return try LocalDocumentTools.renderPreview(page) { size, ctx in LocalDocumentTools.drawStamp(s, size: size, context: ctx) }
-            }
-        }
+    /// Runs in the view's own task: a newer key cancels it, and nothing else
+    /// sharing `work` can cancel it and leave the spinner up.
+    private func render() async {
+        guard stamp.valid else { return }
+        let s = stamp
+        preview = await PreviewStage.render(document, store: store, work: work) { size, ctx in LocalDocumentTools.drawStamp(s, size: size, context: ctx) } ?? preview
     }
     private func apply() {
         let s = stamp, doc = document
@@ -423,6 +419,31 @@ private struct PreviewStage: View {
         .background(TK.grey100, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         .accessibilityIdentifier("tool-preview")
     }
+    /// Renders the first page with an overlay after a short debounce. Returns nil
+    /// only when cancelled; a failure shows its message and a placeholder, so the
+    /// stage never spins forever.
+    @MainActor static func render(_ doc: ScanDocument, store: LibraryStore, work: ToolWork,
+                                  draw: @escaping @Sendable (CGSize, CGContext) -> Void) async -> UIImage? {
+        do {
+            try await Task.sleep(nanoseconds: 120_000_000)
+            guard let file = doc.pdfFile else { throw ScannerError.message("Save this document as a PDF first.") }
+            let url = store.url(file)
+            let image = try await OfflineWork.perform {
+                guard let page = PDFDocument(url: url)?.page(at: 0) else { throw ScannerError.message("This PDF can't be opened.") }
+                return try LocalDocumentTools.renderPreview(page, draw: draw)
+            }
+            if work.message != nil && work.busy == nil { work.message = nil }
+            return image
+        } catch is CancellationError {
+            return nil
+        } catch {
+            work.message = error.localizedDescription
+            return UIGraphicsImageRenderer(size: CGSize(width: 300, height: 400)).image { c in
+                UIColor.white.setFill(); c.fill(CGRect(x: 0, y: 0, width: 300, height: 400))
+                ("Preview unavailable" as NSString).draw(at: CGPoint(x: 72, y: 190), withAttributes: [.font: UIFont.systemFont(ofSize: 16, weight: .semibold), .foregroundColor: UIColor.gray])
+            }
+        }
+    }
 }
 
 // MARK: - Timestamp
@@ -442,7 +463,7 @@ private struct TimestampToolStep: View {
         }
         .animation(.snappy(duration: 0.3), value: detailsShown)
         .onAppear { stamp.date = document.createdAt }
-        .task(id: key) { render() }
+        .task(id: key) { await render() }
     }
     private var stylePage: some View {
         ToolPage(title: "Pick a timestamp style", subtitle: "A label with the date you choose. It isn't a certified capture time.") {
@@ -481,16 +502,9 @@ private struct TimestampToolStep: View {
         }
     }
     private var key: String { "\(stamp.template.rawValue)|\(stamp.date.timeIntervalSince1970)|\(stamp.note)|\(stamp.corner.rawValue)|\(stamp.scale)|\(stamp.white)" }
-    private func render() {
-        guard let file = document.pdfFile else { return }
-        let url = store.url(file), s = stamp
-        work.preview {
-            try await Task.sleep(nanoseconds: 120_000_000)
-            preview = try await OfflineWork.perform {
-                guard let page = PDFDocument(url: url)?.page(at: 0) else { throw ScannerError.message("This PDF can't be opened.") }
-                return try LocalDocumentTools.renderPreview(page) { size, ctx in LocalDocumentTools.drawTimestamp(s, size: size, context: ctx) }
-            }
-        }
+    private func render() async {
+        let s = stamp
+        preview = await PreviewStage.render(document, store: store, work: work) { size, ctx in LocalDocumentTools.drawTimestamp(s, size: size, context: ctx) } ?? preview
     }
     private func apply() {
         let s = stamp, doc = document

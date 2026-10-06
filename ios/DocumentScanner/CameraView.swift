@@ -76,9 +76,9 @@ struct CameraView: View {
     private var liveCamera: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            CameraPreview(controller: camera, tracking: camera.tracking, shutter: shutter).ignoresSafeArea()
+            CameraPreview(controller: camera, tracking: camera.tracking, shutter: shutter, showsQuad: style != .card).ignoresSafeArea()
             if style == .card && !cardComplete {
-                CardFrameGuide(back: pageCountLabel == "Back of card").allowsHitTesting(false)
+                CardFrameGuide(back: pageCountLabel == "Back of card", ready: camera.tracking.canAutoCapture && !saving).allowsHitTesting(false)
             }
             VStack(spacing: 0) {
                 topBar
@@ -661,6 +661,8 @@ final class PreviewSurface: UIView {
     private var shownQuad = false
     private var lastPhase: LiveDocumentSnapshot.Phase?
     var onVisibleArea: ((ScanQuad?) -> Void)?
+    /// ID cards use a fixed frame instead of the live outline.
+    var showsQuad = true { didSet { if showsQuad != oldValue { redraw() } } }
     var tracking = LiveDocumentSnapshot() { didSet { redraw() } }
     var shutter = 0 { didSet { if shutter != oldValue { playShutter() } } }
     override init(frame: CGRect) {
@@ -703,7 +705,7 @@ final class PreviewSurface: UIView {
     }
     private var animates: Bool { !UIAccessibility.isReduceMotionEnabled }
     private func redraw() {
-        guard let quad = tracking.quad else {
+        guard showsQuad, let quad = tracking.quad else {
             fill.path = nil; edges.forEach { $0.path = nil }
             points = []; shownQuad = false; lastPhase = tracking.phase
             return
@@ -781,14 +783,16 @@ struct CameraPreview: UIViewRepresentable {
     let controller: CameraController
     let tracking: LiveDocumentSnapshot
     var shutter = 0
+    var showsQuad = true
     func makeUIView(context: Context) -> PreviewSurface {
-        let view = PreviewSurface()
+        let view = PreviewSurface(); view.showsQuad = showsQuad
         view.preview.session = controller.session; view.preview.videoGravity = .resizeAspectFill
         view.clipsToBounds = true; view.tracking = tracking
         view.onVisibleArea = { [weak controller] area in controller?.setVisibleCardArea(area) }
         return view
     }
     func updateUIView(_ uiView: PreviewSurface, context: Context) {
+        uiView.showsQuad = showsQuad
         uiView.tracking = tracking
         uiView.shutter = shutter
         uiView.setNeedsLayout()
@@ -846,6 +850,8 @@ final class CaptureOrientationMonitor: ObservableObject {
 /// is easy to line up. It shows again when it is time for the other side.
 struct CardFrameGuide: View {
     let back: Bool
+    /// The card is in view, steady and sharp enough to capture.
+    var ready = false
     @State private var showArt = true
     var body: some View {
         GeometryReader { geo in
@@ -858,8 +864,12 @@ struct CardFrameGuide: View {
                     p.addRoundedRect(in: rect, cornerSize: CGSize(width: 22, height: 22), style: .continuous)
                 }.fill(Color.black.opacity(0.5), style: FillStyle(eoFill: true))
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.85), lineWidth: 3)
+                    .strokeBorder(ready ? Color.green : Color.white.opacity(0.85), lineWidth: ready ? 4 : 3)
+                    .shadow(color: ready ? Color.green.opacity(0.9) : .clear, radius: ready ? 14 : 0)
+                    .shadow(color: ready ? Color.green.opacity(0.6) : .clear, radius: ready ? 28 : 0)
                     .frame(width: rect.width, height: rect.height).position(x: rect.midX, y: rect.midY)
+                    .animation(.easeInOut(duration: 0.25), value: ready)
+                    .accessibilityIdentifier(ready ? "card-frame-ready" : "card-frame")
                 cardArt(width: rect.width, height: rect.height)
                     .position(x: rect.midX, y: rect.midY)
                     .opacity(showArt ? 1 : 0)

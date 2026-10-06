@@ -15,6 +15,8 @@ struct ReviewView: View {
     var captureOnOpen = false
     var completionAdEnabled = false
     var onCompleted: () -> Void = {}
+    /// Label of the back button on the finished PDF.
+    var savedBackTitle = "Back"
     @EnvironmentObject private var completionAds: CompletionAdvertisementStore
     @EnvironmentObject private var homeAds: HomeAdvertisementStore
     @EnvironmentObject private var subscription: SubscriptionStore
@@ -60,28 +62,41 @@ struct ReviewView: View {
                     Color.black.ignoresSafeArea().toolbar(.hidden, for: .navigationBar)
                 } else if let doc = document {
                     if saved {
-                        VStack(spacing: 24) {
-                            Image(systemName: "checkmark.circle.fill").font(.system(size: 64)).foregroundStyle(Design.blue)
-                            Text("Saved on this iPhone").font(.title.bold())
-                            Text(doc.title).foregroundStyle(.secondary)
-                            if doc.searchable { Text("Text can be selected and copied in your PDF.").font(.subheadline).foregroundStyle(.secondary) }
-                            if let textNotice { Text(textNotice).font(.subheadline).foregroundStyle(.secondary) }
-                            if textRetryNeeded { Button("Retry text recognition") { save(forceText: false) }.disabled(saving) }
-                            if saving { ProgressView(saveProgress) }
-                            if let error { Text(error).font(.subheadline).foregroundStyle(.red) }
-                            if let file = store.document(documentID)?.pdfFile { ShareLink(item: store.url(file)) { Label("Share PDF", systemImage: "square.and.arrow.up") }.buttonStyle(PrimaryButton()) }
-                            if doc.captureStyle == .card {
-                                Button("Arrange ID card on one page") { identityLayout = true }.buttonStyle(.bordered)
+                        // The finished PDF itself; back returns to the home screen.
+                        VStack(spacing: 0) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "checkmark.circle.fill").font(.system(size: 26)).foregroundStyle(TK.blue)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Saved on this iPhone").font(.system(size: 16, weight: .bold)).foregroundStyle(TK.grey900)
+                                    Text(doc.searchable ? "\(doc.title) · text can be copied" : doc.title)
+                                        .font(.system(size: 13)).foregroundStyle(TK.grey600).lineLimit(1)
+                                }
+                                Spacer(minLength: 8)
+                                if let file = store.document(documentID)?.pdfFile {
+                                    ShareLink(item: store.url(file)) {
+                                        Label("Share", systemImage: "square.and.arrow.up").font(.system(size: 15, weight: .semibold))
+                                            .padding(.horizontal, 14).frame(height: 36).background(TK.blueSoft, in: Capsule()).foregroundStyle(TK.blue)
+                                    }.accessibilityLabel("Share PDF")
+                                }
                             }
-                            Button("Done") {
-                                guard !finishing else { return }; finishing = true
-                                if completionAdEnabled {
-                                    completionAds.finish(session: adSession, policy: adPolicy,
-                                                         onPresented: { homeAds.suppressAfterCompletion() },
-                                                         completion: { onCompleted(); dismiss() })
-                                } else { onCompleted(); dismiss() }
-                            }.font(.headline).disabled(saving || finishing).accessibilityIdentifier("saved-done")
-                        }.padding(24)
+                            .padding(.horizontal, 20).padding(.vertical, 12)
+                            if textNotice != nil || textRetryNeeded || saving || error != nil || doc.captureStyle == .card {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    if let textNotice { Text(textNotice).font(.system(size: 13)).foregroundStyle(TK.grey600) }
+                                    if textRetryNeeded { Button("Retry text recognition") { save(forceText: false) }.font(.system(size: 14, weight: .semibold)).disabled(saving) }
+                                    if saving { ProgressView(saveProgress).font(.system(size: 13)) }
+                                    if let error { Text(error).font(.system(size: 13)).foregroundStyle(TK.red) }
+                                    if doc.captureStyle == .card {
+                                        Button("Arrange ID card on one page") { identityLayout = true }.buttonStyle(ChipStyle(selected: false))
+                                    }
+                                }.frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 20).padding(.bottom, 12)
+                            }
+                            if let file = store.document(documentID)?.pdfFile {
+                                PDFPreview(url: store.url(file)).ignoresSafeArea(edges: .bottom)
+                                    .accessibilityIdentifier("saved-pdf")
+                            } else { Spacer() }
+                        }
+                        .background(TK.paper)
                     } else {
                         List {
                             Section {
@@ -130,10 +145,16 @@ struct ReviewView: View {
                     }
                 } else { ProgressView() }
             }
-            .navigationTitle(saved ? "" : "Review")
+            .navigationTitle(saved ? "PDF" : "Review")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { if !saved { Button(document?.isDraft == true ? "Close" : "Cancel") { cancelEditing() }.disabled(saving) } }
+                ToolbarItem(placement: .topBarLeading) {
+                    if saved {
+                        Button { finishSaved() } label: {
+                            HStack(spacing: 4) { Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold)); Text(savedBackTitle) }
+                        }.disabled(saving || finishing).accessibilityIdentifier("saved-done")
+                    } else { Button(document?.isDraft == true ? "Close" : "Cancel") { cancelEditing() }.disabled(saving) }
+                }
                 ToolbarItemGroup(placement: .bottomBar) {
                     if !saved { Button("Undo") { restoreHistory(undo: true) }.disabled(undoHistory.isEmpty || saving); Button("Redo") { restoreHistory(undo: false) }.disabled(redoHistory.isEmpty || saving) }
                 }
@@ -227,6 +248,14 @@ struct ReviewView: View {
             doc.editingOriginalID = doc.id; doc.id = id; doc.isDraft = true; doc.pdfFile = nil
         }
         do { try store.update(doc); return true } catch { self.error = "Your latest change wasn't saved. \(error.localizedDescription)"; return false }
+    }
+    private func finishSaved() {
+        guard !finishing else { return }; finishing = true
+        if completionAdEnabled {
+            completionAds.finish(session: adSession, policy: adPolicy,
+                                 onPresented: { homeAds.suppressAfterCompletion() },
+                                 completion: { onCompleted(); dismiss() })
+        } else { onCompleted(); dismiss() }
     }
     private func save(forceText: Bool = false) {
         guard var doc = document else { return }

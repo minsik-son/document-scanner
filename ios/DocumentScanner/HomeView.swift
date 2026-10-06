@@ -139,7 +139,7 @@ struct HomeView: View {
                 if !importing { store.perform { try store.discardEmptyDrafts() } }
             }) { value in
                 ReviewView(documentID: value.id, captureOnOpen: newCapture, completionAdEnabled: false,
-                           onCompleted: { showingDocuments = false; query = "" })
+                           onCompleted: { showingDocuments = false; query = "" }, savedBackTitle: "Home")
             }
             .confirmationDialog("Import pages", isPresented: $importMenu) {
                 Button("Choose photos") { photos = true }

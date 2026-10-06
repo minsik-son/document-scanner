@@ -157,13 +157,16 @@ struct PhotoToolDone: View {
                      primary: finish, secondaryTitle: !files.isEmpty ? "Share file" : images.count > 1 ? "Share \(images.count) images" : "Share image",
                      secondary: { exported = try? (files.isEmpty ? PhotoToolSaving.share(images, name: name) : ExportFiles.write(files)) }) {
             if !images.isEmpty {
-                HStack(spacing: -40) {
-                    ForEach(Array(images.prefix(3).enumerated()), id: \.offset) { i, image in
-                        Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 210)
-                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                            .shadow(color: .black.opacity(0.14), radius: 10, y: 4)
-                            .rotationEffect(.degrees(images.count > 1 ? Double(i) * 6 - 3 : 0))
-                            .zIndex(Double(-i))
+                // Every result at reading size, first to last, to check before sharing.
+                LazyVStack(alignment: .leading, spacing: 14) {
+                    SectionLabel(text: "Check the result")
+                    ForEach(Array(images.enumerated()), id: \.offset) { i, image in
+                        VStack(spacing: 6) {
+                            Image(uiImage: image).resizable().scaledToFit().frame(maxWidth: .infinity)
+                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(TK.grey200, lineWidth: 1))
+                            if images.count > 1 { Text("\(i + 1) of \(images.count)").font(.system(size: 13, weight: .medium)).foregroundStyle(TK.grey500) }
+                        }
                     }
                 }.padding(.top, 6)
             }

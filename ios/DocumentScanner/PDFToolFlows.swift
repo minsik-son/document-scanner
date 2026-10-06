@@ -235,7 +235,6 @@ private struct PDFToolDone: View {
     let result: PDFToolResult
     let close: () -> Void
     @State private var sharing: ExportedFiles?
-    @State private var preview: UIImage?
     private var imageURLs: [URL] {
         guard let urls = result.files?.urls, !urls.isEmpty else { return [] }
         return urls.allSatisfy { ["jpg", "jpeg", "png"].contains($0.pathExtension.lowercased()) } ? urls : []
@@ -249,28 +248,122 @@ private struct PDFToolDone: View {
                      },
                      secondaryTitle: result.files == nil ? nil : result.shareTitle,
                      secondary: result.files == nil ? nil : { sharing = result.files }) {
-            if let preview {
-                let aspect = preview.size.width / max(1, preview.size.height)
-                let height = min(230, 300 / max(0.1, aspect))
-                Image(uiImage: preview).resizable().frame(width: height * aspect, height: height)
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(TK.grey200, lineWidth: 1))
-                    .shadow(color: .black.opacity(0.1), radius: 10, y: 4).padding(.top, 4)
-                    .transition(.opacity)
-            }
+            if let urls = result.files?.urls, !urls.isEmpty { ResultReview(urls: urls).padding(.top, 6) }
         }
-            .task {
-                guard let url = result.files?.urls.first else { return }
-                let image: UIImage? = await Task.detached {
-                    if url.pathExtension.lowercased() == "pdf" {
-                        return PDFDocument(url: url)?.page(at: 0)?.thumbnail(of: CGSize(width: 600, height: 600), for: .mediaBox)
-                    }
-                    return UIImage(contentsOfFile: url.path)?.preparingThumbnail(of: CGSize(width: 600, height: 600))
-                }.value
-                withAnimation(.easeOut(duration: 0.25)) { preview = image }
-            }
             .sheet(item: $sharing) { files in ShareSheet(items: files.urls) }
             .onDisappear { if let files = result.files { ExportFiles.remove(files.directory) } }
+    }
+}
+
+/// Every page of a tool's result, first to last, so it can be checked before
+/// it is shared. Pages render lazily off the main thread; tap one to zoom.
+private struct ResultReview: View {
+    let urls: [URL]
+    @State private var zoom: ResultZoom?
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionLabel(text: "Check the result")
+            ForEach(Array(urls.enumerated()), id: \.offset) { _, url in
+                if urls.count > 1 {
+                    Text(url.deletingPathExtension().lastPathComponent).font(.system(size: 15, weight: .bold)).foregroundStyle(TK.grey800)
+                        .padding(.top, 6)
+                }
+                if url.pathExtension.lowercased() == "pdf" {
+                    ResultPDFPages(url: url) { zoom = ResultZoom(url: url, page: $0) }
+                } else {
+                    ResultPageImage(url: url, page: nil)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .fullScreenCover(item: $zoom) { target in
+            NavigationStack {
+                PDFPreview(url: target.url, initialPage: target.page).ignoresSafeArea(edges: .bottom)
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { zoom = nil } } }
+                    .navigationBarTitleDisplayMode(.inline)
+            }
+        }
+    }
+}
+private struct ResultZoom: Identifiable { let id = UUID(); let url: URL; let page: Int }
+
+private struct ResultPDFPages: View {
+    let url: URL
+    let open: (Int) -> Void
+    @State private var info: (count: Int, locked: Bool)?
+    var body: some View {
+        Group {
+            if let info {
+                if info.locked {
+                    Label("This PDF is locked with a password, so its pages can't be previewed here.", systemImage: "lock.fill")
+                        .font(.system(size: 15)).foregroundStyle(TK.grey600)
+                } else {
+                    LazyVStack(spacing: 14) {
+                        ForEach(0..<info.count, id: \.self) { i in
+                            Button { open(i) } label: {
+                                VStack(spacing: 6) {
+                                    ResultPageImage(url: url, page: i)
+                                    Text("Page \(i + 1) of \(info.count)").font(.system(size: 13, weight: .medium)).foregroundStyle(TK.grey500)
+                                }
+                            }.buttonStyle(.plain).accessibilityLabel("Page \(i + 1) of \(info.count)")
+                        }
+                    }
+                }
+            } else { ProgressView().frame(maxWidth: .infinity, minHeight: 120) }
+        }
+        .task(id: url) {
+            let u = url
+            info = await Task.detached { () -> (count: Int, locked: Bool) in
+                guard let doc = CGPDFDocument(u as CFURL) else { return (0, false) }
+                return (doc.numberOfPages, !doc.isUnlocked)
+            }.value
+        }
+    }
+}
+
+/// One rendered page (or image file) at reading size, with its shape reserved
+/// before it loads so the list doesn't jump.
+private struct ResultPageImage: View {
+    let url: URL
+    let page: Int?
+    @State private var image: UIImage?
+    @State private var aspect: CGFloat = 0.773
+    var body: some View {
+        ZStack {
+            Rectangle().fill(.white)
+            if let image { Image(uiImage: image).resizable().scaledToFit() } else { ProgressView() }
+        }
+        .aspectRatio(aspect, contentMode: .fit)
+        .frame(maxWidth: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(TK.grey200, lineWidth: 1))
+        .task(id: "\(url.path)#\(page ?? -1)") {
+            let u = url, p = page
+            let rendered: UIImage? = await Task.detached {
+                if let p {
+                    guard let doc = CGPDFDocument(u as CFURL), let pg = doc.page(at: p + 1) else { return nil }
+                    let box = pg.getBoxRect(.cropBox)
+                    let turned = abs(pg.rotationAngle) % 180 == 90
+                    let size = turned ? CGSize(width: box.height, height: box.width) : box.size
+                    guard size.width > 0, size.height > 0 else { return nil }
+                    let scale = min(1100 / max(size.width, size.height), 3)
+                    let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
+                    let target = CGSize(width: size.width * scale, height: size.height * scale)
+                    return UIGraphicsImageRenderer(size: target, format: format).image { c in
+                        UIColor.white.setFill(); c.fill(CGRect(origin: .zero, size: target))
+                        let cg = c.cgContext
+                        cg.translateBy(x: 0, y: target.height); cg.scaleBy(x: 1, y: -1)
+                        cg.concatenate(pg.getDrawingTransform(.cropBox, rect: CGRect(origin: .zero, size: target), rotate: 0, preserveAspectRatio: true))
+                        cg.drawPDFPage(pg)
+                    }
+                }
+                return UIImage(contentsOfFile: u.path)?.preparingThumbnail(of: CGSize(width: 1200, height: 12000))
+            }.value
+            if let rendered {
+                aspect = rendered.size.width / max(1, rendered.size.height)
+                image = rendered
+            }
+        }
     }
 }
 

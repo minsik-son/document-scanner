@@ -72,6 +72,16 @@ struct PageTrim: Codable, Equatable {
     }
     func rotatedClockwise() -> PageTrim { PageTrim(top:left,right:top,bottom:right,left:bottom) }
 }
+/// Spots painted out with Smart erase in the page editor. Strokes are
+/// normalized to the finished page, so they only apply while the crop, rotation
+/// and margins they were painted on are unchanged.
+struct PageErasure: Codable, Equatable {
+    struct Stroke: Codable, Equatable { var points: [CGPoint]; var width: Double }
+    var strokes: [Stroke]
+    var crop: ScanQuad
+    var turns: Int
+    var trim: PageTrim?
+}
 struct ScanPage: Codable, Identifiable, Equatable {
     var id = UUID()
     var imageFile: String
@@ -104,7 +114,10 @@ struct ScanPage: Codable, Identifiable, Equatable {
     var sourcePDFPage: Int?
     var annotations: [PageAnnotation]?
     var correctedText: Bool?
-    var preservesPDF: Bool { sourcePDF != nil && correctedText != true && crop == .full && enhancement == .original && appearance == PageAdjustments() }
+    var erasures: [PageErasure]?
+    /// Erasures painted on the current crop, rotation and margins.
+    var activeErasures: [PageErasure] { (erasures ?? []).filter { $0.crop == crop && $0.turns == turns && ($0.trim ?? .zero) == trimming } }
+    var preservesPDF: Bool { sourcePDF != nil && correctedText != true && crop == .full && enhancement == .original && appearance == PageAdjustments() && activeErasures.isEmpty }
     var plainText: String { textBlocks.map(\.text).joined(separator: "\n") }
 }
 struct ScanDocument: Codable, Identifiable, Equatable {

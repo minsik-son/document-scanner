@@ -268,6 +268,7 @@ struct PageEditor: View {
     let onSave: (ScanPage) throws -> Void
     @State private var cropping = false
     @State private var trimming = false
+    @State private var erasing = false
     @State private var comparingOriginal = false
     @State private var detecting = false
     @State private var previewReady = false
@@ -374,6 +375,13 @@ struct PageEditor: View {
             .sheet(isPresented: $trimming) {
                 TrimMarginsView(page:page) { value in page.trimming = value; changed() }
             }
+            .fullScreenCover(isPresented: $erasing) {
+                PageEraseSheet(page: page) { strokes in
+                    var list = page.activeErasures
+                    list.append(PageErasure(strokes: strokes.map { PageErasure.Stroke(points: $0.points, width: Double($0.width)) }, crop: page.crop, turns: page.turns, trim: page.edgeTrim))
+                    page.erasures = list; changed()
+                }
+            }
             .sheet(isPresented: $cropping, onDismiss: {
                 if let action = pendingAction, page.cropReviewNeeded != true { pendingAction = nil; finish(action) }
                 else { pendingAction = nil }
@@ -441,6 +449,16 @@ struct PageEditor: View {
                 Slider(value: adjustmentBinding, in: adjustmentRange)
                     .accessibilityLabel(selectedAdjustment.rawValue)
                     .accessibilityIdentifier(selectedAdjustment.rawValue.lowercased() + "-slider")
+                HStack(spacing: 8) {
+                    Button { erasing = true } label: { Label("Erase spots", systemImage: "eraser.line.dashed") }
+                        .buttonStyle(ChipStyle(selected: false)).disabled(!previewReady).accessibilityIdentifier("editor-erase")
+                    if !page.activeErasures.isEmpty {
+                        Button { page.erasures = Array(page.activeErasures.dropLast()); if page.erasures?.isEmpty == true { page.erasures = nil }; changed() } label: {
+                            Label("Undo erase", systemImage: "arrow.uturn.backward")
+                        }.buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("editor-erase-undo")
+                    }
+                    Spacer(minLength: 0)
+                }
                 Button("Reset adjustments") {
                     page.enhancement = .document; page.enhancementAmount = nil; page.adjustments = nil; changed()
                 }
@@ -588,4 +606,35 @@ struct CropView: View {
         if next.valid { quad = next }
     }
 
+}
+
+/// Smart erase on a scanned page: paint over stains or shadows left after the
+/// automatic cleanup. The strokes are stored on the page and applied when it
+/// renders, so the original photo is never changed.
+struct PageEraseSheet: View {
+    @EnvironmentObject private var store: LibraryStore
+    @Environment(\.dismiss) private var dismiss
+    let page: ScanPage
+    let apply: ([ImageToolEngine.Stroke]) -> Void
+    @State private var image: UIImage?
+    @State private var strokes: [ImageToolEngine.Stroke] = []
+    @State private var brush = 0.035
+    @State private var failure: String?
+    var body: some View {
+        NavigationStack {
+            ToolPage(title: "Erase spots", subtitle: "Paint over stains, shadows or marks. Pinch to zoom in for small spots.", scrolls: false) {
+                if let image { ErasePainter(image: image, strokes: $strokes, brush: $brush) }
+                else if let failure { ToastMessage(text: failure) }
+                else { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
+            } actions: {
+                Button("Erase") { apply(strokes); dismiss() }.buttonStyle(CTAButtonStyle()).disabled(strokes.isEmpty).accessibilityIdentifier("page-erase-apply")
+            }
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Close") { dismiss() }.accessibilityIdentifier("page-erase-close") } }
+        }
+        .task {
+            let page = page, root = store.root
+            do { image = try await OfflineWork.perform { try Imaging.render(page, root: root) } }
+            catch { failure = error.localizedDescription }
+        }
+    }
 }

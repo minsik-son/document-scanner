@@ -46,7 +46,16 @@ enum Imaging {
         let base = try DocumentProcessing.render(ci, crop: page.crop, turns: page.turns, enhancement: page.enhancement, strength: page.enhancementStrength, identityCleanup: page.identityBackgroundCleanup == true && page.cropReviewNeeded != true)
         let output = try trim(DocumentProcessing.adjust(base, settings: page.appearance), edges: page.trimming)
         guard let cg = DocumentProcessing.context.createCGImage(output, from: output.extent) else { throw ScannerError.message("The page could not be processed.") }
-        return UIImage(cgImage: cg)
+        return try applyErasures(UIImage(cgImage: cg), page: page)
+    }
+    /// Fills the spots painted out in the page editor, in the order they were painted.
+    static func applyErasures(_ image: UIImage, page: ScanPage) throws -> UIImage {
+        var result = image
+        for erasure in page.activeErasures where !erasure.strokes.isEmpty {
+            try Task.checkCancellation()
+            result = try ImageToolEngine.erase(result, strokes: erasure.strokes.map { ImageToolEngine.Stroke(points: $0.points, width: CGFloat($0.width)) })
+        }
+        return result
     }
     static func trim(_ image: CIImage, edges: PageTrim) throws -> CIImage {
         guard edges.valid else { throw ScannerError.message("The margin settings are invalid. Reset margins and try again.") }

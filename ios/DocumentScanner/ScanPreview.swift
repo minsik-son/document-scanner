@@ -62,7 +62,8 @@ actor ScanPreviewRenderer {
             }
             try Task.checkCancellation()
             let fullImage = UIImage(cgImage: raster)
-            let result = try maxDimension.map { try Imaging.previewThumbnail(fullImage, maxDimension: $0) } ?? fullImage
+            let sized = try maxDimension.map { try Imaging.previewThumbnail(fullImage, maxDimension: $0) } ?? fullImage
+            let result = try Imaging.applyErasures(sized, page: page)
             try Task.checkCancellation()
             return result
         }

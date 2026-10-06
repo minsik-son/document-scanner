@@ -77,6 +77,9 @@ struct CameraView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             CameraPreview(controller: camera, tracking: camera.tracking, shutter: shutter).ignoresSafeArea()
+            if style == .card && !cardComplete {
+                CardFrameGuide(back: pageCountLabel == "Back of card").allowsHitTesting(false)
+            }
             VStack(spacing: 0) {
                 topBar
                 Spacer()
@@ -836,4 +839,72 @@ final class CaptureOrientationMonitor: ObservableObject {
         turns = 0
     }
     deinit { motion.stopDeviceMotionUpdates() }
+}
+
+/// ID card framing: a card-shaped window with the rest of the preview dimmed.
+/// A card illustration shows inside for a moment, then fades so the real card
+/// is easy to line up. It shows again when it is time for the other side.
+struct CardFrameGuide: View {
+    let back: Bool
+    @State private var showArt = true
+    var body: some View {
+        GeometryReader { geo in
+            let width = min(geo.size.width - 32, 520)
+            let height = width / 1.586
+            let rect = CGRect(x: (geo.size.width - width) / 2, y: geo.size.height * 0.44 - height / 2, width: width, height: height)
+            ZStack {
+                Path { p in
+                    p.addRect(CGRect(origin: .zero, size: geo.size))
+                    p.addRoundedRect(in: rect, cornerSize: CGSize(width: 22, height: 22), style: .continuous)
+                }.fill(Color.black.opacity(0.5), style: FillStyle(eoFill: true))
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.85), lineWidth: 3)
+                    .frame(width: rect.width, height: rect.height).position(x: rect.midX, y: rect.midY)
+                cardArt(width: rect.width, height: rect.height)
+                    .position(x: rect.midX, y: rect.midY)
+                    .opacity(showArt ? 1 : 0)
+                Text(back ? "Place the back of the card inside the frame" : "Place the front of the card inside the frame")
+                    .font(.system(size: 17, weight: .semibold)).foregroundStyle(.white).multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+                    .position(x: geo.size.width / 2, y: rect.maxY + 40)
+                    .accessibilityIdentifier("card-frame-hint")
+            }
+        }
+        .ignoresSafeArea()
+        .task(id: back) {
+            showArt = true
+            try? await Task.sleep(nanoseconds: 2_200_000_000)
+            withAnimation(.easeOut(duration: 0.8)) { showArt = false }
+        }
+    }
+    @ViewBuilder private func cardArt(width: CGFloat, height: CGFloat) -> some View {
+        let white = Color.white.opacity(0.85)
+        if back {
+            VStack(alignment: .leading, spacing: height * 0.07) {
+                RoundedRectangle(cornerRadius: 3).fill(white).frame(height: height * 0.16)
+                ForEach(0..<3, id: \.self) { i in
+                    Capsule().fill(white).frame(width: width * (i == 2 ? 0.45 : 0.75), height: height * 0.06)
+                }
+            }.padding(width * 0.08).frame(width: width, height: height, alignment: .topLeading)
+        } else {
+            HStack(alignment: .top, spacing: width * 0.1) {
+                ZStack(alignment: .bottom) {
+                    RoundedRectangle(cornerRadius: 4).fill(white)
+                    VStack(spacing: height * 0.03) {
+                        Ellipse().fill(Color.black.opacity(0.35)).frame(width: width * 0.14, height: height * 0.28)
+                        UnevenRoundedRectangle(topLeadingRadius: width * 0.1, topTrailingRadius: width * 0.1)
+                            .fill(Color.black.opacity(0.35)).frame(width: width * 0.24, height: height * 0.16)
+                    }
+                }.frame(width: width * 0.26, height: height * 0.52).clipped()
+                VStack(alignment: .trailing, spacing: height * 0.06) {
+                    Capsule().fill(white).frame(width: width * 0.36, height: height * 0.055)
+                    Capsule().fill(white).frame(width: width * 0.48, height: height * 0.055)
+                    Capsule().fill(white).frame(width: width * 0.18, height: height * 0.055)
+                }.frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .padding(.horizontal, width * 0.07).padding(.top, height * 0.24)
+            .frame(width: width, height: height, alignment: .topLeading)
+            .accessibilityHidden(true)
+        }
+    }
 }

@@ -86,7 +86,7 @@ final class ScannerFlowTests: XCTestCase {
     func testIDCaptureStopsAfterTwoSidesAndOffersLayout() throws {
         let app = XCUIApplication(); app.launchArguments = ["--ui-test-session", UUID().uuidString, "--simulate-camera"]
         app.launch(); app.buttons["Scan document"].tap()
-        app.buttons["capture-style"].tap(); app.buttons["ID card"].tap()
+        app.buttons["ID card"].tap()
         XCTAssertTrue(app.staticTexts["Front of card"].exists)
         waitEnabled(app.buttons["Capture page"]); app.buttons["Capture page"].tap()
         waitEnabled(app.buttons["review-add-page"]); app.buttons["review-add-page"].tap()

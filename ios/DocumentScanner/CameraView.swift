@@ -77,58 +77,119 @@ struct CameraView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             CameraPreview(controller: camera, tracking: camera.tracking, shutter: shutter).ignoresSafeArea()
-            VStack {
-                HStack {
-                    Button("Close") { dismiss() }.disabled(saving).accessibilityIdentifier("camera-close")
-                    Spacer()
-                    Text(identityCapture ? "Scan ID card" : (retakingPageID == nil ? "Scan document" : "Retake page")).font(.headline)
-                    Button { flash.toggle() } label: { Image(systemName: flash ? "bolt.fill" : "bolt.slash").frame(width: 44, height: 44) }.accessibilityLabel(flash ? "Turn flash off" : "Turn flash on")
-                    Spacer()
-                    if !identityCapture { Button("Done") { dismiss() }.disabled(saving) }
-                }.padding().background(.black.opacity(0.6))
+            VStack(spacing: 0) {
+                topBar
                 Spacer()
                 if let message = error ?? camera.problem {
-                    VStack { Text(message); Button("Open Settings") { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } }; PhotosPicker("Import photo instead", selection: $importedPhoto, matching: .images) }.padding().background(.black.opacity(0.8))
+                    VStack(spacing: 10) {
+                        Text(message).multilineTextAlignment(.center)
+                        Button("Open Settings") { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } }
+                        PhotosPicker("Import photo instead", selection: $importedPhoto, matching: .images)
+                    }.padding(16).background(.black.opacity(0.8), in: RoundedRectangle(cornerRadius: 18, style: .continuous)).padding(.horizontal, 24)
                         .accessibilityIdentifier("cameraError")
                 }
-                if !identityCapture { Picker("Scan mode", selection: $style) {
-                    ForEach(CaptureStyle.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                }.pickerStyle(.menu).tint(.white).accessibilityIdentifier("capture-style")
-                    .disabled(saving).onChange(of: style) { _, value in
-                        if var doc = store.document(documentID) { doc.captureStyle = value; store.perform { try store.update(doc) } }
-                        autoScan = false; camera.setAutoScan(false); camera.setCaptureStyle(value)
-                    }
-                }
-                Text(style.hint).font(.caption).multilineTextAlignment(.center).padding(.horizontal)
-                if captureTurns != 0 {
-                    // The interface stays portrait; the finished page is rotated upright.
-                    Label { Text("Landscape scan") } icon: {
-                        Image(systemName: "rectangle.landscape.rotate")
-                            .rotationEffect(.degrees(captureTurns == 1 ? -90 : 90))
-                    }
-                    .font(.caption.weight(.semibold)).padding(.horizontal, 10).padding(.vertical, 6)
-                    .background(.black.opacity(0.6), in: Capsule())
-                    .accessibilityIdentifier("landscape-capture")
-                }
-                if let last = store.document(documentID)?.pages.last { PageThumbnail(page: last).frame(width: 45, height: 60).background(.white).accessibilityLabel("Last added page") }
-                Text(saving ? "Processing page…" : pageCountLabel)
-                    .font(.headline).padding(8).background(.black.opacity(0.6), in: Capsule())
-                Text(saving ? "Preparing your preview" : guidance)
-                    .font(.subheadline).multilineTextAlignment(.center).padding(8)
-                    .accessibilityIdentifier("cameraGuidance")
                 if camera.problem != nil && !camera.ready && !saving {
                     Button("Try camera again") { Task { await startCamera() } }
-                        .padding(8).background(.white.opacity(0.15), in: Capsule())
+                        .padding(.horizontal, 16).padding(.vertical, 10).background(.white.opacity(0.15), in: Capsule()).padding(.top, 8)
                 }
                 if autoCaptureHint {
                     Text("Hold steady — we'll take the photo when the page is found")
                         .font(.subheadline.weight(.semibold)).multilineTextAlignment(.center)
                         .padding(.horizontal, 16).padding(.vertical, 10)
-                        .background(Color.blue.opacity(0.92), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .padding(.horizontal, 24).transition(.opacity.combined(with: .move(edge: .bottom)))
+                        .background(TK.blue.opacity(0.95), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .padding(.horizontal, 24).padding(.bottom, 10).transition(.opacity.combined(with: .move(edge: .bottom)))
                         .accessibilityIdentifier("auto-capture-hint")
                 }
-                HStack(spacing: 16) {
+                bottomPanel
+            }.foregroundStyle(.white)
+        }
+    }
+
+    private var pageCount: Int { store.document(documentID)?.pages.count ?? 0 }
+    private var topBar: some View {
+        HStack(spacing: 12) {
+            Button { dismiss() } label: {
+                Image(systemName: "xmark").font(.system(size: 16, weight: .semibold)).frame(width: 40, height: 40).background(.black.opacity(0.45), in: Circle())
+            }.disabled(saving).accessibilityLabel("Close").accessibilityIdentifier("camera-close")
+            Spacer()
+            Text(identityCapture ? "Scan ID card" : (retakingPageID == nil ? "Scan document" : "Retake page"))
+                .font(.system(size: 15, weight: .semibold)).padding(.horizontal, 14).frame(height: 34).background(.black.opacity(0.45), in: Capsule())
+            Spacer()
+            Button { flash.toggle() } label: {
+                Image(systemName: flash ? "bolt.fill" : "bolt.slash.fill").font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(flash ? TK.yellow : .white).frame(width: 40, height: 40).background(.black.opacity(0.45), in: Circle())
+            }.accessibilityLabel(flash ? "Turn flash off" : "Turn flash on")
+        }
+        .padding(.horizontal, 16).padding(.top, 6).padding(.bottom, 14)
+        .background(LinearGradient(colors: [.black.opacity(0.55), .clear], startPoint: .top, endPoint: .bottom).ignoresSafeArea(edges: .top))
+    }
+    /// Live hint in one pill: what to do now, or that a page is processing.
+    private var statusPill: some View {
+        HStack(spacing: 8) {
+            if saving { ProgressView().tint(.white).controlSize(.small) }
+            else if captureTurns != 0 {
+                Image(systemName: "rectangle.landscape.rotate").rotationEffect(.degrees(captureTurns == 1 ? -90 : 90))
+                    .accessibilityLabel("Landscape scan").accessibilityIdentifier("landscape-capture")
+            }
+            Text(saving ? "Processing page…" : guidance).lineLimit(2).multilineTextAlignment(.center)
+                .accessibilityIdentifier("cameraGuidance")
+        }
+        .font(.system(size: 15, weight: .semibold))
+        .padding(.horizontal, 16).padding(.vertical, 10)
+        .background(.black.opacity(0.55), in: Capsule())
+        .padding(.horizontal, 24)
+    }
+    /// Scan modes as a camera-style row: the selected one is highlighted.
+    private var modePicker: some View {
+        HStack(spacing: 6) {
+            ForEach(CaptureStyle.allCases, id: \.self) { mode in
+                Button { selectStyle(mode) } label: {
+                    Text(mode.rawValue).font(.system(size: 14, weight: .semibold)).lineLimit(1).fixedSize()
+                        .foregroundStyle(style == mode ? TK.grey900 : .white.opacity(0.85))
+                        .padding(.horizontal, 12).frame(height: 32)
+                        .background(style == mode ? Color.white : Color.clear, in: Capsule())
+                }.buttonStyle(.plain).accessibilityAddTraits(style == mode ? .isSelected : [])
+            }
+        }
+        .padding(3).background(.black.opacity(0.45), in: Capsule())
+        .disabled(saving).accessibilityElement(children: .contain).accessibilityIdentifier("capture-style")
+    }
+    private func selectStyle(_ value: CaptureStyle) {
+        guard value != style else { return }
+        withAnimation(.snappy) { style = value }
+        if var doc = store.document(documentID) { doc.captureStyle = value; store.perform { try store.update(doc) } }
+        autoScan = false; camera.setAutoScan(false); camera.setCaptureStyle(value)
+    }
+    private var bottomPanel: some View {
+        VStack(spacing: 14) {
+            statusPill
+            if !identityCapture { modePicker }
+            HStack(alignment: .center, spacing: 16) {
+                // Last page and count; Done finishes once something is captured.
+                HStack(spacing: 10) {
+                    if let last = store.document(documentID)?.pages.last {
+                        PageThumbnail(page: last).frame(width: 42, height: 56).background(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                            .overlay(alignment: .topTrailing) {
+                                Text("\(pageCount)").font(.system(size: 11, weight: .bold)).foregroundStyle(.white)
+                                    .frame(minWidth: 18, minHeight: 18).background(TK.blue, in: Circle()).offset(x: 6, y: -6)
+                            }
+                            .accessibilityLabel("Last added page")
+                    }
+                    Text(pageCountLabel).font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.8))
+                        .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                }.frame(maxWidth: .infinity, alignment: .leading)
+                Button(action: capturePage) {
+                    Circle().fill(.white).frame(width: 72, height: 72)
+                        .overlay(Circle().stroke(.black, lineWidth: 3).padding(5))
+                }.accessibilityLabel("Capture page").disabled(saving || cardComplete || (!camera.ready && !testCamera))
+                VStack(alignment: .trailing, spacing: 8) {
+                    if !identityCapture && pageCount > 0 {
+                        Button { dismiss() } label: {
+                            Text("Done").font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
+                                .padding(.horizontal, 16).frame(height: 36).background(TK.blue, in: Capsule())
+                        }.disabled(saving)
+                    }
                     Button {
                         autoScan.toggle(); camera.setAutoScan(autoScan)
                         if autoScan && !autoCaptureHintShown {
@@ -140,24 +201,19 @@ struct CameraView: View {
                             }
                         }
                     } label: {
-                        HStack(spacing: 5) {
-                            Image(systemName: autoScan ? "checkmark.circle.fill" : "circle.dashed")
-                                .font(.system(size: 14, weight: .bold))
-                            Text("Auto-capture").lineLimit(1).fixedSize()
+                        HStack(spacing: 4) {
+                            Image(systemName: autoScan ? "a.circle.fill" : "a.circle").font(.system(size: 15, weight: .bold))
+                            Text("Auto").lineLimit(1).fixedSize()
                         }
-                        .font(.subheadline.weight(.semibold)).padding(.horizontal, 12).frame(minHeight: 44)
-                        .background(autoScan ? Color.blue : Color.white.opacity(0.15), in: Capsule())
-                    }.accessibilityLabel("Automatic capture")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .accessibilityValue(autoScan ? "On" : "Off")
-                    Button(action: capturePage) {
-                        Circle().fill(.white).frame(width: 72, height: 72)
-                            .overlay(Circle().stroke(.black, lineWidth: 3).padding(5))
-                    }.accessibilityLabel("Capture page").disabled(saving || cardComplete || (!camera.ready && !testCamera))
-                    Color.clear.frame(maxWidth: .infinity, maxHeight: 44).accessibilityHidden(true)
-                }.padding(.horizontal, 20).padding(.bottom, 24)
-            }.foregroundStyle(.white)
+                        .font(.system(size: 14, weight: .semibold)).padding(.horizontal, 12).frame(height: 36)
+                        .background(autoScan ? TK.blue : Color.white.opacity(0.18), in: Capsule())
+                    }.accessibilityLabel("Automatic capture").accessibilityValue(autoScan ? "On" : "Off")
+                }.frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .padding(.horizontal, 20)
         }
+        .padding(.top, 28).padding(.bottom, 20)
+        .background(LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .top, endPoint: .bottom).ignoresSafeArea(edges: .bottom))
     }
 
     /// ID cards keep their own orientation handling; other modes follow how the

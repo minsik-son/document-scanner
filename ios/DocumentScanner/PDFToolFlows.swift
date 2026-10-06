@@ -90,6 +90,7 @@ private struct PDFToolRoot: View {
     @State private var paywall = false
     @State private var pending: UUID?
     @State private var importing = false
+    @State private var scanning = false
     @State private var annotate: ScanRoute?
     @State private var result: PDFToolResult?
     @State private var started = false
@@ -116,6 +117,12 @@ private struct PDFToolRoot: View {
                 select(id)
             }
         }
+        .fullScreenCover(isPresented: $scanning) {
+            ToolScanCamera { draft in
+                guard let draft else { return }
+                work.run("Saving your scan…") { select(try await ToolScanCamera.save(draft, store: store)) }
+            }
+        }
         .fullScreenCover(item: $annotate) { route in AnnotationEditor(documentID: route.id) }
         .onAppear {
             guard !started else { return }; started = true
@@ -126,6 +133,9 @@ private struct PDFToolRoot: View {
         ToolPage(title: tool.headline, subtitle: tool.promise) {
             ToolHero(art: tool.art)
             VStack(alignment: .leading, spacing: 4) {
+                Button { scanning = true } label: {
+                    ChoiceRow(symbol: "camera.fill", title: "Scan with the camera", detail: "Saved as a new PDF, then opened here", tint: TK.blue, soft: TK.blueSoft)
+                }.buttonStyle(.plain).accessibilityIdentifier("pdf-scan")
                 Button { importing = true } label: {
                     ChoiceRow(symbol: "folder.fill", title: "Choose a PDF from Files", detail: "It's added to your documents", tint: TK.orange, soft: TK.orangeSoft)
                 }.buttonStyle(.plain).accessibilityIdentifier("pdf-import")
@@ -183,6 +193,41 @@ private struct PDFToolRoot: View {
         case .print: PrintToolStep(document: doc, work: work)
         case .annotate, .identity: EmptyView()
         }
+    }
+}
+
+/// Camera for PDF tools: scan one or more pages, then they become a saved PDF
+/// document the tool opens. Returns nil when nothing was captured.
+private struct ToolScanCamera: View {
+    @EnvironmentObject private var store: LibraryStore
+    let completion: (UUID?) -> Void
+    @State private var draftID: UUID?
+    @State private var finished = false
+    var body: some View {
+        Group {
+            if let draftID { CameraView(documentID: draftID, finishTitle: "Use this scan") }
+            else { Color.black.ignoresSafeArea() }
+        }
+        .onAppear {
+            guard draftID == nil else { return }
+            do {
+                let id = try store.createDraft()
+                if var doc = store.document(id) { doc.captureStyle = .document; try store.update(doc) }
+                draftID = id
+            } catch { done(nil) }
+        }
+        .onDisappear {
+            guard let draftID, let doc = store.document(draftID), !doc.pages.isEmpty else { done(nil); return }
+            done(draftID)
+        }
+    }
+    private func done(_ id: UUID?) { guard !finished else { return }; finished = true; completion(id) }
+    @MainActor static func save(_ id: UUID, store: LibraryStore) async throws -> UUID {
+        guard var doc = store.document(id), !doc.pages.isEmpty else { throw ScannerError.message("This scan is no longer available.") }
+        if doc.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { doc.title = "Scan \(Date().formatted(date: .abbreviated, time: .shortened))" }
+        let result = try await PDFExport.prepare(doc, root: store.root)
+        try store.savePDF(result.data, document: result.document)
+        return id
     }
 }
 

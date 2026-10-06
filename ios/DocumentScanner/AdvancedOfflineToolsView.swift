@@ -785,12 +785,14 @@ enum WordFileInput {
 /// temporary draft that is removed once the pictures are handed back.
 struct OfficeScanCamera: View {
     @EnvironmentObject private var store: LibraryStore
+    var singlePage = false
+    var finishTitle = "Continue"
     let completion: (Result<[UIImage],Error>) -> Void
     @State private var draftID: UUID?
     @State private var finished = false
     var body: some View {
         Group {
-            if let draftID { CameraView(documentID: draftID, finishTitle: "Continue") }
+            if let draftID { CameraView(documentID: draftID, finishTitle: finishTitle, singlePage: singlePage) }
             else { Color.black.ignoresSafeArea() }
         }
         .onAppear {

@@ -1,5 +1,4 @@
 import SwiftUI
-import VisionKit
 import PhotosUI
 import UniformTypeIdentifiers
 import PDFKit
@@ -586,7 +585,7 @@ struct PhotoSourceChoices: View {
                               detail: "\(current.title) · \(current.pages.count) \(current.pages.count == 1 ? "page" : "pages")")
                 }.buttonStyle(.plain).accessibilityIdentifier("source-current")
             }
-            if documentScan && VNDocumentCameraViewController.isSupported {
+            if documentScan && CameraPhotoPicker.available {
                 Button { docCamera = true } label: { ChoiceRow(symbol: "doc.viewfinder.fill", title: "Scan a document", detail: "Finds the page edges and straightens it") }
                     .buttonStyle(.plain).accessibilityIdentifier("source-scan")
             }
@@ -620,7 +619,7 @@ struct PhotoSourceChoices: View {
             }
         }
         .fullScreenCover(isPresented: $docCamera) {
-            WordDocumentCamera { result in
+            OfficeScanCamera(singlePage: true, finishTitle: "Use this scan") { result in
                 docCamera = false
                 switch result {
                 case .success(let images): if let first = images.first { picked([first]) }

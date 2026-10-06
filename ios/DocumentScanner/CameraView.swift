@@ -14,6 +14,8 @@ struct CameraView: View {
     var identityCapture = false
     /// Title of the button that ends capture after checking a page.
     var finishTitle = "Done"
+    /// One page only: no "Add page" after checking the capture.
+    var singlePage = false
     @StateObject private var camera = CameraController()
     @StateObject private var orientation = CaptureOrientationMonitor()
     @State private var saving = false
@@ -30,7 +32,7 @@ struct CameraView: View {
     var body: some View {
         ZStack {
             if let capturedPage {
-                PageEditor(page: capturedPage, onAddPage: !identityCapture && retakingPageID == nil && !cardComplete ? { updated in try returnToCamera(updated) } : nil, onCancelCapture: {
+                PageEditor(page: capturedPage, onAddPage: !singlePage && !identityCapture && retakingPageID == nil && !cardComplete ? { updated in try returnToCamera(updated) } : nil, onCancelCapture: {
                     try cancelCapture(capturedPage.id)
                 }, doneTitle: identityCapture ? (reviewingFront ? (retakingPageID == nil ? "Use front · Continue" : "Use front · Preview") : "Use back · Preview") : finishTitle,
                            dismissOnSave: !identityCapture, scanStyle: style, onSave: { updated in

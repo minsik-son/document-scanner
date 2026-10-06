@@ -318,6 +318,7 @@ private struct OCRToolStep: View {
     @State private var copied = false
     @State private var correcting = false
     @State private var share: ExportedFiles?
+    @State private var allText = ""
     @State private var paywall = false
     private var current: ScanDocument { store.document(document.id) ?? document }
     private var text: String { current.pages.indices.contains(page) ? current.pages[page].plainText : "" }
@@ -357,12 +358,17 @@ private struct OCRToolStep: View {
                 Button { shareAll() } label: { HStack(spacing: 6) { Text("Share all pages as text"); if !subscription.isPro { Image(systemName: "crown.fill").foregroundStyle(TK.orange) } } }
                     .buttonStyle(SecondaryCTAStyle()).disabled(work.busy != nil)
             }
-            Button(copied ? "Copied" : "Copy text") { UIPasteboard.general.string = text; withAnimation { copied = true } }
-                .buttonStyle(CTAButtonStyle()).disabled(!read || text.isEmpty).accessibilityIdentifier("ocr-copy")
+            HStack(spacing: 10) {
+                // Shared as plain text so Mail, Messages and chat apps put it in the message body.
+                ShareLink(item: text) { Label("Share", systemImage: "square.and.arrow.up") }
+                    .buttonStyle(SecondaryCTAStyle()).disabled(!read || text.isEmpty).accessibilityIdentifier("ocr-share")
+                Button(copied ? "Copied" : "Copy text") { UIPasteboard.general.string = text; withAnimation { copied = true } }
+                    .buttonStyle(CTAButtonStyle()).disabled(!read || text.isEmpty).accessibilityIdentifier("ocr-copy")
+            }
         }
         .task(id: page) { recognize(page) }
         .sheet(isPresented: $correcting) { OCRTextEditor(documentID: document.id, pageIndex: page) }
-        .sheet(item: $share) { files in ShareSheet(items: files.urls) { _, _ in ExportFiles.remove(files.directory) } }
+        .sheet(item: $share) { files in ShareSheet(items: [allText]) { _, _ in ExportFiles.remove(files.directory) } }
         .sheet(isPresented: $paywall) { PaywallView() }
     }
     private func recognize(_ index: Int) {
@@ -383,6 +389,7 @@ private struct OCRToolStep: View {
         work.run("Reading every page…") {
             let prepared = try await PDFExport.prepare(doc, root: root) { label in work.busy = label }
             try store.savePDF(prepared.data, document: prepared.document)
+            allText = prepared.document.text
             share = try ExportFiles.write([(doc.title + ".txt", Data(prepared.document.text.utf8))])
         }
     }

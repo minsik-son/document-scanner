@@ -11,7 +11,7 @@
                     <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" alignment="center" spacing="24" translatesAutoresizingMaskIntoConstraints="NO" id="brand-stack">
                         <rect key="frame" x="85" y="294" width="223" height="247"/>
                         <subviews>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="LaunchLogo" translatesAutoresizingMaskIntoConstraints="NO" id="brand-logo">
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="LaunchBrackets" translatesAutoresizingMaskIntoConstraints="NO" id="brand-logo">
                                 <rect key="frame" x="27.5" y="0.0" width="168" height="168"/>
                                 <constraints><constraint firstAttribute="width" constant="168" id="logo-width"/><constraint firstAttribute="height" constant="168" id="logo-height"/></constraints>
                             </imageView>
@@ -43,5 +43,5 @@
         </viewController>
         <placeholder placeholderIdentifier="IBFirstResponder" id="launch-responder" userLabel="First Responder" sceneMemberID="firstResponder"/>
     </objects></scene></scenes>
-    <resources><image name="LaunchLogo" width="1024" height="1024"/><namedColor name="LaunchBackground"><color red="0.058824" green="0.172549" blue="0.298039" alpha="1" colorSpace="custom" customColorSpace="sRGB"/></namedColor></resources>
+    <resources><image name="LaunchBrackets" width="1024" height="1024"/><namedColor name="LaunchBackground"><color red="0.058824" green="0.172549" blue="0.298039" alpha="1" colorSpace="custom" customColorSpace="sRGB"/></namedColor></resources>
 </document>

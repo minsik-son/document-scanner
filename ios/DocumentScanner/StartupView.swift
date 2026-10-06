@@ -1,12 +1,15 @@
 import SwiftUI
 
 struct StartupView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
         ZStack {
             Color("LaunchBackground").ignoresSafeArea()
             VStack(spacing: 24) {
-                Image("LaunchLogo")
-                    .resizable().scaledToFit().frame(width: 168, height: 168)
+                // Plays once: a photographed page slides into the brackets shown on
+                // the launch screen, gets scanned and becomes the clean logo.
+                AnimatedPNG(asset: "art-splash", stillFrame: 59, animates: !reduceMotion)
+                    .frame(width: 168, height: 168)
                     .accessibilityHidden(true)
                 VStack(spacing: 8) {
                     Text("Document Scanner").font(.system(.title2, weight: .bold))

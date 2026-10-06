@@ -981,7 +981,6 @@ private struct ReorderToolStep: View {
     @ObservedObject var work: ToolWork
     let finish: (PDFToolResult) -> Void
     @State private var order: [ScanPage] = []
-    @State private var dragging: ScanPage?
     private var changed: Bool { order.map(\.id) != document.pages.map(\.id) }
     var body: some View {
         ToolPage(title: "Drag pages into order", subtitle: "Touch and hold a page, then move it.") {
@@ -989,26 +988,7 @@ private struct ReorderToolStep: View {
                 Button("Reverse") { withAnimation { order.reverse() } }.buttonStyle(ChipStyle(selected: false))
                 Button("Original order") { withAnimation { order = document.pages } }.buttonStyle(ChipStyle(selected: false)).disabled(!changed)
             }
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: 3), spacing: 18) {
-                ForEach(Array(order.enumerated()), id: \.element.id) { position, page in
-                    let original = document.pages.firstIndex(where: { $0.id == page.id }) ?? position
-                    VStack(spacing: 6) {
-                        PDFPageThumb(document: document, index: original)
-                            .frame(maxWidth: .infinity).aspectRatio(0.75, contentMode: .fit).background(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(dragging?.id == page.id ? TK.blue : TK.grey200, lineWidth: dragging?.id == page.id ? 2 : 1))
-                            .shadow(color: .black.opacity(dragging?.id == page.id ? 0.18 : 0), radius: 8, y: 4)
-                        Text("\(position + 1)").font(.system(size: 13, weight: .bold)).foregroundStyle(position == original ? TK.grey600 : TK.blue)
-                    }
-                    .onDrag { dragging = page; return NSItemProvider(object: page.id.uuidString as NSString) }
-                    .onDrop(of: [.text], delegate: PageDrop(target: page, order: $order, dragging: $dragging))
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Page \(original + 1), position \(position + 1)")
-                    .accessibilityActions {
-                        Button("Move earlier") { move(position, by: -1) }
-                        Button("Move later") { move(position, by: 1) }
-                    }
-                }
-            }
+            ReorderGrid(order: $order, document: document) { position, by in move(position, by: by) }
         } actions: {
             Button("Save new order") { save() }.buttonStyle(CTAButtonStyle()).disabled(!changed).accessibilityIdentifier("reorder-save")
         }
@@ -1031,17 +1011,99 @@ private struct ReorderToolStep: View {
         }
     }
 }
-private struct PageDrop: DropDelegate {
-    let target: ScanPage
+/// Home-screen style reordering: touch and hold lifts a page, it follows the
+/// finger, and the other pages slide out of the way live. No drag preview.
+private struct ReorderGrid: View {
     @Binding var order: [ScanPage]
-    @Binding var dragging: ScanPage?
-    func dropEntered(info: DropInfo) {
-        guard let dragging, dragging.id != target.id,
-              let from = order.firstIndex(where: { $0.id == dragging.id }), let to = order.firstIndex(where: { $0.id == target.id }) else { return }
-        withAnimation(.snappy) { order.move(fromOffsets: IndexSet(integer: from), toOffset: to > from ? to + 1 : to) }
+    let document: ScanDocument
+    let nudge: (Int, Int) -> Void
+    @State private var width: CGFloat = 0
+    @State private var dragID: UUID?
+    @State private var dragCenter: CGPoint = .zero
+    @State private var grab: CGSize?
+    @GestureState private var active = false
+    private let columns = 3
+    private let gap: CGFloat = 14, rowGap: CGFloat = 18, label: CGFloat = 22
+    private var cellW: CGFloat { max(1, (width - gap * CGFloat(columns - 1)) / CGFloat(columns)) }
+    private var cellH: CGFloat { cellW / 0.75 + label }
+    private var rows: Int { (order.count + columns - 1) / columns }
+    private func center(_ i: Int) -> CGPoint {
+        CGPoint(x: CGFloat(i % columns) * (cellW + gap) + cellW / 2, y: CGFloat(i / columns) * (cellH + rowGap) + cellH / 2)
     }
-    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
-    func performDrop(info: DropInfo) -> Bool { dragging = nil; return true }
+    private func slot(at p: CGPoint) -> Int {
+        let col = min(columns - 1, max(0, Int(floor((p.x + gap / 2) / (cellW + gap)))))
+        let row = min(max(0, rows - 1), max(0, Int(floor((p.y + rowGap / 2) / (cellH + rowGap)))))
+        return min(order.count - 1, row * columns + col)
+    }
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            if width > 0 {
+                ForEach(Array(order.enumerated()), id: \.element.id) { position, page in
+                    let original = document.pages.firstIndex(where: { $0.id == page.id }) ?? position
+                    let lifted = dragID == page.id
+                    VStack(spacing: 6) {
+                        PDFPageThumb(document: document, index: original)
+                            .frame(width: cellW, height: cellW / 0.75).background(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(TK.grey200, lineWidth: 1))
+                        Text("\(position + 1)").font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(position == original ? TK.grey600 : TK.blue)
+                            .frame(height: label - 6)
+                    }
+                    .frame(width: cellW, height: cellH)
+                    .contentShape(Rectangle())
+                    .scaleEffect(lifted ? 1.08 : 1)
+                    .shadow(color: .black.opacity(lifted ? 0.22 : 0), radius: 14, y: 8)
+                    .position(lifted ? dragCenter : center(position))
+                    .zIndex(lifted ? 1 : 0)
+                    .gesture(drag(page))
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Page \(original + 1), position \(position + 1)")
+                    .accessibilityActions {
+                        Button("Move earlier") { nudge(position, -1) }
+                        Button("Move later") { nudge(position, 1) }
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .frame(height: rows == 0 || width == 0 ? 120 : CGFloat(rows) * cellH + CGFloat(rows - 1) * rowGap)
+        .background(GeometryReader { g in
+            Color.clear.onAppear { width = g.size.width }.onChange(of: g.size.width) { _, w in width = w }
+        })
+        .coordinateSpace(name: "reorder")
+        .animation(.snappy(duration: 0.26), value: order.map(\.id))
+        .onChange(of: active) { _, now in
+            if !now, dragID != nil { withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { dragID = nil }; grab = nil }
+        }
+    }
+    private func drag(_ page: ScanPage) -> some Gesture {
+        LongPressGesture(minimumDuration: 0.25)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("reorder")))
+            .updating($active) { value, state, _ in if case .second(true, _) = value { state = true } }
+            .onChanged { value in
+                guard case .second(true, let d) = value, let from = order.firstIndex(where: { $0.id == page.id }) else { return }
+                if dragID != page.id {
+                    let c = center(from)
+                    dragCenter = c; grab = nil
+                    withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) { dragID = page.id }
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                }
+                guard let d else { return }
+                if grab == nil { let c = center(from); grab = CGSize(width: c.x - d.startLocation.x, height: c.y - d.startLocation.y) }
+                let offset = grab ?? .zero
+                dragCenter = CGPoint(x: d.location.x + offset.width, y: d.location.y + offset.height)
+                let target = slot(at: dragCenter)
+                if target != from {
+                    order.move(fromOffsets: IndexSet(integer: from), toOffset: target > from ? target + 1 : target)
+                    UISelectionFeedbackGenerator().selectionChanged()
+                }
+            }
+            .onEnded { _ in
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { dragID = nil }
+                grab = nil
+            }
+    }
 }
 
 // MARK: - Compress

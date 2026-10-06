@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreImage.CIFilterBuiltins
 import CoreImage
 
 // Only visual inputs belong in this key. OCR metadata and slider values must not
@@ -23,6 +24,7 @@ actor ScanPreviewRenderer {
     private var prepared: DocumentProcessing.PreparedDocument?
     private var toneStrength: Double?
     private var toneImage: CIImage?
+    private var toneCap: Int?
 
     func render(_ page: ScanPage, root: URL, maxDimension: Int? = ScanPreviewRenderer.maximumDimension) throws -> UIImage {
         try Task.checkCancellation()
@@ -39,12 +41,29 @@ actor ScanPreviewRenderer {
                 prepared = result; geometry = key; toneStrength = nil; toneImage = nil
             }
             guard let prepared else { throw ScannerError.message("The preview couldn't be prepared.") }
-            if toneImage == nil || toneStrength != page.enhancementStrength {
+            guard let maxDimension else {
+                // Full resolution is requested rarely (zoomed inspection); don't keep
+                // a 24 MP floating-point copy around for it.
+                let finished = try DocumentProcessing.finish(prepared, strength: page.enhancementStrength)
+                let adjusted = try Imaging.trim(DocumentProcessing.adjust(finished, settings: page.appearance), edges: page.trimming)
+                guard let raster = DocumentProcessing.context.createCGImage(adjusted, from: adjusted.extent) else {
+                    throw ScannerError.message("These adjustments couldn't be previewed. Try again.")
+                }
+                return try Imaging.applyErasures(UIImage(cgImage: raster), page: page)
+            }
+            if toneImage == nil || toneStrength != page.enhancementStrength || toneCap != maxDimension {
                 // Cache only the finished full-resolution tone, at floating-point
                 // precision. Slider frames reuse it without another Vision/clarity
                 // pass or an sRGB 8-bit boundary before manual adjustments.
                 toneImage = nil; toneStrength = nil
-                let result = try DocumentProcessing.finish(prepared, strength: page.enhancementStrength)
+                var result = try DocumentProcessing.finish(prepared, strength: page.enhancementStrength)
+                // Downsample after the nonlinear paper/ink filters (safe) to a little
+                // above the preview size. A full 24 MP RGBAh cache costs ~190 MB.
+                let side = max(result.extent.width, result.extent.height), cap = CGFloat(maxDimension) * 1.5
+                if side > cap {
+                    let f = CIFilter.lanczosScaleTransform(); f.inputImage = result; f.scale = Float(cap / side); f.aspectRatio = 1
+                    if let scaled = f.outputImage { result = scaled.cropped(to: scaled.extent.integral) }
+                }
                 guard let linear = CGColorSpace(name: CGColorSpace.extendedLinearSRGB),
                       let raster = DocumentProcessing.context.createCGImage(result, from: result.extent, format: .RGBAh, colorSpace: linear) else {
                     throw ScannerError.message("These adjustments couldn't be previewed. Try again.")
@@ -53,7 +72,7 @@ actor ScanPreviewRenderer {
                 toneImage = CIImage(cgImage: raster)
                     .transformed(by: CGAffineTransform(translationX: result.extent.minX, y: result.extent.minY))
                     .cropped(to: result.extent)
-                toneStrength = page.enhancementStrength
+                toneStrength = page.enhancementStrength; toneCap = maxDimension
             }
             guard let toneImage else { throw ScannerError.message("The preview couldn't be prepared.") }
             let adjusted = try Imaging.trim(DocumentProcessing.adjust(toneImage, settings: page.appearance), edges: page.trimming)
@@ -62,7 +81,7 @@ actor ScanPreviewRenderer {
             }
             try Task.checkCancellation()
             let fullImage = UIImage(cgImage: raster)
-            let sized = try maxDimension.map { try Imaging.previewThumbnail(fullImage, maxDimension: $0) } ?? fullImage
+            let sized = try Imaging.previewThumbnail(fullImage, maxDimension: maxDimension)
             let result = try Imaging.applyErasures(sized, page: page)
             try Task.checkCancellation()
             return result

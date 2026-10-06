@@ -633,7 +633,9 @@ struct PageEraseSheet: View {
         }
         .task {
             let page = page, root = store.root
-            do { image = try await OfflineWork.perform { try Imaging.render(page, root: root) } }
+            // Paint on a screen-sized render; strokes are normalized, so they
+            // apply to the full-resolution page on export.
+            do { image = try await ScanPreviewRenderer().render(page, root: root, maxDimension: 2400) }
             catch { failure = error.localizedDescription }
         }
     }

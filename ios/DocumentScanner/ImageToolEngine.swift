@@ -18,7 +18,9 @@ enum ImageToolEngine {
         @inline(__always) func index(_ x: Int, _ y: Int) -> Int { (y * width + x) * 4 }
     }
     static func raster(_ image: UIImage, maxSide: Int? = nil) throws -> Raster {
-        guard let cg = Imaging.normalized(image).cgImage else { throw ScannerError.message("This image is unavailable.") }
+        // Upright images (rendered pages) are drawn directly; only rotated
+        // photos need the extra normalized copy.
+        guard let cg = (image.imageOrientation == .up ? image : Imaging.normalized(image)).cgImage else { throw ScannerError.message("This image is unavailable.") }
         let longest = max(cg.width, cg.height)
         let scale = min(1, Double(maxSide ?? longest) / Double(longest))
         let w = max(1, Int(Double(cg.width) * scale)), h = max(1, Int(Double(cg.height) * scale))

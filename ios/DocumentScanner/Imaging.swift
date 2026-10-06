@@ -41,7 +41,16 @@ enum Imaging {
         guard let image = UIImage(contentsOfFile: root.appendingPathComponent(page.imageFile).path), let ci = CIImage(image: image) else { throw ScannerError.message("This page could not be opened. Your original has not been changed.") }
         return ci
     }
+    /// Full-resolution renders peak at several hundred MB on 24 MP pages, so
+    /// they run one at a time (PDF export, text recognition and thumbnails would
+    /// otherwise overlap). Renders are synchronous and never wait on each other.
+    private static let renderGate = DispatchSemaphore(value: 1)
     static func render(_ page: ScanPage, root: URL) throws -> UIImage {
+        renderGate.wait(); defer { renderGate.signal() }
+        try Task.checkCancellation()
+        return try autoreleasepool { try renderUngated(page, root: root) }
+    }
+    private static func renderUngated(_ page: ScanPage, root: URL) throws -> UIImage {
         let ci = try source(page, root: root)
         let base = try DocumentProcessing.render(ci, crop: page.crop, turns: page.turns, enhancement: page.enhancement, strength: page.enhancementStrength, identityCleanup: page.identityBackgroundCleanup == true && page.cropReviewNeeded != true)
         let output = try trim(DocumentProcessing.adjust(base, settings: page.appearance), edges: page.trimming)

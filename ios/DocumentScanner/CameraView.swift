@@ -28,6 +28,7 @@ struct CameraView: View {
     @State private var shutter = 0
     @State private var importedPhoto: PhotosPickerItem?
     @State private var autoCaptureHint = false
+    @State private var cardLocked = false
     @AppStorage("autoCaptureHintShown") private var autoCaptureHintShown = false
     var body: some View {
         ZStack {
@@ -69,8 +70,16 @@ struct CameraView: View {
             else { camera.stop() }
         }
         .onChange(of: camera.autoCaptureRequest) { _, _ in
-            if autoScan && !saving && !cardComplete && capturedPage == nil && camera.ready { capturePage() }
-            else { camera.cancelAutoRequest() }
+            guard autoScan && !saving && !cardComplete && capturedPage == nil && camera.ready else { camera.cancelAutoRequest(); return }
+            guard style == .card else { capturePage(); return }
+            // ID cards: show the green frame first, then capture if the card is still held steady.
+            cardLocked = true
+            Task {
+                try? await Task.sleep(nanoseconds: 550_000_000)
+                if autoScan && !saving && !cardComplete && capturedPage == nil && camera.ready && camera.tracking.quad != nil { capturePage() }
+                else { camera.cancelAutoRequest() }
+                cardLocked = false
+            }
         }
     }
     private var liveCamera: some View {
@@ -78,7 +87,7 @@ struct CameraView: View {
             Color.black.ignoresSafeArea()
             CameraPreview(controller: camera, tracking: camera.tracking, shutter: shutter, showsQuad: style != .card).ignoresSafeArea()
             if style == .card && !cardComplete {
-                CardFrameGuide(back: pageCountLabel == "Back of card", ready: camera.tracking.canAutoCapture && !saving).allowsHitTesting(false)
+                CardFrameGuide(back: pageCountLabel == "Back of card", ready: cardLocked || saving || camera.tracking.canAutoCapture).allowsHitTesting(false)
             }
             VStack(spacing: 0) {
                 topBar
@@ -753,7 +762,8 @@ final class PreviewSurface: UIView {
         }
     }
     private func playShutter() {
-        guard animates else { return }
+        // ID cards confirm with the green frame instead of the cross.
+        guard animates, showsQuad else { return }
         let p = points.count == 4 ? points : {
             let r = bounds.insetBy(dx: bounds.width * 0.12, dy: bounds.height * 0.18)
             return [CGPoint(x: r.minX, y: r.minY), CGPoint(x: r.maxX, y: r.minY), CGPoint(x: r.maxX, y: r.maxY), CGPoint(x: r.minX, y: r.maxY)]

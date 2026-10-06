@@ -237,7 +237,13 @@ struct HomeView: View {
             HStack {
                 Text("Quick tools").font(.headline)
                 Spacer()
-                Text("On your iPhone").font(.caption).foregroundStyle(.secondary)
+                Button { advanced = true } label: {
+                    HStack(spacing: 2) {
+                        Text("More tools")
+                        Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
+                    }.font(.caption.weight(.semibold)).foregroundStyle(TK.blue)
+                    .padding(.vertical, 6).padding(.leading, 8).contentShape(Rectangle())
+                }.buttonStyle(.plain).accessibilityIdentifier("home-more-tools")
             }
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: typeSize.isAccessibilitySize ? 2 : 4), spacing: 4) {
                 shortcut("Photos", icon: "import-photo") { photos = true }

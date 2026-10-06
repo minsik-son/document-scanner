@@ -6,6 +6,8 @@ struct HomeView: View {
     @EnvironmentObject var store: LibraryStore
     @EnvironmentObject private var ads: HomeAdvertisementStore
     @EnvironmentObject private var subscription: SubscriptionStore
+    @AppStorage(QuickToolPrefs.key) private var quickToolsRaw = ""
+    @State private var editingQuickTools = false
     @State private var paywall = false
     @State private var query = ""
     @State private var showingDocuments = false
@@ -128,6 +130,7 @@ struct HomeView: View {
             .fullScreenCover(isPresented: $advanced) { AdvancedOfflineHub() }
             .sheet(isPresented: $paywall) { PaywallView() }
             .fullScreenCover(item: $quick) { QuickToolView(tool: $0) }
+            .sheet(isPresented: $editingQuickTools) { QuickToolsEditor() }
             .sheet(isPresented: $settings, onDismiss: {
                 if let id = pendingResume {
                     pendingResume = nil; newCapture = false; route = ScanRoute(id: id)
@@ -237,6 +240,10 @@ struct HomeView: View {
             HStack {
                 Text("Quick tools").font(.headline)
                 Spacer()
+                Button { editingQuickTools = true } label: {
+                    Text("Edit").font(.caption.weight(.semibold)).foregroundStyle(TK.grey600)
+                        .padding(.vertical, 6).padding(.horizontal, 8).contentShape(Rectangle())
+                }.buttonStyle(.plain).accessibilityIdentifier("home-edit-quick-tools")
                 Button { advanced = true } label: {
                     HStack(spacing: 2) {
                         Text("More tools")
@@ -246,13 +253,7 @@ struct HomeView: View {
                 }.buttonStyle(.plain).accessibilityIdentifier("home-more-tools")
             }
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: typeSize.isAccessibilitySize ? 2 : 4), spacing: 4) {
-                shortcut("Photos", icon: "import-photo") { photos = true }
-                shortcut("Text", icon: "ocr") { quick = .library(.ocr) }
-                shortcut("Word", icon: "word", pro: true) { quick = .advanced(.word) }
-                shortcut("Excel", icon: "excel", pro: true) { quick = .advanced(.excel) }
-                shortcut("Sign", icon: "signature") { quick = .library(.annotate) }
-                shortcut("Compress", icon: "compress", pro: true) { quick = .library(.compress) }
-                shortcut("QR code", icon: "qr") { quick = .qr }
+                ForEach(quickTools) { item in shortcut(item) }
                 Button { advanced = true } label: {
                     VStack(spacing: 4) {
                         ToolArtwork(name: "all-tools")
@@ -262,16 +263,26 @@ struct HomeView: View {
             }
         }.padding(18).background(.white, in: RoundedRectangle(cornerRadius: 26))
     }
-    private func shortcut(_ title: String, icon: String, pro: Bool = false, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+    private var quickTools: [HomeShortcut] { QuickToolPrefs.load(quickToolsRaw, pro: subscription.isPro) }
+    private func open(_ item: HomeShortcut) {
+        switch item {
+        case .photos: photos = true
+        case .qr: quick = .qr
+        case .stitch: quick = .stitch
+        case .library(let tool): quick = .library(tool)
+        case .advanced(let tool): quick = .advanced(tool)
+        }
+    }
+    private func shortcut(_ item: HomeShortcut) -> some View {
+        Button { open(item) } label: {
             VStack(spacing: 4) {
-                ToolArtwork(name: icon).overlay(alignment: .topTrailing) {
-                    if pro { Text("PRO").font(.system(size: 8, weight: .bold)).foregroundStyle(Design.blue).padding(3).background(.white, in: Capsule()) }
+                ToolArtwork(name: item.icon).overlay(alignment: .topTrailing) {
+                    if item.pro { ProBadge().offset(x: 6, y: -4) }
                 }
-                Text(title).font(.system(.caption, weight: .medium)).foregroundStyle(Design.ink)
+                Text(item.title).font(.system(.caption, weight: .medium)).foregroundStyle(Design.ink)
                     .fixedSize(horizontal: false, vertical: true)
             }.frame(maxWidth: .infinity, minHeight: 88, alignment: .top).contentShape(Rectangle())
-        }.accessibilityLabel(title == "QR code" ? "Open QR code" : title).disabled(importing || !store.storageAvailable)
+        }.accessibilityLabel(item == .qr ? "Open QR code" : item.title).disabled(importing || !store.storageAvailable)
     }
     private func matchingPage(_ doc: ScanDocument) -> Int { query.isEmpty ? 0 : (doc.pages.firstIndex { $0.plainText.localizedCaseInsensitiveContains(query) } ?? 0) }
     @ViewBuilder

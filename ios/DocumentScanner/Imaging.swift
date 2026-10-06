@@ -1,6 +1,7 @@
 import UIKit
 import CoreImage.CIFilterBuiltins
 import PDFKit
+import ImageIO
 
 // Image and OCR work runs away from the UI actor. Originals are never overwritten.
 enum Imaging {
@@ -40,6 +41,31 @@ enum Imaging {
     static func source(_ page: ScanPage, root: URL) throws -> CIImage {
         guard let image = UIImage(contentsOfFile: root.appendingPathComponent(page.imageFile).path), let ci = CIImage(image: image) else { throw ScannerError.message("This page could not be opened. Your original has not been changed.") }
         return ci
+    }
+    /// The page photo decoded straight to a smaller size (no full 24 MP bitmap).
+    static func source(_ page: ScanPage, root: URL, maxPixel: Int) throws -> CIImage {
+        let url = root.appendingPathComponent(page.imageFile)
+        guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let cg = CGImageSourceCreateThumbnailAtIndex(src, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceShouldCacheImmediately: true,
+                kCGImageSourceThumbnailMaxPixelSize: maxPixel] as CFDictionary)
+        else { throw ScannerError.message("This page could not be opened. Your original has not been changed.") }
+        return CIImage(cgImage: cg)
+    }
+    /// List and grid thumbnails: the same processing as the page, run on a
+    /// ~1600 px copy of the photo. Crop, rotation, margins and erasures are all
+    /// normalized, so they apply unchanged. A few MB instead of a full render.
+    static func renderThumbnail(_ page: ScanPage, root: URL, maxDimension: Int) throws -> UIImage {
+        try autoreleasepool {
+            let ci = try source(page, root: root, maxPixel: max(1600, maxDimension * 2))
+            let base = try DocumentProcessing.render(ci, crop: page.crop, turns: page.turns, enhancement: page.enhancement, strength: page.enhancementStrength, identityCleanup: page.identityBackgroundCleanup == true && page.cropReviewNeeded != true)
+            let output = try trim(DocumentProcessing.adjust(base, settings: page.appearance), edges: page.trimming)
+            guard let cg = DocumentProcessing.context.createCGImage(output, from: output.extent) else { throw ScannerError.message("The page could not be processed.") }
+            let sized = try previewThumbnail(UIImage(cgImage: cg), maxDimension: maxDimension)
+            return try applyErasures(sized, page: page)
+        }
     }
     /// Full-resolution renders peak at several hundred MB on 24 MP pages, so
     /// they run one at a time (PDF export, text recognition and thumbnails would

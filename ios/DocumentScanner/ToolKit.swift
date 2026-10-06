@@ -443,7 +443,7 @@ actor PDFThumbCache {
         if let file = doc.pdfFile, let page = PDFDocument(url: root.appendingPathComponent(file))?.page(at: index) {
             image = page.thumbnail(of: CGSize(width: 420, height: 560), for: .mediaBox)
         } else if doc.pages.indices.contains(index) {
-            image = try Imaging.previewThumbnail(Imaging.render(doc.pages[index], root: root), maxDimension: 560)
+            image = try Imaging.renderThumbnail(doc.pages[index], root: root, maxDimension: 560)
         } else { throw ScannerError.message("Page unavailable.") }
         cache.setObject(image, forKey: key)
         return image

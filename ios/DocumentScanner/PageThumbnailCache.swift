@@ -9,7 +9,7 @@ actor PageThumbnailCache {
     typealias Renderer = (ScanPage, URL) throws -> UIImage
     private let memory = NSCache<NSString, UIImage>()
     private let renderer: Renderer
-    init(renderer: @escaping Renderer = { try Imaging.render($0, root: $1) }) {
+    init(renderer: @escaping Renderer = { try Imaging.renderThumbnail($0, root: $1, maxDimension: 700) }) {
         self.renderer = renderer
         memory.totalCostLimit = 32 * 1024 * 1024
         memory.countLimit = 60
@@ -25,7 +25,7 @@ actor PageThumbnailCache {
         if page.identityBackgroundCleanup == true { data.append(Data("identity-edges-v2".utf8)) }
         let source = root.appendingPathComponent(pdfFile ?? page.imageFile)
         let attributes = try source.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
-        data.append(Data("thumbnail-v3|\(root.path)|\(pdfFile ?? page.imageFile)|\(attributes.contentModificationDate?.timeIntervalSince1970 ?? 0)|\(attributes.fileSize ?? 0)".utf8))
+        data.append(Data("thumbnail-v4|\(root.path)|\(pdfFile ?? page.imageFile)|\(attributes.contentModificationDate?.timeIntervalSince1970 ?? 0)|\(attributes.fileSize ?? 0)".utf8))
         let key = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
         if let cached = memory.object(forKey: key as NSString) { return cached }
         let directory = root.appendingPathComponent("Thumbnails", isDirectory: true)

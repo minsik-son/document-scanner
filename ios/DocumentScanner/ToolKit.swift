@@ -1,4 +1,5 @@
 import SwiftUI
+import VisionKit
 import PhotosUI
 import UniformTypeIdentifiers
 import PDFKit
@@ -567,10 +568,13 @@ struct PhotoSourceChoices: View {
     /// Shows the head-and-shoulder guide camera for ID photos.
     var portraitGuide = false
     var allowCamera = true
+    /// Adds the edge-detecting document scanner (crops and straightens the page).
+    var documentScan = false
     let picked: ([UIImage]) -> Void
     let failed: (String) -> Void
     var busy: (Bool) -> Void = { _ in }
     @State private var camera = false
+    @State private var docCamera = false
     @State private var photos: [PhotosPickerItem] = []
     @State private var importing = false
     @State private var pickerStart: PickerStart?
@@ -582,8 +586,12 @@ struct PhotoSourceChoices: View {
                               detail: "\(current.title) · \(current.pages.count) \(current.pages.count == 1 ? "page" : "pages")")
                 }.buttonStyle(.plain).accessibilityIdentifier("source-current")
             }
+            if documentScan && VNDocumentCameraViewController.isSupported {
+                Button { docCamera = true } label: { ChoiceRow(symbol: "doc.viewfinder.fill", title: "Scan a document", detail: "Finds the page edges and straightens it") }
+                    .buttonStyle(.plain).accessibilityIdentifier("source-scan")
+            }
             if allowCamera && CameraPhotoPicker.available {
-                Button { camera = true } label: { ChoiceRow(symbol: "camera.fill", title: "Take a photo", detail: "Use the camera now") }
+                Button { camera = true } label: { ChoiceRow(symbol: "camera.fill", title: "Take a photo", detail: documentScan ? "For objects, walls and scenes" : "Use the camera now") }
                     .buttonStyle(.plain).accessibilityIdentifier("source-camera")
             }
             PhotosPicker(selection: $photos, maxSelectionCount: multiple ? 8 : 1, selectionBehavior: .ordered, matching: .images) {
@@ -610,6 +618,15 @@ struct PhotoSourceChoices: View {
                     if let image { picked([image]) }
                 }.ignoresSafeArea()
             }
+        }
+        .fullScreenCover(isPresented: $docCamera) {
+            WordDocumentCamera { result in
+                docCamera = false
+                switch result {
+                case .success(let images): if let first = images.first { picked([first]) }
+                case .failure(let error): failed(error.localizedDescription)
+                }
+            }.ignoresSafeArea()
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.image, .pdf]) { result in
             switch result {

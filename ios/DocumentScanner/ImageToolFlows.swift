@@ -92,7 +92,7 @@ struct PhotoSourcePage: View {
             if let recent { recent }
             VStack(alignment: .leading, spacing: 8) {
                 SectionLabel(text: multiple ? "Add your photos" : "Add a photo")
-                PhotoSourceChoices(multiple: multiple, frontCamera: frontCamera, portraitGuide: tool == .portrait, picked: picked,
+                PhotoSourceChoices(multiple: multiple, frontCamera: frontCamera, portraitGuide: tool == .portrait, documentScan: tool == .erase || tool == .marks, picked: picked,
                                    failed: { work.message = $0 }, busy: { work.busy = $0 ? "Opening…" : nil })
             }
             if let message = work.message { ToastMessage(text: message) }
@@ -689,13 +689,19 @@ private struct EraseTool: View {
     @State private var current: ImageToolEngine.Stroke?
     @State private var brush = 0.035
     @State private var result: UIImage?
+    @State private var zoom: CGFloat = 1
+    @State private var pan: CGSize = .zero
+    @State private var moving = false
+    @State private var pinching = false
+    @State private var pinchStart: CGFloat?
+    @State private var dragStart: CGSize?
     var body: some View {
         StepStack(step: step, forward: forward) {
             switch step {
             case 0:
                 PhotoSourcePage(tool: .erase, title: "Erase anything", subtitle: "Paint over handwriting, stains or objects. We'll fill the spot from its surroundings.", work: work) { images in
                     guard let image = images.first else { return }
-                    original = image; input = image; strokes = []; go(1)
+                    original = image; input = image; strokes = []; zoom = 1; pan = .zero; moving = false; go(1)
                 }
             case 1: paintPage
             case 2: resultPage
@@ -706,12 +712,18 @@ private struct EraseTool: View {
     }
     private func go(_ next: Int) { forward = next > step; step = next }
     private var paintPage: some View {
-        ToolPage(title: "Paint over what to erase", subtitle: "Cover it fully with a little margin.", scrolls: false) {
+        ToolPage(title: "Paint over what to erase", subtitle: "Pinch to zoom in for small spots. Cover it fully with a little margin.", scrolls: false) {
             if let input {
                 GeometryReader { geo in
                     let rect = AVFit.rect(for: input.size, in: geo.size)
+                    let center = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
+                    // Screen point -> unzoomed canvas point.
+                    let unzoom: (CGPoint) -> CGPoint = { l in
+                        CGPoint(x: center.x + (l.x - center.x - pan.width) / zoom, y: center.y + (l.y - center.y - pan.height) / zoom)
+                    }
                     ZStack(alignment: .topLeading) {
-                        Image(uiImage: input).resizable().frame(width: rect.width, height: rect.height).offset(x: rect.minX, y: rect.minY)
+                        Image(uiImage: input).resizable().interpolation(zoom > 1.5 ? .none : .high)
+                            .frame(width: rect.width, height: rect.height).offset(x: rect.minX, y: rect.minY)
                         Canvas { context, _ in
                             for stroke in strokes + [current].compactMap({ $0 }) {
                                 var path = Path()
@@ -724,16 +736,62 @@ private struct EraseTool: View {
                             }
                         }
                     }
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .scaleEffect(zoom).offset(pan)
+                    .frame(width: geo.size.width, height: geo.size.height).clipped()
                     .contentShape(Rectangle())
                     .gesture(DragGesture(minimumDistance: 0).onChanged { value in
-                        let p = CGPoint(x: min(1, max(0, (value.location.x - rect.minX) / rect.width)), y: min(1, max(0, (value.location.y - rect.minY) / rect.height)))
-                        if current == nil { current = ImageToolEngine.Stroke(points: [p], width: brush) } else { current?.points.append(p) }
-                    }.onEnded { _ in if let current { strokes.append(current) }; current = nil })
-                    .accessibilityLabel("Photo. Drag to paint over what to erase.").accessibilityIdentifier("erase-canvas")
+                        guard !pinching else { return }
+                        if moving {
+                            if dragStart == nil { dragStart = pan }
+                            let start = dragStart ?? .zero
+                            pan = clampPan(CGSize(width: start.width + value.translation.width, height: start.height + value.translation.height), size: geo.size)
+                            return
+                        }
+                        let c = unzoom(value.location)
+                        let p = CGPoint(x: min(1, max(0, (c.x - rect.minX) / rect.width)), y: min(1, max(0, (c.y - rect.minY) / rect.height)))
+                        // Same brush size on screen at any zoom, so zooming in gives finer strokes.
+                        if current == nil { current = ImageToolEngine.Stroke(points: [p], width: brush / zoom) } else { current?.points.append(p) }
+                    }.onEnded { _ in
+                        dragStart = nil
+                        if let current, !pinching { strokes.append(current) }
+                        current = nil
+                    })
+                    .simultaneousGesture(MagnifyGesture().onChanged { value in
+                        pinching = true; current = nil
+                        if pinchStart == nil { pinchStart = zoom }
+                        zoom = min(6, max(1, (pinchStart ?? 1) * value.magnification))
+                        pan = clampPan(pan, size: geo.size)
+                    }.onEnded { _ in
+                        pinchStart = nil
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { pinching = false }
+                    })
+                    .accessibilityLabel("Photo. Drag to paint over what to erase. Pinch to zoom.").accessibilityIdentifier("erase-canvas")
                 }
                 .padding(8).background(TK.grey100, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .overlay(alignment: .topTrailing) {
+                    if zoom > 1.01 {
+                        Button { withAnimation(.snappy) { zoom = 1; pan = .zero; moving = false } } label: {
+                            Label(String(format: "%.1f×", zoom), systemImage: "arrow.down.right.and.arrow.up.left")
+                                .font(.system(size: 13, weight: .semibold)).padding(.horizontal, 10).padding(.vertical, 6)
+                                .background(.ultraThinMaterial, in: Capsule())
+                        }.buttonStyle(.plain).padding(14).accessibilityIdentifier("erase-zoom-reset")
+                    }
+                }
                 .frame(maxHeight: .infinity)
             }
+            HStack(spacing: 8) {
+                Button { moving = false } label: { Label("Paint", systemImage: "paintbrush.pointed.fill") }
+                    .buttonStyle(ChipStyle(selected: !moving)).accessibilityIdentifier("erase-mode-paint")
+                Button { moving = true } label: { Label("Move", systemImage: "hand.draw.fill") }
+                    .buttonStyle(ChipStyle(selected: moving)).disabled(zoom <= 1.01).accessibilityIdentifier("erase-mode-move")
+                Spacer()
+                Button { withAnimation(.snappy) { zoom = min(6, zoom * 1.6) } } label: { Image(systemName: "plus.magnifyingglass").font(.system(size: 18, weight: .semibold)).frame(width: 40, height: 40) }
+                    .accessibilityLabel("Zoom in").accessibilityIdentifier("erase-zoom-in")
+                Button { withAnimation(.snappy) { zoom = max(1, zoom / 1.6); if zoom <= 1.01 { zoom = 1; pan = .zero; moving = false } } } label: { Image(systemName: "minus.magnifyingglass").font(.system(size: 18, weight: .semibold)).frame(width: 40, height: 40) }
+                    .disabled(zoom <= 1.01).accessibilityLabel("Zoom out")
+            }.foregroundStyle(TK.grey700)
             HStack(spacing: 16) {
                 Image(systemName: "circle.fill").font(.system(size: 8)).foregroundStyle(TK.grey500)
                 Slider(value: $brush, in: 0.012...0.12).tint(TK.blue).accessibilityLabel("Brush size")
@@ -745,6 +803,11 @@ private struct EraseTool: View {
             Button("Erase") { erase() }.buttonStyle(CTAButtonStyle()).disabled(strokes.isEmpty).accessibilityIdentifier("erase-run")
         }
     }
+    /// Keeps the zoomed photo covering the frame.
+    private func clampPan(_ p: CGSize, size: CGSize) -> CGSize {
+        let mx = size.width * (zoom - 1) / 2, my = size.height * (zoom - 1) / 2
+        return CGSize(width: min(mx, max(-mx, p.width)), height: min(my, max(-my, p.height)))
+    }
     private var resultPage: some View {
         ToolPage(title: "Check the result", subtitle: "Drag to compare. Erase more if something is left.", scrolls: false) {
             if let original, let result {
@@ -752,7 +815,7 @@ private struct EraseTool: View {
                     .padding(8).background(TK.grey100, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
             }
         } actions: {
-            Button("Erase more") { input = result; strokes = []; go(1) }.buttonStyle(SecondaryCTAStyle()).accessibilityIdentifier("erase-more")
+            Button("Erase more") { input = result; strokes = []; zoom = 1; pan = .zero; moving = false; go(1) }.buttonStyle(SecondaryCTAStyle()).accessibilityIdentifier("erase-more")
             Button("Save") { save() }.buttonStyle(CTAButtonStyle()).accessibilityIdentifier("erase-save")
         }
     }

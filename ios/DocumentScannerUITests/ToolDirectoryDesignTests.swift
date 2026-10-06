@@ -50,7 +50,7 @@ final class ToolDirectoryDesignTests: XCTestCase {
         XCTAssertTrue(app.textFields["tool-search"].waitForExistence(timeout: 5))
         app.navigationBars.buttons["Close"].tap()
         app.buttons["nav-settings"].tap()
-        XCTAssertTrue(app.navigationBars["Me"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars.buttons["Done"].waitForExistence(timeout: 5))
         app.navigationBars.buttons["Done"].tap()
         app.buttons["nav-home"].tap()
         XCTAssertTrue(app.staticTexts["Quick tools"].waitForExistence(timeout: 5))
@@ -102,7 +102,7 @@ final class ToolDirectoryDesignTests: XCTestCase {
         app.buttons["Take a quick tour"].tap()
         XCTAssertTrue(app.staticTexts["onboarding-title-0"].waitForExistence(timeout: 5))
         app.buttons["onboarding-skip"].tap()
-        XCTAssertTrue(app.navigationBars["Me"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars.buttons["Done"].waitForExistence(timeout: 5))
     }
     @MainActor func testOnboardingLargeTextSkipPersists() {
         let app = XCUIApplication()

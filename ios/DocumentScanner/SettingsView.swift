@@ -92,7 +92,7 @@ struct SettingsView: View {
                     Text("Development preview. Subscription purchases launched through the Xcode StoreKit configuration are test purchases.").font(.subheadline).foregroundStyle(.secondary)
                 }
                 if let feedback { Section { Text(feedback) } }
-            }.navigationTitle("Me").toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.disabled(backupBusy) } }
+            }.navigationTitle("").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.disabled(backupBusy) } }
             .interactiveDismissDisabled(backupBusy)
             .fullScreenCover(isPresented: $showingTour) { OnboardingView { showingTour = false } }
             .alert("New folder", isPresented: $addingFolder) { TextField("Folder name", text: $folder); Button("Create") { store.perform { try store.addFolder(folder) }; folder = "" }; Button("Cancel", role: .cancel) {} }

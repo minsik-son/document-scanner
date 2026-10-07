@@ -6,11 +6,28 @@ struct ToolArtwork: View {
     var size: CGFloat = 64
     var body: some View {
         Group {
-            if UIImage(named: "glyph-" + name) != nil {
+            if name == "all-tools" {
+                // Light 2x2 grid on the same whisper tile as the tool icons.
+                let cell = size * 0.19, gap = size * 0.07
+                RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
+                    .fill(ToolHue.blue.container)
+                    .overlay {
+                        VStack(spacing: gap) {
+                            HStack(spacing: gap) {
+                                RoundedRectangle(cornerRadius: cell * 0.32, style: .continuous).fill(Color(hex: 0x7EADFF)).frame(width: cell, height: cell)
+                                RoundedRectangle(cornerRadius: cell * 0.32, style: .continuous).fill(Color(hex: 0x6FD6BE)).frame(width: cell, height: cell)
+                            }
+                            HStack(spacing: gap) {
+                                RoundedRectangle(cornerRadius: cell * 0.32, style: .continuous).fill(Color(hex: 0xB3A6FF)).frame(width: cell, height: cell)
+                                RoundedRectangle(cornerRadius: cell * 0.32, style: .continuous).fill(Color(hex: 0xFFBE8C)).frame(width: cell, height: cell)
+                            }
+                        }
+                    }
+            } else if UIImage(named: "glyph-" + name) != nil {
                 // v2 set: same soft squircle for every tool, each in its own hue.
                 RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
                     .fill(Self.hues[name]?.container ?? ToolHue.blue.container)
-                    .overlay(Image("glyph-" + name).resizable().interpolation(.high).scaledToFit().frame(width: size * 0.58, height: size * 0.58))
+                    .overlay(Image("glyph-" + name).resizable().interpolation(.high).scaledToFit().frame(width: size * 0.50, height: size * 0.50))
             } else if UIImage(named: "tool-" + name) != nil {
                 Image("tool-" + name).resizable().interpolation(.high).scaledToFit()
             } else {
@@ -29,14 +46,15 @@ struct ToolArtwork: View {
 enum ToolHue {
     case blue, teal, green, orange, purple, pink, yellow
     var container: Color {
+        // Whisper tiles: almost white, so the glyph carries the colour and the set feels light.
         switch self {
-        case .blue: return Color(hex: 0xEAF2FF)
-        case .teal: return Color(hex: 0xE2F6F4)
-        case .green: return Color(hex: 0xE6F6EA)
-        case .orange: return Color(hex: 0xFFF1E3)
-        case .purple: return Color(hex: 0xF0ECFF)
-        case .pink: return Color(hex: 0xFDECEE)
-        case .yellow: return Color(hex: 0xFFF6DA)
+        case .blue: return Color(hex: 0xF4F8FF)
+        case .teal: return Color(hex: 0xF1FAF9)
+        case .green: return Color(hex: 0xF2FAF4)
+        case .orange: return Color(hex: 0xFFF8F1)
+        case .purple: return Color(hex: 0xF7F5FF)
+        case .pink: return Color(hex: 0xFEF5F6)
+        case .yellow: return Color(hex: 0xFFFBEC)
         }
     }
 }

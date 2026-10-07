@@ -172,7 +172,7 @@ struct PaywallView: View {
             }.font(.caption).foregroundStyle(.white.opacity(0.7))
         }
         .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 10).frame(maxWidth: .infinity)
-        .background(LinearGradient(colors: [ProStyle.night.opacity(0), ProStyle.night, ProStyle.night], startPoint: .top, endPoint: .bottom).padding(.top, -24))
+        .background(ProStyle.night)
     }
     private func legal(_ product: Product) -> String {
         if product.id == SubscriptionStore.lifetimeID {
@@ -223,7 +223,6 @@ struct ProFeatureCarousel: View {
     ]
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var index = 0
-    private let timer = Timer.publish(every: 3.2, on: .main, in: .common).autoconnect()
     var body: some View {
         VStack(spacing: 14) {
             TabView(selection: $index) {
@@ -242,34 +241,32 @@ struct ProFeatureCarousel: View {
             Text("All \(PaywallView.proToolCount) Pro tools, unlimited signatures and merges")
                 .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.6))
         }
-        .onReceive(timer) { _ in
-            guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 0.45)) { index = (index + 1) % Self.slides.count }
-        }
     }
     private func slide(_ slide: Slide, live: Bool) -> some View {
-        ZStack(alignment: .bottom) {
-            // Light stage at the top (where the art reads best), fading into the night below.
-            LinearGradient(colors: [Color(red: 0.95, green: 0.95, blue: 1), Color(red: 0.86, green: 0.85, blue: 0.99)], startPoint: .top, endPoint: .bottom)
-            Group {
-                if let art = slide.art {
-                    AnimatedPNG(asset: art, stillFrame: 60, animates: live && !reduceMotion)
-                        .frame(width: 320, height: 200)
-                } else {
-                    ProArt().frame(width: 190, height: 170)
+        // Two flat colours, no gradient: a light stage for the art, the night below for the words.
+        VStack(spacing: 0) {
+            ZStack {
+                Color(red: 0.925, green: 0.918, blue: 1)
+                Group {
+                    if let art = slide.art {
+                        AnimatedPNG(asset: art, stillFrame: 60, animates: live && !reduceMotion)
+                            .frame(width: 320, height: 200)
+                    } else {
+                        ProArt().frame(width: 190, height: 170)
+                    }
                 }
+                .padding(.top, 40)
+                .accessibilityHidden(true)
             }
-            .padding(.bottom, 150)
-            .accessibilityHidden(true)
-            LinearGradient(colors: [ProStyle.night.opacity(0), ProStyle.night.opacity(0.85), ProStyle.night], startPoint: .top, endPoint: .bottom)
-                .frame(height: 190)
+            .frame(height: 300)
             VStack(spacing: 6) {
                 Text(slide.title).font(.system(.title, weight: .black)).multilineTextAlignment(.center)
                     .minimumScaleFactor(0.6).lineLimit(2)
                 Text(slide.detail).font(.subheadline).foregroundStyle(.white.opacity(0.75)).multilineTextAlignment(.center)
             }
-            .foregroundStyle(.white).padding(.horizontal, 24).padding(.bottom, 18)
+            .foregroundStyle(.white).padding(.horizontal, 24)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(ProStyle.night)
         }
-        .clipped()
     }
 }

@@ -81,7 +81,7 @@ struct AdvancedOfflineHub: View {
                     }
                     if query.isEmpty {
                         VStack(alignment: .leading, spacing: 10) {
-                            HStack { Text("Everyday essentials").font(.headline); Spacer(); ToolArtwork(name: "all-tools", size: 30) }
+                            Text("Everyday essentials").font(.headline)
                             LazyVGrid(columns: columns, spacing: 12) {
                                 Button { startScan(.document) } label: { ToolTile(title: "Scan document", icon: "scan") }
                                 Button { quick = .qr } label: { ToolTile(title: "QR code", icon: "qr") }.accessibilityLabel("QR code")

@@ -10,6 +10,7 @@ struct HomeView: View {
     @State private var editingQuickTools = false
     @State private var paywall = false
     @State private var query = ""
+    @State private var kindFilter: DocumentKind?
     @State private var showingDocuments = false
     @State private var advanced = false
     @State private var quick: QuickTool?
@@ -29,7 +30,7 @@ struct HomeView: View {
     @State private var pendingImport: UUID?
     @AppStorage("scanner-grid") private var grid = false
     var filtered: [ScanDocument] {
-        store.active.filter { (tab != "Favorites" || $0.favorite) && (folder == nil || $0.folder == folder) && (query.isEmpty || $0.title.localizedCaseInsensitiveContains(query) || $0.text.localizedCaseInsensitiveContains(query)) }
+        store.active.filter { (tab != "Favorites" || $0.favorite) && (folder == nil || $0.folder == folder) && (kindFilter == nil || $0.kind == kindFilter) && (query.isEmpty || $0.title.localizedCaseInsensitiveContains(query) || $0.text.localizedCaseInsensitiveContains(query)) }
     }
     var body: some View {
         NavigationStack {
@@ -72,6 +73,23 @@ struct HomeView: View {
                                         .background(tab == value ? Design.blue.opacity(0.09) : .white, in: Capsule())
                                 }.foregroundStyle(tab == value ? Design.blue : .secondary)
                             }
+                        }
+                        let kindCounts = Dictionary(grouping: store.active.compactMap(\.kind), by: { $0 }).mapValues(\.count)
+                        let kinds = DocumentKind.allCases.filter { $0 != .other && (kindCounts[$0] ?? 0) > 0 }
+                        if tab != "Folders" && !kinds.isEmpty {
+                            // Sorted on this iPhone from each document's text.
+                            ScrollView(.horizontal) {
+                                HStack(spacing: 8) {
+                                    ForEach(kinds) { kind in
+                                        Button { kindFilter = kindFilter == kind ? nil : kind } label: {
+                                            Label("\(kind.plural) \(kindCounts[kind] ?? 0)", systemImage: kind.symbol).font(.footnote.weight(.semibold))
+                                                .padding(.horizontal, 12).padding(.vertical, 7)
+                                                .background(kindFilter == kind ? Design.blue.opacity(0.1) : .white, in: Capsule())
+                                        }.foregroundStyle(kindFilter == kind ? Design.blue : .secondary)
+                                            .accessibilityIdentifier("kind-filter-" + kind.rawValue)
+                                    }
+                                }
+                            }.scrollIndicators(.hidden)
                         }
                         if tab == "Folders" {
                             ScrollView(.horizontal) {
@@ -148,6 +166,7 @@ struct HomeView: View {
                 Button("Choose photos") { photos = true }
                 Button("Choose PDF or image") { files = true }
             } message: { Text("PDF text and links are preserved. Image adjustments may require converting a page to an image.") }
+            .task { store.refreshInsights() }
             .photosPicker(isPresented: $photos, selection: $selections, maxSelectionCount: 50, selectionBehavior: .ordered, matching: .images)
             .onChange(of: selections) { _, items in if !items.isEmpty { importPhotos(items) } }
             .sheet(item: $fileBatch, onDismiss: { if let id = pendingImport { pendingImport = nil; newCapture = false; route = ScanRoute(id: id) } }) { batch in
@@ -342,7 +361,7 @@ struct DocumentRow: View {
             Group { if let page = document.pages.first { PageThumbnail(page: page, pdfFile: document.pdfFile) } else { Image(systemName: "doc") } }.frame(width: 56, height: 72).background(Design.muted, in: RoundedRectangle(cornerRadius: 8))
             VStack(alignment: .leading, spacing: 6) {
                 Text(document.title).font(.headline).lineLimit(2)
-                Text("\(document.pages.count) pages · \(document.folder)").font(.subheadline).foregroundStyle(.secondary)
+                Text("\(document.pages.count) pages · \(document.kind.map { $0 == .other ? document.folder : $0.label } ?? document.folder)").font(.subheadline).foregroundStyle(.secondary)
                 if !query.isEmpty, let index = document.pages.firstIndex(where: { $0.plainText.localizedCaseInsensitiveContains(query) }) { Text("Text match on page \(index+1)").font(.caption).foregroundStyle(Design.blue) }
                 Text(document.updatedAt, style: .date).font(.caption).foregroundStyle(.secondary)
             }

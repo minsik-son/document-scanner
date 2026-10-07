@@ -55,7 +55,8 @@ final class LibraryStore: ObservableObject {
             try commit(next)
             return existing.id
         }
-        let doc = ScanDocument(title: "Scan \(Date().formatted(date: .abbreviated, time: .shortened))")
+        var doc = ScanDocument(title: "Scan \(Date().formatted(date: .abbreviated, time: .shortened))")
+        doc.autoTitled = true
         try update(doc)
         return doc.id
     }
@@ -99,7 +100,7 @@ final class LibraryStore: ObservableObject {
         let name = UUID().uuidString + ".pdf"
         try data.write(to: url(name), options: [.atomic, .completeFileProtectionUnlessOpen])
         let previous = self.document(document.id)?.pdfFile
-        var doc = document; doc.pdfFile = name; doc.isDraft = false; doc.editingOriginalID = nil
+        var doc = DocumentInsight.apply(document); doc.pdfFile = name; doc.isDraft = false; doc.editingOriginalID = nil
         do {
             var next = manifest; doc.updatedAt = Date()
             if let i = next.documents.firstIndex(where: { $0.id == doc.id }) { next.documents[i] = doc } else { next.documents.append(doc) }
@@ -107,6 +108,22 @@ final class LibraryStore: ObservableObject {
             try commit(next)
         } catch { try? fm.removeItem(at: url(name)); throw error }
         if let previous { try? fm.removeItem(at: url(previous)) }
+    }
+    /// Sorts documents saved before smart sorting existed (or imported with text). Names are left alone.
+    func refreshInsights() {
+        var next = manifest; var changed = false
+        for i in next.documents.indices where next.documents[i].kind == nil && !next.documents[i].isDraft && next.documents[i].deletedAt == nil {
+            var d = next.documents[i]; let auto = d.autoTitled; d.autoTitled = false
+            d = DocumentInsight.apply(d); d.autoTitled = auto
+            if d.kind != nil { next.documents[i] = d; changed = true }
+        }
+        if changed { try? commit(next) }
+    }
+    func setKind(_ kind: DocumentKind, for doc: ScanDocument) { perform { var d = doc; d.kind = kind; d.kindChosen = true; try update(d) } }
+    func rename(_ doc: ScanDocument, to title: String) {
+        let clean = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return }
+        perform { var d = doc; d.title = clean; d.autoTitled = false; try update(d) }
     }
     func toggleFavorite(_ doc: ScanDocument) { perform { var d = doc; d.favorite.toggle(); try update(d) } }
     func moveToTrash(_ doc: ScanDocument) { perform { var d = doc; d.deletedAt = Date(); try update(d) } }

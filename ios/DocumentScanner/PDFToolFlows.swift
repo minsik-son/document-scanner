@@ -225,7 +225,7 @@ private struct ToolScanCamera: View {
     private func done(_ id: UUID?) { guard !finished else { return }; finished = true; completion(id) }
     @MainActor static func save(_ id: UUID, store: LibraryStore) async throws -> UUID {
         guard var doc = store.document(id), !doc.pages.isEmpty else { throw ScannerError.message("This scan is no longer available.") }
-        if doc.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { doc.title = "Scan \(Date().formatted(date: .abbreviated, time: .shortened))" }
+        if doc.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { doc.title = "Scan \(Date().formatted(date: .abbreviated, time: .shortened))"; doc.autoTitled = true }
         let result = try await PDFExport.prepare(doc, root: store.root)
         try store.savePDF(result.data, document: result.document)
         return id

@@ -789,6 +789,7 @@
 				INFOPLIST_FILE = Configuration/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Document Scanner";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Scan paper documents and save them on your iPhone.";
+				INFOPLIST_KEY_NSContactsUsageDescription = "Save business cards you scan as new contacts.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your documents on this iPhone.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save images you make with the tools to your photo library.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -911,6 +912,7 @@
 				INFOPLIST_FILE = Configuration/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Document Scanner";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Scan paper documents and save them on your iPhone.";
+				INFOPLIST_KEY_NSContactsUsageDescription = "Save business cards you scan as new contacts.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your documents on this iPhone.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save images you make with the tools to your photo library.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

@@ -123,7 +123,10 @@ struct ReviewView: View {
                                 if doc.pages.isEmpty { Text("Add a page to get started.").foregroundStyle(.secondary) }
                             } header: { Text("\(doc.pages.count) pages") }
                             Section {
-                                TextField("Document name", text: Binding(get: { document?.title ?? "" }, set: { document?.title = $0; persistDraft() }))
+                                TextField("Document name", text: Binding(get: { document?.title ?? "" }, set: { document?.title = $0; document?.autoTitled = false; persistDraft() }))
+                                if document?.autoTitled == true {
+                                    Label("Named automatically from the text when you save", systemImage: "sparkles").font(.footnote).foregroundStyle(.secondary)
+                                }
                                 DisclosureGroup("Save options", isExpanded: $options) {
                                     Picker("Folder", selection: Binding(get: { document?.folder ?? "Scans" }, set: { document?.folder = $0; persistDraft() })) { ForEach(store.manifest.folders, id: \.self) { Text($0).tag($0) } }
                                     Picker("Paper", selection: Binding(get: { document?.paper ?? .letter }, set: { document?.paper = $0; persistDraft() })) { ForEach(PaperSize.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
@@ -260,7 +263,7 @@ struct ReviewView: View {
     private func save(forceText: Bool = false) {
         guard var doc = document else { return }
         doc.title = doc.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        if doc.title.isEmpty { doc.title = "Scan \(Date().formatted(date: .abbreviated, time: .shortened))" }
+        if doc.title.isEmpty { doc.title = "Scan \(Date().formatted(date: .abbreviated, time: .shortened))"; doc.autoTitled = true }
         document = doc
         if let unchecked = doc.pages.first(where: { $0.cropReviewNeeded == true }) {
             resumeSaveAfterCrop = true; cropWasConfirmed = false

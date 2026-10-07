@@ -1,4 +1,5 @@
 import SwiftUI
+import ContactsUI
 import PDFKit
 
 struct DocumentView: View {
@@ -26,6 +27,8 @@ struct DocumentView: View {
     @State private var textShare: SharedText?
     @State private var availableText: String?
     @State private var progress = "Reading text…"
+    @State private var naming = false
+    @State private var newContact = false
     var document: ScanDocument? { store.document(documentID) }
     var body: some View {
         Group {
@@ -33,7 +36,22 @@ struct DocumentView: View {
                 VStack(spacing: 0) {
                     if let file = doc.pdfFile { PDFPreview(url: store.url(file), initialPage: initialPage).background(Design.muted) }
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("\(doc.pages.count) pages · \(doc.textStatus)").font(.subheadline).foregroundStyle(.secondary)
+                        Button { naming = true } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: (doc.kind ?? .other).symbol).font(.system(size: 17, weight: .semibold)).foregroundStyle(Design.blue)
+                                    .frame(width: 36, height: 36).background(Design.blue.opacity(0.09), in: RoundedRectangle(cornerRadius: 10))
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(doc.title).font(.headline).foregroundStyle(Design.ink).lineLimit(1)
+                                    Text("\((doc.kind ?? .other).label) · \(doc.pages.count) pages · \(doc.textStatus)").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                                }
+                                Spacer(minLength: 4)
+                                Image(systemName: "pencil").foregroundStyle(.secondary)
+                            }
+                        }.buttonStyle(.plain).accessibilityIdentifier("document-name-type")
+                        if doc.kind == .businessCard {
+                            Button { newContact = true } label: { Label("Save to Contacts", systemImage: "person.crop.circle.badge.plus") }
+                                .buttonStyle(PrimaryButton()).accessibilityIdentifier("business-card-contact")
+                        }
                         HStack {
                             Button { editing = true } label: { Label("Edit", systemImage: "slider.horizontal.3") }
                             Spacer()
@@ -53,6 +71,8 @@ struct DocumentView: View {
                 .toolbar(.visible, for: .navigationBar)
                 .onAppear { if openTextOnAppear && !didOpenInitialText { didOpenInitialText = true; text = true } }
                 .toolbar { ToolbarItem(placement: .topBarTrailing) { Button { trash = true } label: { Image(systemName: "trash") }.accessibilityLabel("Move to trash") } }
+                .sheet(isPresented: $newContact) { NewContactView(fields: DocumentInsight.cardFields(doc), cardImage: cardImage(doc)).ignoresSafeArea() }
+                .sheet(isPresented: $naming) { DocumentNameSheet(document: doc).presentationDetents([.medium, .large]) }
                 .confirmationDialog("Move this document to Trash?", isPresented: $trash) { Button("Move to Trash", role: .destructive) { store.moveToTrash(doc); if store.problem == nil { dismiss() } } } message: { Text("You can restore it from Settings → Trash.") }
                 .sheet(isPresented: $toolPaywall, onDismiss: {
                     if subscription.isPro { activeTool = pendingTool }; pendingTool = nil
@@ -167,4 +187,102 @@ struct PDFPreview: UIViewRepresentable {
     @State private var didOpenInitialText = false
     func makeUIView(context: Context) -> PDFView { let view = PDFView(); view.autoScales = true; view.displayMode = singlePage ? .singlePage : .singlePageContinuous; view.backgroundColor = .secondarySystemBackground; view.document = PDFDocument(url: url); if let page = view.document?.page(at: initialPage) { DispatchQueue.main.async { view.go(to: page) } }; return view }
     func updateUIView(_ view: PDFView, context: Context) { if view.document?.documentURL != url { view.document = PDFDocument(url: url) } }
+}
+
+
+/// Rename a document and set its kind. Offers the name made from its text.
+struct DocumentNameSheet: View {
+    @EnvironmentObject private var store: LibraryStore
+    @Environment(\.dismiss) private var dismiss
+    let document: ScanDocument
+    @State private var title = ""
+    @State private var kind = DocumentKind.other
+    private var suggestion: String? {
+        DocumentInsight.suggestTitle(document, kind: kind).flatMap { $0 == title ? nil : $0 }
+    }
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Name") {
+                    TextField("Document name", text: $title).accessibilityIdentifier("document-name-field")
+                    if let suggestion {
+                        Button { title = suggestion } label: { Label(suggestion, systemImage: "sparkles") }
+                            .accessibilityIdentifier("document-name-suggestion")
+                    }
+                }
+                Section {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 8)], spacing: 8) {
+                        ForEach(DocumentKind.allCases) { option in
+                            Button { kind = option } label: {
+                                Label(option.label, systemImage: option.symbol).font(.subheadline.weight(.semibold)).lineLimit(1)
+                                    .frame(maxWidth: .infinity).padding(.vertical, 10)
+                                    .background(kind == option ? Design.blue.opacity(0.12) : Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+                                    .foregroundStyle(kind == option ? Design.blue : Design.ink)
+                            }.buttonStyle(.plain)
+                        }
+                    }.padding(.vertical, 4)
+                } header: { Text("Type") } footer: { Text("Sorted automatically on this iPhone. Your choice is kept.") }
+            }
+            .navigationTitle("Name & type").navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { save() }.disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .onAppear { title = document.title; kind = document.kind ?? DocumentInsight.classify(document) }
+        }
+    }
+    private func save() {
+        guard var doc = store.document(document.id) else { dismiss(); return }
+        let clean = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if clean != doc.title { doc.title = clean; doc.autoTitled = false }
+        if kind != doc.kind { doc.kind = kind; doc.kindChosen = true }
+        store.perform { try store.update(doc) }
+        dismiss()
+    }
+}
+
+
+extension DocumentView {
+    /// The first page as a small JPEG for the contact photo field.
+    func cardImage(_ doc: ScanDocument) -> Data? {
+        guard let page = doc.pages.first, let image = try? Imaging.renderThumbnail(page, root: store.root, maxDimension: 640) else { return nil }
+        return image.jpegData(compressionQuality: 0.8)
+    }
+}
+
+/// Apple's new-contact screen, filled in from a business card. Nothing is saved
+/// until the person taps Done there.
+struct NewContactView: UIViewControllerRepresentable {
+    let fields: DocumentInsight.CardFields
+    var cardImage: Data?
+    @Environment(\.dismiss) private var dismiss
+    func makeCoordinator() -> Coordinator { Coordinator(close: { dismiss() }) }
+    func makeUIViewController(context: Context) -> UINavigationController {
+        let contact = CNMutableContact()
+        let parts = fields.name.split(separator: " ").map(String.init)
+        if parts.count >= 2 { contact.givenName = parts.dropLast().joined(separator: " "); contact.familyName = parts.last ?? "" }
+        else { contact.givenName = fields.name }
+        contact.organizationName = fields.organization
+        contact.jobTitle = fields.jobTitle
+        contact.phoneNumbers = fields.phones.enumerated().map { i, p in CNLabeledValue(label: i == 0 ? CNLabelWork : CNLabelPhoneNumberMobile, value: CNPhoneNumber(stringValue: p)) }
+        contact.emailAddresses = fields.emails.map { CNLabeledValue(label: CNLabelWork, value: $0 as NSString) }
+        contact.urlAddresses = fields.urls.map { CNLabeledValue(label: CNLabelWork, value: $0 as NSString) }
+        if !fields.address.isEmpty {
+            let address = CNMutablePostalAddress(); address.street = fields.address
+            contact.postalAddresses = [CNLabeledValue<CNPostalAddress>(label: CNLabelWork, value: address)]
+        }
+        contact.note = "Scanned business card"
+        if let cardImage { contact.imageData = cardImage }
+        let view = CNContactViewController(forNewContact: contact)
+        view.delegate = context.coordinator
+        return UINavigationController(rootViewController: view)
+    }
+    func updateUIViewController(_ controller: UINavigationController, context: Context) {}
+    final class Coordinator: NSObject, CNContactViewControllerDelegate {
+        let close: () -> Void
+        init(close: @escaping () -> Void) { self.close = close }
+        func contactViewController(_ viewController: CNContactViewController, didCompleteWith contact: CNContact?) { close() }
+    }
 }

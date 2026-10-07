@@ -1021,26 +1021,51 @@ private struct ExportImagesToolStep: View {
     @ObservedObject var work: ToolWork
     let finish: (PDFToolResult) -> Void
     @State private var selected: [Int] = []
+    @State private var choosing = false
     @State private var png = false
     @State private var pixels = 2400
+    private var count: String { "\(selected.count) \(selected.count == 1 ? "page" : "pages")" }
     var body: some View {
-        ToolPage(title: "Save as images", subtitle: "Each page becomes one picture.") {
-            HStack(spacing: 8) {
-                Button("JPG") { png = false }.buttonStyle(ChipStyle(selected: !png))
-                Button("PNG") { png = true }.buttonStyle(ChipStyle(selected: png)).accessibilityIdentifier("images-png")
-                Spacer(minLength: 12)
-                Menu {
-                    Button("Standard · 1600 px") { pixels = 1600 }
-                    Button("High · 2400 px") { pixels = 2400 }
-                    Button("Maximum · 3600 px") { pixels = 3600 }
-                } label: { Label("\(pixels) px", systemImage: "chevron.up.chevron.down").font(.system(size: 15, weight: .semibold)) }
-            }
+        ZStack {
+            if choosing { optionsPage.transition(.move(edge: .trailing).combined(with: .opacity)) }
+            else { pagesPage.transition(.move(edge: .leading).combined(with: .opacity)) }
+        }
+        .animation(.snappy(duration: 0.3), value: choosing)
+        .onAppear { if selected.isEmpty { selected = Array(document.pages.indices) } }
+    }
+    private var pagesPage: some View {
+        ToolPage(title: "Which pages?", subtitle: "Each page becomes one picture.") {
             PageSelection(document: document, selected: $selected)
         } actions: {
-            Button(selected.isEmpty ? "Select pages" : "Export \(selected.count) \(selected.count == 1 ? "image" : "images")") { export() }
-                .buttonStyle(CTAButtonStyle()).disabled(selected.isEmpty).accessibilityIdentifier("images-run")
+            Button(selected.isEmpty ? "Select pages" : "Next · \(count)") { choosing = true }
+                .buttonStyle(CTAButtonStyle()).disabled(selected.isEmpty).accessibilityIdentifier("images-next")
         }
-        .onAppear { if selected.isEmpty { selected = Array(document.pages.indices) } }
+    }
+    private var optionsPage: some View {
+        ToolPage(title: "Choose the image type", subtitle: "\(count) will become \(selected.count == 1 ? "a picture" : "pictures").") {
+            VStack(alignment: .leading, spacing: 10) {
+                SectionLabel(text: "Format")
+                Button { png = false } label: { OptionCard(title: "JPG", detail: "Smaller files. Best for sharing and chat.", selected: !png) }
+                    .buttonStyle(.plain).accessibilityIdentifier("images-jpg")
+                Button { png = true } label: { OptionCard(title: "PNG", detail: "No compression. Sharpest text, larger files.", selected: png) }
+                    .buttonStyle(.plain).accessibilityIdentifier("images-png")
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                SectionLabel(text: "Size")
+                sizeOption(1600, "Standard", "1600 px · good for phones and email")
+                sizeOption(2400, "High", "2400 px · clear when zoomed in. Recommended.")
+                sizeOption(3600, "Maximum", "3600 px · for printing and fine detail")
+            }
+            if let message = work.message { ToastMessage(text: message) }
+        } actions: {
+            Button("Change pages") { choosing = false }.buttonStyle(SecondaryCTAStyle())
+            Button("Export \(selected.count) \(selected.count == 1 ? "image" : "images")") { export() }
+                .buttonStyle(CTAButtonStyle()).accessibilityIdentifier("images-run")
+        }
+    }
+    private func sizeOption(_ value: Int, _ title: String, _ detail: String) -> some View {
+        Button { pixels = value } label: { OptionCard(title: title, detail: detail, selected: pixels == value) }
+            .buttonStyle(.plain).accessibilityIdentifier("images-size-\(value)")
     }
     private func export() {
         let doc = document, picks = selected.sorted(), format = png, size = pixels
@@ -1061,34 +1086,58 @@ private struct LongImageToolStep: View {
     @ObservedObject var work: ToolWork
     let finish: (PDFToolResult) -> Void
     @State private var selected: [Int] = []
+    @State private var choosing = false
     @State private var width = 1080
     @State private var gap = 0
+    private var count: String { "\(selected.count) \(selected.count == 1 ? "page" : "pages")" }
     var body: some View {
-        ToolPage(title: "One long image", subtitle: "Pages are joined top to bottom.") {
-            HStack(alignment: .top, spacing: 18) {
-                ScrollView {
-                    VStack(spacing: CGFloat(gap) / 4) {
-                        ForEach(selected.sorted().prefix(8), id: \.self) { i in
-                            PDFPageThumb(document: document, index: i).frame(width: 96).background(.white)
-                        }
-                    }.padding(8)
-                }.frame(width: 116, height: 260).background(TK.grey100, in: RoundedRectangle(cornerRadius: 16))
-                VStack(alignment: .leading, spacing: 14) {
-                    SectionLabel(text: "Width")
-                    HStack(spacing: 6) { ForEach([720, 1080, 1440], id: \.self) { w in Button("\(w)") { width = w }.buttonStyle(ChipStyle(selected: width == w)) } }
-                    SectionLabel(text: "Space between pages")
-                    HStack(spacing: 6) {
-                        Button("None") { gap = 0 }.buttonStyle(ChipStyle(selected: gap == 0))
-                        Button("Thin") { gap = 12 }.buttonStyle(ChipStyle(selected: gap == 12))
-                        Button("Wide") { gap = 32 }.buttonStyle(ChipStyle(selected: gap == 32))
-                    }
-                }
-            }
+        ZStack {
+            if choosing { optionsPage.transition(.move(edge: .trailing).combined(with: .opacity)) }
+            else { pagesPage.transition(.move(edge: .leading).combined(with: .opacity)) }
+        }
+        .animation(.snappy(duration: 0.3), value: choosing)
+        .onAppear { if selected.isEmpty { selected = Array(document.pages.indices.prefix(100)) } }
+    }
+    private var pagesPage: some View {
+        ToolPage(title: "Which pages?", subtitle: "They're joined top to bottom into one image.") {
             PageSelection(document: document, selected: $selected)
         } actions: {
-            Button("Create long image") { create() }.buttonStyle(CTAButtonStyle()).disabled(selected.isEmpty).accessibilityIdentifier("long-image-run")
+            Button(selected.isEmpty ? "Select pages" : "Next · \(count)") { choosing = true }
+                .buttonStyle(CTAButtonStyle()).disabled(selected.isEmpty).accessibilityIdentifier("long-image-next")
         }
-        .onAppear { if selected.isEmpty { selected = Array(document.pages.indices.prefix(100)) } }
+    }
+    private var optionsPage: some View {
+        ToolPage(title: "How should it look?", subtitle: "\(count) joined top to bottom.") {
+            ScrollView {
+                VStack(spacing: CGFloat(gap) / 4) {
+                    ForEach(selected.sorted().prefix(8), id: \.self) { i in
+                        PDFPageThumb(document: document, index: i).frame(width: 120).background(.white)
+                    }
+                }.padding(10).frame(maxWidth: .infinity)
+            }.frame(height: 240).background(TK.grey100, in: RoundedRectangle(cornerRadius: 16))
+            VStack(alignment: .leading, spacing: 10) {
+                SectionLabel(text: "Width")
+                widthOption(720, "Small", "720 px · lightest file for chat")
+                widthOption(1080, "Standard", "1080 px · sharp on phones. Recommended.")
+                widthOption(1440, "Large", "1440 px · for tablets and zooming in")
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                SectionLabel(text: "Space between pages")
+                gapOption(0, "None", "Pages touch, like one continuous sheet")
+                gapOption(12, "Thin", "A small line of space between pages")
+                gapOption(32, "Wide", "Clear gaps so each page stands apart")
+            }
+            if let message = work.message { ToastMessage(text: message) }
+        } actions: {
+            Button("Change pages") { choosing = false }.buttonStyle(SecondaryCTAStyle())
+            Button("Create long image") { create() }.buttonStyle(CTAButtonStyle()).accessibilityIdentifier("long-image-run")
+        }
+    }
+    private func widthOption(_ value: Int, _ title: String, _ detail: String) -> some View {
+        Button { width = value } label: { OptionCard(title: title, detail: detail, selected: width == value) }.buttonStyle(.plain)
+    }
+    private func gapOption(_ value: Int, _ title: String, _ detail: String) -> some View {
+        Button { withAnimation(.snappy) { gap = value } } label: { OptionCard(title: title, detail: detail, selected: gap == value) }.buttonStyle(.plain)
     }
     private func create() {
         let doc = document, picks = selected.sorted(), w = width, g = gap

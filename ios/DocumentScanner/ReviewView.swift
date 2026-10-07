@@ -152,6 +152,8 @@ struct ReviewView: View {
                         .environment(\.editMode, .constant(reordering ? .active : .inactive))
                         .safeAreaInset(edge: .bottom) {
                             VStack(spacing: 12) {
+                                Button { openCamera(retaking: nil) } label: { Label("Add pages", systemImage: "camera") }
+                                    .buttonStyle(SecondaryButton()).disabled(saving)
                                 if saving { Text(saveProgress).font(.subheadline).foregroundStyle(.secondary).accessibilityIdentifier("save-progress") }
                                 Button { save() } label: { if saving { ProgressView().tint(Design.blueInk).frame(maxWidth: .infinity) } else { Text(doc.isDraft ? "Save PDF" : "Save changes") } }.buttonStyle(PrimaryButton()).disabled(saving || doc.pages.isEmpty)
                             }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8).background(.white)
@@ -281,8 +283,6 @@ struct ReviewView: View {
                 pageAction("Adjust", icon: "slider.horizontal.3") { editPage = page }
                     .accessibilityHint("Crop, rotate, and adjust")
                 pageAction("Retake", icon: "camera.rotate") { openCamera(retaking: page.id) }
-                pageAction("Add page", icon: "plus.rectangle.on.rectangle") { openCamera(retaking: nil) }
-                    .accessibilityLabel("Add pages")
                 Menu {
                     Button("Duplicate page") { change { value in var copy = page; copy.id = UUID(); value.pages.insert(copy, at: index+1) } }
                     Button("Apply tone and adjustments to all pages") { change { $0.applyAppearance(from: page) } }

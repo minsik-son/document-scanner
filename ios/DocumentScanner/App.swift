@@ -115,6 +115,17 @@ struct PrimaryButton: ButtonStyle {
             .opacity(isEnabled ? 1 : 0.5)
     }
 }
+/// Same size as PrimaryButton, white with a light rim, for the second action.
+struct SecondaryButton: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.font(.system(.body, design: .default, weight: .semibold)).frame(maxWidth: .infinity).padding(.vertical, 18)
+            .foregroundStyle(Design.blueInk)
+            .background(configuration.isPressed ? Design.muted : .white, in: RoundedRectangle(cornerRadius: 18))
+            .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color(red: 0.898, green: 0.910, blue: 0.922), lineWidth: 1.5))
+            .opacity(isEnabled ? 1 : 0.5)
+    }
+}
 struct ShareSheet: UIViewControllerRepresentable {
     let items: [Any]
     var completion: ((Bool, Error?) -> Void)? = nil

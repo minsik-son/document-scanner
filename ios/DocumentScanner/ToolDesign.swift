@@ -43,7 +43,14 @@ enum ToolHue {
 extension ToolArtwork {
     /// One hue per tool; neighbours in a section never share a hue.
     static let hues: [String: ToolHue] = [
-        "scan": .blue, "qr": .green, "stitch": .purple, "whiteboard": .teal, "identity": .orange, "import-photo": .pink,
+        // Tools with an intro animation take that animation's colour.
+        "scan": .blue, "qr": .green, "stitch": .purple, "whiteboard": .teal, "identity": .orange, "import-photo": .blue,
+        "redact": .teal, "fill-form": .blue, "card-contact": .blue, "auto-save": .teal,
+        "word": .blue, "excel": .teal, "slides": .orange, "translate": .blue, "math": .purple,
+        "book": .blue, "portrait": .blue, "eraser": .purple, "marks": .purple, "restore": .blue, "mega": .teal,
+        "ocr": .blue, "signature": .purple, "watermark": .orange, "timestamp": .orange, "merge": .blue, "split": .teal,
+        "extract": .blue, "reorder": .purple, "compress": .orange, "protect": .teal, "images": .blue, "long-image": .purple,
+        "print": .orange, "measure": .blue, "mesh": .teal,
     ]
     static let fallback: [String: String] = [
         "card-contact": "person.crop.rectangle.badge.plus", "ask-document": "sparkles",

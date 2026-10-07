@@ -52,8 +52,8 @@ struct ToolIllustration: View {
         case .images: ImagesArt()
         case .longImage: LongImageArt()
         case .print: PrintArt()
-        case .measure: MeasureArt()
-        case .mesh: MeshArt()
+        case .measure: LoopArt(asset: "art-measure", still: 60)
+        case .mesh: LoopArt(asset: "art-mesh", still: 60)
         case .word: WordArt()
         case .excel: ExcelArt()
         case .ppt: SlidesArt()
@@ -394,30 +394,6 @@ private struct PrintArt: View {
             .accessibilityHidden(true)
     }
 }
-private struct MeasureArt: View {
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 14).fill(Color(hex: 0xCFE4FF)).frame(width: 200, height: 110).rotation3DEffect(.degrees(48), axis: (1, 0, 0)).offset(y: 30)
-            Path { p in p.move(to: CGPoint(x: 0, y: 30)); p.addLine(to: CGPoint(x: 170, y: 0)) }
-                .stroke(.white, style: StrokeStyle(lineWidth: 5, lineCap: .round)).frame(width: 170, height: 30).offset(y: 20)
-            Circle().fill(.white).frame(width: 18).overlay(Circle().strokeBorder(TK.blue, lineWidth: 4)).offset(x: -85, y: 35)
-            Circle().fill(.white).frame(width: 18).overlay(Circle().strokeBorder(TK.blue, lineWidth: 4)).offset(x: 85, y: 5)
-            Pill(text: "24.5 cm").offset(y: -16)
-            Circle().strokeBorder(.white, lineWidth: 3).frame(width: 46).offset(x: 40, y: -56).opacity(0.9)
-            Circle().fill(.white).frame(width: 6).offset(x: 40, y: -56)
-        }
-    }
-}
-private struct MeshArt: View {
-    var body: some View {
-        ZStack {
-            Image(systemName: "cube.transparent").font(.system(size: 120, weight: .ultraLight)).foregroundStyle(TK.teal)
-            Image(systemName: "viewfinder").font(.system(size: 176, weight: .thin)).foregroundStyle(TK.teal.opacity(0.45))
-            Pill(text: "LiDAR", color: TK.teal).offset(x: 92, y: -70)
-        }
-    }
-}
-
 /// Blender-rendered loop: scanned page turns into an editable Word page, table pops in, check badge
 private struct WordArt: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion

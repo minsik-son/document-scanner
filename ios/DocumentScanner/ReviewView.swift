@@ -152,10 +152,9 @@ struct ReviewView: View {
                         .environment(\.editMode, .constant(reordering ? .active : .inactive))
                         .safeAreaInset(edge: .bottom) {
                             VStack(spacing: 12) {
-                                Button { openCamera(retaking: nil) } label: { Label("Add pages", systemImage: "camera") }.font(.headline).padding(8).disabled(saving)
                                 if saving { Text(saveProgress).font(.subheadline).foregroundStyle(.secondary).accessibilityIdentifier("save-progress") }
                                 Button { save() } label: { if saving { ProgressView().tint(Design.blueInk).frame(maxWidth: .infinity) } else { Text(doc.isDraft ? "Save PDF" : "Save changes") } }.buttonStyle(PrimaryButton()).disabled(saving || doc.pages.isEmpty)
-                            }.padding(20).background(.white)
+                            }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8).background(.white)
                         }
                     }
                 } else { ProgressView() }
@@ -170,13 +169,16 @@ struct ReviewView: View {
                         }.disabled(saving || finishing).accessibilityIdentifier("saved-done")
                     } else { Button(document?.isDraft == true ? "Close" : "Cancel") { cancelEditing() }.disabled(saving) }
                 }
-                ToolbarItemGroup(placement: .bottomBar) {
-                    if !saved { Button("Undo") { restoreHistory(undo: true) }.disabled(undoHistory.isEmpty || saving); Button("Redo") { restoreHistory(undo: false) }.disabled(redoHistory.isEmpty || saving) }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     if !saved {
-                        Button(reordering ? "Done" : "Edit") { withAnimation { reordering.toggle() } }.disabled(saving)
-                            .accessibilityHint("Reorder or delete pages")
+                        HStack(spacing: 2) {
+                            Button { restoreHistory(undo: true) } label: { Image(systemName: "arrow.uturn.backward") }
+                                .disabled(undoHistory.isEmpty || saving).accessibilityLabel("Undo")
+                            Button { restoreHistory(undo: false) } label: { Image(systemName: "arrow.uturn.forward") }
+                                .disabled(redoHistory.isEmpty || saving).accessibilityLabel("Redo")
+                            Button(reordering ? "Done" : "Edit") { withAnimation { reordering.toggle() } }.disabled(saving)
+                                .accessibilityHint("Reorder or delete pages")
+                        }
                     }
                 }
             }
@@ -250,6 +252,13 @@ struct ReviewView: View {
                     .padding(18)
                     // A cool grey stage, so a white page stands out from what is around it.
                     .background(Color(red: 0.882, green: 0.902, blue: 0.929), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .overlay(alignment: .bottom) {
+                        if doc.pages.count > 1 {
+                            Text("\(index + 1) / \(doc.pages.count)").font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
+                                .padding(.horizontal, 10).padding(.vertical, 5).background(.black.opacity(0.55), in: Capsule()).padding(10)
+                                .accessibilityLabel("Page \(index + 1) of \(doc.pages.count)")
+                        }
+                    }
                     .overlay(alignment: .topLeading) {
                         if page.cropReviewNeeded == true {
                             Label("Check page edges", systemImage: "exclamationmark.triangle.fill")
@@ -260,34 +269,36 @@ struct ReviewView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Edit current page").accessibilityHint("Crop, rotate, and adjust")
+            .accessibilityLabel(doc.pages.count == 1 ? "Edit page 1" : "Edit current page").accessibilityHint("Crop, rotate, and adjust")
             .simultaneousGesture(DragGesture(minimumDistance: 30).onEnded { value in
                 // Swipe the big page to move between pages.
                 guard abs(value.translation.width) > abs(value.translation.height) else { return }
                 if value.translation.width < -40 { withAnimation { current = min(doc.pages.count - 1, index + 1) } }
                 if value.translation.width > 40 { withAnimation { current = max(0, index - 1) } }
             })
-            HStack(spacing: 8) {
-                Text("\(index + 1) / \(doc.pages.count)").font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey700)
-                    .accessibilityLabel("Page \(index + 1) of \(doc.pages.count)")
-                Spacer(minLength: 4)
-                Button { editPage = page } label: { Label("Adjust", systemImage: "slider.horizontal.3").lineLimit(1).fixedSize() }
-                    .buttonStyle(ChipStyle(selected: false))
-                Button { openCamera(retaking: page.id) } label: { Label("Retake", systemImage: "camera.rotate").lineLimit(1).fixedSize() }
-                    .buttonStyle(ChipStyle(selected: false))
+            // One calm row of the page's actions, evenly spaced, icon above label.
+            HStack(spacing: 0) {
+                pageAction("Adjust", icon: "slider.horizontal.3") { editPage = page }
+                    .accessibilityHint("Crop, rotate, and adjust")
+                pageAction("Retake", icon: "camera.rotate") { openCamera(retaking: page.id) }
+                pageAction("Add page", icon: "plus.rectangle.on.rectangle") { openCamera(retaking: nil) }
+                    .accessibilityLabel("Add pages")
                 Menu {
                     Button("Duplicate page") { change { value in var copy = page; copy.id = UUID(); value.pages.insert(copy, at: index+1) } }
-                    Button("Retake page") { openCamera(retaking: page.id) }
                     Button("Apply tone and adjustments to all pages") { change { $0.applyAppearance(from: page) } }
                         .disabled(doc.pages.contains { $0.preservesPDF })
                     Button("Move earlier") { change { $0.pages.swapAt(index, index-1) }; current = index - 1 }.disabled(index == 0)
                     Button("Move later") { change { $0.pages.swapAt(index, index+1) }; current = index + 1 }.disabled(index == doc.pages.count-1)
+                    Button("Retake page") { openCamera(retaking: page.id) }
                     Button("Delete page", role: .destructive) {
                         if doc.pages.count == 1 { deletingLast = true } else { change { $0.pages.remove(at: index) }; current = max(0, index - 1) }
                     }
-                } label: { Image(systemName: "ellipsis").font(.system(size: 16, weight: .bold)).frame(width: 40, height: 36).background(TK.grey100, in: Capsule()) }
+                } label: { pageActionLabel("More", icon: "ellipsis") }
                 .accessibilityLabel("Page \(index+1) actions").accessibilityIdentifier("page-actions-\(index+1)")
             }
+            .padding(.vertical, 6)
+            .background(.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            if doc.pages.count > 1 {
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
@@ -309,20 +320,25 @@ struct ReviewView: View {
                             .buttonStyle(.plain).id(item.id)
                             .accessibilityLabel("Edit page \(i+1)")
                         }
-                        Button { openCamera(retaking: nil) } label: {
-                            VStack(spacing: 4) {
-                                Image(systemName: "plus").font(.system(size: 18, weight: .semibold)).foregroundStyle(TK.blue)
-                                    .frame(width: 60, height: 76).background(TK.blueSoft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                Text(" ").font(.system(size: 12))
-                            }
-                        }.buttonStyle(.plain).accessibilityLabel("Add a page")
                     }.padding(.horizontal, 2).padding(.vertical, 2)
                 }
                 .onChange(of: index) { _, value in if doc.pages.indices.contains(value) { withAnimation { proxy.scrollTo(doc.pages[value].id, anchor: .center) } } }
             }
+            }
         }
         .padding(.horizontal, 4).padding(.top, 4)
         .onChange(of: doc.pages.count) { old, new in if new > old, new > 0 { current = new - 1 } }
+    }
+    private func pageAction(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) { pageActionLabel(title, icon: icon) }.buttonStyle(.plain)
+    }
+    private func pageActionLabel(_ title: String, icon: String) -> some View {
+        VStack(spacing: 5) {
+            Image(systemName: icon).font(.system(size: 19, weight: .medium)).frame(height: 24)
+            Text(title).font(.system(size: 12, weight: .medium)).lineLimit(1)
+        }
+        .foregroundStyle(TK.grey800)
+        .frame(maxWidth: .infinity, minHeight: 56).contentShape(Rectangle())
     }
     private func change(_ action: (inout ScanDocument) -> Void) {
         guard var value = document, !saving else { return }

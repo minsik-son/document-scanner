@@ -6,7 +6,12 @@ struct ToolArtwork: View {
     var size: CGFloat = 64
     var body: some View {
         Group {
-            if UIImage(named: "tool-" + name) != nil {
+            if UIImage(named: "glyph-" + name) != nil {
+                // v2 set: same soft squircle for every tool, each in its own hue.
+                RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
+                    .fill(Self.hues[name]?.container ?? ToolHue.blue.container)
+                    .overlay(Image("glyph-" + name).resizable().interpolation(.high).scaledToFit().frame(width: size * 0.58, height: size * 0.58))
+            } else if UIImage(named: "tool-" + name) != nil {
                 Image("tool-" + name).resizable().interpolation(.high).scaledToFit()
             } else {
                 // Until its illustrated icon arrives: a soft tile with a symbol.
@@ -19,7 +24,27 @@ struct ToolArtwork: View {
         .frame(width: size, height: size).accessibilityHidden(true)
     }
 }
+/// Seven hues for the v2 tool icons. Glyph PNGs are already drawn in their hue's
+/// primary and light tones; the container uses the soft tint.
+enum ToolHue {
+    case blue, teal, green, orange, purple, pink, yellow
+    var container: Color {
+        switch self {
+        case .blue: return Color(hex: 0xEAF2FF)
+        case .teal: return Color(hex: 0xE2F6F4)
+        case .green: return Color(hex: 0xE6F6EA)
+        case .orange: return Color(hex: 0xFFF1E3)
+        case .purple: return Color(hex: 0xF0ECFF)
+        case .pink: return Color(hex: 0xFDECEE)
+        case .yellow: return Color(hex: 0xFFF6DA)
+        }
+    }
+}
 extension ToolArtwork {
+    /// One hue per tool; neighbours in a section never share a hue.
+    static let hues: [String: ToolHue] = [
+        "scan": .blue, "qr": .green, "stitch": .purple, "whiteboard": .teal, "identity": .orange, "import-photo": .pink,
+    ]
     static let fallback: [String: String] = [
         "card-contact": "person.crop.rectangle.badge.plus", "ask-document": "sparkles",
         "remove-fingers": "hand.raised.fill", "auto-save": "folder.badge.plus",

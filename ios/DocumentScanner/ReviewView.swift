@@ -246,9 +246,10 @@ struct ReviewView: View {
         VStack(spacing: 14) {
             Button { editPage = page } label: {
                 PageThumbnail(page: page)
-                    .frame(maxWidth: .infinity).frame(height: 400)
-                    .padding(16)
-                    .background(.white, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .frame(maxWidth: .infinity).frame(height: 360)
+                    .padding(18)
+                    // A cool grey stage, so a white page stands out from what is around it.
+                    .background(Color(red: 0.882, green: 0.902, blue: 0.929), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
                     .overlay(alignment: .topLeading) {
                         if page.cropReviewNeeded == true {
                             Label("Check page edges", systemImage: "exclamationmark.triangle.fill")
@@ -267,11 +268,12 @@ struct ReviewView: View {
                 if value.translation.width > 40 { withAnimation { current = max(0, index - 1) } }
             })
             HStack(spacing: 8) {
-                Text("Page \(index + 1) of \(doc.pages.count)").font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey700)
-                Spacer()
-                Button { editPage = page } label: { Label("Adjust", systemImage: "slider.horizontal.3") }
+                Text("\(index + 1) / \(doc.pages.count)").font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey700)
+                    .accessibilityLabel("Page \(index + 1) of \(doc.pages.count)")
+                Spacer(minLength: 4)
+                Button { editPage = page } label: { Label("Adjust", systemImage: "slider.horizontal.3").lineLimit(1).fixedSize() }
                     .buttonStyle(ChipStyle(selected: false))
-                Button { openCamera(retaking: page.id) } label: { Label("Retake", systemImage: "camera.rotate") }
+                Button { openCamera(retaking: page.id) } label: { Label("Retake", systemImage: "camera.rotate").lineLimit(1).fixedSize() }
                     .buttonStyle(ChipStyle(selected: false))
                 Menu {
                     Button("Duplicate page") { change { value in var copy = page; copy.id = UUID(); value.pages.insert(copy, at: index+1) } }

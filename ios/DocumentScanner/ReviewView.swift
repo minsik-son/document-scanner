@@ -444,24 +444,11 @@ struct PageEditor: View {
                 }
             }
         case .tone:
-            HStack(spacing: 8) {
-                ForEach(Enhancement.allCases, id: \.self) { tone in
-                    Button {
-                        guard page.enhancement != tone else { return }
-                        page.enhancement = tone
-                        if tone == .original && selectedAdjustment == .cleanup { selectedAdjustment = .brightness }
-                        changed()
-                    } label: {
-                        Text(tone.rawValue).font(.subheadline.weight(.medium))
-                            .multilineTextAlignment(.center).frame(maxWidth: .infinity, minHeight: 48)
-                            .padding(.horizontal, 4)
-                            .foregroundStyle(page.enhancement == tone ? Design.blue : .primary)
-                            .background(page.enhancement == tone ? Design.blue.opacity(0.08) : Design.muted, in: RoundedRectangle(cornerRadius: 12))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(page.enhancement == tone ? .isSelected : [])
-                    .accessibilityIdentifier("editor-tone-" + tone.rawValue)
-                }
+            ToneThumbnails(page: page) { tone in
+                guard page.enhancement != tone else { return }
+                page.enhancement = tone
+                if tone == .original && selectedAdjustment == .cleanup { selectedAdjustment = .brightness }
+                changed()
             }
         case .adjust:
             VStack(spacing: 8) {
@@ -698,6 +685,55 @@ struct PageEraseSheet: View {
             let found = (try? await Task.detached { try ImageToolEngine.fingerStrokes(image) }.value) ?? []
             if found.isEmpty { fingerNote = "No fingers found at the edges. Paint over them instead." }
             else { strokes += found; fingerNote = "Fingers marked. Check the red area, then tap Erase." }
+        }
+    }
+}
+
+/// Tone choices shown as small previews of this page in each tone, so the
+/// result is visible before tapping.
+private struct ToneThumbnails: View {
+    @EnvironmentObject var store: LibraryStore
+    let page: ScanPage
+    let onSelect: (Enhancement) -> Void
+    @State private var images: [Enhancement: UIImage] = [:]
+    /// Everything but the tone itself decides what the previews look like.
+    private var key: ScanPage { var p = page; p.enhancement = .original; return p }
+    var body: some View {
+        HStack(spacing: 10) {
+            ForEach(Enhancement.allCases, id: \.self) { tone in
+                let selected = page.enhancement == tone
+                Button { onSelect(tone) } label: {
+                    VStack(spacing: 6) {
+                        ZStack {
+                            Design.muted
+                            if let image = images[tone] {
+                                Image(uiImage: image).resizable().interpolation(.medium).scaledToFill()
+                            } else {
+                                ProgressView()
+                            }
+                        }
+                        .frame(height: 104).frame(maxWidth: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(selected ? Design.blue : Color.black.opacity(0.08), lineWidth: selected ? 2.5 : 1))
+                        Text(tone.rawValue).font(.subheadline.weight(selected ? .semibold : .medium))
+                            .foregroundStyle(selected ? Design.blue : .primary)
+                            .lineLimit(1).minimumScaleFactor(0.8)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+                .accessibilityIdentifier("editor-tone-" + tone.rawValue)
+            }
+        }
+        .task(id: key) {
+            let base = key, root = store.root
+            for tone in Enhancement.allCases {
+                var variant = base; variant.enhancement = tone
+                let request = variant
+                let image = await Task.detached(priority: .utility) { try? Imaging.renderThumbnail(request, root: root, maxDimension: 260) }.value
+                if Task.isCancelled { return }
+                if let image { images[tone] = image }
+            }
         }
     }
 }

@@ -681,9 +681,6 @@ private struct PortraitTool: View {
 
 // MARK: - Smart erase
 
-/// Smart erase that starts by finding fingers holding the page.
-struct FingerRemovalTool: View { var body: some View { EraseTool(fingers: true) } }
-
 private struct EraseTool: View {
     var fingers = false
     @EnvironmentObject private var store: LibraryStore
@@ -701,7 +698,7 @@ private struct EraseTool: View {
             switch step {
             case 0:
                 PhotoSourcePage(tool: .erase, title: fingers ? "Remove fingers" : "Erase anything",
-                                subtitle: fingers ? "Scan or pick a page you held by hand. Fingers at the edges are found and filled in." : "Paint over handwriting, stains or objects. We'll fill the spot from its surroundings.", work: work, art: fingers ? .removeFingers : nil) { images in
+                                subtitle: fingers ? "Scan or pick a page you held by hand. Fingers at the edges are found and filled in." : "Paint over handwriting, stains, objects or fingers holding the page. We'll fill the spot from its surroundings.", work: work, art: fingers ? .removeFingers : nil) { images in
                     guard let image = images.first else { return }
                     original = image; input = image; strokes = []; go(1)
                     if fingers {
@@ -723,6 +720,13 @@ private struct EraseTool: View {
     private var paintPage: some View {
         ToolPage(title: fingers ? "Check the marked fingers" : "Paint over what to erase",
                  subtitle: fingers ? "Fingers are marked in red. Paint more or tap Erase." : "Pinch to zoom in for small spots. Cover it fully with a little margin.", scrolls: false) {
+            if let input {
+                HStack(spacing: 8) {
+                    Button { findFingers(in: input) } label: { Label("Find fingers", systemImage: "hand.raised") }
+                        .buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("erase-find-fingers")
+                    Spacer(minLength: 0)
+                }
+            }
             if let message = work.message { ToastMessage(text: message) }
             if let input { ErasePainter(image: input, strokes: $strokes, brush: $brush) }
         } actions: {
@@ -738,6 +742,15 @@ private struct EraseTool: View {
         } actions: {
             Button("Erase more") { input = result; strokes = []; go(1) }.buttonStyle(SecondaryCTAStyle()).accessibilityIdentifier("erase-more")
             Button("Save") { save() }.buttonStyle(CTAButtonStyle()).accessibilityIdentifier("erase-save")
+        }
+    }
+    /// Marks fingers holding the page at its edges; the person can still paint more.
+    private func findFingers(in image: UIImage) {
+        work.message = nil
+        work.run("Finding fingers…") {
+            let found = try await OfflineWork.perform { try ImageToolEngine.fingerStrokes(image) }
+            strokes += found
+            work.message = found.isEmpty ? "No fingers found at the edges. Paint over them instead." : "Fingers marked in red. Paint more or tap Erase."
         }
     }
     private func erase() {

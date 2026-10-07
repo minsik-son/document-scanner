@@ -1191,13 +1191,12 @@ struct CameraTextToolView: View {
 // MARK: - Smart tools (on-device)
 
 enum SmartTool: String, CaseIterable, Identifiable {
-    case businessCard, askDocument, removeFingers, autoSave
+    case businessCard, askDocument, autoSave
     var id: String { rawValue }
     var title: String {
         switch self {
         case .businessCard: return "Business card to contact"
         case .askDocument: return "Ask a document"
-        case .removeFingers: return "Remove fingers"
         case .autoSave: return "Auto-save to cloud"
         }
     }
@@ -1205,7 +1204,6 @@ enum SmartTool: String, CaseIterable, Identifiable {
         switch self {
         case .businessCard: return "card-contact"
         case .askDocument: return "ask-document"
-        case .removeFingers: return "remove-fingers"
         case .autoSave: return "auto-save"
         }
     }
@@ -1216,7 +1214,6 @@ enum SmartTool: String, CaseIterable, Identifiable {
         switch self {
         case .businessCard: BusinessCardTool()
         case .askDocument: AskDocumentTool()
-        case .removeFingers: FingerRemovalTool()
         case .autoSave: AutoSaveTool()
         }
     }

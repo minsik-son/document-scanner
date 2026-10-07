@@ -109,7 +109,12 @@ struct SettingsView: View {
                     Text("Development preview. Subscription purchases launched through the Xcode StoreKit configuration are test purchases.").font(.subheadline).foregroundStyle(.secondary)
                 }
                 if let feedback { Section { Text(feedback) } }
-            }.navigationTitle("").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.disabled(backupBusy) } }
+            }
+            .scrollContentBackground(subscription.isPro ? .hidden : .automatic)
+            .background { if subscription.isPro { ProPageBackground(band: 50) } }
+            .toolbarBackground(subscription.isPro ? .hidden : .automatic, for: .navigationBar)
+            .toolbarColorScheme(subscription.isPro ? .dark : nil, for: .navigationBar)
+            .navigationTitle("Settings").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.disabled(backupBusy).tint(subscription.isPro ? .white : nil) } }
             .interactiveDismissDisabled(backupBusy)
             .fullScreenCover(isPresented: $showingTour) { OnboardingView { showingTour = false } }
             .alert("New folder", isPresented: $addingFolder) { TextField("Folder name", text: $folder); Button("Create") { store.perform { try store.addFolder(folder) }; folder = "" }; Button("Cancel", role: .cancel) {} }

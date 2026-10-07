@@ -70,6 +70,15 @@ struct AdvancedOfflineHub: View {
                             if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill") }.accessibilityLabel("Clear search") }
                         }.padding(.horizontal, 14).frame(height: 44).background(.white, in: Capsule())
                     }
+                    if subscription.isPro && query.isEmpty {
+                        HStack {
+                            Label("All \(PaywallView.proToolCount) Pro tools unlocked", systemImage: "sparkles").font(.footnote.weight(.semibold))
+                            Spacer()
+                            Text("PRO").font(.system(size: 10, weight: .black)).foregroundStyle(ProTheme.goldInk)
+                                .padding(.horizontal, 7).padding(.vertical, 3).background(ProTheme.goldPill, in: Capsule())
+                        }
+                        .foregroundStyle(.white).padding(.horizontal, 4).padding(.top, -8)
+                    }
                     if query.isEmpty {
                         VStack(alignment: .leading, spacing: 10) {
                             HStack { Text("Everyday essentials").font(.headline); Spacer(); ToolArtwork(name: "all-tools", size: 30) }
@@ -105,7 +114,7 @@ struct AdvancedOfflineHub: View {
                     if !hasMatches { ContentUnavailableView("No tools found", systemImage: "magnifyingglass", description: Text("Try another tool name.")) }
                     Label("Processed on this iPhone", systemImage: "iphone").font(.footnote).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.vertical, 8)
                 }.padding(.horizontal, 20).padding(.top, 4).padding(.bottom, 20)
-            }.background(Design.muted)
+            }.background { if subscription.isPro { ProPageBackground(band: 96) } else { Design.muted.ignoresSafeArea() } }
                 .navigationTitle("All tools")
                 .toolbar(.hidden, for: .navigationBar)
                 .buttonStyle(.plain)

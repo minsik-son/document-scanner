@@ -9,6 +9,8 @@ struct HomeView: View {
     @AppStorage(QuickToolPrefs.key) private var quickToolsRaw = ""
     @State private var editingQuickTools = false
     @State private var paywall = false
+    @State private var welcomePro = false
+    @AppStorage("pro-welcome-shown") private var welcomeShown = false
     @State private var query = ""
     @State private var kindFilter: DocumentKind?
     @State private var showingDocuments = false
@@ -137,7 +139,7 @@ struct HomeView: View {
             .listStyle(.plain)
             .onScrollPhaseChange { _, phase in ads.setScrolling(phase != .idle) }
             .scrollContentBackground(.hidden)
-            .background(Design.muted)
+            .background { if subscription.isPro { ProPageBackground(band: 118) } else { Design.muted.ignoresSafeArea() } }
             .toolbar(.hidden, for: .navigationBar)
             .environment(\.defaultMinListRowHeight, 0)
             .disabled(importing)
@@ -147,6 +149,13 @@ struct HomeView: View {
             .overlay { if importing { ProgressView("Importing pages…").padding(24).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16)) } }
             .fullScreenCover(isPresented: $advanced) { AdvancedOfflineHub() }
             .sheet(isPresented: $paywall) { PaywallView() }
+            .fullScreenCover(isPresented: $welcomePro) { WelcomeToProView() }
+            .onChange(of: subscription.isPro) { _, pro in
+                // After a purchase (not on launch): wait for the paywall sheet to close.
+                guard pro, !welcomeShown else { return }
+                welcomeShown = true
+                Task { try? await Task.sleep(for: .seconds(0.7)); welcomePro = true }
+            }
             .fullScreenCover(item: $quick) { QuickToolView(tool: $0) }
             .sheet(isPresented: $editingQuickTools) { QuickToolsEditor() }
             .sheet(isPresented: $settings, onDismiss: {
@@ -193,9 +202,8 @@ struct HomeView: View {
                     .font(.system(size: 28, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: 64, height: 64)
-                    .background(Design.cameraBlue, in: Circle())
+                    .background(subscription.isPro ? AnyShapeStyle(ProTheme.action) : AnyShapeStyle(Design.cameraBlue), in: Circle())
                     .overlay { Circle().stroke(.white, lineWidth: 5).padding(-5) }
-                    .shadow(color: Design.cameraBlue.opacity(0.18), radius: 8, y: 4)
                     .frame(maxWidth: .infinity)
                     .padding(.bottom, 12)
             }.buttonStyle(.plain)
@@ -248,7 +256,8 @@ struct HomeView: View {
                     store.perform { let id = try store.createDraft(); newCapture = true; Instant.run { route = ScanRoute(id: id) } }
                 } label: {
                     Label("Scan", systemImage: "camera").font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .foregroundStyle(Design.blueInk).background(Design.pastelBlue, in: Capsule())
+                        .foregroundStyle(subscription.isPro ? .white : Design.blueInk)
+                        .background(subscription.isPro ? AnyShapeStyle(ProTheme.action) : AnyShapeStyle(Design.pastelBlue), in: Capsule())
                 }.disabled(!store.storageAvailable).accessibilityIdentifier("hero-scan")
             }.buttonStyle(.plain)
         }.padding(24).frame(maxWidth: .infinity, alignment: .leading)

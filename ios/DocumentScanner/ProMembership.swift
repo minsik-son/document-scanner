@@ -16,6 +16,35 @@ enum ProStyle {
     static let violet = Color(red: 0.48, green: 0.36, blue: 1)
 }
 
+/// Pro look: a dusk band behind the top of Home, All tools and Settings over a soft
+/// lavender page. Screens where a document is being worked on keep the plain page.
+enum ProTheme {
+    static let page = Color(red: 0.945, green: 0.941, blue: 0.98)
+    static let dusk = LinearGradient(colors: [Color(red: 0.129, green: 0.110, blue: 0.333), Color(red: 0.180, green: 0.153, blue: 0.439), Color(red: 0.231, green: 0.196, blue: 0.565)],
+                                     startPoint: .topLeading, endPoint: .bottomTrailing)
+    static let action = LinearGradient(colors: [Color(red: 0.357, green: 0.486, blue: 1), Color(red: 0.545, green: 0.361, blue: 0.965)], startPoint: .leading, endPoint: .trailing)
+    static let goldPill = LinearGradient(colors: [Color(red: 1, green: 0.84, blue: 0.42), Color(red: 1, green: 0.70, blue: 0.25)], startPoint: .leading, endPoint: .trailing)
+    static let goldInk = Color(red: 0.35, green: 0.23, blue: 0)
+}
+
+/// Dusk band (status bar plus `band` points) fading into the lavender page.
+struct ProPageBackground: View {
+    let band: CGFloat
+    var body: some View {
+        GeometryReader { proxy in
+            VStack(spacing: 0) {
+                ProTheme.dusk.frame(height: proxy.safeAreaInsets.top + band)
+                    .overlay(alignment: .bottom) {
+                        LinearGradient(colors: [ProTheme.page.opacity(0), ProTheme.page], startPoint: .top, endPoint: .bottom).frame(height: 22)
+                    }
+                ProTheme.page
+            }
+            .ignoresSafeArea()
+        }
+        .accessibilityHidden(true)
+    }
+}
+
 /// A soft highlight that sweeps across a button every few seconds.
 struct ProShine: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -116,9 +145,13 @@ struct ProHeaderBadge: View {
         } else {
             Button(action: openMembership) {
                 HStack(spacing: 5) {
-                    CrownIcon(size: 24)
-                    Text("Pro").font(.subheadline.weight(.bold)).foregroundStyle(Design.ink)
-                }.frame(height: 30).contentShape(Rectangle())
+                    Image(systemName: "crown.fill").font(.system(size: 12, weight: .bold))
+                    Text("PRO").font(.system(size: 13, weight: .black)).tracking(0.4)
+                }
+                .foregroundStyle(ProTheme.goldInk)
+                .padding(.horizontal, 13).frame(height: 32)
+                .background(ProTheme.goldPill, in: Capsule())
+                .contentShape(Capsule())
             }.buttonStyle(.plain).accessibilityLabel("Pro membership").accessibilityIdentifier("home-pro-active")
         }
     }
@@ -207,8 +240,8 @@ struct MembershipBanner: View {
             }.frame(maxWidth: .infinity, alignment: .leading)
             ProArt().frame(width: 92, height: 86).offset(x: 6, y: 6)
         }
-        .bannerStyle(AnyShapeStyle(RadialGradient(colors: [Color(red: 0.17, green: 0.18, blue: 0.33), Color(red: 0.08, green: 0.09, blue: 0.19), Color(red: 0.05, green: 0.05, blue: 0.12)],
-                                                  center: .topLeading, startRadius: 0, endRadius: 360)), glow: Color(red: 1, green: 0.78, blue: 0.35))
+        .bannerStyle(AnyShapeStyle(ProTheme.dusk), glow: Color(red: 1, green: 0.78, blue: 0.35))
+        .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(Color(red: 1, green: 0.84, blue: 0.42).opacity(0.55), lineWidth: 1))
     }
     private var activeChip: some View {
         Text("Pro is active").font(.caption2.weight(.heavy)).padding(.horizontal, 8).padding(.vertical, 3)
@@ -313,5 +346,46 @@ struct ProBenefitsCard: View {
         guard let feature = item.feature else { return "Pro only" }
         let left = trials.remaining(feature)
         return left > 0 ? "\(left) of \(ProTrials.limit) free left" : "Pro only"
+    }
+}
+
+
+/// Shown once, right after someone becomes Pro.
+struct WelcomeToProView: View {
+    @Environment(\.dismiss) private var dismiss
+    private let rows: [(icon: String, text: String)] = [
+        ("word", "Word, Excel & PowerPoint export"), ("redact", "Hide personal info & fill forms"),
+        ("restore", "Restore & fix photos"), ("compress", "Split, compress & lock PDFs"),
+    ]
+    var body: some View {
+        ZStack {
+            ProTheme.dusk.ignoresSafeArea()
+            VStack(spacing: 0) {
+                ZStack {
+                    Circle().fill(ProTheme.dusk)
+                    Image(systemName: "crown.fill").font(.system(size: 38, weight: .bold)).foregroundStyle(ProStyle.gold)
+                }.frame(width: 88, height: 88).accessibilityHidden(true)
+                Text("Welcome to Pro").font(.system(.title, weight: .black)).foregroundStyle(Color(red: 0.12, green: 0.10, blue: 0.30)).padding(.top, 16)
+                Text("Everything is unlocked. The app now wears a Pro look.").font(.subheadline).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center).padding(.top, 6)
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(rows, id: \.icon) { row in
+                        HStack(spacing: 12) {
+                            ToolArtwork(name: row.icon, size: 38)
+                            Text(row.text).font(.subheadline.weight(.semibold)).foregroundStyle(Design.ink)
+                            Spacer(minLength: 0)
+                        }
+                    }
+                }.padding(.top, 22)
+                Button { dismiss() } label: {
+                    Text("Start scanning").font(.headline).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 16)
+                        .background(ProTheme.action, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }.buttonStyle(.plain).padding(.top, 24).accessibilityIdentifier("welcome-pro-start")
+            }
+            .padding(24)
+            .background(.white, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .padding(.horizontal, 20)
+        }
     }
 }

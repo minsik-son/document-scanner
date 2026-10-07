@@ -586,7 +586,7 @@ struct PhotoSourceChoices: View {
                 }.buttonStyle(.plain).accessibilityIdentifier("source-current")
             }
             if documentScan && CameraPhotoPicker.available {
-                Button { docCamera = true } label: { ChoiceRow(symbol: "doc.viewfinder.fill", title: "Scan a document", detail: "Finds the page edges and straightens it") }
+                Button { docCamera = true } label: { ChoiceRow(symbol: "camera.viewfinder", title: allowCamera ? "Scan a document" : "Scan with the camera", detail: "Finds the page edges and straightens it") }
                     .buttonStyle(.plain).accessibilityIdentifier("source-scan")
             }
             if allowCamera && CameraPhotoPicker.available {

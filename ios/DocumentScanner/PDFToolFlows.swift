@@ -1490,13 +1490,16 @@ enum Redaction {
         var kind: String
         var on = true
     }
-    private static let accountWords = ["account", "acct", "bank", "transit", "routing", "iban", "계좌", "은행", "예금주"]
+    private static let accountWords = ["account", "acct", "a/c", "bank", "transit", "routing", "iban", "swift", "계좌", "은행", "예금주", "입금"]
+    private static let passportWords = ["passport", "여권"]
+    private static let licenceWords = ["licence", "license", "driver", "운전면허", "면허번호"]
     /// Finds ID, card, account and phone numbers and emails on a rendered page.
-    nonisolated static func detect(_ image: UIImage) throws -> [Box] {
-        let blocks = try Imaging.recognize(image)
+    nonisolated static func detect(_ image: UIImage) throws -> [Box] { boxes(in: try Imaging.recognize(image)) }
+    nonisolated static func boxes(in blocks: [TextBlock]) -> [Box] {
         var boxes: [Box] = []
         for block in blocks {
             let text = block.text, ns = text as NSString
+            let context = rowContext(block, in: blocks)
             // Character range of each recognized word inside the line.
             var wordRanges: [(NSRange, CGRect)] = []
             var cursor = 0
@@ -1506,7 +1509,7 @@ enum Redaction {
                 wordRanges.append((r, CGRect(x: w.x, y: w.y, width: w.width, height: w.height))); cursor = r.location + r.length
             }
             let lineRect = CGRect(x: block.x, y: block.y, width: block.width, height: block.height)
-            for (kind, range) in matches(text) {
+            for (kind, range) in matches(text, context: context) {
                 let hit = wordRanges.filter { NSIntersectionRange($0.0, range).length > 0 }.map(\.1)
                 var rect = hit.isEmpty ? lineRect : hit.dropFirst().reduce(hit[0]) { $0.union($1) }
                 if hit.isEmpty, ns.length > 0 {
@@ -1520,29 +1523,59 @@ enum Redaction {
         }
         return boxes
     }
-    nonisolated static func matches(_ text: String) -> [(String, NSRange)] {
-        let full = NSRange(location: 0, length: (text as NSString).length)
+    /// The line plus labels in the same row to its left ("Account number | 1234567").
+    nonisolated static func rowContext(_ block: TextBlock, in blocks: [TextBlock]) -> String {
+        let row = blocks.filter { other in
+            other.x + other.width <= block.x + 0.01 && block.x - (other.x + other.width) < 0.45
+                && min(other.y + other.height, block.y + block.height) - max(other.y, block.y) > 0.5 * min(other.height, block.height)
+        }.sorted { $0.x < $1.x }.map(\.text)
+        return (row + [block.text]).joined(separator: " ")
+    }
+    /// `context` is the line plus the labels beside it; it decides whether a bare
+    /// number is an account, passport or licence number.
+    /// Cyrillic letters Vision sometimes returns for Latin ones (М96261858). Same length, so ranges still match the line.
+    nonisolated static func latinLookalikes(_ s: String) -> String {
+        let map: [Character: Character] = ["А": "A", "В": "B", "Е": "E", "К": "K", "М": "M", "Н": "H", "О": "O", "Р": "P", "С": "C", "Т": "T", "Х": "X", "о": "o", "а": "a", "е": "e", "р": "p", "с": "c", "х": "x"]
+        return String(s.map { map[$0] ?? $0 })
+    }
+    nonisolated static func matches(_ raw: String, context: String? = nil) -> [(String, NSRange)] {
+        let text = latinLookalikes(raw)
+        let ns = text as NSString
+        let full = NSRange(location: 0, length: ns.length)
+        let ctx = latinLookalikes(context ?? text).lowercased()
         var out: [(String, NSRange)] = []
         func add(_ kind: String, _ r: NSRange) { if !out.contains(where: { NSIntersectionRange($0.1, r).length > 0 }) { out.append((kind, r)) } }
-        func regex(_ p: String, _ kind: String, _ ok: (String) -> Bool = { _ in true }) {
-            guard let re = try? NSRegularExpression(pattern: p, options: [.caseInsensitive]) else { return }
-            for m in re.matches(in: text, range: full) where ok((text as NSString).substring(with: m.range)) { add(kind, m.range) }
+        func regex(_ p: String, _ kind: String, caseless: Bool = true, _ ok: (String) -> Bool = { _ in true }) {
+            guard let re = try? NSRegularExpression(pattern: p, options: caseless ? [.caseInsensitive] : []) else { return }
+            for m in re.matches(in: text, range: full) where ok(ns.substring(with: m.range)) { add(kind, m.range) }
         }
-        regex(#"\b\d{6}\s?-\s?[1-8]\d{6}\b"#, "ID number")                    // Korean resident registration
-        regex(#"\b\d{3}-\d{2}-\d{4}\b"#, "ID number")                          // US SSN
-        regex(#"\b\d{3}[ -]\d{3}[ -]\d{3}\b"#, "ID number")                    // Canadian SIN
-        regex(#"\b(?:\d[ -]?){12,18}\d\b"#, "Card number") { luhn($0.filter(\.isNumber)) }
+        let hangul = text.unicodeScalars.contains { (0xAC00...0xD7A3).contains($0.value) }
+        regex(#"(?<!\d)\d{6}\s?-\s?[1-8]\d{6}(?!\d)"#, "ID number")                     // Korean resident / foreigner registration
+        regex(#"(?<![\d-])\d{2}-\d{2}-\d{6}-\d{2}(?![\d-])"#, "ID number")               // Korean driver's licence
+        if !hangul || ctx.contains("ssn") || ctx.contains("social") {
+            regex(#"(?<![\d-])\d{3}-\d{2}-\d{4}(?![\d-])"#, "ID number") { ssn($0) }        // US SSN
+            regex(#"(?<![\d-])\d{3}[ -]\d{3}[ -]\d{3}(?![\d-])"#, "ID number") { s in       // Canadian SIN
+                luhn(s.filter(\.isNumber), lengths: 9...9) || ctx.contains("sin") || ctx.contains("social insurance")
+            }
+        }
+        regex(#"(?<![\d+])(?:\d[ -]?){12,18}\d(?!\d)"#, "Card number") { s in let d = s.filter(\.isNumber); return luhn(d) && cardPrefix(d) }
         regex(#"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}"#, "Email")
-        if accountWords.contains(where: { text.lowercased().contains($0) }) {
-            regex(#"\b\d[\d -]{6,}\d\b"#, "Account number") { $0.filter(\.isNumber).count >= 7 }
+        regex(#"\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,4})?\b"#, "Account number", caseless: false) { s in iban(s) || ctx.contains("iban") }
+        if passportWords.contains(where: { ctx.contains($0) }) {
+            regex(#"\b[A-Z]{1,2}\d{6,8}\b|\b[A-Z]\d{3}[A-Z]\d{4}\b"#, "ID number", caseless: false)
         }
-        if let d = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.phoneNumber.rawValue) {
-            for m in d.matches(in: text, range: full) { add("Phone", m.range) }
+        regex(#"\b[MSRODG]\d{8}\b|\b[MSRODG]\d{3}[A-Z]\d{4}\b"#, "ID number", caseless: false) // Korean passport
+        if licenceWords.contains(where: { ctx.contains($0) }) || ctx.range(of: #"\bdl\b"#, options: .regularExpression) != nil {
+            regex(#"\b[A-Z0-9][A-Z0-9-]{5,18}\d\b"#, "ID number") { s in s.filter(\.isNumber).count >= 6 && !s.contains("--") }
         }
+        if accountWords.contains(where: { ctx.contains($0) }) {
+            regex(#"(?<!\d)\d[\d -]{5,}\d(?!\d)"#, "Account number") { $0.filter(\.isNumber).count >= 7 }
+        }
+        for r in PhoneCheck.find(in: text, context: context) { add("Phone", r) }
         return out
     }
-    nonisolated static func luhn(_ digits: String) -> Bool {
-        guard (13...19).contains(digits.count) else { return false }
+    nonisolated static func luhn(_ digits: String, lengths: ClosedRange<Int> = 13...19) -> Bool {
+        guard lengths.contains(digits.count) else { return false }
         var sum = 0
         for (i, c) in digits.reversed().enumerated() {
             var d = Int(String(c)) ?? 0
@@ -1550,6 +1583,38 @@ enum Redaction {
             sum += d
         }
         return sum % 10 == 0
+    }
+    /// Issuer prefixes and lengths of real payment cards (Visa, Mastercard, Amex,
+    /// Discover, JCB, Diners, UnionPay and Korean domestic cards).
+    nonisolated static func cardPrefix(_ d: String) -> Bool {
+        let n = d.count
+        func p(_ s: String) -> Bool { d.hasPrefix(s) }
+        let two = Int(d.prefix(2)) ?? 0, four = Int(d.prefix(4)) ?? 0, three = Int(d.prefix(3)) ?? 0
+        if p("4") { return [13, 16, 19].contains(n) }
+        if (51...55).contains(two) || (2221...2720).contains(four) { return n == 16 }
+        if p("34") || p("37") { return n == 15 }
+        if p("6011") || p("65") || (644...649).contains(three) || p("62") { return (16...19).contains(n) }
+        if (3528...3589).contains(four) { return (16...19).contains(n) }
+        if p("36") || p("38") || (300...305).contains(three) { return n == 14 || n == 16 }
+        if p("9") { return n == 16 }
+        return false
+    }
+    nonisolated static func ssn(_ s: String) -> Bool {
+        let d = s.filter(\.isNumber)
+        guard d.count == 9 else { return false }
+        let area = Int(d.prefix(3)) ?? 0, group = Int(d.dropFirst(3).prefix(2)) ?? 0, serial = Int(d.suffix(4)) ?? 0
+        return area > 0 && area != 666 && area < 900 && group > 0 && serial > 0
+    }
+    nonisolated static func iban(_ s: String) -> Bool {
+        let c = s.replacingOccurrences(of: " ", with: "")
+        guard (15...34).contains(c.count) else { return false }
+        let moved = c.dropFirst(4) + c.prefix(4)
+        var rem = 0
+        for ch in moved {
+            guard let v = ch.isNumber ? Int(String(ch)) : (ch.asciiValue.map { Int($0) - 55 }) else { return false }
+            for digit in String(v) { rem = (rem * 10 + Int(String(digit))!) % 97 }
+        }
+        return rem == 1
     }
     /// A new PDF of page pictures with the boxes filled solid black. No text layer
     /// is kept, so hidden details can't be copied or searched back out.

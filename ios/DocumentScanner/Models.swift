@@ -243,34 +243,126 @@ enum DocumentKind: String, Codable, CaseIterable, Identifiable {
 
 /// Sorts a document into a kind and suggests a name from its recognized text.
 /// Everything runs locally with keyword rules and Apple's data detectors.
+/// Tells real phone numbers apart from other digit runs (order, business, ISBN,
+/// reference numbers) that the system data detector also reads as phones.
+enum PhoneCheck {
+    private static let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.phoneNumber.rawValue)
+    private static let label = try! NSRegularExpression(pattern: #"(?i)(\b(tel|tél|phone|telephone|mobile|mob|cell|cellular|fax|hp|h\.p|direct|office|ph|whatsapp|call)\b|(^|[\s|])[TMPFHCO]\s?[.:]\s*[+(\d]|전화|휴대|연락처|핸드폰|팩스|대표번호|직통)"#)
+    private static let loose = try! NSRegularExpression(pattern: #"\+?\(?\d[\d ().-]{6,}\d"#)
+    private static let dateLike = try! NSRegularExpression(pattern: #"^\s*(\d{4}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}[-./]\d{1,2}[-./]\d{2,4})\s*$"#)
+    static func hasLabel(_ text: String) -> Bool { label.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) != nil }
+    static func plausible(_ raw: String, labelled: Bool) -> Bool {
+        let s = raw.trimmingCharacters(in: .whitespaces)
+        let d = String(s.unicodeScalars.filter { (48...57).contains($0.value) }.map(Character.init))
+        let groups = s.split(whereSeparator: { !$0.isASCII || !$0.isNumber }).map(\.count)
+        guard d.count >= 7, d.count <= 16 else { return false }
+        if dateLike.firstMatch(in: s, range: NSRange(s.startIndex..., in: s)) != nil { return false }
+        if s.hasPrefix("+") { return d.count >= 8 }
+        if d.hasPrefix("00") { return d.count >= 10 }
+        // Korean numbers written internationally without the plus: 82-10-1234-5678.
+        if d.hasPrefix("82"), (10...13).contains(d.count), labelled || (groups.count > 1 && groups[0] <= 4) { return true }
+        if d.hasPrefix("0"), (9...11).contains(d.count) {
+            if groups.count >= 2, groups.last == 4, groups.dropLast().allSatisfy({ (2...4).contains($0) }) { return true }
+            if labelled || (groups.count == 1 && d.hasPrefix("01")) { return true }
+        }
+        // 1588-1234 style service numbers.
+        if d.count == 8, groups == [4, 4], ["15", "16", "18"].contains(String(d.prefix(2))) { return true }
+        // North American numbers.
+        let area: (Character?) -> Bool = { c in c.map { "23456789".contains($0) } ?? false }
+        if d.count == 10, area(d.first), groups == [3, 3, 4] || (groups == [10] && labelled) { return true }
+        if d.count == 11, d.hasPrefix("1"), area(d.dropFirst().first), groups == [1, 3, 3, 4] || (groups == [11] && labelled) { return true }
+        return labelled && d.count <= 15
+    }
+    /// Phone numbers in one line. `context` is the line plus the labels next to it.
+    static func find(in text: String, context: String? = nil) -> [NSRange] {
+        let ns = text as NSString, full = NSRange(location: 0, length: ns.length)
+        let labelled = hasLabel(context ?? text)
+        var out: [NSRange] = []
+        for m in detector?.matches(in: text, range: full) ?? [] where plausible(ns.substring(with: m.range), labelled: labelled) { out.append(m.range) }
+        if labelled {
+            for m in loose.matches(in: text, range: full) where !out.contains(where: { NSIntersectionRange($0, m.range).length > 0 }) && plausible(ns.substring(with: m.range), labelled: true) {
+                out.append(m.range)
+            }
+        }
+        return out
+    }
+}
+
 enum DocumentInsight {
-    private static let keywords: [DocumentKind: [String]] = [
-        .receipt: ["receipt", "subtotal", "sub total", "total", "tax", "gst", "pst", "hst", "visa", "mastercard", "debit", "change due", "cash", "approved", "auth", "thank you for shopping", "영수증", "합계", "부가세", "승인번호", "카드번호", "받을금액", "결제"],
-        .invoice: ["invoice", "bill to", "billed to", "due date", "amount due", "balance due", "payment due", "statement", "account number", "청구서", "세금계산서", "납부", "고지서", "청구금액", "납기"],
-        .idCard: ["driver", "licence", "license", "passport", "date of birth", "dob", "expiry", "expires", "nationality", "identification", "주민등록증", "운전면허", "여권", "생년월일"],
-        .contract: ["agreement", "contract", "terms and conditions", "hereby", "party", "parties", "signature", "signed", "witness", "lease", "tenant", "landlord", "계약서", "계약", "갑", "을", "서명", "임대인", "임차인"],
-        .form: ["application", "form", "please print", "check one", "applicant", "office use only", "consent", "신청서", "서식", "신청인", "작성"],
-        .letter: ["dear ", "sincerely", "regards", "yours truly", "to whom it may concern", "귀하", "드림", "올림"],
-    ]
+    private static let receiptWords = ["receipt", "cashier", "change due", "visa", "mastercard", "debit", "auth code", "thank you", "thanks for", "subtotal", "sub total",
+                                       "sub-total", "sous-total", "tender", "qty", "rounding", "tunai", "kembali", "struk", "merchant copy", "customer copy", "transaction",
+                                       "factura simplificada", "ticket", "kassenbon", "summe", "server", "table", "guests", "service charge",
+                                       "영수증", "합계", "부가세", "승인번호", "카드번호", "받을금액", "결제금액", "거스름돈", "과세물품", "판매", "감사합니다"]
+    /// Words that also appear in budgets and reports: half weight.
+    private static let weakReceiptWords = ["cash", "change", "approved", "total", "tax", "gst", "vat", "tva", "btw", "iva", "tps"]
+    private static let invoiceWords = ["invoice", "bill to", "billed to", "ship to", "sold to", "due date", "amount due", "balance due", "payment due", "payment terms", "remit", "invoice no",
+                                       "invoice number", "invoice date", "purchase order", "p.o. number", "seller", "client", "net worth", "gross worth", "statement", "account number", "customer no",
+                                       "청구서", "세금계산서", "납부", "고지서", "청구금액", "납기", "공급가액", "공급받는자", "청구기간"]
+    private static let idWords = ["driver", "licence", "license", "passport", "date of birth", "dob", "expiry", "expires", "nationality", "identification", "id card", "issued",
+                                  "주민등록증", "운전면허", "여권", "외국인등록증", "발급일"]
+    private static let contractWords = ["agreement", "contract", "hereby", "whereas", "party", "parties", "terms and conditions", "witness", "lease", "tenant", "landlord", "governing law",
+                                        "in witness whereof", "indemnif", "effective date", "termination", "obligations", "계약서", "계약", "임대인", "임차인", "갑과 을", "이하 \"갑\"", "이하 “갑”", "특약", "제1조", "제 1 조"]
+    private static let formWords = ["application", "form", "please print", "print name", "check one", "check all", "applicant", "office use only", "for office use", "consent", "date of birth",
+                                    "signature", "registration", "신청서", "서식", "신청인", "성명", "생년월일", "연락처", "서명 또는 인", "(인)", "작성일", "신청일", "기재"]
+    private static let letterWords = ["dear ", "sincerely", "regards", "yours truly", "very truly", "truly yours", "cordially", "to whom it may concern", "enclosure", "enclosed",
+                                      "귀하", "드림", "올림", "배상", "안녕하십니까", "님께"]
+    /// Label words that end a short line on a form ("Name:", "Phone ____").
+    private static let fieldLabels: Set<String> = ["name", "full name", "first name", "last name", "address", "city", "state", "province", "zip", "zip code", "postal code", "phone", "telephone",
+                                                   "email", "e-mail", "date", "signature", "date of birth", "occupation", "employer", "company", "title", "sex", "gender", "age",
+                                                   "성명", "이름", "주소", "연락처", "전화번호", "휴대폰", "이메일", "생년월일", "소속", "직업", "서명", "날짜", "일자", "우편번호", "성별"]
+    private static let memoLabels: Set<String> = ["to", "from", "re", "subject", "cc", "date", "bcc", "attn"]
+
+    private static func words(_ lower: String) -> Set<Substring> { Set(lower.split(whereSeparator: { !$0.isLetter && !$0.isNumber && $0 != "-" })) }
+    private static func hits(_ list: [String], _ lower: String, _ tokens: Set<Substring>) -> Int {
+        list.reduce(0) { n, w in
+            let latinWord = w.allSatisfy { ($0.isASCII && $0.isLetter) || $0 == "-" }
+            return n + ((latinWord ? tokens.contains(Substring(w)) : lower.contains(w)) ? 1 : 0)
+        }
+    }
+    /// Short lines that read like empty form fields.
+    private static func labelLines(_ lines: [String]) -> Int {
+        lines.filter { line in
+            var l = line.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: " _.…"))
+            let colon = l.hasSuffix(":") || l.hasSuffix("：")
+            l = l.trimmingCharacters(in: CharacterSet(charactersIn: " :：*"))
+            guard l.count >= 2, l.count <= 32, l.split(separator: " ").count <= 5, !memoLabels.contains(l) else { return false }
+            if fieldLabels.contains(l) { return true }
+            return colon && l.rangeOfCharacter(from: .decimalDigits) == nil
+        }.count
+    }
 
     static func classify(_ doc: ScanDocument) -> DocumentKind {
         let text = doc.text
-        let lower = text.lowercased()
+        let lower = text.lowercased(), tokens = words(lower)
         let lines = text.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         let contacts = contactCount(text)
-        var scores: [DocumentKind: Int] = [:]
-        for (kind, words) in keywords { scores[kind] = words.reduce(0) { $0 + (lower.contains($1) ? 1 : 0) } }
+        let rrn = text.range(of: #"\d{6}\s?-\s?[1-8]\d{6}"#, options: .regularExpression) != nil
+        let idScore = hits(idWords, lower, tokens) + (rrn ? 2 : 0)
+        let money = currencyHits(text)
         if doc.captureStyle == .card {
             // Card camera: an ID unless it reads like a business card.
-            if (scores[.idCard] ?? 0) == 0 && contacts >= 2 { return .businessCard }
+            let business = contacts + (jobLine(lines) != nil ? 1 : 0) + (lower.contains("@") ? 1 : 0)
+            if business >= 2 && idScore <= (rrn ? 0 : 1) { return .businessCard }
             return .idCard
         }
-        if lines.count <= 14 && text.count < 420 && contacts >= 2 && (scores[.idCard] ?? 0) == 0 { return .businessCard }
-        if doc.pages.count >= 2 && lines.count / max(1, doc.pages.count) > 25 && scores.values.max() ?? 0 <= 1 { return .book }
-        // Money words weigh more on short receipts than on long invoices.
-        if text.count < 2500 { scores[.receipt, default: 0] += currencyHits(text) >= 3 ? 1 : 0 }
-        guard let best = scores.max(by: { $0.value < $1.value }), best.value >= 2 else { return .other }
-        return best.key
+        if lines.count <= 16 && text.count < 520 && contacts >= 2 && idScore == 0 && money < 2 { return .businessCard }
+        if doc.pages.count >= 2 && lines.count / max(1, doc.pages.count) > 25 && hits(contractWords, lower, tokens) <= 1 && hits(formWords, lower, tokens) <= 1 { return .book }
+        var scores: [DocumentKind: Double] = [:]
+        // "Total" with cash or change is a till receipt even when nothing else is legible.
+        let till = tokens.contains("total") && !tokens.isDisjoint(with: ["cash", "tunai", "kembalian", "kembali"]) && money >= 2 && text.count < 1500 ? 1 : 0
+        let strongReceipt = hits(receiptWords, lower, tokens) + till
+        scores[.receipt] = Double(strongReceipt) + 0.5 * Double(hits(weakReceiptWords, lower, tokens))
+            + (money >= 4 && text.count < 1500 && strongReceipt >= 1 ? 1 : 0) + (tokens.contains("receipt") || lower.contains("영수증") ? 1 : 0)
+        scores[.invoice] = Double(hits(invoiceWords, lower, tokens)) + (tokens.contains("invoice") || lower.contains("청구서") || lower.contains("고지서") ? 1 : 0)
+        let labels = labelLines(lines)
+        scores[.form] = Double(hits(formWords, lower, tokens)) + (labels >= 8 ? 3 : labels >= 4 ? 2 : labels >= 2 ? 1 : 0)
+        scores[.letter] = Double(hits(letterWords, lower, tokens)) + (lower.contains("dear ") ? 1 : 0)
+        scores[.contract] = Double(hits(contractWords, lower, tokens)) + (text.count > 1500 && (tokens.contains("agreement") || lower.contains("계약서")) ? 1 : 0)
+        if text.count < 900 { scores[.idCard] = Double(idScore) - 1 }
+        // Ties go to the more specific kind.
+        let order: [DocumentKind] = [.contract, .invoice, .receipt, .idCard, .form, .letter]
+        guard let best = order.max(by: { (scores[$0] ?? 0) < (scores[$1] ?? 0) }), (scores[best] ?? 0) >= 2 else { return .other }
+        return best
     }
 
     /// e.g. "Costco Receipt 2026-10-06", "Payment Plan Agreement 2026-10-06".
@@ -289,7 +381,7 @@ enum DocumentInsight {
         case .idCard:
             parts = [lower(text).contains("passport") || text.contains("여권") ? "Passport" : "ID card"]
         case .receipt, .invoice:
-            if let org = heading(lines) { parts.append(org) }
+            if let org = organization(lines) ?? heading(lines) { parts.append(org) }
             parts.append(kind.label)
         case .contract, .form, .letter, .book, .other:
             if let head = heading(lines) { parts.append(head) } else { parts.append(kind == .other ? "Scan" : kind.label) }
@@ -317,11 +409,10 @@ enum DocumentInsight {
         let lines = text.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         var f = CardFields()
         f.name = personName(lines) ?? ""
-        let types: NSTextCheckingResult.CheckingType = [.phoneNumber, .link, .address]
+        let types: NSTextCheckingResult.CheckingType = [.link, .address]
         if let detector = try? NSDataDetector(types: types.rawValue) {
             for m in detector.matches(in: text, range: NSRange(text.startIndex..., in: text)) {
                 switch m.resultType {
-                case .phoneNumber: if let p = m.phoneNumber, !f.phones.contains(p) { f.phones.append(p) }
                 case .link:
                     if let url = m.url {
                         if url.scheme == "mailto" { let e = url.absoluteString.replacingOccurrences(of: "mailto:", with: ""); if !f.emails.contains(e) { f.emails.append(e) } }
@@ -332,14 +423,27 @@ enum DocumentInsight {
                 }
             }
         }
-        let orgWords = ["inc", "ltd", "llc", "corp", "co.", "company", "group", "bank", "university", "주식회사", "(주)", "㈜", "회사"]
-        let jobWords = ["manager", "director", "engineer", "ceo", "cto", "cfo", "president", "founder", "officer", "consultant", "designer", "developer", "agent", "advisor", "sales", "대표", "이사", "부장", "차장", "과장", "대리", "팀장", "실장", "사원", "매니저"]
-        for line in lines where !line.contains("@") && line != f.name {
-            let l = line.lowercased()
-            if f.organization.isEmpty, orgWords.contains(where: { l.contains($0) }) { f.organization = line; continue }
-            if f.jobTitle.isEmpty, line.count <= 40, jobWords.contains(where: { l.contains($0) }) { f.jobTitle = line }
+        // Phones line by line, so labels such as "M" or "HP" count for the number next to them.
+        for line in lines where !line.contains("@") {
+            let ns = line as NSString
+            for r in PhoneCheck.find(in: line) {
+                let p = ns.substring(with: r).trimmingCharacters(in: .whitespaces)
+                let key = String(p.filter(\.isNumber).suffix(8))
+                if !f.phones.contains(where: { String($0.filter(\.isNumber).suffix(8)) == key }) { f.phones.append(p) }
+            }
         }
-        if f.organization.isEmpty, let head = heading(lines.filter { $0 != f.name && $0 != f.jobTitle }) { f.organization = head }
+        // A website that is just the email's domain is still worth keeping; drop links that are the email itself.
+        f.urls.removeAll { u in f.emails.contains { u.contains($0) } }
+        f.jobTitle = jobLine(lines.filter { $0 != f.name }) ?? ""
+        // Korean cards print a short title right next to the name; take it even when OCR blurs the word.
+        if f.jobTitle.isEmpty, let i = lines.firstIndex(of: f.name) {
+            for j in [i + 1, i - 1] where lines.indices.contains(j) {
+                let c = lines[j].replacingOccurrences(of: " ", with: "")
+                if (2...6).contains(c.count), c.unicodeScalars.allSatisfy({ (0xAC00...0xD7A3).contains($0.value) }), !hasOrgMarker(lines[j]) { f.jobTitle = lines[j]; break }
+            }
+        }
+        let rest = lines.filter { $0 != f.name && $0 != f.jobTitle && !$0.contains("@") && PhoneCheck.find(in: $0).isEmpty && !addressLike($0) }
+        f.organization = organization(rest) ?? heading(rest) ?? ""
         return f
     }
 
@@ -349,16 +453,17 @@ enum DocumentInsight {
     private static func clip(_ s: String) -> String { s.count <= 60 ? s : String(s.prefix(60)).trimmingCharacters(in: .whitespaces) }
     /// Phone numbers (up to two), an email and a website each count once.
     private static func contactCount(_ text: String) -> Int {
-        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.phoneNumber.rawValue | NSTextCheckingResult.CheckingType.link.rawValue) else { return 0 }
         var phones = 0, email = 0, web = 0
-        for m in detector.matches(in: text, range: NSRange(text.startIndex..., in: text)) {
-            if m.resultType == .phoneNumber { phones += 1 }
-            else if let url = m.url { if url.scheme == "mailto" { email = 1 } else { web = 1 } }
+        for line in text.split(whereSeparator: \.isNewline) { phones += PhoneCheck.find(in: String(line)).count }
+        if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) {
+            for m in detector.matches(in: text, range: NSRange(text.startIndex..., in: text)) {
+                if let url = m.url { if url.scheme == "mailto" { email = 1 } else { web = 1 } }
+            }
         }
         return min(phones, 2) + email + web
     }
     private static func currencyHits(_ text: String) -> Int {
-        guard let re = try? NSRegularExpression(pattern: #"(\$|₩|€|£)\s?\d|\d+[.,]\d{2}\b|\d{1,3}(,\d{3})+원"#) else { return 0 }
+        guard let re = try? NSRegularExpression(pattern: #"(\$|₩|€|£|rp\.?|rm)\s?\d|\d+[.,]\d{2}\b|\d{1,3}(,\d{3})+원?"#, options: [.caseInsensitive]) else { return 0 }
         return re.numberOfMatches(in: text, range: NSRange(text.startIndex..., in: text))
     }
     private static func firstDate(_ text: String) -> Date? {
@@ -368,28 +473,102 @@ enum DocumentInsight {
         return detector.matches(in: text, range: NSRange(text.startIndex..., in: text)).compactMap(\.date)
             .first { $0 < now.addingTimeInterval(366 * 86400) && $0 > now.addingTimeInterval(-30 * 366 * 86400) }
     }
-    private static let generic: Set<String> = ["receipt", "invoice", "tax invoice", "statement", "page", "date", "welcome", "thank you", "customer copy", "merchant copy", "original", "copy", "영수증", "청구서", "고객용", "가맹점용"]
-    /// A short, word-like line near the top: a store, company or document title.
-    private static func heading(_ lines: [String]) -> String? {
-        for raw in lines.prefix(8) {
-            let line = raw.trimmingCharacters(in: CharacterSet(charactersIn: " *#-_=|:.,"))
-            guard (3...40).contains(line.count), !generic.contains(line.lowercased()) else { continue }
-            let letters = line.unicodeScalars.filter { CharacterSet.letters.contains($0) }.count
+    private static let generic: Set<String> = ["receipt", "invoice", "tax invoice", "statement", "page", "date", "welcome", "thank you", "customer copy", "merchant copy", "original", "copy",
+                                               "cash bill", "bill", "official receipt", "simplified tax invoice", "영수증", "청구서", "고객용", "가맹점용", "카드영수증", "현금영수증"]
+    private static let orgMarkers = ["sdn bhd", "sdn. bhd", "sdn.bhd", "bhd", "s/b", "sdn", "pte", "inc", "inc.", "ltd", "ltd.", "llc", "corp", "corp.", "co.", "company", "group", "enterprise", "trading", "restaurant",
+                                     "cafe", "café", "mart", "store", "market", "supermarket", "bakery", "pharmacy", "hardware", "station", "hotel", "bank", "university", "studio",
+                                     "주식회사", "(주)", "㈜", "(유)", "유한회사", "그룹", "회사", "은행"]
+    private static func hasOrgMarker(_ line: String) -> Bool {
+        let l = line.lowercased(), tokens = Set(l.split(whereSeparator: { !$0.isLetter && $0 != "." && $0 != "(" && $0 != ")" }).map(String.init))
+        return orgMarkers.contains { m in m.contains(" ") || m.contains("(") || m.contains("/") || m.contains(".") || !m.allSatisfy({ $0.isASCII }) || m == "bhd" ? l.contains(m) : tokens.contains(m) }
+    }
+    private static let addressWords: Set<String> = ["street", "st", "road", "rd", "avenue", "ave", "blvd", "drive", "dr", "lane", "jalan", "jln", "taman", "lot", "no", "suite", "unit",
+                                                    "floor", "fl", "box", "highway", "hwy", "way", "court", "ct", "place", "pl"]
+    private static func addressLike(_ line: String) -> Bool {
+        let l = line.lowercased()
+        let tokens = Set(l.split(whereSeparator: { !$0.isLetter }).map(String.init))
+        let hasDigit = l.rangeOfCharacter(from: .decimalDigits) != nil
+        if hasDigit && (!tokens.isDisjoint(with: addressWords) || l.contains(",")) { return true }
+        if !tokens.isDisjoint(with: ["jalan", "jln", "taman", "lorong", "persiaran", "kawasan", "bandar", "avenue", "boulevard", "street", "road"]) { return true }
+        // Korean addresses: 시/도/구/로/길/동/층 with a number.
+        return hasDigit && ["시 ", "구 ", "로 ", "길 ", "동 ", "층", "번지", "광역시", "특별시"].contains { l.contains($0) }
+    }
+    /// The store or company line near the top of a receipt or invoice.
+    private static func organization(_ lines: [String]) -> String? {
+        let top = Array(lines.prefix(10))
+        for (i, raw) in top.enumerated() {
+            // Drop registration numbers in brackets: "99 SPEED MART S/B (519537-X)".
+            var line = raw.replacingOccurrences(of: #"\([^)]*\d[^)]*\)"#, with: "", options: .regularExpression)
+                .trimmingCharacters(in: CharacterSet(charactersIn: " *#-_=|:.,‹›•"))
+            // A marker on its own line ("SDN BHD") belongs to the name above it.
+            if i > 0, line.split(separator: " ").count <= 4, hasOrgMarker(line), !hasOrgMarker(top[i - 1]),
+               top[i - 1].rangeOfCharacter(from: .decimalDigits) == nil, line.lowercased().range(of: #"^(co\.?|\(m\)|sdn|bhd|inc|ltd|llc|s/b|pte)"#, options: .regularExpression) != nil {
+                line = top[i - 1].trimmingCharacters(in: CharacterSet(charactersIn: " *#-_=|:.,‹›•")) + " " + line
+            }
+            guard (3...48).contains(line.count), hasOrgMarker(line), !line.contains("@"), !addressLike(line) else { continue }
             let digits = line.unicodeScalars.filter { CharacterSet.decimalDigits.contains($0) }.count
-            guard Double(letters) / Double(line.count) > 0.6, digits <= 2, !line.contains("@"), !line.lowercased().contains("www") else { continue }
+            guard digits <= 2 else { continue }
             return titleCase(line)
         }
         return nil
     }
-    private static func personName(_ lines: [String]) -> String? {
-        for line in lines.prefix(10) {
-            let words = line.split(separator: " ")
-            let hangul = line.unicodeScalars.allSatisfy { (0xAC00...0xD7A3).contains($0.value) || $0 == " " }
-            if hangul && (2...5).contains(line.replacingOccurrences(of: " ", with: "").count) { return line }
-            guard (2...4).contains(words.count), !line.contains("@"), line.rangeOfCharacter(from: .decimalDigits) == nil else { continue }
-            if words.allSatisfy({ $0.first?.isUppercase == true && $0.count > 1 }) { return titleCase(line) }
+    /// A short, word-like line near the top: a store, company or document title.
+    private static func heading(_ lines: [String]) -> String? {
+        for raw in lines.prefix(8) {
+            let line = raw.trimmingCharacters(in: CharacterSet(charactersIn: " *#-_=|:.,"))
+            let low = line.lowercased()
+            guard (3...40).contains(line.count), !generic.contains(low),
+                  !["invoice", "receipt", "tax ", "gst", "date", "tel", "fax", "no.", "no:", "bill", "order", "table", "page"].contains(where: { low.hasPrefix($0) }) else { continue }
+            let letters = line.unicodeScalars.filter { CharacterSet.letters.contains($0) }.count
+            let digits = line.unicodeScalars.filter { CharacterSet.decimalDigits.contains($0) }.count
+            guard Double(letters) / Double(line.count) > 0.6, digits <= 2, !line.contains("@"), !line.lowercased().contains("www"), !addressLike(line), !PhoneCheck.hasLabel(line) else { continue }
+            return titleCase(line)
         }
         return nil
+    }
+    private static let jobWords = ["manager", "director", "engineer", "ceo", "cto", "cfo", "coo", "president", "founder", "officer", "consultant", "designer", "developer", "agent", "advisor",
+                                   "adviser", "sales", "partner", "associate", "specialist", "analyst", "coordinator", "therapist", "lawyer", "solicitor", "barrister", "attorney", "dentist",
+                                   "doctor", "physician", "photographer", "architect", "accountant", "broker", "realtor", "representative", "executive", "head of", "lead", "vp",
+                                   "vice president", "chief", "owner", "principal", "administrator", "nurse", "teacher", "professor", "producer", "editor", "writer", "planner", "assistant",
+                                   "대표", "이사", "부장", "차장", "과장", "대리", "팀장", "실장", "사원", "매니저", "연구원", "전무", "상무", "본부장", "사장", "회장", "주임", "수석", "책임",
+                                   "선임", "디자이너", "개발자", "변호사", "세무사", "회계사", "교수", "원장", "센터장", "지점장", "점장", "위원", "고문", "컨설턴트", "엔지니어"]
+    private static func isJob(_ line: String) -> Bool {
+        let l = line.lowercased()
+        guard line.count <= 40, !line.contains("@"), l.rangeOfCharacter(from: .decimalDigits) == nil else { return false }
+        let tokens = Set(l.split(whereSeparator: { !$0.isLetter }).map(String.init))
+        return jobWords.contains { w in w.contains(" ") || !w.allSatisfy({ $0.isASCII }) ? l.contains(w) : tokens.contains(w) }
+    }
+    private static func jobLine(_ lines: [String]) -> String? { lines.prefix(12).first { isJob($0) && !hasOrgMarker($0) } }
+    private static let surnames: Set<Character> = Set("김이박최정강조윤장임한오서신권황안송류전홍고문양손배백허유남심노하곽성차주우구민진나지엄변채원천방공현함염여추도소석선설마길연위표명기반왕금옥육인맹제모탁국어은편용예경봉사부")
+    private static let orgNameWords: Set<String> = ["inc", "ltd", "llc", "corp", "co", "company", "group", "bank", "university", "studio", "photography", "law", "legal", "dental", "dentistry",
+                                                    "realty", "estate", "partners", "wealth", "consulting", "solutions", "services", "design", "media", "labs", "technologies", "tech",
+                                                    "systems", "clinic", "health", "insurance", "financial", "capital", "holdings", "associates", "agency", "and", "the", "of", "pine",
+                                                    "harbour", "harbor", "leaf", "lane", "summit", "studios", "creative", "global", "international", "industries", "foods", "motors"]
+    /// The person's name on a card: a short name-shaped line, preferably next to a job title.
+    private static func personName(_ lines: [String]) -> String? {
+        var best: (String, Int)?
+        let top = Array(lines.prefix(10))
+        for (i, line) in top.enumerated() {
+            let near = [i > 0 ? top[i - 1] : "", i + 1 < top.count ? top[i + 1] : ""].contains { isJob($0) }
+            var score: Int
+            let compact = line.replacingOccurrences(of: " ", with: "")
+            let hangul = !compact.isEmpty && compact.unicodeScalars.allSatisfy { (0xAC00...0xD7A3).contains($0.value) }
+            if hangul {
+                guard (2...5).contains(compact.count), !hasOrgMarker(line), !isJob(line) else { continue }
+                score = (surnames.contains(compact.first!) ? 3 : 0) + ((2...4).contains(compact.count) ? 1 : 0)
+            } else {
+                let words = line.split(separator: " ")
+                guard (2...4).contains(words.count), !line.contains("@"), line.rangeOfCharacter(from: .decimalDigits) == nil, !isJob(line),
+                      words.allSatisfy({ $0.first?.isUppercase == true && $0.count > 1 && $0.allSatisfy { $0.isLetter || "-.'".contains($0) } }) else { continue }
+                score = 2
+                let tokens = Set(line.lowercased().split(whereSeparator: { !$0.isLetter }).map(String.init))
+                if !tokens.isDisjoint(with: orgNameWords) || hasOrgMarker(line) || line.contains("&") { score -= 5 }
+            }
+            if near { score += 2 }
+            if best == nil || score > best!.1 { best = (line, score) }
+        }
+        guard let best, best.1 >= 1 else { return nil }
+        return titleCase(best.0)
     }
     private static func titleCase(_ s: String) -> String {
         let letters = s.filter(\.isLetter)

@@ -50,8 +50,11 @@ enum TextRecognition {
         return passes
     }
 
+    /// Tests can limit the passes to the scripts in a sample set; the app always runs them all.
+    nonisolated(unsafe) static var passFilter: (([String]) -> Bool)?
     static func recognize(_ image: CGImage, languageCorrection: Bool = true) throws -> [TextBlock] {
-        let passes = languagePasses(supported: try supportedLanguages())
+        var passes = languagePasses(supported: try supportedLanguages())
+        if let passFilter { passes = passes.filter(passFilter) }
         var readings: [Reading] = []
         var lastError: Error?
         var successfulPasses = 0

@@ -1191,19 +1191,17 @@ struct CameraTextToolView: View {
 // MARK: - Smart tools (on-device)
 
 enum SmartTool: String, CaseIterable, Identifiable {
-    case businessCard, askDocument, autoSave
+    case businessCard, autoSave
     var id: String { rawValue }
     var title: String {
         switch self {
         case .businessCard: return "Business card to contact"
-        case .askDocument: return "Key info"
         case .autoSave: return "Auto-save to cloud"
         }
     }
     var icon: String {
         switch self {
         case .businessCard: return "card-contact"
-        case .askDocument: return "ask-document"
         case .autoSave: return "auto-save"
         }
     }
@@ -1213,7 +1211,6 @@ enum SmartTool: String, CaseIterable, Identifiable {
     @ViewBuilder var destination: some View {
         switch self {
         case .businessCard: BusinessCardTool()
-        case .askDocument: AskDocumentTool()
         case .autoSave: AutoSaveTool()
         }
     }
@@ -1257,27 +1254,6 @@ struct BusinessCardTool: View {
             reading = false
         }
     }
-}
-
-/// Pick a saved document, then ask about it or summarize it on this iPhone.
-struct AskDocumentTool: View {
-    @EnvironmentObject private var store: LibraryStore
-    @State private var chosen: UUID?
-    private var documents: [ScanDocument] { store.active.filter { $0.pdfFile != nil } }
-    var body: some View {
-        ToolPage(title: "Key info", subtitle: "Pull dates, amounts, phone numbers, emails, addresses and account numbers out of a document, or search inside it. Instant, on this iPhone.") {
-            ToolHero(art: .askDocument)
-            VStack(alignment: .leading, spacing: 8) {
-                SectionLabel(text: "Choose a document")
-                if documents.isEmpty { Text("No saved documents yet. Scan or import one first.").foregroundStyle(TK.grey500) }
-                else { DocumentChoiceList(documents: documents) { chosen = $0.id } }
-            }
-        } actions: { EmptyView() }
-        .sheet(item: Binding(get: { chosen.map(AskTarget.init) }, set: { chosen = $0?.id })) { target in
-            KeyInfoSheet(documentID: target.id).presentationDetents([.medium, .large])
-        }
-    }
-    private struct AskTarget: Identifiable { let id: UUID }
 }
 
 /// Choose the folder that receives every new scan.

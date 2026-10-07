@@ -1,6 +1,5 @@
 import SwiftUI
 import ContactsUI
-import EventKitUI
 import PDFKit
 
 struct DocumentView: View {
@@ -30,7 +29,6 @@ struct DocumentView: View {
     @State private var progress = "Reading text…"
     @State private var naming = false
     @State private var newContact = false
-    @State private var asking = false
     var document: ScanDocument? { store.document(documentID) }
     var body: some View {
         Group {
@@ -50,9 +48,6 @@ struct DocumentView: View {
                                 Image(systemName: "pencil").foregroundStyle(.secondary)
                             }
                         }.buttonStyle(.plain).accessibilityIdentifier("document-name-type")
-                        Button { asking = true } label: { Label("Key info", systemImage: "list.bullet.rectangle") }
-                            .buttonStyle(.bordered).frame(maxWidth: .infinity, alignment: .leading)
-                            .accessibilityIdentifier("document-key-info")
                         if doc.kind == .businessCard {
                             Button { newContact = true } label: { Label("Save to Contacts", systemImage: "person.crop.circle.badge.plus") }
                                 .buttonStyle(PrimaryButton()).accessibilityIdentifier("business-card-contact")
@@ -77,7 +72,6 @@ struct DocumentView: View {
                 .onAppear { if openTextOnAppear && !didOpenInitialText { didOpenInitialText = true; text = true } }
                 .toolbar { ToolbarItem(placement: .topBarTrailing) { Button { trash = true } label: { Image(systemName: "trash") }.accessibilityLabel("Move to trash") } }
                 .sheet(isPresented: $newContact) { NewContactView(fields: DocumentInsight.cardFields(doc), cardImage: cardImage(doc)).ignoresSafeArea() }
-                .sheet(isPresented: $asking) { KeyInfoSheet(documentID: doc.id).presentationDetents([.medium, .large]) }
                 .sheet(isPresented: $naming) { DocumentNameSheet(document: doc).presentationDetents([.medium, .large]) }
                 .confirmationDialog("Move this document to Trash?", isPresented: $trash) { Button("Move to Trash", role: .destructive) { store.moveToTrash(doc); if store.problem == nil { dismiss() } } } message: { Text("You can restore it from Settings → Trash.") }
                 .sheet(isPresented: $toolPaywall, onDismiss: {
@@ -290,164 +284,5 @@ struct NewContactView: UIViewControllerRepresentable {
         let close: () -> Void
         init(close: @escaping () -> Void) { self.close = close }
         func contactViewController(_ viewController: CNContactViewController, didCompleteWith contact: CNContact?) { close() }
-    }
-}
-
-
-/// Dates, amounts, phone numbers, emails, links, addresses and account numbers
-/// found in a document's text, each with a one-tap action, plus in-document search.
-/// Apple's data detectors on this iPhone: instant, offline, every device.
-struct KeyInfoSheet: View {
-    @EnvironmentObject private var store: LibraryStore
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.openURL) private var openURL
-    let documentID: UUID
-    @State private var items: [DocumentInsight.KeyItem] = []
-    @State private var pages: [String] = []
-    @State private var reading = false
-    @State private var problem: String?
-    @State private var query = ""
-    @State private var copied: String?
-    @State private var event: KeyEvent?
-    private var doc: ScanDocument? { store.document(documentID) }
-    var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    HStack {
-                        Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                        TextField("Find in this document", text: $query).autocorrectionDisabled().accessibilityIdentifier("key-info-search")
-                        if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }.buttonStyle(.plain) }
-                    }
-                }
-                if !query.trimmingCharacters(in: .whitespaces).isEmpty {
-                    let hits = matches
-                    Section(hits.isEmpty ? "No matches" : "\(hits.count) \(hits.count == 1 ? "match" : "matches")") {
-                        ForEach(Array(hits.prefix(60).enumerated()), id: \.offset) { _, hit in
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(highlighted(hit.line)).font(.subheadline)
-                                if pages.count > 1 { Text("Page \(hit.page + 1)").font(.caption).foregroundStyle(.secondary) }
-                            }
-                        }
-                    }
-                } else if reading {
-                    Section { HStack(spacing: 8) { ProgressView(); Text("Reading the pages…").foregroundStyle(.secondary) } }
-                } else if let problem {
-                    Section { Text(problem).foregroundStyle(.secondary) }
-                } else if items.isEmpty {
-                    Section { Text("No dates, amounts or contact details were found.").foregroundStyle(.secondary) }
-                } else {
-                    ForEach(DocumentInsight.KeyItem.Kind.allCases, id: \.self) { kind in
-                        let group = items.filter { $0.kind == kind }
-                        if !group.isEmpty {
-                            Section(kind.title) {
-                                ForEach(group) { item in row(item) }
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Key info").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-            .overlay(alignment: .bottom) {
-                if let copied { Text("Copied \(copied)").font(.footnote.weight(.semibold)).padding(.horizontal, 14).padding(.vertical, 8)
-                    .background(.thinMaterial, in: Capsule()).padding(.bottom, 16).transition(.opacity) }
-            }
-            .sheet(item: $event) { EventEditor(title: $0.title, date: $0.date).ignoresSafeArea() }
-        }
-        .task { await load() }
-    }
-    @ViewBuilder private func row(_ item: DocumentInsight.KeyItem) -> some View {
-        Button { act(item) } label: {
-            HStack(spacing: 12) {
-                Image(systemName: item.kind.symbol).foregroundStyle(Design.blue).frame(width: 24)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.value).font(.body.weight(.semibold)).foregroundStyle(Design.ink).lineLimit(2)
-                    if !item.context.isEmpty { Text(item.context).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
-                }
-                Spacer(minLength: 6)
-                Text(item.kind.action).font(.caption.weight(.semibold)).foregroundStyle(Design.blue)
-            }
-        }
-        .contextMenu { Button("Copy", systemImage: "doc.on.doc") { copy(item.value) } }
-    }
-    private var matches: [(line: String, page: Int)] {
-        let q = query.trimmingCharacters(in: .whitespaces)
-        var out: [(String, Int)] = []
-        for (p, text) in pages.enumerated() {
-            for line in text.split(whereSeparator: \.isNewline) where line.localizedCaseInsensitiveContains(q) { out.append((String(line), p)) }
-        }
-        return out.map { (line: $0.0, page: $0.1) }
-    }
-    private func highlighted(_ line: String) -> AttributedString {
-        var a = AttributedString(line)
-        let q = query.trimmingCharacters(in: .whitespaces)
-        var search = a.startIndex..<a.endIndex
-        while let r = a[search].range(of: q, options: .caseInsensitive) {
-            a[r].backgroundColor = .yellow.opacity(0.5); a[r].font = .subheadline.bold()
-            search = r.upperBound..<a.endIndex
-        }
-        return a
-    }
-    private func act(_ item: DocumentInsight.KeyItem) {
-        switch item.kind {
-        case .date: if let date = item.date { event = KeyEvent(title: doc?.title ?? "Reminder", date: date) } else { copy(item.value) }
-        case .phone:
-            let digits = item.value.filter { $0.isNumber || $0 == "+" }
-            if let url = URL(string: "tel:" + digits) { openURL(url) }
-        case .email: if let url = URL(string: "mailto:" + item.value) { openURL(url) }
-        case .link: if let url = item.url { openURL(url) }
-        case .address:
-            var c = URLComponents(string: "https://maps.apple.com/"); c?.queryItems = [URLQueryItem(name: "q", value: item.value)]
-            if let url = c?.url { openURL(url) }
-        case .amount, .account: copy(item.value)
-        }
-    }
-    private func copy(_ value: String) {
-        UIPasteboard.general.string = value
-        withAnimation { copied = value }
-        Task { try? await Task.sleep(nanoseconds: 1_400_000_000); withAnimation { copied = nil } }
-    }
-    private func load() async {
-        guard let current = doc else { return }
-        var d = current
-        if d.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !d.pages.isEmpty {
-            reading = true
-            do {
-                let prepared = try await PDFExport.prepare(d, root: store.root)
-                try store.savePDF(prepared.data, document: prepared.document)
-                d = prepared.document
-            } catch { problem = error.localizedDescription }
-            reading = false
-        }
-        pages = d.pages.map(\.plainText)
-        let text = d.text
-        items = await Task.detached { DocumentInsight.keyInfo(text) }.value
-        if problem == nil && text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { problem = "No text was found in this document." }
-    }
-}
-private struct KeyEvent: Identifiable { let id = UUID(); let title: String; let date: Date }
-
-/// Apple's add-event screen, prefilled. Nothing is added until the person taps Add.
-struct EventEditor: UIViewControllerRepresentable {
-    let title: String
-    let date: Date
-    @Environment(\.dismiss) private var dismiss
-    func makeCoordinator() -> Coordinator { Coordinator(close: { dismiss() }) }
-    func makeUIViewController(context: Context) -> EKEventEditViewController {
-        let store = EKEventStore()
-        let view = EKEventEditViewController(); view.eventStore = store
-        let e = EKEvent(eventStore: store); e.title = title; e.startDate = date
-        let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
-        let hasTime = (parts.hour ?? 0) != 0 || (parts.minute ?? 0) != 0
-        e.isAllDay = !hasTime; e.endDate = hasTime ? date.addingTimeInterval(3600) : date
-        view.event = e; view.editViewDelegate = context.coordinator
-        return view
-    }
-    func updateUIViewController(_ controller: EKEventEditViewController, context: Context) {}
-    final class Coordinator: NSObject, EKEventEditViewDelegate {
-        let close: () -> Void
-        init(close: @escaping () -> Void) { self.close = close }
-        func eventEditViewController(_ controller: EKEventEditViewController, didCompleteWith action: EKEventEditViewAction) { close() }
     }
 }

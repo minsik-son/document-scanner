@@ -19,7 +19,10 @@ struct ScanQuad: Codable, Equatable {
         return cross.allSatisfy { $0 > 0.002 }
     }
 }
-enum Enhancement: String, Codable, CaseIterable { case original = "Original", document = "Document", mono = "Black & white" }
+/// Raw values are stored in saved libraries; add new cases, never rename.
+enum Enhancement: String, Codable, CaseIterable {
+    case original = "Original", document = "Document", enhanced = "Enhanced", noShadow = "No shadows", gray = "Grayscale", mono = "Black & white"
+}
 struct PageAdjustments: Codable, Equatable {
     var brightness: Double = 0
     var contrast: Double = 1

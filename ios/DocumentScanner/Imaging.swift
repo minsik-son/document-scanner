@@ -67,6 +67,25 @@ enum Imaging {
             return try applyErasures(sized, page: page)
         }
     }
+    /// The page in every tone for the tone picker. The photo is loaded and the
+    /// lighting is estimated once; only the final tone step runs per tone.
+    static func renderToneThumbnails(_ page: ScanPage, root: URL, maxDimension: Int) throws -> [Enhancement: UIImage] {
+        try autoreleasepool {
+            let ci = try source(page, root: root, maxPixel: max(900, maxDimension * 3))
+            let identity = page.identityBackgroundCleanup == true && page.cropReviewNeeded != true
+            let raw = try DocumentProcessing.prepare(ci, crop: page.crop, turns: page.turns, enhancement: .original, identityCleanup: identity)
+            let flat = try DocumentProcessing.prepare(ci, crop: page.crop, turns: page.turns, enhancement: .document, identityCleanup: identity)
+            var out: [Enhancement: UIImage] = [:]
+            for tone in Enhancement.allCases {
+                let prepared = tone == .original ? raw : DocumentProcessing.PreparedDocument(image: flat.image, enhancement: tone)
+                let base = try DocumentProcessing.finish(prepared, strength: page.enhancementStrength)
+                let output = try trim(DocumentProcessing.adjust(base, settings: page.appearance), edges: page.trimming)
+                guard let cg = DocumentProcessing.context.createCGImage(output, from: output.extent) else { continue }
+                out[tone] = try applyErasures(previewThumbnail(UIImage(cgImage: cg), maxDimension: maxDimension), page: page)
+            }
+            return out
+        }
+    }
     /// Full-resolution renders peak at several hundred MB on 24 MP pages, so
     /// they run one at a time (PDF export, text recognition and thumbnails would
     /// otherwise overlap). Renders are synchronous and never wait on each other.

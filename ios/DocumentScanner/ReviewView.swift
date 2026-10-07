@@ -699,41 +699,44 @@ private struct ToneThumbnails: View {
     /// Everything but the tone itself decides what the previews look like.
     private var key: ScanPage { var p = page; p.enhancement = .original; return p }
     var body: some View {
-        HStack(spacing: 10) {
-            ForEach(Enhancement.allCases, id: \.self) { tone in
-                let selected = page.enhancement == tone
-                Button { onSelect(tone) } label: {
-                    VStack(spacing: 6) {
-                        ZStack {
-                            Design.muted
-                            if let image = images[tone] {
-                                Image(uiImage: image).resizable().interpolation(.medium).scaledToFill()
-                            } else {
-                                ProgressView()
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(Enhancement.allCases, id: \.self) { tone in
+                        let selected = page.enhancement == tone
+                        Button { onSelect(tone) } label: {
+                            VStack(spacing: 6) {
+                                ZStack {
+                                    Design.muted
+                                    if let image = images[tone] {
+                                        Image(uiImage: image).resizable().interpolation(.medium).scaledToFill()
+                                    } else {
+                                        ProgressView()
+                                    }
+                                }
+                                .frame(width: 84, height: 108)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(selected ? Design.blue : Color.black.opacity(0.08), lineWidth: selected ? 2.5 : 1))
+                                Text(tone.rawValue).font(.footnote.weight(selected ? .semibold : .medium))
+                                    .foregroundStyle(selected ? Design.blue : .primary)
+                                    .lineLimit(1).minimumScaleFactor(0.75).frame(width: 88)
                             }
                         }
-                        .frame(height: 104).frame(maxWidth: .infinity)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(selected ? Design.blue : Color.black.opacity(0.08), lineWidth: selected ? 2.5 : 1))
-                        Text(tone.rawValue).font(.subheadline.weight(selected ? .semibold : .medium))
-                            .foregroundStyle(selected ? Design.blue : .primary)
-                            .lineLimit(1).minimumScaleFactor(0.8)
+                        .buttonStyle(.plain)
+                        .id(tone)
+                        .accessibilityAddTraits(selected ? .isSelected : [])
+                        .accessibilityIdentifier("editor-tone-" + tone.rawValue)
                     }
                 }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(selected ? .isSelected : [])
-                .accessibilityIdentifier("editor-tone-" + tone.rawValue)
+                .padding(.horizontal, 2).padding(.vertical, 2)
             }
+            .onAppear { proxy.scrollTo(page.enhancement, anchor: .center) }
         }
         .task(id: key) {
-            let base = key, root = store.root
-            for tone in Enhancement.allCases {
-                var variant = base; variant.enhancement = tone
-                let request = variant
-                let image = await Task.detached(priority: .utility) { try? Imaging.renderThumbnail(request, root: root, maxDimension: 260) }.value
-                if Task.isCancelled { return }
-                if let image { images[tone] = image }
-            }
+            let request = key, root = store.root
+            let rendered = await Task.detached(priority: .utility) { (try? Imaging.renderToneThumbnails(request, root: root, maxDimension: 240)) ?? [:] }.value
+            if Task.isCancelled { return }
+            if !rendered.isEmpty { images = rendered }
         }
     }
 }

@@ -262,11 +262,14 @@ enum DocumentProcessing {
         let extent = flat.extent
         let enhancement = prepared.enhancement
         let amount = CGFloat(strength.isFinite ? min(1.5, max(0.5, strength)) : 1)
-        let whitePoint = 1.0 - 0.12*amount
+        // "No shadows" keeps the page as photographed, only with the lighting
+        // flattened: a light level stretch and half-strength clarity.
+        let gentle = enhancement == .noShadow
+        let whitePoint = gentle ? 1.0 - 0.04*amount : 1.0 - 0.12*amount
         // Camera sharpening cannot restore lost detail. A modest black point
         // gives the photographed ink its contrast back without replacing strokes.
-        let blackPoint: CGFloat = 0.035 + 0.07*amount
-        if enhancement == .document {
+        let blackPoint: CGFloat = gentle ? 0.015 + 0.02*amount : 0.035 + 0.07*amount
+        if enhancement == .document || enhancement == .enhanced {
             // Paper can be pushed to white; colored content must retain its tonal
             // range instead of having pale blue/yellow cells clipped to white.
             let dimension = 24
@@ -290,8 +293,16 @@ enum DocumentProcessing {
                 "inputBVector": CIVector(x: 0,y: 0,z: gain,w: 0), "inputBiasVector": CIVector(x: -blackPoint*gain,y: -blackPoint*gain,z: -blackPoint*gain,w: 0)
             ])
         }
-        if enhancement == .mono { flat = flat.applyingFilter("CIColorControls", parameters: [kCIInputSaturationKey: 0, kCIInputContrastKey: 1.15]) }
-        return try DocumentClarity.enhance(flat, strength: amount).cropped(to: extent)
+        switch enhancement {
+        case .mono: flat = flat.applyingFilter("CIColorControls", parameters: [kCIInputSaturationKey: 0, kCIInputContrastKey: 1.15])
+        case .gray: flat = flat.applyingFilter("CIColorControls", parameters: [kCIInputSaturationKey: 0, kCIInputContrastKey: 1.0])
+        case .enhanced:
+            // White paper like Document, with livelier colour and a little more punch.
+            flat = flat.applyingFilter("CIVibrance", parameters: ["inputAmount": 0.45*amount])
+                .applyingFilter("CIColorControls", parameters: [kCIInputSaturationKey: 1 + 0.12*amount, kCIInputContrastKey: 1 + 0.06*amount])
+        default: break
+        }
+        return try DocumentClarity.enhance(flat, strength: gentle ? amount*0.5 : amount).cropped(to: extent)
     }
 
     // Vision's document corners come from a coarse mask and often sit a few pixels

@@ -46,6 +46,11 @@ struct SettingsView: View {
                     Text("Scanning, PDF creation, and text recognition work offline. Keep a separate backup before deleting the app or changing phones.").font(.subheadline).foregroundStyle(.secondary)
                     Button("Take a quick tour") { showingTour = true }
                 }
+                Section {
+                    AutoExportRow(openPaywall: { paywall = true })
+                } header: { Text("Auto-save") } footer: {
+                    Text("Each new scan is also saved as a PDF in the folder you choose. Pick a folder in iCloud Drive, Dropbox or Google Drive to back it up there.")
+                }
                 Section("Library") {
                     NavigationLink {
                         UnfinishedScansView(resume: resumeDraft)
@@ -191,5 +196,85 @@ private struct RecognitionLanguagesView: View {
                 })).sorted()
             } catch { self.error = "The language list couldn't be loaded. Please try again." }
         }
+    }
+}
+
+
+/// Choose a folder (iCloud Drive, Dropbox, Google Drive or on this iPhone) that receives every new scan.
+struct AutoExportRow: View {
+    @EnvironmentObject private var subscription: SubscriptionStore
+    let openPaywall: () -> Void
+    @State private var picking = false
+    @State private var folder = AutoExport.folderName
+    @State private var problem: String?
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let folder {
+                HStack {
+                    Label(folder, systemImage: "folder.fill").lineLimit(1)
+                    Spacer()
+                    Button("Change") { picking = true }.buttonStyle(.borderless)
+                    Button("Turn off", role: .destructive) { AutoExport.clear(); self.folder = nil }.buttonStyle(.borderless)
+                }
+            } else {
+                Button {
+                    if subscription.isPro { picking = true } else { openPaywall() }
+                } label: {
+                    HStack {
+                        Label("Save new scans to a folder", systemImage: "folder.badge.plus")
+                        if !subscription.isPro { Spacer(); ProBadge() }
+                    }
+                }.accessibilityIdentifier("auto-export-choose")
+            }
+            if let problem { Text(problem).font(.footnote).foregroundStyle(.red) }
+        }
+        .fileImporter(isPresented: $picking, allowedContentTypes: [.folder]) { result in
+            switch result {
+            case .success(let url):
+                do { try AutoExport.setFolder(url); folder = AutoExport.folderName; problem = nil }
+                catch { problem = error.localizedDescription }
+            case .failure(let error): problem = error.localizedDescription
+            }
+        }
+    }
+}
+
+/// Copies finished PDFs into a folder the person picked, using a security-scoped bookmark.
+enum AutoExport {
+    private static let bookmarkKey = "autoExportFolderBookmark"
+    private static let nameKey = "autoExportFolderName"
+    static var folderName: String? { UserDefaults.standard.data(forKey: bookmarkKey) == nil ? nil : UserDefaults.standard.string(forKey: nameKey) }
+    static func setFolder(_ url: URL) throws {
+        let access = url.startAccessingSecurityScopedResource()
+        defer { if access { url.stopAccessingSecurityScopedResource() } }
+        let data = try url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil)
+        UserDefaults.standard.set(data, forKey: bookmarkKey)
+        UserDefaults.standard.set(url.lastPathComponent, forKey: nameKey)
+    }
+    static func clear() {
+        UserDefaults.standard.removeObject(forKey: bookmarkKey); UserDefaults.standard.removeObject(forKey: nameKey)
+    }
+    /// Writes "<title>.pdf" (or "<title> 2.pdf" …) into the chosen folder. Silent no-op when off.
+    @discardableResult
+    static func export(_ data: Data, title: String) -> Bool {
+        guard let bookmark = UserDefaults.standard.data(forKey: bookmarkKey) else { return false }
+        var stale = false
+        guard let folder = try? URL(resolvingBookmarkData: bookmark, options: [], relativeTo: nil, bookmarkDataIsStale: &stale) else { return false }
+        let access = folder.startAccessingSecurityScopedResource()
+        defer { if access { folder.stopAccessingSecurityScopedResource() } }
+        if stale, let fresh = try? folder.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil) {
+            UserDefaults.standard.set(fresh, forKey: bookmarkKey)
+        }
+        let base = title.components(separatedBy: CharacterSet(charactersIn: "/\\:?%*|\"<>")).joined(separator: "-").trimmingCharacters(in: .whitespaces)
+        let name = base.isEmpty ? "Scan" : base
+        var target = folder.appendingPathComponent(name + ".pdf")
+        var n = 2
+        while FileManager.default.fileExists(atPath: target.path) && n < 1000 { target = folder.appendingPathComponent("\(name) \(n).pdf"); n += 1 }
+        var wrote = false
+        var coordError: NSError?
+        NSFileCoordinator().coordinate(writingItemAt: target, options: .forReplacing, error: &coordError) { url in
+            wrote = (try? data.write(to: url, options: .atomic)) != nil
+        }
+        return wrote
     }
 }

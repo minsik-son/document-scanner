@@ -1,6 +1,9 @@
 import SwiftUI
 import ContactsUI
 import PDFKit
+#if canImport(FoundationModels)
+import FoundationModels
+#endif
 
 struct DocumentView: View {
     @EnvironmentObject var store: LibraryStore
@@ -29,6 +32,7 @@ struct DocumentView: View {
     @State private var progress = "Reading text…"
     @State private var naming = false
     @State private var newContact = false
+    @State private var asking = false
     var document: ScanDocument? { store.document(documentID) }
     var body: some View {
         Group {
@@ -48,6 +52,11 @@ struct DocumentView: View {
                                 Image(systemName: "pencil").foregroundStyle(.secondary)
                             }
                         }.buttonStyle(.plain).accessibilityIdentifier("document-name-type")
+                        if DocumentAI.isAvailable {
+                            Button { asking = true } label: { Label("Ask or summarize", systemImage: "sparkles") }
+                                .buttonStyle(.bordered).frame(maxWidth: .infinity, alignment: .leading)
+                                .accessibilityIdentifier("document-ask")
+                        }
                         if doc.kind == .businessCard {
                             Button { newContact = true } label: { Label("Save to Contacts", systemImage: "person.crop.circle.badge.plus") }
                                 .buttonStyle(PrimaryButton()).accessibilityIdentifier("business-card-contact")
@@ -72,6 +81,7 @@ struct DocumentView: View {
                 .onAppear { if openTextOnAppear && !didOpenInitialText { didOpenInitialText = true; text = true } }
                 .toolbar { ToolbarItem(placement: .topBarTrailing) { Button { trash = true } label: { Image(systemName: "trash") }.accessibilityLabel("Move to trash") } }
                 .sheet(isPresented: $newContact) { NewContactView(fields: DocumentInsight.cardFields(doc), cardImage: cardImage(doc)).ignoresSafeArea() }
+                .sheet(isPresented: $asking) { DocumentAskSheet(documentID: doc.id).presentationDetents([.medium, .large]) }
                 .sheet(isPresented: $naming) { DocumentNameSheet(document: doc).presentationDetents([.medium, .large]) }
                 .confirmationDialog("Move this document to Trash?", isPresented: $trash) { Button("Move to Trash", role: .destructive) { store.moveToTrash(doc); if store.problem == nil { dismiss() } } } message: { Text("You can restore it from Settings → Trash.") }
                 .sheet(isPresented: $toolPaywall, onDismiss: {
@@ -284,5 +294,98 @@ struct NewContactView: UIViewControllerRepresentable {
         let close: () -> Void
         init(close: @escaping () -> Void) { self.close = close }
         func contactViewController(_ viewController: CNContactViewController, didCompleteWith contact: CNContact?) { close() }
+    }
+}
+
+
+/// Apple's on-device language model (iOS 26, Apple Intelligence). Nothing leaves the iPhone.
+enum DocumentAI {
+    static var isAvailable: Bool {
+        #if canImport(FoundationModels)
+        if #available(iOS 26.0, *) { return SystemLanguageModel.default.isAvailable }
+        #endif
+        return false
+    }
+    /// Keeps the prompt inside the model's context window.
+    static func excerpt(_ text: String, limit: Int = 6000) -> String {
+        text.count <= limit ? text : String(text.prefix(limit)) + "\n[…document continues]"
+    }
+    static func answer(_ question: String, text: String) async throws -> String {
+        #if canImport(FoundationModels)
+        if #available(iOS 26.0, *) {
+            let session = LanguageModelSession(instructions: """
+            You help someone understand a scanned document. Answer only from the document text. \
+            If the answer isn't in the text, say so. Reply in the language of the question, briefly.
+            """)
+            let response = try await session.respond(to: "Document text:\n\(excerpt(text))\n\nQuestion: \(question)")
+            return response.content
+        }
+        #endif
+        throw ScannerError.message("On-device answers need Apple Intelligence on iOS 26.")
+    }
+}
+
+/// Ask questions about a document or get a short summary, on this iPhone.
+struct DocumentAskSheet: View {
+    @EnvironmentObject private var store: LibraryStore
+    @Environment(\.dismiss) private var dismiss
+    let documentID: UUID
+    @State private var question = ""
+    @State private var answer: String?
+    @State private var busy: String?
+    @State private var problem: String?
+    private var doc: ScanDocument? { store.document(documentID) }
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 8) {
+                        Button("Summarize") { ask(Locale.current.language.languageCode?.identifier == "ko" ? "이 문서를 3줄로 요약해줘." : "Summarize this document in three short bullet points.") }
+                            .buttonStyle(ChipStyle(selected: false))
+                        Button("Key dates & amounts") { ask("List every date, deadline and amount of money in this document, one per line.") }
+                            .buttonStyle(ChipStyle(selected: false))
+                    }
+                    HStack {
+                        TextField("Ask about this document", text: $question).textFieldStyle(.roundedBorder).submitLabel(.send)
+                            .onSubmit { ask(question) }.accessibilityIdentifier("document-ask-field")
+                        Button { ask(question) } label: { Image(systemName: "arrow.up.circle.fill").font(.title2) }
+                            .disabled(question.trimmingCharacters(in: .whitespaces).isEmpty || busy != nil)
+                    }
+                    if let busy { HStack(spacing: 8) { ProgressView(); Text(busy).foregroundStyle(.secondary) } }
+                    if let answer {
+                        Text(answer).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(14)
+                            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14))
+                        ShareLink(item: answer) { Label("Share answer", systemImage: "square.and.arrow.up") }.font(.subheadline)
+                    }
+                    if let problem { Text(problem).font(.footnote).foregroundStyle(.red) }
+                    Label("Answers come from Apple's on-device model and the document's text. Check important details.", systemImage: "lock.iphone")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }.padding(20)
+            }
+            .navigationTitle("Ask this document").navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        }
+    }
+    private func ask(_ prompt: String) {
+        let q = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty, busy == nil, let current = doc else { return }
+        problem = nil; answer = nil
+        let root = store.root
+        Task {
+            do {
+                var text = current.text
+                if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    // Read the pages first, and keep the text with the document.
+                    busy = "Reading the pages…"
+                    let prepared = try await PDFExport.prepare(current, root: root)
+                    try store.savePDF(prepared.data, document: prepared.document)
+                    text = prepared.document.text
+                }
+                guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw ScannerError.message("No text was found in this document.") }
+                busy = "Thinking…"
+                answer = try await DocumentAI.answer(q, text: text)
+            } catch { problem = error.localizedDescription }
+            busy = nil
+        }
     }
 }

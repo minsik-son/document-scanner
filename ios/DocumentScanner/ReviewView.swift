@@ -277,6 +277,10 @@ struct ReviewView: View {
                 let result = try await PDFExport.prepare(doc, root: root, forceText: forceText) { saveProgress = $0 }
                 try Task.checkCancellation()
                 try store.savePDF(result.data, document: result.document, replacingDraft: workingDraftID)
+                if subscription.isPro, let saved = store.document(result.document.id) {
+                    let data = result.data, title = saved.title
+                    Task.detached(priority: .utility) { AutoExport.export(data, title: title) }
+                }
                 workingDraftID = nil
                 document = store.document(documentID)
                 textNotice = result.textNotice; textRetryNeeded = !result.failedTextPages.isEmpty
@@ -301,6 +305,7 @@ struct PageEditor: View {
     @State private var cropping = false
     @State private var trimming = false
     @State private var erasing = false
+    @State private var erasingFingers = false
     @State private var comparingOriginal = false
     @State private var detecting = false
     @State private var previewReady = false
@@ -408,7 +413,7 @@ struct PageEditor: View {
                 TrimMarginsView(page:page) { value in page.trimming = value; changed() }
             }
             .fullScreenCover(isPresented: $erasing) {
-                PageEraseSheet(page: page) { strokes in
+                PageEraseSheet(page: page, findFingers: erasingFingers) { strokes in
                     var list = page.activeErasures
                     list.append(PageErasure(strokes: strokes.map { PageErasure.Stroke(points: $0.points, width: Double($0.width)) }, crop: page.crop, turns: page.turns, trim: page.edgeTrim))
                     page.erasures = list; changed()
@@ -482,8 +487,10 @@ struct PageEditor: View {
                     .accessibilityLabel(selectedAdjustment.rawValue)
                     .accessibilityIdentifier(selectedAdjustment.rawValue.lowercased() + "-slider")
                 HStack(spacing: 8) {
-                    Button { erasing = true } label: { Label("Erase spots", systemImage: "eraser.line.dashed") }
+                    Button { erasingFingers = false; erasing = true } label: { Label("Erase spots", systemImage: "eraser.line.dashed") }
                         .buttonStyle(ChipStyle(selected: false)).disabled(!previewReady).accessibilityIdentifier("editor-erase")
+                    Button { erasingFingers = true; erasing = true } label: { Label("Remove fingers", systemImage: "hand.raised") }
+                        .buttonStyle(ChipStyle(selected: false)).disabled(!previewReady).accessibilityIdentifier("editor-fingers")
                     if !page.activeErasures.isEmpty {
                         Button { page.erasures = Array(page.activeErasures.dropLast()); if page.erasures?.isEmpty == true { page.erasures = nil }; changed() } label: {
                             Label("Undo erase", systemImage: "arrow.uturn.backward")
@@ -647,15 +654,25 @@ struct PageEraseSheet: View {
     @EnvironmentObject private var store: LibraryStore
     @Environment(\.dismiss) private var dismiss
     let page: ScanPage
+    var findFingers = false
     let apply: ([ImageToolEngine.Stroke]) -> Void
     @State private var image: UIImage?
+    @State private var fingerNote: String?
     @State private var strokes: [ImageToolEngine.Stroke] = []
     @State private var brush = 0.035
     @State private var failure: String?
     var body: some View {
         NavigationStack {
             ToolPage(title: "Erase spots", subtitle: "Paint over stains, shadows or marks. Pinch to zoom in for small spots.", scrolls: false) {
-                if let image { ErasePainter(image: image, strokes: $strokes, brush: $brush) }
+                if let image {
+                    HStack(spacing: 8) {
+                        Button { detectFingers(image) } label: { Label("Find fingers", systemImage: "hand.raised") }
+                            .buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("page-erase-fingers")
+                        if let fingerNote { Text(fingerNote).font(.footnote).foregroundStyle(TK.grey600).lineLimit(2) }
+                        Spacer(minLength: 0)
+                    }
+                    ErasePainter(image: image, strokes: $strokes, brush: $brush)
+                }
                 else if let failure { ToastMessage(text: failure) }
                 else { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
             } actions: {
@@ -667,8 +684,20 @@ struct PageEraseSheet: View {
             let page = page, root = store.root
             // Paint on a screen-sized render; strokes are normalized, so they
             // apply to the full-resolution page on export.
-            do { image = try await ScanPreviewRenderer().render(page, root: root, maxDimension: 2400) }
-            catch { failure = error.localizedDescription }
+            do {
+                let rendered = try await ScanPreviewRenderer().render(page, root: root, maxDimension: 2400)
+                image = rendered
+                if findFingers { detectFingers(rendered) }
+            } catch { failure = error.localizedDescription }
+        }
+    }
+    /// Paints over fingers found at the page edges; the person can still adjust before erasing.
+    private func detectFingers(_ image: UIImage) {
+        fingerNote = "Looking for fingers…"
+        Task {
+            let found = (try? await Task.detached { try ImageToolEngine.fingerStrokes(image) }.value) ?? []
+            if found.isEmpty { fingerNote = "No fingers found at the edges. Paint over them instead." }
+            else { strokes += found; fingerNote = "Fingers marked. Check the red area, then tap Erase." }
         }
     }
 }

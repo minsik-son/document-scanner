@@ -56,6 +56,68 @@ enum ImageToolEngine {
         var width: CGFloat
     }
 
+    /// Finds fingers holding the page: skin-coloured areas that touch the edge
+    /// of the scan and stay near it. Returns strokes that cover them (slightly
+    /// widened for the finger's shadow), ready for `erase`.
+    static func fingerStrokes(_ image: UIImage) throws -> [Stroke] {
+        let r = try raster(image, maxSide: 480)
+        let w = r.width, h = r.height
+        guard w > 32, h > 32 else { return [] }
+        var skin = [Bool](repeating: false, count: w * h)
+        for y in 0..<h { for x in 0..<w {
+            let i = r.index(x, y)
+            let R = Double(r.bytes[i]), G = Double(r.bytes[i + 1]), B = Double(r.bytes[i + 2])
+            let Y = 0.299 * R + 0.587 * G + 0.114 * B
+            let cb = 128 - 0.168736 * R - 0.331264 * G + 0.5 * B
+            let cr = 128 + 0.5 * R - 0.418688 * G - 0.081312 * B
+            // Saturated warm tones only: plain, cream and grey paper stay out.
+            skin[y * w + x] = Y > 35 && Y < 250 && cb >= 77 && cb <= 122 && cr >= 138 && cr <= 178 && R > B + 12
+        } }
+        var label = [Int32](repeating: 0, count: w * h)
+        var strokes: [Stroke] = []
+        let step = max(2, h / 120)
+        var next: Int32 = 0
+        for start in 0..<(w * h) where skin[start] && label[start] == 0 {
+            next += 1
+            var stack = [start]; label[start] = next
+            var members: [Int] = []
+            var minX = w, maxX = 0, minY = h, maxY = 0, touches = false
+            while let p = stack.popLast() {
+                members.append(p)
+                let x = p % w, y = p / w
+                minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y)
+                if x <= 1 || y <= 1 || x >= w - 2 || y >= h - 2 { touches = true }
+                for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                    let nx = x + dx, ny = y + dy
+                    guard nx >= 0, ny >= 0, nx < w, ny < h else { continue }
+                    let q = ny * w + nx
+                    if skin[q] && label[q] == 0 { label[q] = next; stack.append(q) }
+                }
+            }
+            let area = Double(members.count) / Double(w * h)
+            guard touches, area > 0.002, area < 0.15 else { continue }
+            // A finger reaches in from one side: it shouldn't span far into the page.
+            let reach = min(Double(maxX + 1) / Double(w), Double(w - minX) / Double(w), Double(maxY + 1) / Double(h), Double(h - minY) / Double(h))
+            guard reach < 0.4 else { continue }
+            // Cover each row band of the region with a short stroke, padded for the shadow.
+            let pad = max(3, w / 60)
+            var y = minY
+            while y <= maxY {
+                var lo = Int.max, hi = Int.min
+                for yy in y..<min(maxY + 1, y + step) {
+                    for x in minX...maxX where label[yy * w + x] == next { lo = min(lo, x); hi = max(hi, x) }
+                }
+                if lo <= hi {
+                    let a = CGPoint(x: Double(max(0, lo - pad)) / Double(w), y: (Double(y) + Double(step) / 2) / Double(h))
+                    let b = CGPoint(x: Double(min(w - 1, hi + pad)) / Double(w), y: a.y)
+                    strokes.append(Stroke(points: [a, b], width: CGFloat(Double(step * 2 + pad) / Double(w))))
+                }
+                y += step
+            }
+        }
+        return strokes
+    }
+
     /// Fills the painted area from its surroundings. A coarse-to-fine harmonic
     /// fill gives clean paper and smooth backgrounds; fine grain from the edge
     /// keeps the patch from looking flat.

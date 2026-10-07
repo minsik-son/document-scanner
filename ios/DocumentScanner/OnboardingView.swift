@@ -21,7 +21,7 @@ struct FirstRunView: View {
 
     var body: some View {
         if completed { HomeView() }
-        else { OnboardingView { completed = true } }
+        else { OnboardingView { _ in completed = true } }
     }
 }
 
@@ -34,47 +34,40 @@ extension EnvironmentValues {
     }
 }
 
-// First-run tour. Modeled on the short, single-message pages of Korean finance
-// apps: one bold left-aligned headline, one sentence, one illustration that
-// shows the result, and one primary action. Each page's scene starts playing
-// as soon as the page is visible and loops (play ≈1.5 s, hold, soft fade,
-// replay). It is driven by a frame clock, so it never needs a tap to start.
-// Reduce Motion shows the finished state without movement.
+// First-run tour, in the style of Toss: white page, one bold left-aligned
+// headline, one sentence, one illustration, and a full-width button pinned to
+// the bottom. The last page asks to scan a first page now, with an equal-weight
+// "Maybe later" beside it so nobody is pushed into the camera.
 struct OnboardingView: View {
-    let onFinish: () -> Void
+    /// Called with true when the person chose "Scan now".
+    let onFinish: (Bool) -> Void
+    /// Replayed from Settings: the information pages only, ending with Done.
+    var replay = false
     @State private var page = 0
-    /// When each page's loop started. Restarted whenever a page becomes visible.
-    @State private var startedAt: [Date?] = [nil, nil, nil]
+    @State private var shown: Set<Int> = []
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.startupCovered) private var startupCovered
-    private let durations: [Double] = [1.6, 1.5, 1.4]
-    private let lastPage = 2
+    private static let pages: [(title: String, detail: String, art: String)] = [
+        ("Just point your camera.\nWe'll find the page.", "Edges are found automatically, and tilted shots come out straight.", "onb-1-scan"),
+        ("White paper.\nSharp text.", "Shadows and yellow tint are cleaned up for you. Every page can still be fine-tuned.", "onb-2-clean"),
+        ("Your documents\nstay on your iPhone.", "Scan, save as PDF and read text without an account. Core tools work offline.", "onb-3-private"),
+        ("Shall we scan\nyour first page?", "Any paper nearby works: a receipt, a letter or a page from a book. It takes about 10 seconds.", "onb-4-first-scan"),
+    ]
+    private var lastPage: Int { replay ? 2 : 3 }
+    private var asking: Bool { !replay && page == 3 }
 
     var body: some View {
         VStack(spacing: 0) {
             header
             TabView(selection: $page) {
-                content(0, title: "Just point your camera.\nWe'll find the page.",
-                        detail: "Edges are found automatically, and tilted shots come out straight.") {
-                    looping(0) { ScanHero(t: $0, presence: $1) }
-                }.tag(0)
-                content(1, title: "White paper.\nSharp text.",
-                        detail: "Shadows and yellow tint are cleaned up for you. Every page can still be fine-tuned.") {
-                    looping(1) { EnhanceHero(t: $0, presence: $1) }
-                }.tag(1)
-                content(2, title: "Your documents\nstay on your iPhone.",
-                        detail: "Scan, save as PDF and recognize text without an account. Core tools work offline.") {
-                    looping(2) { LibraryHero(t: $0, presence: $1) }
-                }.tag(2)
+                ForEach(0...lastPage, id: \.self) { index in content(index).tag(index) }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
-            .onChange(of: page, initial: true) { _, value in restart(value) }
-            .onChange(of: startupCovered) { _, covered in if !covered { restart(page) } }
-            .onChange(of: scenePhase) { _, phase in if phase == .active { restart(page) } }
+            .onChange(of: page, initial: true) { _, value in
+                withAnimation(reduceMotion ? nil : .spring(response: 0.55, dampingFraction: 0.75)) { _ = shown.insert(value) }
+            }
             footer
         }
-        .background(PastelOnboardingBackground())
+        .background(Color.white.ignoresSafeArea())
         .sensoryFeedback(.selection, trigger: page)
     }
 
@@ -90,71 +83,99 @@ struct OnboardingView: View {
 
             HStack(spacing: 6) {
                 ForEach(0...lastPage, id: \.self) { index in
-                    Capsule().fill(index <= page ? OnboardingPalette.blue : OnboardingPalette.track)
-                        .frame(height: 4)
+                    Capsule().fill(index <= page ? OnboardingPalette.blue : OnboardingPalette.track).frame(height: 4)
                 }
             }
             .animation(.spring(response: 0.35, dampingFraction: 0.9), value: page)
             .accessibilityElement().accessibilityLabel("Introduction page \(page + 1) of \(lastPage + 1)")
 
-            Button(action: onFinish) {
+            Button { finish(false) } label: {
                 Text("Skip").font(.system(size: 16, weight: .medium))
                     .foregroundStyle(OnboardingPalette.secondary)
                     .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
             }
+            .opacity(asking ? 0 : 1).disabled(asking)
             .accessibilityLabel("Skip introduction").accessibilityIdentifier("onboarding-skip")
         }
         .buttonStyle(.plain).foregroundStyle(Design.ink)
         .padding(.horizontal, 12).padding(.top, 4)
     }
 
-    private var footer: some View {
-        Button {
-            if page == lastPage { onFinish() } else { move(to: page + 1) }
-        } label: {
-            Text(page == lastPage ? "Get started" : "Next")
-                .font(.system(size: 17, weight: .semibold))
-                .frame(maxWidth: .infinity, minHeight: 56)
-                .foregroundStyle(.white)
-                .background(OnboardingPalette.blue, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .contentTransition(.opacity)
+    @ViewBuilder private var footer: some View {
+        VStack(spacing: 12) {
+            if asking {
+                HStack(spacing: 12) {
+                    Image(systemName: "camera.fill").font(.system(size: 17, weight: .semibold)).foregroundStyle(OnboardingPalette.blue)
+                        .frame(width: 40, height: 40).background(Color(red: 0.91, green: 0.95, blue: 1), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Camera access").font(.system(size: 15, weight: .semibold)).foregroundStyle(Design.ink)
+                        Text("Only used to scan. Photos never leave this iPhone.").font(.system(size: 13)).foregroundStyle(OnboardingPalette.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(14).background(Color(red: 0.976, green: 0.98, blue: 0.984), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .transition(.opacity)
+                HStack(spacing: 8) {
+                    Button { finish(false) } label: {
+                        Text("Maybe later").font(.system(size: 17, weight: .semibold))
+                            .frame(maxWidth: .infinity, minHeight: 56)
+                            .foregroundStyle(Color(red: 0.306, green: 0.349, blue: 0.408))
+                            .background(Color(red: 0.949, green: 0.957, blue: 0.965), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(PressableStyle()).containerRelativeFrame(.horizontal) { width, _ in (width - 48) * 0.38 }
+                    .accessibilityIdentifier("onboarding-later")
+                    Button { finish(true) } label: {
+                        Text("Scan now").font(.system(size: 17, weight: .semibold))
+                            .frame(maxWidth: .infinity, minHeight: 56).foregroundStyle(.white)
+                            .background(OnboardingPalette.blue, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(PressableStyle()).accessibilityIdentifier("onboarding-scan")
+                }
+            } else {
+                Button {
+                    if page == lastPage { finish(false) } else { move(to: page + 1) }
+                } label: {
+                    Text(page == lastPage ? "Done" : "Next")
+                        .font(.system(size: 17, weight: .semibold))
+                        .frame(maxWidth: .infinity, minHeight: 56).foregroundStyle(.white)
+                        .background(OnboardingPalette.blue, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .contentTransition(.opacity)
+                }
+                .buttonStyle(PressableStyle())
+                .accessibilityIdentifier("onboarding-next")
+            }
         }
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("onboarding-next")
+        .animation(.easeInOut(duration: 0.2), value: asking)
         .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 12)
     }
 
-    private func content<Hero: View>(_ index: Int, title: String, detail: String, @ViewBuilder hero: () -> Hero) -> some View {
-        let heroView = hero()
+    private func content(_ index: Int) -> some View {
+        let item = Self.pages[index]
+        let visible = shown.contains(index)
         return GeometryReader { geometry in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(title)
-                        .font(.system(.title, weight: .bold)).tracking(-0.6).lineSpacing(4)
+                    Text(item.title)
+                        .font(.system(size: 26, weight: .bold)).tracking(-0.6).lineSpacing(4)
                         .foregroundStyle(Design.ink).fixedSize(horizontal: false, vertical: true)
                         .accessibilityAddTraits(.isHeader)
                         .accessibilityIdentifier("onboarding-title-\(index)")
-                    Text(detail)
+                    Text(item.detail)
                         .font(.system(size: 17)).lineSpacing(3)
                         .foregroundStyle(OnboardingPalette.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 12)
                     Spacer(minLength: 24)
-                    heroView
-                        .frame(width: 300, height: 300)
-                        // One offscreen Metal pass per frame instead of many
-                        // separate shadow/blend layers.
-                        .drawingGroup()
-                        .scaleEffect(min(1, (geometry.size.width - 48) / 300))
+                    FloatingArt(name: item.art, reduceMotion: reduceMotion)
+                        .frame(width: min(300, geometry.size.width - 48), height: min(300, max(200, geometry.size.height * 0.5)))
+                        .scaleEffect(visible || reduceMotion ? 1 : 0.9)
+                        .opacity(visible || reduceMotion ? 1 : 0)
                         .frame(maxWidth: .infinity)
-                        .frame(height: min(320, max(240, geometry.size.height * 0.55)))
-                        .dynamicTypeSize(.large)
-                        .contentShape(Rectangle())
-                        .onTapGesture { restart(index) }
                         .accessibilityHidden(true)
                     Spacer(minLength: 8)
                 }
-                .padding(.horizontal, 24).padding(.top, 24)
+                .padding(.horizontal, 24).padding(.top, 32)
                 .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .topLeading)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
@@ -165,16 +186,73 @@ struct OnboardingView: View {
         guard (0...lastPage).contains(value) else { return }
         withAnimation(reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.9)) { page = value }
     }
-
-    private func restart(_ index: Int) {
-        guard startedAt.indices.contains(index), !startupCovered else { return }
-        startedAt[index] = Date()
+    private func finish(_ scan: Bool) {
+        if !replay {
+            // Home starts the camera, or shows one tip on the camera button instead.
+            UserDefaults.standard.set(scan, forKey: OnboardingFlags.startScan)
+            UserDefaults.standard.set(!scan, forKey: OnboardingFlags.scanTip)
+            UserDefaults.standard.set(true, forKey: OnboardingFlags.firstScanPending)
+        }
+        onFinish(scan)
     }
+}
 
-    private func looping<Drawing: View>(_ index: Int, @ViewBuilder scene: @escaping (Double, Double) -> Drawing) -> some View {
-        let running = page == index && scenePhase == .active && !startupCovered
-        return LoopingScene(start: running ? startedAt[index] : nil, duration: durations[index],
-                            reduceMotion: reduceMotion, scene: scene)
+enum OnboardingFlags {
+    static let startScan = "onboarding-start-scan"
+    static let scanTip = "home-scan-tip"
+    static let firstScanPending = "first-scan-pending"
+}
+
+/// The page illustration, drifting gently up and down.
+private struct FloatingArt: View {
+    let name: String
+    let reduceMotion: Bool
+    var body: some View {
+        if reduceMotion {
+            Image(name).resizable().interpolation(.high).scaledToFit()
+        } else {
+            TimelineView(.animation) { context in
+                let t = context.date.timeIntervalSinceReferenceDate
+                Image(name).resizable().interpolation(.high).scaledToFit()
+                    .offset(y: sin(t * 1.4) * 5)
+            }
+        }
+    }
+}
+
+/// Shown once after the first page someone ever scans.
+struct FirstScanDoneView: View {
+    let seeDocument: () -> Void
+    let goHome: () -> Void
+    @State private var shown = false
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer()
+            Image("onb-5-done").resizable().interpolation(.high).scaledToFit().frame(width: 200, height: 200)
+                .scaleEffect(shown ? 1 : 0.6).opacity(shown ? 1 : 0)
+                .accessibilityHidden(true)
+            Text("Your first scan\nis ready").font(.system(size: 26, weight: .bold)).tracking(-0.6).multilineTextAlignment(.center)
+                .foregroundStyle(Design.ink).padding(.top, 20)
+            Text("Saved as a PDF on this iPhone.\nIts text is searchable too.").font(.system(size: 16)).foregroundStyle(OnboardingPalette.secondary)
+                .multilineTextAlignment(.center).padding(.top, 10)
+            Spacer()
+            HStack(spacing: 8) {
+                Button(action: seeDocument) {
+                    Text("See document").font(.system(size: 17, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 56)
+                        .foregroundStyle(Color(red: 0.306, green: 0.349, blue: 0.408))
+                        .background(Color(red: 0.949, green: 0.957, blue: 0.965), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }.buttonStyle(PressableStyle())
+                Button(action: goHome) {
+                    Text("Go to Home").font(.system(size: 17, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 56).foregroundStyle(.white)
+                        .background(OnboardingPalette.blue, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }.buttonStyle(PressableStyle()).accessibilityIdentifier("first-scan-home")
+            }
+            .padding(.horizontal, 20).padding(.bottom, 12)
+        }
+        .padding(.horizontal, 24)
+        .background(Color.white.ignoresSafeArea())
+        .sensoryFeedback(.success, trigger: shown)
+        .onAppear { withAnimation(.spring(response: 0.5, dampingFraction: 0.6).delay(0.1)) { shown = true } }
     }
 }
 

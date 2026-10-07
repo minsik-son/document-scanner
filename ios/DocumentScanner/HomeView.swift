@@ -10,6 +10,10 @@ struct HomeView: View {
     @State private var editingQuickTools = false
     @State private var paywall = false
     @State private var welcomePro = false
+    @State private var firstScanDone = false
+    @AppStorage(OnboardingFlags.startScan) private var startScanFromIntro = false
+    @AppStorage(OnboardingFlags.scanTip) private var scanTip = false
+    @AppStorage(OnboardingFlags.firstScanPending) private var firstScanPending = false
     @AppStorage("pro-welcome-shown") private var welcomeShown = false
     @State private var query = ""
     @State private var kindFilter: DocumentKind?
@@ -150,6 +154,14 @@ struct HomeView: View {
             .fullScreenCover(isPresented: $advanced) { AdvancedOfflineHub() }
             .sheet(isPresented: $paywall) { PaywallView() }
             .fullScreenCover(isPresented: $welcomePro) { WelcomeToProView() }
+            .fullScreenCover(isPresented: $firstScanDone) {
+                FirstScanDoneView(seeDocument: { firstScanDone = false; showingDocuments = true }, goHome: { firstScanDone = false })
+            }
+            .onAppear {
+                // "Scan now" on the last intro page opens the camera straight away.
+                if startScanFromIntro { startScanFromIntro = false; startCapture() }
+                if !store.active.isEmpty { scanTip = false }
+            }
             .onChange(of: subscription.isPro) { _, pro in
                 // After a purchase (not on launch): wait for the paywall sheet to close.
                 guard pro, !welcomeShown else { return }
@@ -169,7 +181,7 @@ struct HomeView: View {
                 if !importing { store.perform { try store.discardEmptyDrafts() } }
             }) { value in
                 ReviewView(documentID: value.id, captureOnOpen: newCapture, completionAdEnabled: false,
-                           onCompleted: { showingDocuments = false; query = "" }, savedBackTitle: "Home")
+                           onCompleted: { showingDocuments = false; query = ""; celebrateFirstScan() }, savedBackTitle: "Home")
             }
             .confirmationDialog("Import pages", isPresented: $importMenu) {
                 Button("Choose photos") { photos = true }
@@ -187,6 +199,16 @@ struct HomeView: View {
             .alert("Something needs attention", isPresented: Binding(get: { store.problem != nil }, set: { if !$0 { store.problem = nil } })) { Button("OK") { store.problem = nil } } message: { Text(store.problem ?? "") }
         }
     }
+    private func startCapture() {
+        scanTip = false
+        store.perform { let id = try store.createDraft(); newCapture = true; Instant.run { route = ScanRoute(id: id) } }
+    }
+    /// The first page ever saved after the intro gets a short celebration.
+    private func celebrateFirstScan() {
+        guard firstScanPending, !store.active.isEmpty else { return }
+        firstScanPending = false
+        Task { try? await Task.sleep(for: .seconds(0.6)); firstScanDone = true }
+    }
     private var bottomNavigation: some View {
         HStack(alignment: .bottom, spacing: 0) {
             navigationButton("Home", symbol: "house.fill", selected: !showingDocuments, identifier: "nav-home") {
@@ -196,7 +218,7 @@ struct HomeView: View {
                 showingDocuments = true
             }
             Button {
-                store.perform { let id = try store.createDraft(); newCapture = true; Instant.run { route = ScanRoute(id: id) } }
+                startCapture()
             } label: {
                 Image(systemName: "camera")
                     .font(.system(size: 28, weight: .bold))
@@ -217,6 +239,22 @@ struct HomeView: View {
             }
         }
         .padding(.horizontal, 12).padding(.top, 4).padding(.bottom, 4)
+        .overlay(alignment: .top) {
+            // After "Maybe later": one tip over the camera button, gone after a tap or a scan.
+            if scanTip && store.active.isEmpty {
+                Button { scanTip = false } label: {
+                    Text("Ready when you are. Tap here to scan")
+                        .font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
+                        .padding(.horizontal, 14).padding(.vertical, 10)
+                        .background(Design.ink, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(alignment: .bottom) {
+                            Rectangle().fill(Design.ink).frame(width: 12, height: 12).rotationEffect(.degrees(45)).offset(y: 5)
+                        }
+                }
+                .buttonStyle(.plain).offset(y: -50).transition(.opacity)
+                .accessibilityIdentifier("home-scan-tip")
+            }
+        }
         .background(alignment: .bottom) {
             UnevenRoundedRectangle(topLeadingRadius: 26, topTrailingRadius: 26)
                 .fill(.white).padding(.top, 15).ignoresSafeArea(edges: .bottom)
@@ -253,7 +291,7 @@ struct HomeView: View {
                         .foregroundStyle(Design.ink).background(Design.muted, in: Capsule())
                 }.accessibilityIdentifier("hero-import")
                 Button {
-                    store.perform { let id = try store.createDraft(); newCapture = true; Instant.run { route = ScanRoute(id: id) } }
+                    startCapture()
                 } label: {
                     Label("Scan", systemImage: "camera").font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity).padding(.vertical, 14)
                         .foregroundStyle(subscription.isPro ? .white : Design.blueInk)

@@ -102,6 +102,10 @@ struct SettingsView: View {
                     .pickerStyle(.segmented)
                     .accessibilityIdentifier("dev-plan-picker")
                     LabeledContent("Showing", value: subscription.isPro ? "Pro layout" : "Free layout")
+                    Button("Show first-run intro again") {
+                        UserDefaults.standard.set(false, forKey: "scanner-onboarding-v1")
+                        dismiss()
+                    }.accessibilityIdentifier("dev-replay-intro")
                 } header: { Text("Developer") } footer: { Text("Debug builds only. Switches the app between the free and Pro layouts without buying. App Store follows the real purchase.") }
                 #endif
                 Section("About this build") {
@@ -116,7 +120,7 @@ struct SettingsView: View {
             .toolbarColorScheme(subscription.isPro ? .dark : nil, for: .navigationBar)
             .navigationTitle("Settings").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.disabled(backupBusy).tint(subscription.isPro ? .white : nil) } }
             .interactiveDismissDisabled(backupBusy)
-            .fullScreenCover(isPresented: $showingTour) { OnboardingView { showingTour = false } }
+            .fullScreenCover(isPresented: $showingTour) { OnboardingView(onFinish: { _ in showingTour = false }, replay: true) }
             .alert("New folder", isPresented: $addingFolder) { TextField("Folder name", text: $folder); Button("Create") { store.perform { try store.addFolder(folder) }; folder = "" }; Button("Cancel", role: .cancel) {} }
             .confirmationDialog("Export an unencrypted backup?", isPresented: $backupWarning) { Button("Export backup") {
                 backupBusy = true; backupProgress = "Creating backup…"

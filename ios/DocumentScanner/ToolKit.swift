@@ -570,6 +570,8 @@ struct PhotoSourceChoices: View {
     var allowCamera = true
     /// Adds the edge-detecting document scanner (crops and straightens the page).
     var documentScan = false
+    /// Mode the scan camera opens in (business cards use the card frame).
+    var scanStyle: CaptureStyle = .document
     let picked: ([UIImage]) -> Void
     let failed: (String) -> Void
     var busy: (Bool) -> Void = { _ in }
@@ -620,7 +622,7 @@ struct PhotoSourceChoices: View {
             }
         }
         .fullScreenCover(isPresented: $docCamera) {
-            OfficeScanCamera(singlePage: true, finishTitle: "Use this scan") { result in
+            OfficeScanCamera(singlePage: true, finishTitle: "Use this scan", style: scanStyle) { result in
                 docCamera = false
                 switch result {
                 case .success(let images): if let first = images.first { picked([first]) }

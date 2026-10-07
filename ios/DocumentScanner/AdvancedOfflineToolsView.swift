@@ -804,6 +804,8 @@ struct OfficeScanCamera: View {
     @EnvironmentObject private var store: LibraryStore
     var singlePage = false
     var finishTitle = "Continue"
+    /// Camera mode it opens in, e.g. the card frame for business cards.
+    var style: CaptureStyle = .document
     let completion: (Result<[UIImage],Error>) -> Void
     @State private var draftID: UUID?
     @State private var finished = false
@@ -816,7 +818,7 @@ struct OfficeScanCamera: View {
             guard draftID == nil else { return }
             do {
                 let id = try store.createDraft()
-                if var doc = store.document(id) { doc.captureStyle = .document; try store.update(doc) }
+                if var doc = store.document(id) { doc.captureStyle = style; try store.update(doc) }
                 draftID = id
             } catch { finish(.failure(error)) }
         }
@@ -1236,7 +1238,7 @@ struct BusinessCardTool: View {
             ToolHero(art: .cardContact)
             VStack(alignment: .leading, spacing: 8) {
                 SectionLabel(text: "Add a card")
-                PhotoSourceChoices(allowCamera: false, documentScan: true, picked: { images in
+                PhotoSourceChoices(allowCamera: false, documentScan: true, scanStyle: .card, picked: { images in
                     guard let image = images.first else { return }
                     read(image)
                 }, failed: { problem = $0 }, busy: { reading = $0 })

@@ -356,6 +356,15 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
     private var captureStyle = CaptureStyle.document
     private var visibleCardArea: ScanQuad?
     private var device: AVCaptureDevice? // Session queue only.
+    // Steadier shots: the gyro tells when the phone is still, and in dim light a short
+    // burst is taken and the sharpest frame kept (session queue only, except `spin`).
+    private let motion = CMMotionManager()
+    private let spinLock = NSLock()
+    private var spinValue: Double = 0
+    private var spin: Double { spinLock.lock(); defer { spinLock.unlock() }; return spinValue }
+    private var burst: [UIImage] = []
+    private var burstTarget = 1
+    private var pendingFlash = false
     private var lastAnalysis: TimeInterval = -Double.infinity
     private var generation = 0 // Session queue only.
     private var sessionRequestToken = 0 // Session queue only.
@@ -458,6 +467,7 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
                 self.tracker.clearPreview()
                 self.lastAnalysis = -Double.infinity
                 if !self.session.isRunning { self.session.startRunning() }
+                self.startMotion()
                 guard self.session.isRunning, !self.session.isInterrupted else {
                     throw ScannerError.message("The camera is temporarily unavailable. Try again when it is free.")
                 }
@@ -484,6 +494,7 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
             let pending = self.completion
             self.completion = nil; self.captureID = nil; self.busy = false
             if self.session.isRunning { self.session.stopRunning() }
+            self.motion.stopGyroUpdates()
             if let pending {
                 DispatchQueue.main.async { pending(.failure(ScannerError.message("Capture was interrupted. Try again when the camera is open."))) }
             }
@@ -510,6 +521,52 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
         }
         if device.isSmoothAutoFocusSupported { device.isSmoothAutoFocusEnabled = false }
         if device.isExposureModeSupported(.continuousAutoExposure) { device.exposureMode = .continuousAutoExposure }
+        capExposure(device)
+    }
+    /// In dim light iOS stretches the exposure to 1/4–1/10 s and the slightest hand movement
+    /// smears the text. Capping it at 1/30 s trades a little noise (which the photo pipeline
+    /// cleans up) for sharp letters. Must be locked by the caller.
+    private func capExposure(_ device: AVCaptureDevice) {
+        let cap = CMTime(value: 1, timescale: 30), format = device.activeFormat
+        guard CMTimeCompare(cap, format.minExposureDuration) >= 0, CMTimeCompare(cap, format.maxExposureDuration) <= 0 else { return }
+        device.activeMaxExposureDuration = cap
+    }
+    private func startMotion() {
+        guard motion.isGyroAvailable, !motion.isGyroActive else { return }
+        motion.gyroUpdateInterval = 1.0 / 60
+        motion.startGyroUpdates(to: OperationQueue()) { [weak self] data, _ in
+            guard let self, let r = data?.rotationRate else { return }
+            let value = (r.x * r.x + r.y * r.y + r.z * r.z).squareRoot()
+            self.spinLock.lock(); self.spinValue = self.spinValue * 0.6 + value * 0.4; self.spinLock.unlock()
+        }
+    }
+    /// Waits up to 0.8 s for the phone to stop moving (the shutter tap itself shakes it).
+    private func afterPhoneSteadies(attempt: Int, _ action: @escaping () -> Void) {
+        guard motion.isGyroActive, spin > 0.12, attempt < 10 else { action(); return }
+        queue.asyncAfter(deadline: .now() + 0.08) { self.afterPhoneSteadies(attempt: attempt + 1, action) }
+    }
+    /// Dim enough that the exposure is long or the sensor gain is high.
+    private var dim: Bool {
+        guard let device else { return false }
+        return device.exposureDuration.seconds >= 1.0 / 40 || device.iso >= min(800, device.activeFormat.maxISO * 0.5)
+    }
+    private func shoot() {
+        let settings = AVCapturePhotoSettings()
+        // Quality prioritization lets iOS apply its multi-frame processing (Deep
+        // Fusion / Photonic Engine) — the same post-capture sharpening as the Camera app.
+        settings.photoQualityPrioritization = burst.isEmpty ? .quality : .balanced
+        let maximum = photoOutput.maxPhotoDimensions
+        if maximum.width > 0, maximum.height > 0 { settings.maxPhotoDimensions = maximum }
+        if photoOutput.supportedFlashModes.contains(pendingFlash ? .on : .off) { settings.flashMode = pendingFlash ? .on : .off }
+        captureID = settings.uniqueID
+        if let device, (try? device.lockForConfiguration()) != nil { capExposure(device); device.unlockForConfiguration() }
+        // Pressing the shutter can start a refocus; a photo taken mid-hunt is soft.
+        afterFocusSettles(attempt: 0) {
+            self.afterPhoneSteadies(attempt: 0) {
+                guard self.active, self.captureID == settings.uniqueID, self.completion != nil else { return }
+                self.photoOutput.capturePhoto(with: settings, delegate: self)
+            }
+        }
     }
 
     func setCaptureStyle(_ style: CaptureStyle) {
@@ -556,19 +613,11 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
             }
             self.busy = true; self.autoPending = false; self.tracker.markCapture()
             self.completion = completion
-            let settings = AVCapturePhotoSettings()
-            // Quality prioritization lets iOS apply its multi-frame processing (Deep
-            // Fusion / Photonic Engine) — the same post-capture sharpening as the Camera app.
-            settings.photoQualityPrioritization = .quality
-            let maximum = self.photoOutput.maxPhotoDimensions
-            if maximum.width > 0, maximum.height > 0 { settings.maxPhotoDimensions = maximum }
-            if self.photoOutput.supportedFlashModes.contains(flash ? .on : .off) { settings.flashMode = flash ? .on : .off }
-            self.captureID = settings.uniqueID
-            // Pressing the shutter can start a refocus; a photo taken mid-hunt is soft.
-            self.afterFocusSettles(attempt: 0) {
-                guard self.active, self.captureID == settings.uniqueID, self.completion != nil else { return }
-                self.photoOutput.capturePhoto(with: settings, delegate: self)
-            }
+            self.pendingFlash = flash
+            self.burst = []
+            // In dim light without flash, take three frames and keep the sharpest.
+            self.burstTarget = (!flash && self.dim) ? 3 : 1
+            self.shoot()
         }
     }
 
@@ -640,12 +689,21 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
         if let error { result = .failure(error) }
         else if let data = photo.fileDataRepresentation(), let image = UIImage(data: data) { result = .success(image) }
         else { result = .failure(ScannerError.message("The camera didn't return a photo. Try again.")) }
-        queue.async { self.deliver(result, captureID: photo.resolvedSettings.uniqueID) }
+        queue.async {
+            let id = photo.resolvedSettings.uniqueID
+            guard self.active, self.captureID == id, self.completion != nil else { return }
+            if case .success(let image) = result {
+                self.burst.append(image)
+                if self.burst.count < self.burstTarget { self.shoot(); return }
+            }
+            if let best = SharpestFrame.pick(self.burst) { self.burst = []; self.deliver(.success(best), captureID: id) }
+            else { self.deliver(result, captureID: id) }
+        }
     }
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishCaptureFor resolvedSettings: AVCaptureResolvedPhotoSettings, error: Error?) {
         queue.async {
             if let error { self.deliver(.failure(error), captureID: resolvedSettings.uniqueID) }
-            else if self.captureID == resolvedSettings.uniqueID, self.completion != nil {
+            else if self.captureID == resolvedSettings.uniqueID, self.completion != nil, self.burst.count >= self.burstTarget || self.burst.isEmpty {
                 self.deliver(.failure(ScannerError.message("The camera didn't return a photo. Try again.")), captureID: resolvedSettings.uniqueID)
             }
         }
@@ -926,5 +984,34 @@ struct CardFrameGuide: View {
             .frame(width: width, height: height, alignment: .topLeading)
             .accessibilityHidden(true)
         }
+    }
+}
+
+/// Picks the least blurred of a few photos of the same page: the variance of a Laplacian
+/// over the middle of a small grayscale copy is highest when text edges are crisp.
+enum SharpestFrame {
+    static func pick(_ images: [UIImage]) -> UIImage? {
+        guard images.count > 1 else { return images.first }
+        return images.max { score($0) < score($1) }
+    }
+    static func score(_ image: UIImage) -> Double {
+        guard let cg = image.cgImage else { return 0 }
+        let w = 640, h = max(1, Int(Double(cg.height) / Double(cg.width) * 640))
+        var pixels = [UInt8](repeating: 0, count: w * h)
+        guard let ctx = CGContext(data: &pixels, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w,
+                                  space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue) else { return 0 }
+        ctx.interpolationQuality = .medium
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+        var sum = 0.0, sq = 0.0, n = 0.0
+        for y in stride(from: h / 6, to: h * 5 / 6, by: 1) {
+            for x in stride(from: w / 6, to: w * 5 / 6, by: 1) {
+                let c = Int(pixels[y * w + x]) * 4
+                let l = Double(c - Int(pixels[y * w + x - 1]) - Int(pixels[y * w + x + 1]) - Int(pixels[(y - 1) * w + x]) - Int(pixels[(y + 1) * w + x]))
+                sum += l; sq += l * l; n += 1
+            }
+        }
+        guard n > 0 else { return 0 }
+        let mean = sum / n
+        return sq / n - mean * mean
     }
 }

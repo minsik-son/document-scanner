@@ -291,6 +291,10 @@ struct HomeAdvertisementSlot<Fallback: View>: View {
                           homeVisible: homeUncovered && !ads.suppressedAfterCompletion,
                           unlocked: !lock.locked, configured: HomeAdConfiguration.testAdsEnabled)
     }
+    private var keepsAd: Bool {
+        subscription.entitlementsResolved && !subscription.isPro && !lock.locked && HomeAdConfiguration.testAdsEnabled
+            && !ads.suppressedAfterCompletion
+    }
     private var testIdentity: String {
 #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--test-native-ad-sdk"), let ad = ads.nativeAd {
@@ -301,7 +305,9 @@ struct HomeAdvertisementSlot<Fallback: View>: View {
     }
     var body: some View {
         Group {
-            if policy.canRequest, let ad = ads.nativeAd {
+            // Keep showing a loaded ad while the app is backgrounded or in the app
+            // switcher; only Pro, a lock, or missing configuration hide it.
+            if keepsAd, let ad = ads.nativeAd {
                 NativeHomeAdvertisement(ad: ad, active: visible && policy.canRequest)
                     .frame(height: 306)
                     .accessibilityIdentifier("home-native-ad")

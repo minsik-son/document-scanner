@@ -125,6 +125,15 @@ final class LibraryStore: ObservableObject {
         guard !clean.isEmpty else { return }
         perform { var d = doc; d.title = clean; d.autoTitled = false; try update(d) }
     }
+    func setAppLocked(_ locked: Bool, for doc: ScanDocument) { perform { var d = doc; d.appLocked = locked ? true : nil; try update(d) } }
+    func setFolderLocked(_ locked: Bool, folder: String) {
+        perform {
+            var next = manifest; var set = Set(next.lockedFolders ?? [])
+            if locked { set.insert(folder) } else { set.remove(folder) }
+            next.lockedFolders = set.isEmpty ? nil : Array(set).sorted()
+            try commit(next)
+        }
+    }
     func toggleFavorite(_ doc: ScanDocument) { perform { var d = doc; d.favorite.toggle(); try update(d) } }
     func moveToTrash(_ doc: ScanDocument) { perform { var d = doc; d.deletedAt = Date(); try update(d) } }
     func restore(_ doc: ScanDocument) { perform { var d = doc; d.deletedAt = nil; try update(d) } }

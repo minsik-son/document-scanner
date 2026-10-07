@@ -1,5 +1,6 @@
 import SwiftUI
 import PDFKit
+import LocalAuthentication
 import QuickLook
 import UniformTypeIdentifiers
 
@@ -1396,7 +1397,26 @@ private struct ProtectToolStep: View {
     let finish: (PDFToolResult) -> Void
     @State private var password = ""
     @State private var repeated = ""
+    @State private var lockNote: String?
     @FocusState private var focus: Int?
+    private var current: ScanDocument { store.document(document.id) ?? document }
+    /// Turning a lock on is immediate; turning it off asks for Face ID first.
+    private func lockBinding(folder: Bool) -> Binding<Bool> {
+        Binding(get: {
+            folder ? (store.manifest.lockedFolders ?? []).contains(current.folder) : current.appLocked == true
+        }, set: { on in
+            lockNote = nil
+            Task {
+                if !on, !(await PrivateLock.authenticate("Remove the lock")) { lockNote = "The lock wasn't removed."; return }
+                if on {
+                    var e: NSError?
+                    guard LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: &e) else { lockNote = "Set a device passcode in iPhone Settings first."; return }
+                }
+                if on { PrivateLock.shared.keepOpen(current) }
+                if folder { store.setFolderLocked(on, folder: current.folder) } else { store.setAppLocked(on, for: current) }
+            }
+        })
+    }
     private var lengthOK: Bool { (8...32).contains(password.count) }
     private var asciiOK: Bool { !password.isEmpty && password.allSatisfy { $0.isASCII && !$0.isNewline } }
     private var matches: Bool { !password.isEmpty && password == repeated }
@@ -1411,7 +1431,24 @@ private struct ProtectToolStep: View {
                 check(asciiOK, "English letters, numbers, spaces or symbols")
                 check(matches, "Both entries match")
             }
-            Label("Your saved document stays unlocked on this iPhone.", systemImage: "info.circle").font(.system(size: 14)).foregroundStyle(TK.grey500)
+            VStack(alignment: .leading, spacing: 14) {
+                SectionLabel(text: "Also lock it in this app")
+                Toggle(isOn: lockBinding(folder: false)) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("This document").font(.system(size: 16, weight: .semibold)).foregroundStyle(TK.grey900)
+                        Text("Face ID or your passcode to open it here").font(.system(size: 13)).foregroundStyle(TK.grey500)
+                    }
+                }.tint(TK.blue).accessibilityIdentifier("protect-app-lock")
+                Toggle(isOn: lockBinding(folder: true)) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Everything in “\(current.folder)”").font(.system(size: 16, weight: .semibold)).foregroundStyle(TK.grey900)
+                        Text("Locks the whole folder, including new scans").font(.system(size: 13)).foregroundStyle(TK.grey500)
+                    }
+                }.tint(TK.blue).accessibilityIdentifier("protect-folder-lock")
+                if let lockNote { Text(lockNote).font(.system(size: 13)).foregroundStyle(TK.red) }
+            }
+            .padding(16).background(TK.grey50, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            Label("The password is only for the shared copy. Locking in the app works without it.", systemImage: "info.circle").font(.system(size: 14)).foregroundStyle(TK.grey500)
         } actions: {
             Button("Lock and share") { protect() }.buttonStyle(CTAButtonStyle()).disabled(!(lengthOK && asciiOK && matches)).accessibilityIdentifier("protect-run")
         }

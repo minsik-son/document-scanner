@@ -28,11 +28,21 @@ struct DocumentView: View {
     @State private var availableText: String?
     @State private var progress = "Reading text…"
     @State private var naming = false
+    @ObservedObject private var privateLock = PrivateLock.shared
     @State private var newContact = false
     var document: ScanDocument? { store.document(documentID) }
     var body: some View {
         Group {
-            if let doc = document {
+            if let doc = document, privateLock.hidden(doc, in: store.manifest) {
+                VStack(spacing: 18) {
+                    Image(systemName: "lock.fill").font(.system(size: 44, weight: .semibold)).foregroundStyle(Design.blue)
+                    Text(doc.title).font(.title3.bold()).multilineTextAlignment(.center)
+                    Text("This document is locked in the app.").foregroundStyle(.secondary)
+                    Button("Unlock with Face ID") { Task { _ = await privateLock.unlock(doc, in: store.manifest) } }
+                        .buttonStyle(PrimaryButton()).accessibilityIdentifier("document-unlock")
+                }.padding(32).frame(maxWidth: .infinity, maxHeight: .infinity)
+                .task { _ = await privateLock.unlock(doc, in: store.manifest) }
+            } else if let doc = document {
                 VStack(spacing: 0) {
                     if let file = doc.pdfFile { PDFPreview(url: store.url(file), initialPage: initialPage).background(Design.muted) }
                     VStack(alignment: .leading, spacing: 16) {

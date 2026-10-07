@@ -107,3 +107,42 @@ private struct LockScreen: View {
     }.accessibilityIdentifier("app-lock-screen")
   }
 }
+
+
+/// Locks single documents or whole folders inside the app. Unlocking lasts until
+/// the app goes to the background.
+@MainActor
+final class PrivateLock: ObservableObject {
+  static let shared = PrivateLock()
+  @Published private(set) var unlocked = Set<UUID>()
+  @Published private(set) var unlockedFolders = Set<String>()
+  private var observer: NSObjectProtocol?
+  private init() {
+    observer = NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+      Task { @MainActor in self?.unlocked = []; self?.unlockedFolders = [] }
+    }
+  }
+  /// The person who just set a lock keeps access until the app goes to the background.
+  func keepOpen(_ doc: ScanDocument) { unlocked.insert(doc.id); unlockedFolders.insert(doc.folder) }
+  static func isLocked(_ doc: ScanDocument, in manifest: LibraryManifest) -> Bool {
+    doc.appLocked == true || (manifest.lockedFolders ?? []).contains(doc.folder)
+  }
+  /// Locked and not yet opened with Face ID in this session.
+  func hidden(_ doc: ScanDocument, in manifest: LibraryManifest) -> Bool {
+    guard Self.isLocked(doc, in: manifest) else { return false }
+    return !unlocked.contains(doc.id) && !unlockedFolders.contains(doc.folder)
+  }
+  func unlock(_ doc: ScanDocument, in manifest: LibraryManifest) async -> Bool {
+    guard hidden(doc, in: manifest) else { return true }
+    guard await Self.authenticate("Open \(doc.title)") else { return false }
+    unlocked.insert(doc.id)
+    if (manifest.lockedFolders ?? []).contains(doc.folder) { unlockedFolders.insert(doc.folder) }
+    return true
+  }
+  static func authenticate(_ reason: String) async -> Bool {
+    let context = LAContext(); context.localizedCancelTitle = "Cancel"
+    var error: NSError?
+    guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else { return false }
+    return (try? await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)) ?? false
+  }
+}

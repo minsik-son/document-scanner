@@ -30,7 +30,7 @@ struct HomeView: View {
     @State private var pendingImport: UUID?
     @AppStorage("scanner-grid") private var grid = false
     var filtered: [ScanDocument] {
-        store.active.filter { (tab != "Favorites" || $0.favorite) && (folder == nil || $0.folder == folder) && (kindFilter == nil || $0.kind == kindFilter) && (query.isEmpty || $0.title.localizedCaseInsensitiveContains(query) || $0.text.localizedCaseInsensitiveContains(query)) }
+        store.active.filter { (tab != "Favorites" || $0.favorite) && (folder == nil || $0.folder == folder) && (kindFilter == nil || $0.kind == kindFilter) && (query.isEmpty || $0.title.localizedCaseInsensitiveContains(query) || (!PrivateLock.isLocked($0, in: store.manifest) && $0.text.localizedCaseInsensitiveContains(query))) }
     }
     var body: some View {
         NavigationStack {
@@ -116,7 +116,7 @@ struct HomeView: View {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: 20) {
                         ForEach(filtered) { doc in
                             NavigationLink { DocumentView(documentID: doc.id, initialPage: matchingPage(doc)) } label: {
-                                VStack { if let page = doc.pages.first { PageThumbnail(page: page, pdfFile: doc.pdfFile).frame(height: 150) }; Text(doc.title).font(.headline).lineLimit(2); Text("\(doc.pages.count) pages").font(.caption) }.padding(12).frame(maxWidth: .infinity).background(.white, in: RoundedRectangle(cornerRadius: 20))
+                                VStack { if PrivateLock.isLocked(doc, in: store.manifest) { LockedThumb().frame(height: 150) } else if let page = doc.pages.first { PageThumbnail(page: page, pdfFile: doc.pdfFile).frame(height: 150) }; Text(doc.title).font(.headline).lineLimit(2); Text("\(doc.pages.count) pages").font(.caption) }.padding(12).frame(maxWidth: .infinity).background(.white, in: RoundedRectangle(cornerRadius: 20))
                             }.buttonStyle(.plain).contextMenu { trashAction(doc) }
                         }
                     }.listRowSeparator(.hidden).listRowBackground(Color.clear)
@@ -354,19 +354,32 @@ struct PageThumbnail: View {
     }
 }
 struct DocumentRow: View {
+    @EnvironmentObject private var store: LibraryStore
     let document: ScanDocument
     var query: String = ""
+    private var locked: Bool { PrivateLock.isLocked(document, in: store.manifest) }
     var body: some View {
         HStack(spacing: 16) {
-            Group { if let page = document.pages.first { PageThumbnail(page: page, pdfFile: document.pdfFile) } else { Image(systemName: "doc") } }.frame(width: 56, height: 72).background(Design.muted, in: RoundedRectangle(cornerRadius: 8))
+            Group { if locked { LockedThumb() } else if let page = document.pages.first { PageThumbnail(page: page, pdfFile: document.pdfFile) } else { Image(systemName: "doc") } }.frame(width: 56, height: 72).background(Design.muted, in: RoundedRectangle(cornerRadius: 8))
             VStack(alignment: .leading, spacing: 6) {
                 Text(document.title).font(.headline).lineLimit(2)
                 Text("\(document.pages.count) pages · \(document.kind.map { $0 == .other ? document.folder : $0.label } ?? document.folder)").font(.subheadline).foregroundStyle(.secondary)
-                if !query.isEmpty, let index = document.pages.firstIndex(where: { $0.plainText.localizedCaseInsensitiveContains(query) }) { Text("Text match on page \(index+1)").font(.caption).foregroundStyle(Design.blue) }
+                if !query.isEmpty, !locked, let index = document.pages.firstIndex(where: { $0.plainText.localizedCaseInsensitiveContains(query) }) { Text("Text match on page \(index+1)").font(.caption).foregroundStyle(Design.blue) }
                 Text(document.updatedAt, style: .date).font(.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
             if document.favorite { Image(systemName: "star.fill").foregroundStyle(.orange) }
         }.foregroundStyle(Design.ink).padding(.vertical, 14)
+    }
+}
+
+
+/// Stands in for a locked document's first page.
+struct LockedThumb: View {
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Design.blue.opacity(0.08))
+            Image(systemName: "lock.fill").font(.system(size: 18, weight: .semibold)).foregroundStyle(Design.blue)
+        }.accessibilityLabel("Locked")
     }
 }

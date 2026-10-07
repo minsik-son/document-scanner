@@ -462,9 +462,10 @@ struct DocumentChoiceList: View {
         VStack(spacing: 4) {
             ForEach(documents) { doc in
                 let off = disabled(doc)
-                Button { choose(doc) } label: {
+                let locked = PrivateLock.isLocked(doc, in: store.manifest)
+                Button { Task { if await PrivateLock.shared.unlock(doc, in: store.manifest) { choose(doc) } } } label: {
                     HStack(spacing: 14) {
-                        Group { if let page = doc.pages.first { PageThumbnail(page: page, pdfFile: doc.pdfFile) } else { Image(systemName: "doc") } }
+                        Group { if locked { LockedThumb() } else if let page = doc.pages.first { PageThumbnail(page: page, pdfFile: doc.pdfFile) } else { Image(systemName: "doc") } }
                             .frame(width: 52, height: 66).background(TK.grey100, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                         VStack(alignment: .leading, spacing: 4) {

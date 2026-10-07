@@ -143,6 +143,8 @@ struct ScanDocument: Codable, Identifiable, Equatable {
     var kindChosen: Bool?
     /// The name was made automatically, so a better one can replace it on save.
     var autoTitled: Bool?
+    /// Opening it in the app needs Face ID, Touch ID or the device passcode.
+    var appLocked: Bool?
     var outputSize: CGSize { landscape == true ? CGSize(width: paper.size.height, height: paper.size.width) : paper.size }
     var assetNames: [String] { pages.map(\.imageFile) + pages.compactMap(\.sourcePDF) + [pdfFile].compactMap { $0 } }
     mutating func applyAppearance(from page: ScanPage) {
@@ -165,6 +167,8 @@ struct LibraryManifest: Codable {
     var folders = ["Scans", "Home", "Receipts", "School"]
     var lastBackupCreated: Date?
     var signatures: [PageAnnotation]?
+    /// Folders whose documents need Face ID, Touch ID or the passcode to open.
+    var lockedFolders: [String]?
 }
 
 enum AnnotationKind: String, Codable, CaseIterable { case signature = "Signature", text = "Text", pen = "Pen", highlight = "Highlight" }

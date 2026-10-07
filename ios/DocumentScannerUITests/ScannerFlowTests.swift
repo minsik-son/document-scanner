@@ -465,11 +465,10 @@ final class ScannerFlowTests: XCTestCase {
         app.buttons["compare-original"].tap()
         app.buttons["editor-tone-Original"].tap()
         selectEditorTool("adjust", in: app)
-        app.buttons["adjustment-picker"].tap()
         XCTAssertFalse(app.buttons["Cleanup"].exists)
         app.buttons["Contrast"].tap()
         XCTAssertTrue(app.sliders["contrast-slider"].exists)
-        app.buttons["adjustment-picker"].tap(); app.buttons["Brightness"].tap()
+        app.buttons["Brightness"].tap()
         selectEditorTool("tone", in: app)
         app.buttons["editor-tone-Document"].tap()
 

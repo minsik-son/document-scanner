@@ -317,13 +317,18 @@ struct PageEditor: View {
     @State private var rasterConfirmation = false
     @State private var rasterAction: FinishAction?
     private enum EditorTool: String, CaseIterable {
-        case crop = "Crop", tone = "Tone", adjust = "Adjust"
+        case crop = "Crop", tone = "Tone", adjust = "Adjust", retouch = "Retouch"
         var icon: String {
-            switch self { case .crop: "crop"; case .tone: "circle.lefthalf.filled"; case .adjust: "slider.horizontal.3" }
+            switch self { case .crop: "crop"; case .tone: "circle.lefthalf.filled"; case .adjust: "slider.horizontal.3"; case .retouch: "wand.and.stars" }
         }
     }
     private enum FinishAction { case done, addPage }
-    private enum Adjustment: String, CaseIterable { case brightness = "Brightness", contrast = "Contrast", sharpness = "Sharpness", cleanup = "Cleanup" }
+    private enum Adjustment: String, CaseIterable {
+        case brightness = "Brightness", contrast = "Contrast", sharpness = "Sharpness", cleanup = "Cleanup"
+        var icon: String {
+            switch self { case .brightness: "sun.max"; case .contrast: "circle.righthalf.filled"; case .sharpness: "triangle"; case .cleanup: "sparkles" }
+        }
+    }
     private var captureReview: Bool { onCancelCapture != nil }
     private var displayedPage: ScanPage {
         var value = page
@@ -451,47 +456,81 @@ struct PageEditor: View {
                 changed()
             }
         case .adjust:
-            VStack(spacing: 8) {
-                HStack {
-                    Menu {
-                        Picker("Adjustment", selection: $selectedAdjustment) {
-                            ForEach(Adjustment.allCases.filter { $0 != .cleanup || page.enhancement != .original }, id: \.self) {
-                                Text($0.rawValue).tag($0)
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Text(selectedAdjustment.rawValue).font(.subheadline.weight(.medium))
-                            Image(systemName: "chevron.down").font(.caption.weight(.semibold))
-                        }.frame(minHeight: 44)
-                    }
-                    .accessibilityIdentifier("adjustment-picker")
-                    Spacer()
-                    Text(adjustmentValue).font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
-                        .accessibilityIdentifier("adjustment-value")
-                }
-                Slider(value: adjustmentBinding, in: adjustmentRange)
-                    .accessibilityLabel(selectedAdjustment.rawValue)
-                    .accessibilityIdentifier(selectedAdjustment.rawValue.lowercased() + "-slider")
+            VStack(spacing: 14) {
+                // Every adjustment is visible at once; the slider below edits the chosen one.
                 HStack(spacing: 8) {
-                    Button { erasingFingers = false; erasing = true } label: { Label("Erase spots", systemImage: "eraser.line.dashed") }
-                        .buttonStyle(ChipStyle(selected: false)).disabled(!previewReady).accessibilityIdentifier("editor-erase")
-                    Button { erasingFingers = true; erasing = true } label: { Label("Remove fingers", systemImage: "hand.raised") }
-                        .buttonStyle(ChipStyle(selected: false)).disabled(!previewReady).accessibilityIdentifier("editor-fingers")
-                    if !page.activeErasures.isEmpty {
-                        Button { page.erasures = Array(page.activeErasures.dropLast()); if page.erasures?.isEmpty == true { page.erasures = nil }; changed() } label: {
-                            Label("Undo erase", systemImage: "arrow.uturn.backward")
-                        }.buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("editor-erase-undo")
+                    ForEach(Adjustment.allCases.filter { $0 != .cleanup || page.enhancement != .original }, id: \.self) { item in
+                        let on = selectedAdjustment == item
+                        Button { selectedAdjustment = item } label: {
+                            VStack(spacing: 4) {
+                                Image(systemName: item.icon).font(.system(size: 17, weight: .medium))
+                                Text(item.rawValue).font(.caption.weight(on ? .semibold : .medium)).lineLimit(1).minimumScaleFactor(0.8)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 56)
+                            .foregroundStyle(on ? Design.blue : .primary)
+                            .background(on ? Design.blue.opacity(0.10) : Design.muted, in: RoundedRectangle(cornerRadius: 12))
+                            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(on ? Design.blue.opacity(0.5) : .clear, lineWidth: 1.5))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(item.rawValue)
+                        .accessibilityAddTraits(on ? .isSelected : [])
+                        .accessibilityIdentifier("adjustment-" + item.rawValue.lowercased())
                     }
-                    Spacer(minLength: 0)
                 }
-                Button("Reset adjustments") {
+                VStack(spacing: 4) {
+                    HStack {
+                        Text(selectedAdjustment.rawValue).font(.subheadline.weight(.semibold))
+                        Spacer()
+                        Text(adjustmentValue).font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                            .accessibilityIdentifier("adjustment-value")
+                    }
+                    Slider(value: adjustmentBinding, in: adjustmentRange)
+                        .accessibilityLabel(selectedAdjustment.rawValue)
+                        .accessibilityIdentifier(selectedAdjustment.rawValue.lowercased() + "-slider")
+                }
+                .padding(.horizontal, 4)
+                Button {
                     page.enhancement = .document; page.enhancementAmount = nil; page.adjustments = nil; changed()
+                } label: {
+                    Label("Reset adjustments", systemImage: "arrow.counterclockwise").font(.footnote.weight(.medium))
                 }
-                .font(.footnote).frame(minHeight: 44)
+                .foregroundStyle(.secondary).frame(minHeight: 36)
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 4)
+        case .retouch:
+            VStack(spacing: 10) {
+                retouchCard("Erase spots", detail: "Paint over stains, marks or dust to remove them", icon: "eraser.line.dashed", identifier: "editor-erase") {
+                    erasingFingers = false; erasing = true
+                }
+                retouchCard("Remove fingers", detail: "Finds fingers holding the page and paints them out", icon: "hand.raised", identifier: "editor-fingers") {
+                    erasingFingers = true; erasing = true
+                }
+                if !page.activeErasures.isEmpty {
+                    Button { page.erasures = Array(page.activeErasures.dropLast()); if page.erasures?.isEmpty == true { page.erasures = nil }; changed() } label: {
+                        Label("Undo last erase", systemImage: "arrow.uturn.backward").font(.footnote.weight(.medium))
+                    }
+                    .foregroundStyle(.secondary).frame(minHeight: 36)
+                    .accessibilityIdentifier("editor-erase-undo")
+                }
+            }
         }
+    }
+    private func retouchCard(_ title: String, detail: String, icon: String, identifier: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                Image(systemName: icon).font(.system(size: 20, weight: .medium)).foregroundStyle(Design.blue)
+                    .frame(width: 44, height: 44).background(Design.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                    Text(detail).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.leading)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+            }
+            .padding(12)
+            .background(Design.muted, in: RoundedRectangle(cornerRadius: 14))
+        }
+        .buttonStyle(.plain).disabled(!previewReady).accessibilityIdentifier(identifier)
     }
     private func cropAction(_ title: String, icon: String, identifier: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {

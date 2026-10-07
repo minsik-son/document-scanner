@@ -99,7 +99,7 @@ private struct LockScreen: View {
         Image(systemName: "lock.shield").font(.system(size: 60)).foregroundStyle(Design.blue)
         Text("Your documents are locked").font(.title2.bold())
         if interactive {
-          if let message = lock.message { Text(message).multilineTextAlignment(.center) }
+          if let message = lock.message { Text(L(message)).multilineTextAlignment(.center) }
           Button("Unlock") { Task { await lock.unlock() } }.buttonStyle(PrimaryButton()).disabled(
             lock.authenticating)
         }

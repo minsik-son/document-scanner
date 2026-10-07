@@ -30,7 +30,7 @@ struct FileImportView: View {
         Section("Selected files") {
           ForEach(urls, id: \.self) { url in
             VStack(alignment: .leading) {
-              Text(url.lastPathComponent)
+              Text(L(url.lastPathComponent))
               if url.pathExtension.lowercased() == "pdf" {
                 SecureField(
                   "Password, if required",

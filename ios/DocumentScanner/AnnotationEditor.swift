@@ -128,7 +128,7 @@ struct AnnotationEditor: View {
               Button {
                 if allowed(kind) { mode = kind } else { paywall = true }
               } label: {
-                Label(kind.rawValue, systemImage: allowed(kind) ? icon(kind) : "crown.fill").labelStyle(.titleAndIcon)
+                Label(L(kind.rawValue), systemImage: allowed(kind) ? icon(kind) : "crown.fill").labelStyle(.titleAndIcon)
               }
               .buttonStyle(ChipStyle(selected: mode == kind))
               .fixedSize()
@@ -158,7 +158,7 @@ struct AnnotationEditor: View {
           }
           if mode == .text {
             HStack(spacing: 8) {
-              if let fillNote { Text(fillNote).font(.system(size: 13)).foregroundStyle(TK.grey600) }
+              if let fillNote { Text(L(fillNote)).font(.system(size: 13)).foregroundStyle(TK.grey600) }
               Spacer(minLength: 0)
               Button("My info") { profileEditor = true }.font(.system(size: 14, weight: .semibold)).foregroundStyle(TK.blue)
             }
@@ -170,7 +170,7 @@ struct AnnotationEditor: View {
           if let id = selected, let item = marks.first(where: { $0.id == id }) {
             VStack(alignment: .leading, spacing: 14) {
               HStack {
-                Text(item.kind.rawValue).font(.system(size: 16, weight: .semibold)).foregroundStyle(TK.grey900)
+                Text(L(item.kind.rawValue)).font(.system(size: 16, weight: .semibold)).foregroundStyle(TK.grey900)
                 Spacer()
                 Button(role: .destructive) {
                   remember(); setMarks(marks.filter { $0.id != id }); selected = nil
@@ -202,7 +202,7 @@ struct AnnotationEditor: View {
           if let error {
             HStack(alignment: .top, spacing: 10) {
               Image(systemName: "exclamationmark.circle.fill").foregroundStyle(TK.red)
-              Text(error).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800)
+              Text(L(error)).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800)
               Spacer(minLength: 0)
             }.padding(16).background(TK.grey100, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
           }
@@ -397,7 +397,7 @@ struct SignatureEditor: View {
           }
         }
         if !subscription.isPro { Text("Free: 1 saved signature. Pro: unlimited.").font(.system(size: 13)).foregroundStyle(TK.grey500) }
-        if let error { Text(error).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.red) }
+        if let error { Text(L(error)).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.red) }
       } actions: {
         Button("Use signature") {
           var item = PageAnnotation(kind: .signature)

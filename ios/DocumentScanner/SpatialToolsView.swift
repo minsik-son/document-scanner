@@ -152,7 +152,7 @@ struct MeasureToolView: View {
     private func tip(_ symbol: String, _ text: String) -> some View {
         HStack(spacing: 14) {
             Image(systemName: symbol).font(.system(size: 18, weight: .semibold)).foregroundStyle(TK.blue).frame(width: 40, height: 40).background(TK.blueSoft, in: Circle())
-            Text(text).font(.system(size: 16)).foregroundStyle(TK.grey800)
+            Text(L(text)).font(.system(size: 16)).foregroundStyle(TK.grey800)
         }
     }
     private func share() {
@@ -203,7 +203,7 @@ private struct MeasureScreen: View {
                     Picker("Unit", selection: $unit) { ForEach(MeasureUnit.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
                         .pickerStyle(.segmented).frame(width: 110)
                 }.padding(.horizontal, 20)
-                Text(session.hint).font(.system(size: 15, weight: .semibold)).padding(.horizontal, 16).padding(.vertical, 10)
+                Text(L(session.hint)).font(.system(size: 15, weight: .semibold)).padding(.horizontal, 16).padding(.vertical, 10)
                     .background(.black.opacity(0.45), in: Capsule()).padding(.top, 8)
                 Spacer()
                 HStack(spacing: 46) {
@@ -222,7 +222,7 @@ private struct MeasureScreen: View {
         .statusBarHidden()
     }
     private func label(_ text: String, large: Bool = false) -> some View {
-        Text(text).font(.system(size: large ? 20 : 15, weight: .bold)).foregroundStyle(TK.grey900).monospacedDigit()
+        Text(L(text)).font(.system(size: large ? 20 : 15, weight: .bold)).foregroundStyle(TK.grey900).monospacedDigit()
             .padding(.horizontal, large ? 14 : 10).padding(.vertical, large ? 8 : 5).background(.white, in: Capsule())
             .shadow(color: .black.opacity(0.2), radius: 4)
     }
@@ -369,7 +369,7 @@ struct MeshToolView: View {
     private func row(_ symbol: String, _ text: String) -> some View {
         HStack(spacing: 14) {
             Image(systemName: symbol).font(.system(size: 17, weight: .semibold)).foregroundStyle(TK.teal).frame(width: 40, height: 40).background(TK.tealSoft, in: Circle())
-            Text(text).font(.system(size: 16)).foregroundStyle(TK.grey800)
+            Text(L(text)).font(.system(size: 16)).foregroundStyle(TK.grey800)
         }
     }
 }
@@ -387,7 +387,7 @@ private struct MeshScanScreen: View {
                     Spacer()
                     Text("\(session.sections) surfaces").font(.system(size: 15, weight: .semibold)).padding(.horizontal, 14).frame(height: 36).background(.black.opacity(0.45), in: Capsule())
                 }.padding(.horizontal, 20)
-                Text(session.hint).font(.system(size: 15, weight: .semibold)).multilineTextAlignment(.center)
+                Text(L(session.hint)).font(.system(size: 15, weight: .semibold)).multilineTextAlignment(.center)
                     .padding(.horizontal, 16).padding(.vertical, 10).background(.black.opacity(0.45), in: Capsule()).padding(.top, 8)
                 Spacer()
                 Button {

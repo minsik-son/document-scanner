@@ -233,7 +233,7 @@ struct MembershipBanner: View {
                     Text("Pro Member").font(.system(.title3, weight: .black)).foregroundStyle(ProStyle.gold)
                 }
                 activeChip
-                Text(memberDetail).font(.caption).opacity(0.8).frame(maxWidth: 190, alignment: .leading).fixedSize(horizontal: false, vertical: true)
+                Text(L(memberDetail)).font(.caption).opacity(0.8).frame(maxWidth: 190, alignment: .leading).fixedSize(horizontal: false, vertical: true)
                 if subscription.planID != nil {
                     manageButton(tint: .white, filled: false).padding(.top, 6)
                 }
@@ -320,7 +320,7 @@ struct ProBenefitsCard: View {
                                 .frame(width: 50, height: 50).background(item.tint.opacity(0.12), in: Circle())
                             badge(for: item)
                         }
-                        Text(item.title).font(.caption.weight(.bold)).foregroundStyle(Design.ink).lineLimit(1).minimumScaleFactor(0.8)
+                        Text(L(item.title)).font(.caption.weight(.bold)).foregroundStyle(Design.ink).lineLimit(1).minimumScaleFactor(0.8)
                         Text(caption(for: item)).font(.caption2).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.center)
                     }.frame(maxWidth: .infinity)
                         .accessibilityElement(children: .combine)
@@ -372,7 +372,7 @@ struct WelcomeToProView: View {
                     ForEach(rows, id: \.icon) { row in
                         HStack(spacing: 12) {
                             ToolArtwork(name: row.icon, size: 38)
-                            Text(row.text).font(.subheadline.weight(.semibold)).foregroundStyle(Design.ink)
+                            Text(L(row.text)).font(.subheadline.weight(.semibold)).foregroundStyle(Design.ink)
                             Spacer(minLength: 0)
                         }
                     }

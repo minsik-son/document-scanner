@@ -156,12 +156,12 @@ struct OnboardingView: View {
         return GeometryReader { geometry in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(item.title)
+                    Text(L(item.title))
                         .font(.system(size: 26, weight: .bold)).tracking(-0.6).lineSpacing(4)
                         .foregroundStyle(Design.ink).fixedSize(horizontal: false, vertical: true)
                         .accessibilityAddTraits(.isHeader)
                         .accessibilityIdentifier("onboarding-title-\(index)")
-                    Text(item.detail)
+                    Text(L(item.detail))
                         .font(.system(size: 17)).lineSpacing(3)
                         .foregroundStyle(OnboardingPalette.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -370,7 +370,7 @@ private struct Pill: View {
     let title: String
     let symbol: String
     var body: some View {
-        Label(title, systemImage: symbol)
+        Label(L(title), systemImage: symbol)
             .font(.system(size: 14, weight: .semibold)).foregroundStyle(.white)
             .padding(.horizontal, 14).padding(.vertical, 9)
             .background(OnboardingPalette.ink, in: Capsule())
@@ -522,7 +522,7 @@ private struct LibraryHero: View {
                 let p = Ease.spring(Ease.window(t, 0.08 * Double(index), 0.08 * Double(index) + 0.45))
                 PaperSheet(accent: card.color)
                     .overlay(alignment: .topTrailing) {
-                        Text(card.label).font(.system(size: 11, weight: .bold)).foregroundStyle(.white)
+                        Text(L(card.label)).font(.system(size: 11, weight: .bold)).foregroundStyle(.white)
                             .padding(.horizontal, 7).padding(.vertical, 3)
                             .background(card.color, in: RoundedRectangle(cornerRadius: 5)).padding(10)
                     }
@@ -552,7 +552,7 @@ private struct LibraryHero: View {
         }
     }
     private func chip(_ title: String, symbol: String) -> some View {
-        Label(title, systemImage: symbol).font(.system(size: 12, weight: .medium))
+        Label(L(title), systemImage: symbol).font(.system(size: 12, weight: .medium))
             .foregroundStyle(OnboardingPalette.secondary)
             .padding(.horizontal, 10).padding(.vertical, 6)
             .background(.white, in: Capsule())

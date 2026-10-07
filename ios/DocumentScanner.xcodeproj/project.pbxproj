@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B6E5464E60FB8BF914C1C71F /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 1F23B210A85E66989F31B118 /* Localizable.strings */; };
 		00E4DB301A60F840968A5ECC /* DocumentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF9966A3071F1FE223A1DEB /* DocumentView.swift */; };
 		0385DE4985CD253F3C6F9E89 /* StartupPerformanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A78716AB0309535966C0D9B /* StartupPerformanceTests.swift */; };
 		070466B91F53614AC3B31C33 /* PDFExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEC6EAFA9C88C40728FBB740 /* PDFExport.swift */; };
@@ -131,6 +132,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		45CEE2374F8DBBB96C5D9939 /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/Localizable.strings; sourceTree = "<group>"; };
+		D2003BF26773C43E3AEB40CF /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		001AFDAEA6A56CFE6D7E815D /* SubscriptionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionTests.swift; sourceTree = "<group>"; };
 		67890A8D6F8743590752C432 /* OfficeLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfficeLayoutTests.swift; sourceTree = "<group>"; };
 		0157C66F8FE10BC5F0BE0041 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
@@ -312,6 +315,7 @@
 				AD6E03BC2F6CF9267D50E64A /* App.swift */,
 				E92CF39BFA2F3F9274651C6B /* AppLock.swift */,
 				7121F12CCF29CE7873E5050C /* Assets.xcassets */,
+				1F23B210A85E66989F31B118 /* Localizable.strings */,
 				9E79422AF76DC13551AAC5AC /* BackupArchive.swift */,
 				961E7CEBB996D70937A8D13A /* CameraView.swift */,
 				B036793EC7623534D57BCA10 /* CaptureStyle.swift */,
@@ -501,6 +505,8 @@
 			knownRegions = (
 				Base,
 				en,
+				ko,
+				ja,
 			);
 			mainGroup = 57AE0775CD10A6AC59680B17;
 			minimizedProjectReferenceProxies = 1;
@@ -532,6 +538,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				EE44DE370F08CEE48F95921C /* Assets.xcassets in Resources */,
+				B6E5464E60FB8BF914C1C71F /* Localizable.strings in Resources */,
 				F274FF2876ADFFB042F89A42 /* LaunchScreen.storyboard in Resources */,
 				A1232E6BED0110F97FB6AF92 /* OfficeTheme.xml in Resources */,
 			);
@@ -681,6 +688,18 @@
 			targetProxy = 832D6654FFC8482D2B259EC6 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		1F23B210A85E66989F31B118 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				45CEE2374F8DBBB96C5D9939 /* ko */,
+				D2003BF26773C43E3AEB40CF /* ja */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		2AA7CE1A94C8139969C81FBD /* Debug */ = {

@@ -73,10 +73,10 @@ struct LocalDocumentToolsView: View {
                         Section { Button("Preview") { prepare() }.disabled(busy || (tool == .identity && bothSides && front == back)).accessibilityIdentifier("local-tool-prepare") }
                     }
                     if busy { Section { ProgressView("Preparing on this iPhone…"); Button("Cancel operation") { job?.cancel() } } }
-                    if let message { Section { Text(message).accessibilityIdentifier("local-tool-result") } }
+                    if let message { Section { Text(L(message)).accessibilityIdentifier("local-tool-result") } }
                 }
             }
-            .navigationTitle(tool.rawValue).navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(L(tool.rawValue)).navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() }.disabled(busy) } }
             .interactiveDismissDisabled(busy)
             .sheet(item: $share) { files in ShareSheet(items: files.urls) }

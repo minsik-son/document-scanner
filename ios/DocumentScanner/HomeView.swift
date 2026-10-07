@@ -100,7 +100,7 @@ struct HomeView: View {
                         if tab == "Folders" {
                             ScrollView(.horizontal) {
                                 HStack { ForEach(store.manifest.folders, id: \.self) { name in
-                                    Button(name) { folder = folder == name ? nil : name }.padding(12)
+                                    Button(L(name)) { folder = folder == name ? nil : name }.padding(12)
                                         .background(folder == name ? Design.blue.opacity(0.1) : .white, in: Capsule())
                                 } }
                             }.scrollIndicators(.hidden)
@@ -122,7 +122,7 @@ struct HomeView: View {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: 20) {
                         ForEach(filtered) { doc in
                             NavigationLink { DocumentView(documentID: doc.id, initialPage: matchingPage(doc)) } label: {
-                                VStack { if PrivateLock.isLocked(doc, in: store.manifest) { LockedThumb().frame(height: 150) } else if let page = doc.pages.first { PageThumbnail(page: page, pdfFile: doc.pdfFile).frame(height: 150) }; Text(doc.title).font(.headline).lineLimit(2); Text("\(doc.pages.count) pages").font(.caption) }.padding(12).frame(maxWidth: .infinity).background(.white, in: RoundedRectangle(cornerRadius: 20))
+                                VStack { if PrivateLock.isLocked(doc, in: store.manifest) { LockedThumb().frame(height: 150) } else if let page = doc.pages.first { PageThumbnail(page: page, pdfFile: doc.pdfFile).frame(height: 150) }; Text(L(doc.title)).font(.headline).lineLimit(2); Text("\(doc.pages.count) pages").font(.caption) }.padding(12).frame(maxWidth: .infinity).background(.white, in: RoundedRectangle(cornerRadius: 20))
                             }.buttonStyle(.plain).contextMenu { trashAction(doc) }
                         }
                     }.listRowSeparator(.hidden).listRowBackground(Color.clear)
@@ -266,7 +266,7 @@ struct HomeView: View {
             VStack(spacing: 6) {
                 Image(systemName: symbol).font(.system(size: 21, weight: .medium))
                     .frame(height: 25)
-                Text(title).font(.system(.caption2, weight: selected ? .bold : .medium))
+                Text(L(title)).font(.system(.caption2, weight: selected ? .bold : .medium))
                     .lineLimit(1).minimumScaleFactor(0.75)
             }
             .foregroundStyle(selected ? Design.blue : Color.secondary)
@@ -345,7 +345,7 @@ struct HomeView: View {
                 ToolArtwork(name: item.icon).overlay(alignment: .topTrailing) {
                     if item.pro { ProBadge().offset(x: 6, y: -4) }
                 }
-                Text(item.title).font(.system(.caption, weight: .medium)).foregroundStyle(Design.ink)
+                Text(L(item.title)).font(.system(.caption, weight: .medium)).foregroundStyle(Design.ink)
                     .fixedSize(horizontal: false, vertical: true)
             }.frame(maxWidth: .infinity, minHeight: 88, alignment: .top).contentShape(Rectangle())
         }.accessibilityLabel(item == .qr ? "Open QR code" : item.title).disabled(importing || !store.storageAvailable)
@@ -409,7 +409,7 @@ struct DocumentRow: View {
         HStack(spacing: 16) {
             Group { if locked { LockedThumb() } else if let page = document.pages.first { PageThumbnail(page: page, pdfFile: document.pdfFile) } else { Image(systemName: "doc") } }.frame(width: 56, height: 72).background(Design.muted, in: RoundedRectangle(cornerRadius: 8))
             VStack(alignment: .leading, spacing: 6) {
-                Text(document.title).font(.headline).lineLimit(2)
+                Text(L(document.title)).font(.headline).lineLimit(2)
                 Text("\(document.pages.count) pages · \(document.kind.map { $0 == .other ? document.folder : $0.label } ?? document.folder)").font(.subheadline).foregroundStyle(.secondary)
                 if !query.isEmpty, !locked, let index = document.pages.firstIndex(where: { $0.plainText.localizedCaseInsensitiveContains(query) }) { Text("Text match on page \(index+1)").font(.caption).foregroundStyle(Design.blue) }
                 Text(document.updatedAt, style: .date).font(.caption).foregroundStyle(.secondary)

@@ -97,7 +97,7 @@ struct CameraView: View {
                 Spacer()
                 if let message = error ?? camera.problem {
                     VStack(spacing: 10) {
-                        Text(message).multilineTextAlignment(.center)
+                        Text(L(message)).multilineTextAlignment(.center)
                         Button("Open Settings") { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } }
                         PhotosPicker("Import photo instead", selection: $importedPhoto, matching: .images)
                     }.padding(16).background(.black.opacity(0.8), in: RoundedRectangle(cornerRadius: 18, style: .continuous)).padding(.horizontal, 24)
@@ -159,7 +159,7 @@ struct CameraView: View {
         HStack(spacing: 6) {
             ForEach(CaptureStyle.allCases, id: \.self) { mode in
                 Button { selectStyle(mode) } label: {
-                    Text(mode.rawValue).font(.system(size: 14, weight: .semibold)).lineLimit(1).fixedSize()
+                    Text(L(mode.rawValue)).font(.system(size: 14, weight: .semibold)).lineLimit(1).fixedSize()
                         .foregroundStyle(style == mode ? TK.grey900 : .white.opacity(0.85))
                         .padding(.horizontal, 12).frame(height: 32)
                         .background(style == mode ? Color.white : Color.clear, in: Capsule())
@@ -200,7 +200,7 @@ struct CameraView: View {
                             }
                             .accessibilityLabel("Last added page")
                     }
-                    Text(pageCountLabel).font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.8))
+                    Text(L(pageCountLabel)).font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.8))
                         .lineLimit(2).fixedSize(horizontal: false, vertical: true)
                 }.frame(maxWidth: .infinity, alignment: .leading)
                 Button(action: capturePage) {

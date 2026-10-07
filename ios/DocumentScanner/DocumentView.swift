@@ -36,7 +36,7 @@ struct DocumentView: View {
             if let doc = document, privateLock.hidden(doc, in: store.manifest) {
                 VStack(spacing: 18) {
                     Image(systemName: "lock.fill").font(.system(size: 44, weight: .semibold)).foregroundStyle(Design.blue)
-                    Text(doc.title).font(.title3.bold()).multilineTextAlignment(.center)
+                    Text(L(doc.title)).font(.title3.bold()).multilineTextAlignment(.center)
                     Text("This document is locked in the app.").foregroundStyle(.secondary)
                     Button("Unlock with Face ID") { Task { _ = await privateLock.unlock(doc, in: store.manifest) } }
                         .buttonStyle(PrimaryButton()).accessibilityIdentifier("document-unlock")
@@ -51,7 +51,7 @@ struct DocumentView: View {
                                 Image(systemName: (doc.kind ?? .other).symbol).font(.system(size: 17, weight: .semibold)).foregroundStyle(Design.blue)
                                     .frame(width: 36, height: 36).background(Design.blue.opacity(0.09), in: RoundedRectangle(cornerRadius: 10))
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(doc.title).font(.headline).foregroundStyle(Design.ink).lineLimit(1)
+                                    Text(L(doc.title)).font(.headline).foregroundStyle(Design.ink).lineLimit(1)
                                     Text("\((doc.kind ?? .other).label) · \(doc.pages.count) pages · \(doc.textStatus)").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                                 }
                                 Spacer(minLength: 4)
@@ -77,7 +77,7 @@ struct DocumentView: View {
                         }.font(.headline)
                         if let file = doc.pdfFile { ShareLink(item: store.url(file)) { Label("Share PDF", systemImage: "square.and.arrow.up") }.buttonStyle(PrimaryButton()) }
                     }.padding(24)
-                }.navigationTitle(doc.title).navigationBarTitleDisplayMode(.inline)
+                }.navigationTitle(L(doc.title)).navigationBarTitleDisplayMode(.inline)
                 .toolbar(.visible, for: .navigationBar)
                 .onAppear { if openTextOnAppear && !didOpenInitialText { didOpenInitialText = true; text = true } }
                 .toolbar { ToolbarItem(placement: .topBarTrailing) { Button { trash = true } label: { Image(systemName: "trash") }.accessibilityLabel("Move to trash") } }
@@ -107,13 +107,13 @@ struct DocumentView: View {
                                     if subscription.isPro { shareAllText() }
                                     else { pendingBatch = true; paywall = true }
                                 } label: { HStack { Text("Share all page text"); Spacer(); Text("PRO").font(.caption.bold()) } }.buttonStyle(.bordered).disabled(recognizing)
-                                if recognizing { Text(progress).font(.subheadline).foregroundStyle(.secondary); Button("Cancel recognition") { recognitionTask?.cancel() } }
-                                if let problem { Text(problem).foregroundStyle(.red) }
+                                if recognizing { Text(L(progress)).font(.subheadline).foregroundStyle(.secondary); Button("Cancel recognition") { recognitionTask?.cancel() } }
+                                if let problem { Text(L(problem)).foregroundStyle(.red) }
                                 if let availableText { Button("Share available text") { textShare = SharedText(value: availableText) }.buttonStyle(.bordered).disabled(recognizing) }
                                 if let current = document, current.pages.indices.contains(selectedPage) {
                                     let page = current.pages[selectedPage]
                                     if page.ocrComplete && page.textBlocks.isEmpty { Text("No text was found on this page. Try a clearer scan.").foregroundStyle(.secondary) }
-                                    Text(page.plainText).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                                    Text(L(page.plainText)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                                     if !page.plainText.isEmpty {
                                         Button("Correct recognized text") { correcting = true }.disabled(recognizing)
                                         Button("Save text file") {
@@ -216,7 +216,7 @@ struct DocumentNameSheet: View {
                 Section("Name") {
                     TextField("Document name", text: $title).accessibilityIdentifier("document-name-field")
                     if let suggestion {
-                        Button { title = suggestion } label: { Label(suggestion, systemImage: "sparkles") }
+                        Button { title = suggestion } label: { Label(L(suggestion), systemImage: "sparkles") }
                             .accessibilityIdentifier("document-name-suggestion")
                     }
                 }
@@ -224,7 +224,7 @@ struct DocumentNameSheet: View {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 8)], spacing: 8) {
                         ForEach(DocumentKind.allCases) { option in
                             Button { kind = option } label: {
-                                Label(option.label, systemImage: option.symbol).font(.subheadline.weight(.semibold)).lineLimit(1)
+                                Label(L(option.label), systemImage: option.symbol).font(.subheadline.weight(.semibold)).lineLimit(1)
                                     .frame(maxWidth: .infinity).padding(.vertical, 10)
                                     .background(kind == option ? Design.blue.opacity(0.12) : Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
                                     .foregroundStyle(kind == option ? Design.blue : Design.ink)

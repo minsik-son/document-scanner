@@ -37,7 +37,7 @@ struct TrimMarginsView: View {
                     ForEach(Edge.allCases,id:\.self) { edge in
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
-                                Text(edge.rawValue).font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey700)
+                                Text(L(edge.rawValue)).font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey700)
                                 Spacer()
                                 Text(String(format:"%.1f%%",edges[keyPath:edge.key]*100)).font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.blue).monospacedDigit()
                                     .accessibilityIdentifier("trim-value-"+edge.rawValue.lowercased())
@@ -49,7 +49,7 @@ struct TrimMarginsView: View {
                     Text("Your original is kept. For no added white space, save with Paper: Original and Margins: None.").font(.system(size: 13)).foregroundStyle(TK.grey500)
                     if page.sourcePDF != nil { Text("PDF text stays selectable. Forms are flattened.").font(.system(size: 13)).foregroundStyle(TK.grey500) }
                     if !(page.annotations ?? []).isEmpty { Text("Check existing annotations after trimming.").font(.system(size: 13)).foregroundStyle(TK.grey500) }
-                } else if let problem { Text(problem).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.red) }
+                } else if let problem { Text(L(problem)).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.red) }
                 else { ProgressView().frame(maxWidth:.infinity,minHeight:300) }
             } actions: {
                 Button("Apply") { apply(edges); dismiss() }.buttonStyle(CTAButtonStyle()).disabled(image == nil || !edges.valid).accessibilityIdentifier("trim-apply")

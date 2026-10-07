@@ -87,7 +87,7 @@ struct PhotoTranslationView: View {
         if let error {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "exclamationmark.circle.fill").foregroundStyle(TK.red)
-                Text(error).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800).fixedSize(horizontal: false, vertical: true)
+                Text(L(error)).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("text-tool-error")
                 Spacer(minLength: 0)
             }.padding(16).background(TK.grey100, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -139,7 +139,7 @@ struct PhotoTranslationView: View {
                     if !scan.edgesDetected {
                         Label("Check the crop", systemImage: "exclamationmark.triangle.fill").font(.system(size: 13, weight: .medium)).foregroundStyle(TK.orange)
                     }
-                    if let notice = scan.notice { Text(notice).font(.system(size: 13)).foregroundStyle(TK.grey500) }
+                    if let notice = scan.notice { Text(L(notice)).font(.system(size: 13)).foregroundStyle(TK.grey500) }
                     HStack(spacing: 8) {
                         Button { crop = true } label: { Label("Crop", systemImage: "crop") }.buttonStyle(ChipStyle(selected: false))
                         Button { reviewIssuesOnly = false; editAreas = true } label: { Label("Text", systemImage: "text.viewfinder") }
@@ -160,7 +160,7 @@ struct PhotoTranslationView: View {
         Button { choosing = side } label: {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(label).font(.system(size: 13, weight: .medium)).foregroundStyle(TK.grey500)
+                    Text(L(label)).font(.system(size: 13, weight: .medium)).foregroundStyle(TK.grey500)
                     Text(name(code)).font(.system(size: 22, weight: .bold)).foregroundStyle(TK.grey900)
                 }
                 Spacer()
@@ -363,7 +363,7 @@ private struct TranslationAreasEditor: View {
                             Text("This text was small or hard to read, so it was kept in the original. Check the recognized text above before translating it.")
                                 .font(.footnote).foregroundStyle(.secondary)
                         }
-                        if let issue = issues[regions[selected].id] { Text(issue).font(.footnote).foregroundStyle(.orange) }
+                        if let issue = issues[regions[selected].id] { Text(L(issue)).font(.footnote).foregroundStyle(.orange) }
                     }
                 } else { Text("No text areas found. Return to the scan and adjust its crop.") }
             }.onAppear { selected = indices.first ?? 0 }
@@ -401,7 +401,7 @@ private struct TranslationLanguageList: View {
             }
             .listStyle(.insetGrouped)
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search languages")
-            .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(L(title)).navigationBarTitleDisplayMode(.inline)
         }
     }
     private func row(_ code: String) -> some View {

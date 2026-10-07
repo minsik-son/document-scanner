@@ -12,11 +12,16 @@ struct DocumentScannerApp: App {
     @StateObject private var advertisements = HomeAdvertisementStore()
     @StateObject private var completionAdvertisements = CompletionAdvertisementStore()
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage(AppLanguage.key) private var language = ""
     var body: some Scene {
         WindowGroup {
             ZStack {
                 if let store {
                     FirstRunView().environmentObject(store)
+                        // In-app language: every Text picks its strings from this locale;
+                        // .id rebuilds the screens when the language changes.
+                        .environment(\.locale, AppLanguage.locale)
+                        .id(language)
                         .environment(\.colorScheme, .light)
                         .environment(\.startupCovered, showStartup)
                         // Not reachable (VoiceOver, UI tests, touches) until it is revealed.
@@ -182,3 +187,42 @@ private func makeLibrary() async -> LibraryStore {
 #endif
     return await LibraryStore.open()
 }
+
+
+/// The app's own language setting (Settings › Language). Defaults to the
+/// device language when it is one we ship, otherwise English.
+enum AppLanguage: String, CaseIterable, Identifiable {
+    case en, ko, ja
+    var id: String { rawValue }
+    /// Each language is named in itself, as in the iOS language list.
+    var nativeName: String {
+        switch self { case .en: "English"; case .ko: "한국어"; case .ja: "日本語" }
+    }
+    static let key = "app-language"
+    static var current: AppLanguage {
+        if let saved = UserDefaults.standard.string(forKey: key), let value = AppLanguage(rawValue: saved) { return value }
+        let device = Locale.preferredLanguages.first.map { String($0.prefix(2)) } ?? "en"
+        return AppLanguage(rawValue: device) ?? .en
+    }
+    static var locale: Locale { Locale(identifier: current.rawValue) }
+    /// Strings for the chosen language (English lives in the source itself).
+    static var bundle: Bundle {
+        guard current != .en, let path = Bundle.main.path(forResource: current.rawValue, ofType: "lproj"),
+              let bundle = Bundle(path: path) else { return .main }
+        return bundle
+    }
+    static func choose(_ language: AppLanguage) {
+        UserDefaults.standard.set(language.rawValue, forKey: key)
+        // System-provided text (share sheets, permission prompts) follows on the next launch.
+        UserDefaults.standard.set([language.rawValue], forKey: "AppleLanguages")
+    }
+}
+
+/// Translates a runtime string (tool names, messages built from literals) into the
+/// chosen app language. Strings without a translation come back unchanged.
+func L(_ text: String) -> String {
+    AppLanguage.current == .en ? text : AppLanguage.bundle.localizedString(forKey: text, value: text, table: nil)
+}
+func L(_ key: LocalizedStringKey) -> LocalizedStringKey { key }
+func L(_ text: AttributedString) -> AttributedString { text }
+func L(_ text: Substring) -> String { L(String(text)) }

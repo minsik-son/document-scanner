@@ -186,7 +186,7 @@ struct ScanPreview: View {
                 ProgressView("Enhancing your scan…").padding(12).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
             }
             if let problem = model.problem {
-                VStack(spacing: 12) { Text(problem).multilineTextAlignment(.center); Button("Retry preview") { retry += 1 } }
+                VStack(spacing: 12) { Text(L(problem)).multilineTextAlignment(.center); Button("Retry preview") { retry += 1 } }
                     .padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
             }
         }

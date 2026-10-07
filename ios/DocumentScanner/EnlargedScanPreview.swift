@@ -19,7 +19,7 @@ struct EnlargedScanPreview: View {
                 .safeAreaInset(edge: .bottom) {
                     VStack(spacing: 8) {
                         if loading { ProgressView("Loading full detail…").tint(.white) }
-                        if let problem { Text(problem) }
+                        if let problem { Text(L(problem)) }
                         Text("Pinch to zoom · Double-tap to zoom or reset")
                     }
                     .font(.caption).foregroundStyle(.white.opacity(0.85))

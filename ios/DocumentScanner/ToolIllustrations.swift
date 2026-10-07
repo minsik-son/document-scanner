@@ -112,7 +112,7 @@ private struct Pill: View {
     let text: String
     var color = TK.blue
     var body: some View {
-        Text(text).font(.system(size: 13, weight: .bold)).foregroundStyle(.white)
+        Text(L(text)).font(.system(size: 13, weight: .bold)).foregroundStyle(.white)
             .padding(.horizontal, 10).padding(.vertical, 5).background(color, in: Capsule())
     }
 }

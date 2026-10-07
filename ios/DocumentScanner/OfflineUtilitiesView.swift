@@ -20,7 +20,7 @@ struct QRCodeView: View {
                     if UIImagePickerController.isSourceTypeAvailable(.camera) { Button("Scan with camera") { camera = true } }
                     PhotosPicker("Choose QR image", selection: $photo, matching: .images)
                     ForEach(results, id: \.self) { value in
-                        Text(value).textSelection(.enabled)
+                        Text(L(value)).textSelection(.enabled)
                         Button("Copy result") { UIPasteboard.general.string = value }
                     }
                     Text("Codes are read on this iPhone. Links are not opened automatically.").font(.caption)
@@ -39,7 +39,7 @@ struct QRCodeView: View {
                     }
                 }
                 if busy { ProgressView("Reading on this iPhone…") }
-                if let message { Text(message).accessibilityIdentifier("qr-result") }
+                if let message { Text(L(message)).accessibilityIdentifier("qr-result") }
             }
             .disabled(busy)
             .navigationTitle("QR code").navigationBarTitleDisplayMode(.inline)
@@ -153,7 +153,7 @@ struct ScreenshotStitchView: View {
             }.disabled(busy)
                 .safeAreaInset(edge: .bottom) {
                     VStack(spacing: 8) {
-                        if let message { Text(message).font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("stitch-status") }
+                        if let message { Text(L(message)).font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("stitch-status") }
                         if let output {
                             HStack {
                                 Button("Change seams") { ExportFiles.remove(output.directory); self.output = nil; message = nil }.buttonStyle(.bordered)

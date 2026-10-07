@@ -148,7 +148,7 @@ struct AdvancedOfflineHub: View {
         let visible = tools.filter { !$0.hidden && matches($0.rawValue) }
         if !visible.isEmpty {
             VStack(alignment: .leading, spacing: 16) {
-                Text(title).font(.headline)
+                Text(L(title)).font(.headline)
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(visible) { tool in
                         Button { if locked(tool.pro) { paywall = true } else { advancedRoute = tool } } label: { ToolTile(title: tool.rawValue, icon: tool.icon, pro: tool.pro) }.accessibilityLabel(tool.rawValue)
@@ -161,7 +161,7 @@ struct AdvancedOfflineHub: View {
         let visible = tools.filter { matches($0.rawValue) }
         if !visible.isEmpty {
             VStack(alignment: .leading, spacing: 16) {
-                Text(title).font(.headline)
+                Text(L(title)).font(.headline)
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(visible) { tool in
                         Button { if locked(tool.pro) { paywall = true } else { quick = .library(tool) } } label: { ToolTile(title: tool.rawValue, icon: tool.icon, pro: tool.pro) }
@@ -442,7 +442,7 @@ struct AdvancedOfflineToolContent:View {
                     if !store.active.isEmpty {
                         Menu {
                             ForEach(store.active) { document in
-                                Button(document.title) { clearWordPDF(); allPages = false; selectedDocument = document.id; pageIndex = 0; loadPage() }
+                                Button(L(document.title)) { clearWordPDF(); allPages = false; selectedDocument = document.id; pageIndex = 0; loadPage() }
                             }
                         } label: {
                             ChoiceRow(symbol: "doc.text.fill", title: "Use a saved scan", detail: "From your documents", tint: TK.purple, soft: TK.purpleSoft)
@@ -1030,7 +1030,7 @@ struct CameraTextToolView: View {
                     Button { dismiss() } label: { Image(systemName:"xmark").font(.system(size: 18, weight: .semibold)).frame(width:44,height:44) }
                         .accessibilityLabel("Close camera").accessibilityIdentifier("text-tool-close")
                     Spacer()
-                    Text(tool.rawValue).font(.system(size: 15, weight: .semibold))
+                    Text(L(tool.rawValue)).font(.system(size: 15, weight: .semibold))
                         .padding(.horizontal, 12).frame(height: 36).background(.black.opacity(0.35), in: Capsule())
                     Spacer()
                     Button { flash.toggle() } label: { Image(systemName:flash ? "bolt.fill" : "bolt.slash").font(.system(size: 18, weight: .semibold)).frame(width:44,height:44) }
@@ -1040,7 +1040,7 @@ struct CameraTextToolView: View {
                 if !simulatedCamera, let problem = camera.problem {
                     VStack(spacing:12) {
                         Text("Camera unavailable").font(.system(size: 17, weight: .semibold))
-                        Text(problem).font(.system(size: 15)).multilineTextAlignment(.center)
+                        Text(L(problem)).font(.system(size: 15)).multilineTextAlignment(.center)
                         HStack(spacing: 8) {
                             Button("Try again") { startCamera() }.buttonStyle(ChipStyle(selected: false))
                             Button("Settings") { if let url = URL(string:UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } }.buttonStyle(ChipStyle(selected: false))
@@ -1089,7 +1089,7 @@ struct CameraTextToolView: View {
         StepStack(step: step == .result ? 1 : 0, forward: step == .result) {
             if step == .result {
                 ToolPage(title: math ? "Your answer" : "Your translation", subtitle: text) {
-                    Text(result).font(.system(size: math ? 40 : 22, weight: .bold)).foregroundStyle(TK.grey900)
+                    Text(L(result)).font(.system(size: math ? 40 : 22, weight: .bold)).foregroundStyle(TK.grey900)
                         .textSelection(.enabled).accessibilityIdentifier("text-tool-result")
                     HStack(spacing: 8) {
                         Button { UIPasteboard.general.string = result } label: { Label("Copy", systemImage: "doc.on.doc") }.buttonStyle(ChipStyle(selected: false))
@@ -1108,7 +1108,7 @@ struct CameraTextToolView: View {
                     }
                     if math && lines.count > 1 {
                         ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) { ForEach(Array(lines.enumerated()), id: \.offset) { _, line in Button(line) { text = line }.buttonStyle(ChipStyle(selected: text == line)) } }
+                            HStack(spacing: 8) { ForEach(Array(lines.enumerated()), id: \.offset) { _, line in Button(L(line)) { text = line }.buttonStyle(ChipStyle(selected: text == line)) } }
                         }
                     }
                     TextEditor(text: $text).focused($editing).font(.system(size: 17)).scrollContentBackground(.hidden)
@@ -1118,7 +1118,7 @@ struct CameraTextToolView: View {
                     if let error {
                         HStack(alignment: .top, spacing: 10) {
                             Image(systemName: "exclamationmark.circle.fill").foregroundStyle(TK.red)
-                            Text(error).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800).accessibilityIdentifier("text-tool-error")
+                            Text(L(error)).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800).accessibilityIdentifier("text-tool-error")
                             Spacer(minLength: 0)
                         }.padding(16).background(TK.grey100, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }

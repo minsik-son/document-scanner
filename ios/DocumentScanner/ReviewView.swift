@@ -86,10 +86,10 @@ struct ReviewView: View {
                             .padding(.horizontal, 20).padding(.vertical, 12)
                             if textNotice != nil || textRetryNeeded || saving || error != nil || doc.captureStyle == .card {
                                 VStack(alignment: .leading, spacing: 8) {
-                                    if let textNotice { Text(textNotice).font(.system(size: 13)).foregroundStyle(TK.grey600) }
+                                    if let textNotice { Text(L(textNotice)).font(.system(size: 13)).foregroundStyle(TK.grey600) }
                                     if textRetryNeeded { Button("Retry text recognition") { save(forceText: false) }.font(.system(size: 14, weight: .semibold)).disabled(saving) }
                                     if saving { ProgressView(saveProgress).font(.system(size: 13)) }
-                                    if let error { Text(error).font(.system(size: 13)).foregroundStyle(TK.red) }
+                                    if let error { Text(L(error)).font(.system(size: 13)).foregroundStyle(TK.red) }
                                     if doc.captureStyle == .card {
                                         Button("Arrange ID card on one page") { identityLayout = true }.buttonStyle(ChipStyle(selected: false))
                                     }
@@ -147,14 +147,14 @@ struct ReviewView: View {
                                     if doc.pages.contains(where: { $0.sourcePDF != nil }) { Text("Changing PDF paper or margins keeps text and links but flattens interactive forms. The imported original is retained.").font(.caption).foregroundStyle(.secondary) }
                                 }
                             }
-                            if let error { Section { Text(error).foregroundStyle(.red) } }
+                            if let error { Section { Text(L(error)).foregroundStyle(.red) } }
                         }.listStyle(.insetGrouped).disabled(saving)
                         .environment(\.editMode, .constant(reordering ? .active : .inactive))
                         .safeAreaInset(edge: .bottom) {
                             VStack(spacing: 12) {
                                 Button { openCamera(retaking: nil) } label: { Label("Add pages", systemImage: "camera") }
                                     .buttonStyle(SecondaryButton()).disabled(saving)
-                                if saving { Text(saveProgress).font(.subheadline).foregroundStyle(.secondary).accessibilityIdentifier("save-progress") }
+                                if saving { Text(L(saveProgress)).font(.subheadline).foregroundStyle(.secondary).accessibilityIdentifier("save-progress") }
                                 Button { save() } label: { if saving { ProgressView().tint(Design.blueInk).frame(maxWidth: .infinity) } else { Text(doc.isDraft ? "Save PDF" : "Save changes") } }.buttonStyle(PrimaryButton()).disabled(saving || doc.pages.isEmpty)
                             }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8).background(.white)
                         }
@@ -167,7 +167,7 @@ struct ReviewView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     if saved {
                         Button { finishSaved() } label: {
-                            HStack(spacing: 4) { Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold)); Text(savedBackTitle) }
+                            HStack(spacing: 4) { Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold)); Text(L(savedBackTitle)) }
                         }.disabled(saving || finishing).accessibilityIdentifier("saved-done")
                     } else { Button(document?.isDraft == true ? "Close" : "Cancel") { cancelEditing() }.disabled(saving) }
                 }
@@ -335,7 +335,7 @@ struct ReviewView: View {
     private func pageActionLabel(_ title: String, icon: String) -> some View {
         VStack(spacing: 5) {
             Image(systemName: icon).font(.system(size: 19, weight: .medium)).frame(height: 24)
-            Text(title).font(.system(size: 12, weight: .medium)).lineLimit(1)
+            Text(L(title)).font(.system(size: 12, weight: .medium)).lineLimit(1)
         }
         .foregroundStyle(TK.grey800)
         .frame(maxWidth: .infinity, minHeight: 56).contentShape(Rectangle())
@@ -481,7 +481,7 @@ struct PageEditor: View {
                                     Button { selectedTool = tool } label: {
                                         VStack(spacing: 6) {
                                             Image(systemName: tool.icon).font(.system(size: 20))
-                                            Text(tool.rawValue).font(.subheadline.weight(.medium))
+                                            Text(L(tool.rawValue)).font(.subheadline.weight(.medium))
                                         }
                                         .frame(maxWidth: .infinity).padding(.vertical, 12)
                                         .foregroundStyle(selectedTool == tool ? Design.blue : Color.secondary)
@@ -496,7 +496,7 @@ struct PageEditor: View {
                         }
                         .disabled(detecting)
                         if detecting { ProgressView("Finding page edges…") }
-                        if let message { Text(message).font(.subheadline).foregroundStyle(.red) }
+                        if let message { Text(L(message)).font(.subheadline).foregroundStyle(.red) }
                     }.padding(20)
                 }
             }
@@ -505,7 +505,7 @@ struct PageEditor: View {
                     HStack(spacing: 12) {
                         if onAddPage != nil { Button { finish(.addPage) } label: { Label("Add page", systemImage: "plus").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 18).background(Design.muted, in: RoundedRectangle(cornerRadius: 16)) }
                             .accessibilityIdentifier("review-add-page") }
-                        Button(doneTitle) { finish(.done) }.buttonStyle(PrimaryButton()).accessibilityIdentifier("review-done")
+                        Button(L(doneTitle)) { finish(.done) }.buttonStyle(PrimaryButton()).accessibilityIdentifier("review-done")
                     }.disabled(detecting || !previewReady).padding(.horizontal, 20).padding(.vertical, 12).background(.white)
                 }
             }
@@ -582,7 +582,7 @@ struct PageEditor: View {
                         Button { selectedAdjustment = item } label: {
                             VStack(spacing: 4) {
                                 Image(systemName: item.icon).font(.system(size: 17, weight: .medium))
-                                Text(item.rawValue).font(.caption.weight(on ? .semibold : .medium)).lineLimit(1).minimumScaleFactor(0.8)
+                                Text(L(item.rawValue)).font(.caption.weight(on ? .semibold : .medium)).lineLimit(1).minimumScaleFactor(0.8)
                             }
                             .frame(maxWidth: .infinity, minHeight: 56)
                             .foregroundStyle(on ? Design.blue : .primary)
@@ -597,9 +597,9 @@ struct PageEditor: View {
                 }
                 VStack(spacing: 4) {
                     HStack {
-                        Text(selectedAdjustment.rawValue).font(.subheadline.weight(.semibold))
+                        Text(L(selectedAdjustment.rawValue)).font(.subheadline.weight(.semibold))
                         Spacer()
-                        Text(adjustmentValue).font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                        Text(L(adjustmentValue)).font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                             .accessibilityIdentifier("adjustment-value")
                     }
                     Slider(value: adjustmentBinding, in: adjustmentRange)
@@ -639,8 +639,8 @@ struct PageEditor: View {
                 Image(systemName: icon).font(.system(size: 20, weight: .medium)).foregroundStyle(Design.blue)
                     .frame(width: 44, height: 44).background(Design.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
-                    Text(detail).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.leading)
+                    Text(L(title)).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                    Text(L(detail)).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.leading)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
@@ -652,7 +652,7 @@ struct PageEditor: View {
     }
     private func cropAction(_ title: String, icon: String, identifier: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Label(title, systemImage: icon).font(.subheadline)
+            Label(L(title), systemImage: icon).font(.subheadline)
                 .frame(maxWidth: .infinity, minHeight: 48)
                 .padding(.horizontal, 8)
                 .background(Design.muted, in: RoundedRectangle(cornerRadius: 12))
@@ -759,7 +759,7 @@ struct CropView: View {
                         }
                     }
                 }.padding(24)
-                if let detectionMessage { Text(detectionMessage).font(.caption).foregroundStyle(.secondary).padding(.horizontal) }
+                if let detectionMessage { Text(L(detectionMessage)).font(.caption).foregroundStyle(.secondary).padding(.horizontal) }
             }.navigationTitle("Crop").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
@@ -812,7 +812,7 @@ struct PageEraseSheet: View {
                     HStack(spacing: 8) {
                         Button { detectFingers(image) } label: { Label("Find fingers", systemImage: "hand.raised") }
                             .buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("page-erase-fingers")
-                        if let fingerNote { Text(fingerNote).font(.footnote).foregroundStyle(TK.grey600).lineLimit(2) }
+                        if let fingerNote { Text(L(fingerNote)).font(.footnote).foregroundStyle(TK.grey600).lineLimit(2) }
                         Spacer(minLength: 0)
                     }
                     ErasePainter(image: image, strokes: $strokes, brush: $brush)
@@ -874,7 +874,7 @@ private struct ToneThumbnails: View {
                                 .frame(width: 84, height: 108)
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                                 .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(selected ? Design.blue : Color.black.opacity(0.08), lineWidth: selected ? 2.5 : 1))
-                                Text(tone.rawValue).font(.footnote.weight(selected ? .semibold : .medium))
+                                Text(L(tone.rawValue)).font(.footnote.weight(selected ? .semibold : .medium))
                                     .foregroundStyle(selected ? Design.blue : .primary)
                                     .lineLimit(1).minimumScaleFactor(0.75).frame(width: 88)
                             }

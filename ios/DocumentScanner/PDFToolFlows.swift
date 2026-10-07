@@ -470,7 +470,7 @@ private struct OCRToolStep: View {
                 if !read { HStack(spacing: 10) { ProgressView(); Text("Reading…").foregroundStyle(TK.grey600) }.frame(maxWidth: .infinity, minHeight: 160) }
                 else if text.isEmpty { Text("No text was found on this page. A sharper, brighter scan helps.").foregroundStyle(TK.grey600).frame(maxWidth: .infinity, minHeight: 120) }
                 else {
-                    Text(text).font(.system(size: 16)).foregroundStyle(TK.grey900).textSelection(.enabled)
+                    Text(L(text)).font(.system(size: 16)).foregroundStyle(TK.grey900).textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading).accessibilityIdentifier("ocr-text")
                 }
             }
@@ -669,7 +669,7 @@ private struct TimestampToolStep: View {
                     .accessibilityIdentifier("timestamp-note")
             }
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) { ForEach(StampCorner.allCases) { c in Button(c.rawValue) { stamp.corner = c }.buttonStyle(ChipStyle(selected: stamp.corner == c)) } }
+                HStack(spacing: 8) { ForEach(StampCorner.allCases) { c in Button(L(c.rawValue)) { stamp.corner = c }.buttonStyle(ChipStyle(selected: stamp.corner == c)) } }
             }
             ToolSlider(title: "Size", value: Binding(get: { Double(stamp.scale) }, set: { stamp.scale = CGFloat($0) }), range: 0.6...2) { "\(Int($0 * 100))%" }
             if stamp.template == .dateTime {
@@ -724,7 +724,7 @@ private struct TemplateTile: View {
                         .padding(.horizontal, 8).padding(.vertical, 4).background(Color(hex: 0xD9DDE2), in: RoundedRectangle(cornerRadius: 5))
                 }
             }.frame(height: 76)
-            Text(template.rawValue).font(.system(size: 14, weight: .semibold)).foregroundStyle(selected ? TK.blue : TK.grey700)
+            Text(L(template.rawValue)).font(.system(size: 14, weight: .semibold)).foregroundStyle(selected ? TK.blue : TK.grey700)
         }
         .padding(8).background(selected ? TK.blueSoft : TK.grey50, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(selected ? TK.blue : TK.grey200, lineWidth: selected ? 2 : 1))
@@ -750,7 +750,7 @@ private struct MergeToolStep: View {
                             .frame(width: 26, height: 26).background(TK.blue, in: Circle())
                         PDFPageThumb(document: doc, index: 0).frame(width: 46, height: 60).clipShape(RoundedRectangle(cornerRadius: 8))
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(doc.title).font(.system(size: 16, weight: .semibold)).foregroundStyle(TK.grey900).lineLimit(2)
+                            Text(L(doc.title)).font(.system(size: 16, weight: .semibold)).foregroundStyle(TK.grey900).lineLimit(2)
                             Text("\(doc.pages.count) pages").font(.system(size: 13)).foregroundStyle(TK.grey500)
                         }
                     }.listRowSeparator(.hidden).listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
@@ -1364,8 +1364,8 @@ private struct CompressToolStep: View {
     }
     private func sizeBox(_ title: String, _ value: String, _ color: Color) -> some View {
         VStack(spacing: 6) {
-            Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(TK.grey500)
-            Text(value).font(.system(size: 24, weight: .bold)).foregroundStyle(color).minimumScaleFactor(0.6).lineLimit(1)
+            Text(L(title)).font(.system(size: 14, weight: .semibold)).foregroundStyle(TK.grey500)
+            Text(L(value)).font(.system(size: 24, weight: .bold)).foregroundStyle(color).minimumScaleFactor(0.6).lineLimit(1)
         }.frame(maxWidth: .infinity).padding(.vertical, 18).background(TK.grey50, in: RoundedRectangle(cornerRadius: 18))
     }
     private func compress() {
@@ -1445,7 +1445,7 @@ private struct ProtectToolStep: View {
                         Text("Locks the whole folder, including new scans").font(.system(size: 13)).foregroundStyle(TK.grey500)
                     }
                 }.tint(TK.blue).accessibilityIdentifier("protect-folder-lock")
-                if let lockNote { Text(lockNote).font(.system(size: 13)).foregroundStyle(TK.red) }
+                if let lockNote { Text(L(lockNote)).font(.system(size: 13)).foregroundStyle(TK.red) }
             }
             .padding(16).background(TK.grey50, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             Label("The password is only for the shared copy. Locking in the app works without it.", systemImage: "info.circle").font(.system(size: 14)).foregroundStyle(TK.grey500)
@@ -1456,7 +1456,7 @@ private struct ProtectToolStep: View {
     }
     private func field(_ title: String, text: Binding<String>, tag: Int) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(focus == tag ? TK.blue : TK.grey500)
+            Text(L(title)).font(.system(size: 14, weight: .semibold)).foregroundStyle(focus == tag ? TK.blue : TK.grey500)
             SecureField("", text: text).font(.system(size: 22, weight: .semibold)).textContentType(.newPassword)
                 .focused($focus, equals: tag).submitLabel(tag == 0 ? .next : .done).onSubmit { focus = tag == 0 ? 1 : nil }
                 .padding(.vertical, 8).overlay(alignment: .bottom) { Rectangle().fill(focus == tag ? TK.blue : TK.grey300).frame(height: focus == tag ? 2 : 1) }
@@ -1464,7 +1464,7 @@ private struct ProtectToolStep: View {
         }
     }
     private func check(_ ok: Bool, _ text: String) -> some View {
-        Label { Text(text).foregroundStyle(ok ? TK.grey800 : TK.grey500) } icon: { Image(systemName: ok ? "checkmark.circle.fill" : "circle").foregroundStyle(ok ? TK.teal : TK.grey300) }
+        Label { Text(L(text)).foregroundStyle(ok ? TK.grey800 : TK.grey500) } icon: { Image(systemName: ok ? "checkmark.circle.fill" : "circle").foregroundStyle(ok ? TK.teal : TK.grey300) }
             .font(.system(size: 15, weight: .medium))
     }
     private func protect() {

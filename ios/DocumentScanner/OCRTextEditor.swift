@@ -27,7 +27,7 @@ struct OCRTextEditor: View {
               .accessibilityIdentifier("ocr-region-\(index)")
           }
         }
-        if let error { Text(error).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.red) }
+        if let error { Text(L(error)).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.red) }
       } actions: {
         Button("Save") { save() }.buttonStyle(CTAButtonStyle()).disabled(busy)
       }

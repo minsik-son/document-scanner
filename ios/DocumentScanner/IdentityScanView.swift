@@ -64,7 +64,7 @@ struct IdentityScanView: View {
         if let error {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "exclamationmark.circle.fill").foregroundStyle(TK.red)
-                Text(error).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800).fixedSize(horizontal: false, vertical: true)
+                Text(L(error)).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("id-error")
                 Spacer(minLength: 0)
             }.padding(16).background(TK.grey100, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -143,7 +143,7 @@ struct IdentityScanView: View {
     }
     @ViewBuilder private func side(_ index: Int, title: String) -> some View {
         VStack(spacing: 10) {
-            Text(title).font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey600)
+            Text(L(title)).font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey600)
             if let document = draft, document.pages.indices.contains(index) {
                 let page = document.pages[index]
                 Button { editing = page } label: { PageThumbnail(page: page).frame(height: 72).frame(maxWidth: .infinity) }

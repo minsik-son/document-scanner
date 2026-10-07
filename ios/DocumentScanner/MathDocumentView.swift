@@ -84,7 +84,7 @@ struct MathDocumentView: View {
         if let error {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "exclamationmark.circle.fill").foregroundStyle(TK.red)
-                Text(error).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800).fixedSize(horizontal: false, vertical: true)
+                Text(L(error)).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("math-error")
                 Spacer(minLength: 0)
             }.padding(16).background(TK.grey100, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -109,7 +109,7 @@ struct MathDocumentView: View {
                     Text("Page edges weren't found. Crop to remove the background.").font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800)
                 }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(TK.orangeSoft, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
-            if let notice = scan.notice { Text(notice).font(.system(size: 13)).foregroundStyle(TK.grey500) }
+            if let notice = scan.notice { Text(L(notice)).font(.system(size: 13)).foregroundStyle(TK.grey500) }
             errorRow
             Label("Works offline. Handwriting, fractions and matrices may need fixing.", systemImage: "lock.shield").font(.system(size: 13)).foregroundStyle(TK.grey500)
         }

@@ -36,9 +36,9 @@ struct SettingsView: View {
                 }
                 Section {
                     Button("Restore purchases") { Task { await subscription.restore() } }.disabled(subscription.busy)
-                    if let message = subscription.message { Text(message).font(.caption) }
+                    if let message = subscription.message { Text(L(message)).font(.caption) }
                     if subscription.statusText != "Pro is active" && subscription.statusText != "Free" {
-                        Text(subscription.statusText).font(.caption).foregroundStyle(.secondary)
+                        Text(L(subscription.statusText)).font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 Section {
@@ -50,6 +50,12 @@ struct SettingsView: View {
                     AutoExportRow(openPaywall: { paywall = true })
                 } header: { Text("Auto-save") } footer: {
                     Text("Each new scan is also saved as a PDF in the folder you choose. Pick a folder in iCloud Drive, Dropbox or Google Drive to back it up there.")
+                }
+                Section("Language") {
+                    Picker("Language", selection: Binding(get: { AppLanguage.current }, set: { AppLanguage.choose($0) })) {
+                        ForEach(AppLanguage.allCases) { Text(verbatim: $0.nativeName).tag($0) }
+                    }
+                    .accessibilityIdentifier("language-picker")
                 }
                 Section("Library") {
                     NavigationLink {
@@ -65,7 +71,7 @@ struct SettingsView: View {
                             else { Text("Items are permanently removed after 30 days.").font(.caption).foregroundStyle(.secondary) }
                             ForEach(store.trash) { doc in
                                 VStack(alignment: .leading, spacing: 12) {
-                                    Text(doc.title).font(.headline)
+                                    Text(L(doc.title)).font(.headline)
                                     Text("\(max(0,30-Int(Date().timeIntervalSince(doc.deletedAt ?? Date())/86400))) days remaining").font(.caption).foregroundStyle(.secondary)
                                     HStack { Button("Restore") { store.restore(doc) }.buttonStyle(.bordered); Spacer(); Button("Delete permanently", role: .destructive) { pendingDelete = doc }.buttonStyle(.bordered) }
                                 }.padding(.vertical, 6)
@@ -77,7 +83,7 @@ struct SettingsView: View {
                     NavigationLink("Privacy details") { PrivacyView() }
                     Toggle("App lock", isOn: Binding(get: { lock.enabled }, set: { value in Task { await lock.setEnabled(value) } })).disabled(lock.authenticating)
                     Text("Use Face ID, Touch ID or your device passcode. App lock also hides documents in the app switcher.").font(.caption)
-                    if let message = lock.message { Text(message).foregroundStyle(.secondary) }
+                    if let message = lock.message { Text(L(message)).foregroundStyle(.secondary) }
                 }
                 Section("Text recognition") {
                     NavigationLink("Supported languages") { RecognitionLanguagesView() }
@@ -117,7 +123,7 @@ struct SettingsView: View {
                     Text("Pageframe · 0.1.0")
                     Text("Development preview. Subscription purchases launched through the Xcode StoreKit configuration are test purchases.").font(.subheadline).foregroundStyle(.secondary)
                 }
-                if let feedback { Section { Text(feedback) } }
+                if let feedback { Section { Text(L(feedback)) } }
             }
             .scrollContentBackground(subscription.isPro ? .hidden : .automatic)
             .background { if subscription.isPro { ProPageBackground(band: 50) } }
@@ -172,7 +178,7 @@ private struct UnfinishedScansView: View {
                 HStack(spacing: 12) {
                     Button { resume(doc.id) } label: {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(doc.title).font(.headline).foregroundStyle(Design.ink)
+                            Text(L(doc.title)).font(.headline).foregroundStyle(Design.ink)
                             Text("\(doc.pages.count) pages · Not exported yet").font(.subheadline).foregroundStyle(.secondary)
                         }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8).contentShape(Rectangle())
                     }.buttonStyle(.plain).accessibilityIdentifier("resume-draft-" + doc.id.uuidString)
@@ -183,7 +189,7 @@ private struct UnfinishedScansView: View {
                         .disabled(!store.storageAvailable)
                 }
             }
-            if let problem = store.problem { Text(problem).foregroundStyle(.red) }
+            if let problem = store.problem { Text(L(problem)).foregroundStyle(.red) }
         }
         .navigationTitle("Unfinished scans")
         .alert("Move this unfinished scan to Trash?", isPresented: $confirmingTrash, presenting: pendingTrash) { doc in
@@ -203,7 +209,7 @@ private struct RecognitionLanguagesView: View {
                 Text("Available languages depend on your iOS version. Other documents can still be scanned, but their text may not be recognized.").font(.subheadline).foregroundStyle(.secondary)
             }
             Section("Available on this iPhone") {
-                if let error { Text(error).foregroundStyle(.secondary) }
+                if let error { Text(L(error)).foregroundStyle(.secondary) }
                 else if languages.isEmpty { ProgressView() }
                 ForEach(languages, id: \.self) { Text($0) }
             }
@@ -237,7 +243,7 @@ struct AutoExportRow: View {
         VStack(alignment: .leading, spacing: 8) {
             if let folder {
                 HStack {
-                    Label(folder, systemImage: "folder.fill").lineLimit(1)
+                    Label(L(folder), systemImage: "folder.fill").lineLimit(1)
                     Spacer()
                     Button("Change") { picking = true }.buttonStyle(.borderless)
                     Button("Turn off", role: .destructive) { AutoExport.clear(); self.folder = nil }.buttonStyle(.borderless)
@@ -252,7 +258,7 @@ struct AutoExportRow: View {
                     }
                 }.accessibilityIdentifier("auto-export-choose")
             }
-            if let problem { Text(problem).font(.footnote).foregroundStyle(.red) }
+            if let problem { Text(L(problem)).font(.footnote).foregroundStyle(.red) }
         }
         .fileImporter(isPresented: $picking, allowedContentTypes: [.folder]) { result in
             switch result {

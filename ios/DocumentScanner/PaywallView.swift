@@ -89,7 +89,7 @@ struct PaywallView: View {
         }.frame(height: 230).frame(maxWidth: .infinity).clipped()
     }
     private func chip(_ text: String) -> some View {
-        Text(text).font(.system(size: 12, weight: .heavy)).padding(.horizontal, 12).padding(.vertical, 6).background(.white.opacity(0.14), in: Capsule())
+        Text(L(text)).font(.system(size: 12, weight: .heavy)).padding(.horizontal, 12).padding(.vertical, 6).background(.white.opacity(0.14), in: Capsule())
     }
     /// Every tool that shows a Pro badge, so the count stays right as tools change.
     static var proToolCount: Int {
@@ -101,7 +101,7 @@ struct PaywallView: View {
         HStack(spacing: 8) {
             Image(systemName: icon).font(.system(size: 13, weight: .bold)).foregroundStyle(.white)
                 .frame(width: 28, height: 28).background(tint, in: RoundedRectangle(cornerRadius: 8))
-            Text(title).font(.caption.weight(.bold)).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+            Text(L(title)).font(.caption.weight(.bold)).lineLimit(2).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }.padding(10).background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
     }
@@ -142,7 +142,7 @@ struct PaywallView: View {
     }
     private var purchaseFooter: some View {
         VStack(spacing: 10) {
-            if let message = subscription.message { Text(message).font(.footnote).foregroundStyle(TossPay.sub).accessibilityIdentifier("purchase-status") }
+            if let message = subscription.message { Text(L(message)).font(.footnote).foregroundStyle(TossPay.sub).accessibilityIdentifier("purchase-status") }
             if let product {
                 Button { Task { await subscription.purchase(product) } } label: {
                     VStack(spacing: 2) {
@@ -259,9 +259,9 @@ struct ProFeatureCarousel: View {
             }
             .frame(height: 300)
             VStack(spacing: 6) {
-                Text(slide.title).font(.system(.title, weight: .black)).multilineTextAlignment(.center)
+                Text(L(slide.title)).font(.system(.title, weight: .black)).multilineTextAlignment(.center)
                     .minimumScaleFactor(0.6).lineLimit(2)
-                Text(slide.detail).font(.subheadline).foregroundStyle(TossPay.sub).multilineTextAlignment(.center)
+                Text(L(slide.detail)).font(.subheadline).foregroundStyle(TossPay.sub).multilineTextAlignment(.center)
             }
             .foregroundStyle(TossPay.ink).padding(.horizontal, 24)
             .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -84,7 +84,7 @@ struct ToolTile: View {
             ToolArtwork(name: icon, size: 64).overlay(alignment: .topTrailing) {
                 if pro { ProBadge().offset(x: 10, y: -5) }
             }
-            Text(title).font(.system(.caption, weight: .medium)).multilineTextAlignment(.center)
+            Text(L(title)).font(.system(.caption, weight: .medium)).multilineTextAlignment(.center)
                 .foregroundStyle(Design.ink).fixedSize(horizontal: false, vertical: true)
         }.frame(maxWidth: .infinity, minHeight: 100, alignment: .top)
             .contentShape(Rectangle()).accessibilityElement(children: .ignore)
@@ -316,7 +316,7 @@ struct QuickToolsEditor: View {
     private func row<Trailing: View>(_ item: HomeShortcut, @ViewBuilder trailing: () -> Trailing) -> some View {
         HStack(spacing: 14) {
             ToolArtwork(name: item.icon, size: 40)
-            Text(item.title).font(.system(size: 16, weight: .medium)).foregroundStyle(TK.grey900)
+            Text(L(item.title)).font(.system(size: 16, weight: .medium)).foregroundStyle(TK.grey900)
             if item.pro { ProBadge() }
             Spacer()
             trailing()

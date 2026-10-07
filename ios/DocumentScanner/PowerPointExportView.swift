@@ -131,7 +131,7 @@ struct PowerPointExportView: View {
         if let message {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "info.circle.fill").foregroundStyle(TK.grey500)
-                Text(message).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800).fixedSize(horizontal: false, vertical: true)
+                Text(L(message)).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("ppt-status")
                 Spacer(minLength: 0)
             }.padding(16).background(TK.grey100, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -255,7 +255,7 @@ struct PowerPointExportView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             VStack(alignment:.leading,spacing:4) {
                 Text(excel ? "Page \(index+1)" : "Slide \(index+1)").font(.system(size: 16, weight: .semibold)).foregroundStyle(TK.grey900)
-                Text(page.title).font(.system(size: 13)).foregroundStyle(TK.grey600).lineLimit(2)
+                Text(L(page.title)).font(.system(size: 13)).foregroundStyle(TK.grey600).lineLimit(2)
                     .accessibilityIdentifier("ppt-source-\(index+1)")
             }.frame(maxWidth:.infinity,alignment:.leading)
             Menu {
@@ -467,7 +467,7 @@ private struct PresentationLibraryPicker: View {
             List {
                 if available.isEmpty { ContentUnavailableView("No saved pages",systemImage:"doc",description:Text("Choose photos or files to get started.")) }
                 ForEach(store.active) { document in
-                    Section(document.title) {
+                    Section(L(document.title)) {
                         ForEach(Array(document.pages.enumerated()),id:\.element.id) { index,page in
                             Button {
                                 if selected.contains(page.id) { selected.removeAll { $0 == page.id } }

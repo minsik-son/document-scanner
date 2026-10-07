@@ -442,11 +442,11 @@ private struct PortraitTool: View {
                 VStack(spacing: 10) {
                     HStack(spacing: 8) {
                         if let flag = ImageToolEngine.PhotoSize.flag(region) {
-                            Text(flag).font(.system(size: 22)).accessibilityHidden(true)
+                            Text(L(flag)).font(.system(size: 22)).accessibilityHidden(true)
                         } else {
                             Image(systemName: "person.text.rectangle").font(.system(size: 17, weight: .semibold)).foregroundStyle(TK.grey500)
                         }
-                        Text(region).font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey600)
+                        Text(L(region)).font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey600)
                         Spacer()
                     }
                     .accessibilityElement(children: .combine)
@@ -528,7 +528,7 @@ private struct PortraitTool: View {
                                         .frame(width: 64, height: 64)
                                         .background(TK.grey50, in: RoundedRectangle(cornerRadius: 12))
                                         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(outfit == option ? TK.blue : TK.grey200, lineWidth: outfit == option ? 2 : 1))
-                                        Text(option.title).font(.system(size: 11, weight: .medium)).foregroundStyle(TK.grey700).lineLimit(1).frame(width: 74)
+                                        Text(L(option.title)).font(.system(size: 11, weight: .medium)).foregroundStyle(TK.grey700).lineLimit(1).frame(width: 74)
                                     }
                                 }
                                 .buttonStyle(.plain).accessibilityLabel(option.title).accessibilityAddTraits(outfit == option ? .isSelected : [])
@@ -562,7 +562,7 @@ private struct PortraitTool: View {
             }
             HStack(spacing: 8) {
                 ForEach(Output.allCases.filter { $0 != .online || !size.digital.isEmpty }, id: \.self) { option in
-                    Button(option.rawValue) { output = option; prepareOutput() }
+                    Button(L(option.rawValue)) { output = option; prepareOutput() }
                         .buttonStyle(ChipStyle(selected: output == option))
                         .accessibilityIdentifier("portrait-output-" + String(describing: option))
                 }
@@ -570,7 +570,7 @@ private struct PortraitTool: View {
             if output == .sheet {
                 HStack(spacing: 8) {
                     ForEach(ImageToolEngine.PrintPaper.allCases) { option in
-                        Button(option.rawValue) { paper = option; prepareOutput() }.buttonStyle(ChipStyle(selected: paper == option))
+                        Button(L(option.rawValue)) { paper = option; prepareOutput() }.buttonStyle(ChipStyle(selected: paper == option))
                     }
                 }
             }
@@ -620,8 +620,8 @@ private struct PortraitTool: View {
                     Image(systemName: check.passed ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                         .foregroundStyle(check.passed ? TK.teal : TK.orange)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(check.title).font(.system(size: 14, weight: .semibold)).foregroundStyle(TK.grey900)
-                        Text(check.detail).font(.system(size: 13)).foregroundStyle(TK.grey600).fixedSize(horizontal: false, vertical: true)
+                        Text(L(check.title)).font(.system(size: 14, weight: .semibold)).foregroundStyle(TK.grey900)
+                        Text(L(check.detail)).font(.system(size: 13)).foregroundStyle(TK.grey600).fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .accessibilityElement(children: .combine)
@@ -933,7 +933,7 @@ private struct MarksTool: View {
                             if colors.contains(color) { colors.remove(color) } else { colors.insert(color) }
                             render()
                         } label: {
-                            HStack(spacing: 6) { Circle().fill(Color(color.swatch)).frame(width: 14, height: 14); Text(color.rawValue) }
+                            HStack(spacing: 6) { Circle().fill(Color(color.swatch)).frame(width: 14, height: 14); Text(L(color.rawValue)) }
                         }.buttonStyle(ChipStyle(selected: colors.contains(color))).accessibilityIdentifier("ink-" + color.rawValue)
                     }
                 }
@@ -998,7 +998,7 @@ private struct RestoreTool: View {
             }
             HStack(spacing: 8) {
                 ForEach(ImageToolEngine.RestoreLevel.allCases) { option in
-                    Button(option.rawValue) { level = option; render() }.buttonStyle(ChipStyle(selected: level == option))
+                    Button(L(option.rawValue)) { level = option; render() }.buttonStyle(ChipStyle(selected: level == option))
                         .accessibilityIdentifier("restore-" + option.rawValue)
                 }
                 Spacer(minLength: 0)
@@ -1193,7 +1193,7 @@ private struct CountTool: View {
             }
             HStack(spacing: 8) {
                 ForEach(ImageToolEngine.Polarity.allCases) { option in
-                    Button(option.rawValue) { polarity = option; detect() }.buttonStyle(ChipStyle(selected: polarity == option))
+                    Button(L(option.rawValue)) { polarity = option; detect() }.buttonStyle(ChipStyle(selected: polarity == option))
                 }
             }
             ToolSlider(title: "Sensitivity", value: $sensitivity).onChange(of: sensitivity) { _, _ in detect() }
@@ -1356,7 +1356,7 @@ struct PortraitCameraView: View {
                     }
                     .foregroundStyle(.white).padding(.horizontal, 12).padding(.top, geo.safeAreaInsets.top + 4)
                     Spacer()
-                    Text(hint.text)
+                    Text(L(hint.text))
                         .font(.system(size: 16, weight: .semibold)).foregroundStyle(.white)
                         .padding(.horizontal, 16).padding(.vertical, 9)
                         .background(hint.ready ? TK.teal : Color.black.opacity(0.55), in: Capsule())
@@ -1376,7 +1376,7 @@ struct PortraitCameraView: View {
                         .shadow(radius: 8).transition(.scale.combined(with: .opacity)).id(countdown)
                 }
                 if let failed = camera.failed {
-                    Text(failed).font(.system(size: 15)).foregroundStyle(.white).multilineTextAlignment(.center).padding(24)
+                    Text(L(failed)).font(.system(size: 15)).foregroundStyle(.white).multilineTextAlignment(.center).padding(24)
                 }
             }
         }

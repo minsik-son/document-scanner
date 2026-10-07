@@ -120,11 +120,11 @@ struct ToolTitle: View {
     var subtitle: String?
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.system(size: 26, weight: .bold)).foregroundStyle(TK.grey900)
+            Text(L(title)).font(.system(size: 26, weight: .bold)).foregroundStyle(TK.grey900)
                 .fixedSize(horizontal: false, vertical: true).accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("tool-page-title")
             if let subtitle {
-                Text(subtitle).font(.system(size: 17)).foregroundStyle(TK.grey600).lineSpacing(3)
+                Text(L(subtitle)).font(.system(size: 17)).foregroundStyle(TK.grey600).lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
@@ -133,7 +133,7 @@ struct ToolTitle: View {
 struct SectionLabel: View {
     let text: String
     var body: some View {
-        Text(text).font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey600)
+        Text(L(text)).font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey600)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
@@ -151,8 +151,8 @@ struct ChoiceRow: View {
             Image(systemName: symbol).font(.system(size: 20, weight: .semibold)).foregroundStyle(tint)
                 .frame(width: 48, height: 48).background(soft, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 17, weight: .semibold)).foregroundStyle(TK.grey900)
-                if let detail { Text(detail).font(.system(size: 14)).foregroundStyle(TK.grey600).fixedSize(horizontal: false, vertical: true) }
+                Text(L(title)).font(.system(size: 17, weight: .semibold)).foregroundStyle(TK.grey900)
+                if let detail { Text(L(detail)).font(.system(size: 14)).foregroundStyle(TK.grey600).fixedSize(horizontal: false, vertical: true) }
             }
             Spacer(minLength: 8)
             if chevron { Image(systemName: "chevron.right").font(.system(size: 14, weight: .semibold)).foregroundStyle(TK.grey400) }
@@ -170,8 +170,8 @@ struct OptionCard<Trailing: View>: View {
     var body: some View {
         HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.system(size: 17, weight: .semibold)).foregroundStyle(selected ? TK.blueDeep : TK.grey900)
-                if let detail { Text(detail).font(.system(size: 14)).foregroundStyle(TK.grey600).fixedSize(horizontal: false, vertical: true) }
+                Text(L(title)).font(.system(size: 17, weight: .semibold)).foregroundStyle(selected ? TK.blueDeep : TK.grey900)
+                if let detail { Text(L(detail)).font(.system(size: 14)).foregroundStyle(TK.grey600).fixedSize(horizontal: false, vertical: true) }
             }
             Spacer(minLength: 8)
             trailing()
@@ -203,7 +203,7 @@ struct ToolSlider: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(title).font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey700)
+                Text(L(title)).font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey700)
                 Spacer()
                 Text(format(value)).font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.blue).monospacedDigit()
             }
@@ -242,7 +242,7 @@ struct BusyOverlay: View {
             VStack(spacing: 18) {
                 if let progress { ProgressView(value: progress).tint(TK.blue).frame(width: 180) }
                 else { ProgressView().controlSize(.large).tint(TK.blue) }
-                Text(text).font(.system(size: 17, weight: .semibold)).foregroundStyle(TK.grey900).multilineTextAlignment(.center)
+                Text(L(text)).font(.system(size: 17, weight: .semibold)).foregroundStyle(TK.grey900).multilineTextAlignment(.center)
                     .accessibilityIdentifier("tool-busy-text")
                 if let cancel {
                     Button("Cancel", action: cancel).font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey600)
@@ -265,7 +265,7 @@ struct ToastMessage: View {
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: symbol).foregroundStyle(tint)
-            Text(text).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800).fixedSize(horizontal: false, vertical: true)
+            Text(L(text)).font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }
         .padding(16).background(TK.grey100, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -293,9 +293,9 @@ struct ToolDonePage<Extra: View>: View {
                         .scaleEffect(appeared ? 1 : 0.2)
                 }.padding(.top, 24).accessibilityHidden(true)
                 VStack(spacing: 10) {
-                    Text(title).font(.system(size: 24, weight: .bold)).foregroundStyle(TK.grey900).multilineTextAlignment(.center)
+                    Text(L(title)).font(.system(size: 24, weight: .bold)).foregroundStyle(TK.grey900).multilineTextAlignment(.center)
                         .accessibilityIdentifier("tool-done-title")
-                    Text(detail).font(.system(size: 16)).foregroundStyle(TK.grey600).multilineTextAlignment(.center)
+                    Text(L(detail)).font(.system(size: 16)).foregroundStyle(TK.grey600).multilineTextAlignment(.center)
                 }
                 extra()
             }.frame(maxWidth: .infinity)
@@ -360,7 +360,7 @@ struct BeforeAfterView: View {
         }
     }
     private func label(_ text: String) -> some View {
-        Text(text).font(.system(size: 12, weight: .bold)).foregroundStyle(.white)
+        Text(L(text)).font(.system(size: 12, weight: .bold)).foregroundStyle(.white)
             .lineLimit(1).fixedSize()
             .padding(.horizontal, 10).padding(.vertical, 5).background(.black.opacity(0.45), in: Capsule())
     }
@@ -469,7 +469,7 @@ struct DocumentChoiceList: View {
                             .frame(width: 52, height: 66).background(TK.grey100, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(doc.title).font(.system(size: 16, weight: .semibold)).foregroundStyle(TK.grey900).lineLimit(2)
+                            Text(L(doc.title)).font(.system(size: 16, weight: .semibold)).foregroundStyle(TK.grey900).lineLimit(2)
                             Text("\(doc.pages.count) \(doc.pages.count == 1 ? "page" : "pages") · \(doc.updatedAt.formatted(date: .abbreviated, time: .omitted))")
                                 .font(.system(size: 13)).foregroundStyle(TK.grey500)
                         }

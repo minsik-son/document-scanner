@@ -339,6 +339,105 @@ enum DocumentInsight {
         return f
     }
 
+    /// A piece of key information found in a document's text.
+    struct KeyItem: Identifiable {
+        enum Kind: CaseIterable {
+            case date, amount, phone, email, link, address, account
+            var title: String {
+                switch self {
+                case .date: return "Dates"
+                case .amount: return "Amounts"
+                case .phone: return "Phone numbers"
+                case .email: return "Emails"
+                case .link: return "Websites"
+                case .address: return "Addresses"
+                case .account: return "Account numbers"
+                }
+            }
+            var symbol: String {
+                switch self {
+                case .date: return "calendar"
+                case .amount: return "dollarsign.circle"
+                case .phone: return "phone"
+                case .email: return "envelope"
+                case .link: return "safari"
+                case .address: return "map"
+                case .account: return "building.columns"
+                }
+            }
+            var action: String {
+                switch self {
+                case .date: return "Add to Calendar"
+                case .phone: return "Call"
+                case .email: return "Email"
+                case .link: return "Open"
+                case .address: return "Map"
+                case .amount, .account: return "Copy"
+                }
+            }
+        }
+        let id = UUID()
+        let kind: Kind
+        let value: String
+        let context: String
+        var date: Date? = nil
+        var url: URL? = nil
+    }
+
+    /// Finds dates, amounts, phones, emails, links, addresses and account numbers.
+    static func keyInfo(_ text: String) -> [KeyItem] {
+        guard !text.isEmpty else { return [] }
+        let ns = text as NSString
+        var items: [KeyItem] = []
+        var seen = Set<String>()
+        var taken: [NSRange] = []
+        func line(around r: NSRange) -> String {
+            let lr = ns.lineRange(for: r)
+            return ns.substring(with: lr).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        func add(_ kind: KeyItem.Kind, _ r: NSRange, value: String? = nil, date: Date? = nil, url: URL? = nil) {
+            let v = (value ?? ns.substring(with: r)).trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !v.isEmpty, seen.insert("\(kind)|\(v.lowercased())").inserted else { return }
+            var ctx = line(around: r)
+            if ctx == v { ctx = "" }
+            if ctx.count > 70 { ctx = String(ctx.prefix(70)) + "…" }
+            items.append(KeyItem(kind: kind, value: v, context: ctx, date: date, url: url)); taken.append(r)
+        }
+        let types: NSTextCheckingResult.CheckingType = [.date, .phoneNumber, .link, .address]
+        if let detector = try? NSDataDetector(types: types.rawValue) {
+            let now = Date()
+            for m in detector.matches(in: text, range: NSRange(location: 0, length: ns.length)) {
+                switch m.resultType {
+                case .date:
+                    if let d = m.date, d > now.addingTimeInterval(-30 * 366 * 86400), d < now.addingTimeInterval(10 * 366 * 86400) { add(.date, m.range, date: d) }
+                case .phoneNumber: add(.phone, m.range, value: m.phoneNumber)
+                case .link:
+                    if let u = m.url {
+                        if u.scheme == "mailto" { add(.email, m.range, value: u.absoluteString.replacingOccurrences(of: "mailto:", with: "")) }
+                        else { add(.link, m.range, url: u) }
+                    }
+                case .address: add(.address, m.range, value: ns.substring(with: m.range).replacingOccurrences(of: "\n", with: ", "))
+                default: break
+                }
+            }
+        }
+        let amount = #"(?:[$€£¥₩]|C\$|US\$|CAD\s?|USD\s?|KRW\s?)\s?\d[\d,]*(?:\.\d{1,2})?|\d{1,3}(?:,\d{3})+(?:\.\d{2})?\s?원|\d+\s?원"#
+        if let re = try? NSRegularExpression(pattern: amount) {
+            for m in re.matches(in: text, range: NSRange(location: 0, length: ns.length)) { add(.amount, m.range) }
+        }
+        // Account numbers: digit groups on a line that mentions an account or bank, and IBANs.
+        let accountWords = ["account", "acct", "bank", "transit", "routing", "iban", "계좌", "은행", "예금주", "입금"]
+        if let re = try? NSRegularExpression(pattern: #"\b\d{2,6}(?:[- ]\d{2,8}){1,4}\b|\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b"#) {
+            for m in re.matches(in: text, range: NSRange(location: 0, length: ns.length)) {
+                guard !taken.contains(where: { NSIntersectionRange($0, m.range).length > 0 }) else { continue }
+                let l = line(around: m.range).lowercased()
+                let digits = ns.substring(with: m.range).filter(\.isNumber).count
+                if digits >= 8 && (accountWords.contains { l.contains($0) } || ns.substring(with: m.range).first?.isLetter == true) { add(.account, m.range) }
+            }
+        }
+        return items
+    }
+
     // MARK: helpers
     private static let dayFormat: DateFormatter = { let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.dateFormat = "yyyy-MM-dd"; return f }()
     private static func lower(_ s: String) -> String { s.lowercased() }

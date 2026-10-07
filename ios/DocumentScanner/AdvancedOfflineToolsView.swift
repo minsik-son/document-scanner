@@ -1196,7 +1196,7 @@ enum SmartTool: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .businessCard: return "Business card to contact"
-        case .askDocument: return "Ask a document"
+        case .askDocument: return "Key info"
         case .autoSave: return "Auto-save to cloud"
         }
     }
@@ -1209,7 +1209,7 @@ enum SmartTool: String, CaseIterable, Identifiable {
     }
     var pro: Bool { self == .autoSave }
     /// Asking needs Apple Intelligence; the tile is hidden elsewhere.
-    var shown: Bool { self != .askDocument || DocumentAI.isAvailable }
+    var shown: Bool { true }
     @ViewBuilder var destination: some View {
         switch self {
         case .businessCard: BusinessCardTool()
@@ -1265,7 +1265,7 @@ struct AskDocumentTool: View {
     @State private var chosen: UUID?
     private var documents: [ScanDocument] { store.active.filter { $0.pdfFile != nil } }
     var body: some View {
-        ToolPage(title: "Ask a document", subtitle: "Get a summary, key dates and amounts, or answers. Apple's on-device model; nothing leaves this iPhone.") {
+        ToolPage(title: "Key info", subtitle: "Pull dates, amounts, phone numbers, emails, addresses and account numbers out of a document, or search inside it. Instant, on this iPhone.") {
             ToolHero(art: .askDocument)
             VStack(alignment: .leading, spacing: 8) {
                 SectionLabel(text: "Choose a document")
@@ -1274,7 +1274,7 @@ struct AskDocumentTool: View {
             }
         } actions: { EmptyView() }
         .sheet(item: Binding(get: { chosen.map(AskTarget.init) }, set: { chosen = $0?.id })) { target in
-            DocumentAskSheet(documentID: target.id).presentationDetents([.medium, .large])
+            KeyInfoSheet(documentID: target.id).presentationDetents([.medium, .large])
         }
     }
     private struct AskTarget: Identifiable { let id: UUID }

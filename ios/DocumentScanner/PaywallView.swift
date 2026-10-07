@@ -27,27 +27,12 @@ struct PaywallView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 0) {
-                    hero.accessibilityHidden(true)
-                    VStack(spacing: 10) {
-                        Text("PAGEFRAME PRO").font(.system(.caption2, weight: .heavy)).tracking(1.6).lineLimit(1).minimumScaleFactor(0.5)
-                            .padding(.horizontal, 10).padding(.vertical, 5).background(.white.opacity(0.12), in: Capsule())
-                        (Text("Every page.\n") + Text("More possibilities.").foregroundStyle(ProStyle.titleGradient))
-                            .font(.system(.title, weight: .black)).multilineTextAlignment(.center)
-                            .minimumScaleFactor(0.5).frame(maxWidth: .infinity)
-                    }.padding(.horizontal, 20)
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: typeSize.isAccessibilitySize ? 1 : 2), spacing: 8) {
-                        feature("Word · Excel · PPT", icon: "doc.richtext.fill", tint: Color(red: 0.18, green: 0.42, blue: 1))
-                        feature("Translate photos", icon: "character.bubble.fill", tint: Color(red: 0.13, green: 0.75, blue: 0.57))
-                        feature("Extract text (OCR)", icon: "text.viewfinder", tint: Color(red: 0.25, green: 0.55, blue: 1))
-                        feature("Hide personal info", icon: "eye.slash.fill", tint: Color(red: 0.05, green: 0.66, blue: 0.62))
-                        feature("Fill forms · Auto-save", icon: "list.bullet.rectangle.fill", tint: Color(red: 0.36, green: 0.42, blue: 0.95))
-                        feature("Restore & fix photos", icon: "wand.and.stars", tint: Color(red: 1, green: 0.55, blue: 0.15))
-                        feature("Split · Compress · Lock", icon: "lock.doc.fill", tint: Color(red: 1, green: 0.42, blue: 0.55))
-                        feature("No ads", icon: "nosign", tint: ProStyle.violet)
-                    }.padding(.horizontal, 16).padding(.top, 18)
-                    Text("All \(Self.proToolCount) Pro tools, unlimited signatures and merges")
-                        .font(.footnote.weight(.semibold)).foregroundStyle(.white.opacity(0.7))
-                        .multilineTextAlignment(.center).padding(.horizontal, 20).padding(.top, 10)
+                    ProFeatureCarousel()
+                    HStack(spacing: 12) {
+                        Capsule().fill(.white.opacity(0.18)).frame(height: 1)
+                        Text("Unlimited access").font(.subheadline.weight(.semibold)).fixedSize()
+                        Capsule().fill(.white.opacity(0.18)).frame(height: 1)
+                    }.padding(.horizontal, 40).padding(.top, 22)
                     VStack(spacing: 10) {
                         if plans.isEmpty {
                             Text("Plans are currently unavailable. You can keep scanning for free.").multilineTextAlignment(.center).foregroundStyle(.white.opacity(0.7))
@@ -56,34 +41,25 @@ struct PaywallView: View {
                             ForEach(plans) { plan in planCard(plan) }
                         }
                     }.padding(.horizontal, 16).padding(.top, 20)
-                    Text("Scanning, PDF and signing stay free. Your documents stay yours, even after Pro ends.")
-                        .font(.footnote).foregroundStyle(.white.opacity(0.72)).multilineTextAlignment(.center)
-                        .padding(12).frame(maxWidth: .infinity).background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 14))
-                        .padding(.horizontal, 16).padding(.top, 14)
+                    Text("Scanning, PDF and signing stay free. Cancel anytime.")
+                        .font(.footnote).foregroundStyle(.white.opacity(0.6)).multilineTextAlignment(.center)
+                        .padding(.horizontal, 24).padding(.top, 14)
                     if typeSize.isAccessibilitySize { purchaseFooter.padding(.top, 12) }
                 }.padding(.bottom, 24)
             }
             .scrollIndicators(.hidden)
-            .background(alignment: .top) {
-                ZStack(alignment: .top) {
-                    ProStyle.night
-                    RadialGradient(colors: [Color(red: 0.36, green: 0.29, blue: 1), Color(red: 0.16, green: 0.17, blue: 0.48), ProStyle.night],
-                                   center: .top, startRadius: 0, endRadius: 420)
-                        .frame(height: 520)
-                }.ignoresSafeArea()
-            }
+            .ignoresSafeArea(edges: .top)
+            .background(ProStyle.night.ignoresSafeArea())
             .safeAreaInset(edge: .bottom, spacing: 0) { if !typeSize.isAccessibilitySize { purchaseFooter } }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark").font(.subheadline.weight(.bold)).foregroundStyle(.white)
-                            .frame(width: 34, height: 34).background(.white.opacity(0.16), in: Circle())
-                    }.accessibilityLabel("Close").disabled(subscription.busy)
+            .overlay(alignment: .topTrailing) {
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark").font(.subheadline.weight(.bold)).foregroundStyle(.white)
+                        .frame(width: 36, height: 36).background(.black.opacity(0.35), in: Circle())
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Restore purchases") { Task { await subscription.restore() } }.font(.subheadline).foregroundStyle(.white.opacity(0.8)).disabled(subscription.busy)
-                }
+                .accessibilityLabel("Close").disabled(subscription.busy)
+                .padding(.trailing, 16).padding(.top, 6)
             }
+            .toolbar(.hidden, for: .navigationBar)
             .toolbarBackground(.hidden, for: .navigationBar)
             .onChange(of: subscription.isPro) { _, active in if active { dismiss() } }
             .onChange(of: subscription.products.map(\.id), initial: true) { _, ids in
@@ -187,9 +163,12 @@ struct PaywallView: View {
                 Text(legal(product))
                     .font(.caption2).foregroundStyle(.white.opacity(0.6)).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             }
-            HStack(spacing: 24) {
+            HStack(spacing: 18) {
                 Link("Terms", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
+                Text("|").opacity(0.3)
                 Button("Privacy") { privacy = true }
+                Text("|").opacity(0.3)
+                Button("Restore purchases") { Task { await subscription.restore() } }.disabled(subscription.busy)
             }.font(.caption).foregroundStyle(.white.opacity(0.7))
         }
         .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 10).frame(maxWidth: .infinity)
@@ -224,5 +203,73 @@ struct PrivacyView: View {
             }.navigationTitle("Privacy").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
+    }
+}
+
+
+/// The top of the paywall: one Pro feature per slide, with its animation,
+/// advancing on its own every few seconds (CamScanner-style, our colours).
+struct ProFeatureCarousel: View {
+    private struct Slide { let title: String; let detail: String; let art: String? }
+    private static let slides: [Slide] = [
+        Slide(title: "Word · Excel · PowerPoint", detail: "Turn any scan into a file you can edit", art: "art-word"),
+        Slide(title: "Translate photos", detail: "Read signs, menus and letters in your language", art: "art-translate"),
+        Slide(title: "Text from any page", detail: "Copy and search the words in every scan", art: "art-ocr"),
+        Slide(title: "Hide personal info", detail: "Cover ID, card and phone numbers in one tap", art: "art-redact"),
+        Slide(title: "Fill forms in seconds", detail: "Your name, address and signature, placed for you", art: "art-fill-form"),
+        Slide(title: "Restore old photos", detail: "Bring faded prints back to life", art: "art-restore"),
+        Slide(title: "Lock & compress PDFs", detail: "Password-protect and shrink big files", art: "art-protect"),
+        Slide(title: "No ads", detail: "Every screen stays clean", art: nil),
+    ]
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var index = 0
+    private let timer = Timer.publish(every: 3.2, on: .main, in: .common).autoconnect()
+    var body: some View {
+        VStack(spacing: 14) {
+            TabView(selection: $index) {
+                ForEach(Self.slides.indices, id: \.self) { i in slide(Self.slides[i], live: i == index).tag(i) }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .frame(height: 430)
+            HStack(spacing: 6) {
+                ForEach(Self.slides.indices, id: \.self) { i in
+                    Capsule().fill(i == index ? AnyShapeStyle(ProStyle.gradient) : AnyShapeStyle(.white.opacity(0.28)))
+                        .frame(width: i == index ? 22 : 7, height: 7)
+                }
+            }
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: index)
+            .accessibilityElement().accessibilityLabel("Feature \(index + 1) of \(Self.slides.count)")
+            Text("All \(PaywallView.proToolCount) Pro tools, unlimited signatures and merges")
+                .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.6))
+        }
+        .onReceive(timer) { _ in
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 0.45)) { index = (index + 1) % Self.slides.count }
+        }
+    }
+    private func slide(_ slide: Slide, live: Bool) -> some View {
+        ZStack(alignment: .bottom) {
+            // Light stage at the top (where the art reads best), fading into the night below.
+            LinearGradient(colors: [Color(red: 0.95, green: 0.95, blue: 1), Color(red: 0.86, green: 0.85, blue: 0.99)], startPoint: .top, endPoint: .bottom)
+            Group {
+                if let art = slide.art {
+                    AnimatedPNG(asset: art, stillFrame: 60, animates: live && !reduceMotion)
+                        .frame(width: 320, height: 200)
+                } else {
+                    ProArt().frame(width: 190, height: 170)
+                }
+            }
+            .padding(.bottom, 150)
+            .accessibilityHidden(true)
+            LinearGradient(colors: [ProStyle.night.opacity(0), ProStyle.night.opacity(0.85), ProStyle.night], startPoint: .top, endPoint: .bottom)
+                .frame(height: 190)
+            VStack(spacing: 6) {
+                Text(slide.title).font(.system(.title, weight: .black)).multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.6).lineLimit(2)
+                Text(slide.detail).font(.subheadline).foregroundStyle(.white.opacity(0.75)).multilineTextAlignment(.center)
+            }
+            .foregroundStyle(.white).padding(.horizontal, 24).padding(.bottom, 18)
+        }
+        .clipped()
     }
 }

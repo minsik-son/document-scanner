@@ -102,10 +102,15 @@ struct SettingsView: View {
                     .pickerStyle(.segmented)
                     .accessibilityIdentifier("dev-plan-picker")
                     LabeledContent("Showing", value: subscription.isPro ? "Pro layout" : "Free layout")
-                    Button("Show first-run intro again") {
-                        UserDefaults.standard.set(false, forKey: "scanner-onboarding-v1")
+                    Button {
+                        // Back to a fresh install's first run: the full intro, then the
+                        // first-scan ask, tip and celebration as a new user sees them.
+                        let defaults = UserDefaults.standard
+                        for key in [OnboardingFlags.startScan, OnboardingFlags.scanTip, OnboardingFlags.firstScanPending] { defaults.removeObject(forKey: key) }
                         dismiss()
-                    }.accessibilityIdentifier("dev-replay-intro")
+                        Task { try? await Task.sleep(for: .seconds(0.4)); defaults.set(false, forKey: "scanner-onboarding-v1") }
+                    } label: { Label("Replay first-run intro", systemImage: "play.rectangle") }
+                        .accessibilityIdentifier("dev-replay-intro")
                 } header: { Text("Developer") } footer: { Text("Debug builds only. Switches the app between the free and Pro layouts without buying. App Store follows the real purchase.") }
                 #endif
                 Section("About this build") {

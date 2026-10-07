@@ -112,7 +112,7 @@ enum HomeShortcut: Hashable, Identifiable {
 
     var title: String {
         switch self {
-        case .photos: return "Photos"
+        case .photos: return "Import photos"
         case .qr: return "QR code"
         case .stitch: return "Stitch"
         case .library(let tool):

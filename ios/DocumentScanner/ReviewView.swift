@@ -54,6 +54,10 @@ struct ReviewView: View {
     @State private var retakingPage: UUID?
     @State private var workingDraftID: UUID?
     @State private var saveTask: Task<Void, Never>?
+    /// Page shown large in the review; the strip below picks another one.
+    @State private var current = 0
+    /// Edit mode: the compact list for reordering and deleting pages.
+    @State private var reordering = false
 
     var body: some View {
         NavigationStack {
@@ -99,6 +103,7 @@ struct ReviewView: View {
                         .background(TK.paper)
                     } else {
                         List {
+                            if reordering {
                             Section {
                                 ForEach(Array(doc.pages.enumerated()), id: \.element.id) { index, page in
                                     HStack(spacing: 12) {
@@ -121,7 +126,13 @@ struct ReviewView: View {
                                     else { change { $0.pages.remove(atOffsets: indices) } }
                                 }
                                 if doc.pages.isEmpty { Text("Add a page to get started.").foregroundStyle(.secondary) }
-                            } header: { Text("\(doc.pages.count) pages") }
+                            } header: { Text(doc.pages.count == 1 ? "1 page" : "\(doc.pages.count) pages") }
+                            } else if !doc.pages.isEmpty {
+                                Section { pagePreview(doc) }
+                                    .listRowInsets(EdgeInsets()).listRowBackground(Color.clear).listRowSeparator(.hidden)
+                            } else {
+                                Section { Text("Add a page to get started.").foregroundStyle(.secondary) }
+                            }
                             Section {
                                 TextField("Document name", text: Binding(get: { document?.title ?? "" }, set: { document?.title = $0; document?.autoTitled = false; persistDraft() }))
                                 if document?.autoTitled == true {
@@ -138,6 +149,7 @@ struct ReviewView: View {
                             }
                             if let error { Section { Text(error).foregroundStyle(.red) } }
                         }.listStyle(.insetGrouped).disabled(saving)
+                        .environment(\.editMode, .constant(reordering ? .active : .inactive))
                         .safeAreaInset(edge: .bottom) {
                             VStack(spacing: 12) {
                                 Button { openCamera(retaking: nil) } label: { Label("Add pages", systemImage: "camera") }.font(.headline).padding(8).disabled(saving)
@@ -161,7 +173,12 @@ struct ReviewView: View {
                 ToolbarItemGroup(placement: .bottomBar) {
                     if !saved { Button("Undo") { restoreHistory(undo: true) }.disabled(undoHistory.isEmpty || saving); Button("Redo") { restoreHistory(undo: false) }.disabled(redoHistory.isEmpty || saving) }
                 }
-                ToolbarItem(placement: .topBarTrailing) { if !saved { EditButton().disabled(saving) } }
+                ToolbarItem(placement: .topBarTrailing) {
+                    if !saved {
+                        Button(reordering ? "Done" : "Edit") { withAnimation { reordering.toggle() } }.disabled(saving)
+                            .accessibilityHint("Reorder or delete pages")
+                    }
+                }
             }
             .overlay(alignment: .top) { if saving { Button("Cancel export") { saveTask?.cancel() }.padding(10).background(.regularMaterial, in: Capsule()) } }
             .alert("Delete the last page?", isPresented: $deletingLast) {
@@ -221,6 +238,89 @@ struct ReviewView: View {
                 }
             }
         }
+    }
+    /// The page to check, shown big, with its actions and every page in a strip below.
+    @ViewBuilder private func pagePreview(_ doc: ScanDocument) -> some View {
+        let index = min(current, doc.pages.count - 1)
+        let page = doc.pages[index]
+        VStack(spacing: 14) {
+            Button { editPage = page } label: {
+                PageThumbnail(page: page)
+                    .frame(maxWidth: .infinity).frame(height: 400)
+                    .padding(16)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .overlay(alignment: .topLeading) {
+                        if page.cropReviewNeeded == true {
+                            Label("Check page edges", systemImage: "exclamationmark.triangle.fill")
+                                .font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
+                                .padding(.horizontal, 12).padding(.vertical, 7).background(Color.orange, in: Capsule()).padding(12)
+                        }
+                    }
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Edit current page").accessibilityHint("Crop, rotate, and adjust")
+            .simultaneousGesture(DragGesture(minimumDistance: 30).onEnded { value in
+                // Swipe the big page to move between pages.
+                guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                if value.translation.width < -40 { withAnimation { current = min(doc.pages.count - 1, index + 1) } }
+                if value.translation.width > 40 { withAnimation { current = max(0, index - 1) } }
+            })
+            HStack(spacing: 8) {
+                Text("Page \(index + 1) of \(doc.pages.count)").font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey700)
+                Spacer()
+                Button { editPage = page } label: { Label("Adjust", systemImage: "slider.horizontal.3") }
+                    .buttonStyle(ChipStyle(selected: false))
+                Button { openCamera(retaking: page.id) } label: { Label("Retake", systemImage: "camera.rotate") }
+                    .buttonStyle(ChipStyle(selected: false))
+                Menu {
+                    Button("Duplicate page") { change { value in var copy = page; copy.id = UUID(); value.pages.insert(copy, at: index+1) } }
+                    Button("Retake page") { openCamera(retaking: page.id) }
+                    Button("Apply tone and adjustments to all pages") { change { $0.applyAppearance(from: page) } }
+                        .disabled(doc.pages.contains { $0.preservesPDF })
+                    Button("Move earlier") { change { $0.pages.swapAt(index, index-1) }; current = index - 1 }.disabled(index == 0)
+                    Button("Move later") { change { $0.pages.swapAt(index, index+1) }; current = index + 1 }.disabled(index == doc.pages.count-1)
+                    Button("Delete page", role: .destructive) {
+                        if doc.pages.count == 1 { deletingLast = true } else { change { $0.pages.remove(at: index) }; current = max(0, index - 1) }
+                    }
+                } label: { Image(systemName: "ellipsis").font(.system(size: 16, weight: .bold)).frame(width: 40, height: 36).background(TK.grey100, in: Capsule()) }
+                .accessibilityLabel("Page \(index+1) actions").accessibilityIdentifier("page-actions-\(index+1)")
+            }
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(Array(doc.pages.enumerated()), id: \.element.id) { i, item in
+                            Button {
+                                // Tap a page to show it; tap the shown page again to edit it.
+                                if i == index { editPage = item } else { withAnimation { current = i } }
+                            } label: {
+                                VStack(spacing: 4) {
+                                    PageThumbnail(page: item).frame(width: 52, height: 68)
+                                        .padding(4).background(.white, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(i == index ? TK.blue : TK.grey200, lineWidth: i == index ? 2.5 : 1))
+                                        .overlay(alignment: .topTrailing) {
+                                            if item.cropReviewNeeded == true { Circle().fill(Color.orange).frame(width: 10, height: 10).offset(x: 3, y: -3) }
+                                        }
+                                    Text("\(i + 1)").font(.system(size: 12, weight: i == index ? .bold : .medium)).foregroundStyle(i == index ? TK.blue : TK.grey600)
+                                }
+                            }
+                            .buttonStyle(.plain).id(item.id)
+                            .accessibilityLabel("Edit page \(i+1)")
+                        }
+                        Button { openCamera(retaking: nil) } label: {
+                            VStack(spacing: 4) {
+                                Image(systemName: "plus").font(.system(size: 18, weight: .semibold)).foregroundStyle(TK.blue)
+                                    .frame(width: 60, height: 76).background(TK.blueSoft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                Text(" ").font(.system(size: 12))
+                            }
+                        }.buttonStyle(.plain).accessibilityLabel("Add a page")
+                    }.padding(.horizontal, 2).padding(.vertical, 2)
+                }
+                .onChange(of: index) { _, value in if doc.pages.indices.contains(value) { withAnimation { proxy.scrollTo(doc.pages[value].id, anchor: .center) } } }
+            }
+        }
+        .padding(.horizontal, 4).padding(.top, 4)
+        .onChange(of: doc.pages.count) { old, new in if new > old, new > 0 { current = new - 1 } }
     }
     private func change(_ action: (inout ScanDocument) -> Void) {
         guard var value = document, !saving else { return }

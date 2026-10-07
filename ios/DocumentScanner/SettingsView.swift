@@ -92,6 +92,18 @@ struct SettingsView: View {
                     Button("Restore library backup") { importing = true }.disabled(backupBusy)
                     Text("Existing documents are preserved. Choose whether duplicate documents are skipped or restored as copies. Backups are streamed to disk; enough free space for the exported archive is required.").font(.caption).foregroundStyle(.secondary)
                 }
+                #if DEBUG
+                Section {
+                    Picker("Act as", selection: Binding(get: { SubscriptionStore.devPlan }, set: { subscription.setDevPlan($0) })) {
+                        Text("App Store").tag("")
+                        Text("Free").tag("free")
+                        Text("Pro").tag("pro")
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("dev-plan-picker")
+                    LabeledContent("Showing", value: subscription.isPro ? "Pro layout" : "Free layout")
+                } header: { Text("Developer") } footer: { Text("Debug builds only. Switches the app between the free and Pro layouts without buying. App Store follows the real purchase.") }
+                #endif
                 Section("About this build") {
                     Text("Pageframe · 0.1.0")
                     Text("Development preview. Subscription purchases launched through the Xcode StoreKit configuration are test purchases.").font(.subheadline).foregroundStyle(.secondary)

@@ -35,7 +35,30 @@ final class SubscriptionStore: ObservableObject {
         #endif
     }()
     @Published private(set) var products: [Product] = []
-    @Published private(set) var isPro = SubscriptionStore.developmentUnlock
+    @Published private(set) var isPro = SubscriptionStore.resolve(SubscriptionStore.developmentUnlock)
+    /// What the App Store says, before any developer override.
+    private var storePro = SubscriptionStore.developmentUnlock
+    /// Debug builds only: Settings › Developer can force the app to act as a
+    /// free or Pro user to check both layouts. "" follows the App Store.
+    static let devPlanKey = "dev-plan-override"
+    static var devPlan: String {
+        #if DEBUG
+        let info = ProcessInfo.processInfo
+        if info.environment["XCTestConfigurationFilePath"] != nil || info.arguments.contains("--ui-test-session") { return "" }
+        return UserDefaults.standard.string(forKey: devPlanKey) ?? ""
+        #else
+        return ""
+        #endif
+    }
+    private static func resolve(_ real: Bool) -> Bool {
+        switch devPlan { case "free": false; case "pro": true; default: real }
+    }
+    func setDevPlan(_ value: String) {
+        #if DEBUG
+        UserDefaults.standard.set(value, forKey: Self.devPlanKey)
+        isPro = Self.resolve(storePro)
+        #endif
+    }
     @Published private(set) var entitlementsResolved = false
     @Published private(set) var busy = false
     @Published private(set) var statusText = "Free"
@@ -161,7 +184,8 @@ final class SubscriptionStore: ObservableObject {
         willRenew = renews
         updateTrialReminder()
         await refreshTrialOffer()
-        isPro = active || Self.developmentUnlock
+        storePro = active || Self.developmentUnlock
+        isPro = Self.resolve(storePro)
         entitlementsResolved = true
         expiryRefresh?.cancel()
         if let nextExpiry {

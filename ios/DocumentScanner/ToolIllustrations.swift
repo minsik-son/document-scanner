@@ -8,13 +8,14 @@ enum ToolArt: String, CaseIterable {
     case ocr, annotate, watermark, timestamp, merge, split, extract, reorder, compress, protect, images, longImage, print
     case measure, mesh
     case word, excel, ppt, math, translate
+    case cardContact, askDocument, removeFingers, autoSave
 
     var background: LinearGradient {
         let pair: (Color, Color)
         switch self {
-        case .book, .ocr, .merge, .extract, .images, .measure, .word, .translate: pair = (Color(hex: 0xEAF3FF), Color(hex: 0xF4F8FF))
-        case .portrait, .count, .protect, .mesh, .split, .excel: pair = (Color(hex: 0xE6F8F3), Color(hex: 0xF3FBF9))
-        case .erase, .marks, .annotate, .reorder, .longImage, .math: pair = (Color(hex: 0xF1EEFF), Color(hex: 0xF8F6FF))
+        case .book, .ocr, .merge, .extract, .images, .measure, .word, .translate, .cardContact: pair = (Color(hex: 0xEAF3FF), Color(hex: 0xF4F8FF))
+        case .portrait, .count, .protect, .mesh, .split, .excel, .autoSave: pair = (Color(hex: 0xE6F8F3), Color(hex: 0xF3FBF9))
+        case .erase, .marks, .annotate, .reorder, .longImage, .math, .askDocument, .removeFingers: pair = (Color(hex: 0xF1EEFF), Color(hex: 0xF8F6FF))
         case .restore, .watermark, .timestamp, .compress, .print, .mega, .ppt: pair = (Color(hex: 0xFFF3E9), Color(hex: 0xFFF9F3))
         }
         return LinearGradient(colors: [pair.0, pair.1], startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -58,6 +59,10 @@ struct ToolIllustration: View {
         case .ppt: SlidesArt()
         case .math: MathArt()
         case .translate: TranslateArt()
+        case .cardContact: LoopArt(asset: "art-card-contact", still: 60)
+        case .askDocument: LoopArt(asset: "art-ask-document", still: 60)
+        case .removeFingers: LoopArt(asset: "art-remove-fingers", still: 60)
+        case .autoSave: LoopArt(asset: "art-auto-save", still: 60)
         }
     }
 }
@@ -460,6 +465,20 @@ private struct TranslateArt: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
         AnimatedPNG(asset: "art-translate", stillFrame: 60, animates: !reduceMotion)
+            .id(reduceMotion)
+            .frame(width: 320, height: 200)
+            .accessibilityHidden(true)
+    }
+}
+
+
+/// Blender-rendered loop for the Smart tools.
+private struct LoopArt: View {
+    let asset: String
+    let still: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var body: some View {
+        AnimatedPNG(asset: asset, stillFrame: still, animates: !reduceMotion)
             .id(reduceMotion)
             .frame(width: 320, height: 200)
             .accessibilityHidden(true)

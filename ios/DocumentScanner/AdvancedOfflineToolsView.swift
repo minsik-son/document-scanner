@@ -1231,9 +1231,10 @@ struct BusinessCardTool: View {
     @State private var showContact = false
     var body: some View {
         ToolPage(title: "Business card to contact", subtitle: "Scan a card. Name, company, phone, email and address are filled in for you to check.") {
+            ToolHero(art: .cardContact)
             VStack(alignment: .leading, spacing: 8) {
                 SectionLabel(text: "Add a card")
-                PhotoSourceChoices(documentScan: true, picked: { images in
+                PhotoSourceChoices(allowCamera: false, documentScan: true, picked: { images in
                     guard let image = images.first else { return }
                     read(image)
                 }, failed: { problem = $0 }, busy: { reading = $0 })
@@ -1268,6 +1269,7 @@ struct AskDocumentTool: View {
     private var documents: [ScanDocument] { store.active.filter { $0.pdfFile != nil } }
     var body: some View {
         ToolPage(title: "Ask a document", subtitle: "Get a summary, key dates and amounts, or answers. Apple's on-device model; nothing leaves this iPhone.") {
+            ToolHero(art: .askDocument)
             VStack(alignment: .leading, spacing: 8) {
                 SectionLabel(text: "Choose a document")
                 if documents.isEmpty { Text("No saved documents yet. Scan or import one first.").foregroundStyle(TK.grey500) }
@@ -1286,6 +1288,7 @@ struct AutoSaveTool: View {
     @State private var paywall = false
     var body: some View {
         ToolPage(title: "Auto-save to cloud", subtitle: "Every new scan is also saved as a PDF in a folder you choose — iCloud Drive, Dropbox, Google Drive or this iPhone.") {
+            ToolHero(art: .autoSave)
             AutoExportRow(openPaywall: { paywall = true })
                 .padding(16).background(TK.grey50, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             Text("You can change or turn this off any time here or in Settings.").font(.footnote).foregroundStyle(TK.grey500)

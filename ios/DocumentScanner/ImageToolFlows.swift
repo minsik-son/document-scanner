@@ -85,14 +85,15 @@ struct PhotoSourcePage: View {
     var frontCamera = false
     @ObservedObject var work: ToolWork
     var recent: AnyView? = nil
+    var art: ToolArt? = nil
     let picked: ([UIImage]) -> Void
     var body: some View {
         ToolPage(title: title, subtitle: subtitle) {
-            ToolHero(art: tool.art)
+            ToolHero(art: art ?? tool.art)
             if let recent { recent }
             VStack(alignment: .leading, spacing: 8) {
                 SectionLabel(text: multiple ? "Add your photos" : "Add a photo")
-                PhotoSourceChoices(multiple: multiple, frontCamera: frontCamera, portraitGuide: tool == .portrait, documentScan: tool == .erase || tool == .marks, picked: picked,
+                PhotoSourceChoices(multiple: multiple, frontCamera: frontCamera, portraitGuide: tool == .portrait, allowCamera: art != .removeFingers, documentScan: tool == .erase || tool == .marks, picked: picked,
                                    failed: { work.message = $0 }, busy: { work.busy = $0 ? "Opening…" : nil })
             }
             if let message = work.message { ToastMessage(text: message) }
@@ -700,7 +701,7 @@ private struct EraseTool: View {
             switch step {
             case 0:
                 PhotoSourcePage(tool: .erase, title: fingers ? "Remove fingers" : "Erase anything",
-                                subtitle: fingers ? "Scan or pick a page you held by hand. Fingers at the edges are found and filled in." : "Paint over handwriting, stains or objects. We'll fill the spot from its surroundings.", work: work) { images in
+                                subtitle: fingers ? "Scan or pick a page you held by hand. Fingers at the edges are found and filled in." : "Paint over handwriting, stains or objects. We'll fill the spot from its surroundings.", work: work, art: fingers ? .removeFingers : nil) { images in
                     guard let image = images.first else { return }
                     original = image; input = image; strokes = []; go(1)
                     if fingers {

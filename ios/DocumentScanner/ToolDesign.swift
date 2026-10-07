@@ -121,9 +121,11 @@ enum HomeShortcut: Hashable, Identifiable {
         + LibraryTool.allCases.map { .library($0) }
         + AdvancedTool.allCases.filter { $0 != .measure && $0 != .mesh && !$0.hidden }.map { .advanced($0) }
     static let maximum = 7
+    /// Ranked by how often scanner-app users reach for each job (CamScanner's yearly
+    /// reports and 38k competitor reviews, Oct 2026): import, ID, sign, merge, text,
+    /// Word, then shrinking a file to send it.
     static func defaults(pro: Bool) -> [HomeShortcut] {
-        pro ? [.photos, .library(.ocr), .advanced(.word), .advanced(.excel), .library(.annotate), .library(.compress), .qr]
-            : [.photos, .library(.ocr), .library(.annotate), .library(.merge), .library(.identity), .library(.images), .qr]
+        [.photos, .library(.identity), .library(.annotate), .library(.merge), .library(.ocr), .advanced(.word), .library(.compress)]
     }
 
     var title: String {

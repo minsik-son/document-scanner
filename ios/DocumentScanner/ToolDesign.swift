@@ -5,9 +5,25 @@ struct ToolArtwork: View {
     let name: String
     var size: CGFloat = 64
     var body: some View {
-        Image("tool-" + name).resizable().interpolation(.high).scaledToFit()
-            .frame(width: size, height: size).accessibilityHidden(true)
+        Group {
+            if UIImage(named: "tool-" + name) != nil {
+                Image("tool-" + name).resizable().interpolation(.high).scaledToFit()
+            } else {
+                // Until its illustrated icon arrives: a soft tile with a symbol.
+                RoundedRectangle(cornerRadius: size * 0.24, style: .continuous)
+                    .fill(LinearGradient(colors: [Color(hex: 0x5B8CFF), Color(hex: 0x3D6BF2)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .padding(size * 0.08)
+                    .overlay(Image(systemName: Self.fallback[name] ?? "square.grid.2x2").font(.system(size: size * 0.36, weight: .semibold)).foregroundStyle(.white))
+            }
+        }
+        .frame(width: size, height: size).accessibilityHidden(true)
     }
+}
+extension ToolArtwork {
+    static let fallback: [String: String] = [
+        "card-contact": "person.crop.rectangle.badge.plus", "ask-document": "sparkles",
+        "remove-fingers": "hand.raised.fill", "auto-save": "folder.badge.plus",
+    ]
 }
 struct ToolTile: View {
     let title: String

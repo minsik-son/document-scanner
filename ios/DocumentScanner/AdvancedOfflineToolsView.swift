@@ -43,7 +43,7 @@ struct AdvancedOfflineHub: View {
     private var columns: [GridItem] { Array(repeating: GridItem(.flexible(), spacing: 8), count: typeSize.isAccessibilitySize ? 2 : 4) }
     private func matches(_ title: String) -> Bool { query.isEmpty || title.localizedCaseInsensitiveContains(query) }
     private var hasMatches: Bool {
-        (AdvancedTool.allCases.map(\.rawValue) + LibraryTool.allCases.map(\.rawValue) + ["QR code", "Stitch screenshots", "Scan document", "Whiteboard", "ID card"]).contains { matches($0) }
+        (AdvancedTool.allCases.map(\.rawValue) + LibraryTool.allCases.map(\.rawValue) + ["QR code", "Stitch screenshots", "Scan document", "Whiteboard", "ID card"] + SmartTool.allCases.map(\.title)).contains { matches($0) }
     }
     var body: some View {
         NavigationStack {
@@ -82,6 +82,7 @@ struct AdvancedOfflineHub: View {
                             if matches("Whiteboard") { Button { startScan(.whiteboard) } label: { ToolTile(title: "Whiteboard", icon: "whiteboard") } }
                         }
                     }
+                    smartSection
                     advancedSection("Convert & read", tools: [.word, .excel, .slides, .translate, .math])
                     advancedSection("Edit images", tools: [.book, .portrait, .erase, .marks, .restore, .mega, .count])
                     librarySection("PDF tools", tools: [.ocr, .annotate, .watermark, .timestamp, .merge, .split, .extract, .reorder, .compress, .protect, .images, .longImage, .print])
@@ -96,6 +97,20 @@ struct AdvancedOfflineHub: View {
                 .sheet(item: $quick) { QuickToolView(tool: $0, documentID: documentID) }
                 .fullScreenCover(item: $capture, onDismiss: { store.perform { try store.discardEmptyDrafts() } }) { ReviewView(documentID: $0.id, captureOnOpen: true) }
                 .alert("Something needs attention", isPresented: Binding(get: { store.problem != nil }, set: { if !$0 { store.problem = nil } })) { Button("OK") { store.problem = nil } } message: { Text(store.problem ?? "") }
+        }
+    }
+    @ViewBuilder private var smartSection: some View {
+        let visible = SmartTool.allCases.filter { $0.shown && matches($0.title) }
+        if !visible.isEmpty {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Smart tools").font(.headline)
+                LazyVGrid(columns: columns, spacing: 16) {
+                    ForEach(visible) { tool in
+                        NavigationLink { tool.destination } label: { ToolTile(title: tool.title, icon: tool.icon, pro: tool.pro) }
+                            .accessibilityIdentifier("smart-tool-" + tool.rawValue)
+                    }
+                }
+            }.padding(20).background(.white, in: RoundedRectangle(cornerRadius: 26))
         }
     }
     @ViewBuilder private func advancedSection(_ title: String, tools: [AdvancedTool]) -> some View {
@@ -1169,5 +1184,112 @@ struct CameraTextToolView: View {
             UIColor.white.setFill(); context.fill(CGRect(x:0,y:0,width:1000,height:700))
             ((math ? "12 + 8 * 3\n45 - 9 = 36" : "Welcome to the library") as NSString).draw(at:CGPoint(x:90,y:220),withAttributes:[.font:UIFont.systemFont(ofSize:55),.foregroundColor:UIColor.black])
         }
+    }
+}
+
+
+// MARK: - Smart tools (on-device)
+
+enum SmartTool: String, CaseIterable, Identifiable {
+    case businessCard, askDocument, removeFingers, autoSave
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .businessCard: return "Business card to contact"
+        case .askDocument: return "Ask a document"
+        case .removeFingers: return "Remove fingers"
+        case .autoSave: return "Auto-save to cloud"
+        }
+    }
+    var icon: String {
+        switch self {
+        case .businessCard: return "card-contact"
+        case .askDocument: return "ask-document"
+        case .removeFingers: return "remove-fingers"
+        case .autoSave: return "auto-save"
+        }
+    }
+    var pro: Bool { self == .autoSave }
+    /// Asking needs Apple Intelligence; the tile is hidden elsewhere.
+    var shown: Bool { self != .askDocument || DocumentAI.isAvailable }
+    @ViewBuilder var destination: some View {
+        switch self {
+        case .businessCard: BusinessCardTool()
+        case .askDocument: AskDocumentTool()
+        case .removeFingers: FingerRemovalTool()
+        case .autoSave: AutoSaveTool()
+        }
+    }
+}
+
+/// Scan a business card and open a filled-in new contact.
+struct BusinessCardTool: View {
+    @State private var fields: DocumentInsight.CardFields?
+    @State private var card: Data?
+    @State private var reading = false
+    @State private var problem: String?
+    @State private var showContact = false
+    var body: some View {
+        ToolPage(title: "Business card to contact", subtitle: "Scan a card. Name, company, phone, email and address are filled in for you to check.") {
+            VStack(alignment: .leading, spacing: 8) {
+                SectionLabel(text: "Add a card")
+                PhotoSourceChoices(documentScan: true, picked: { images in
+                    guard let image = images.first else { return }
+                    read(image)
+                }, failed: { problem = $0 }, busy: { reading = $0 })
+            }
+            if reading { HStack(spacing: 8) { ProgressView(); Text("Reading the card…").foregroundStyle(TK.grey600) } }
+            if let problem { ToastMessage(text: problem) }
+            Label("Read on this iPhone. Nothing is saved until you tap Done on the contact.", systemImage: "lock.iphone")
+                .font(.footnote).foregroundStyle(TK.grey500)
+        } actions: { EmptyView() }
+        .sheet(isPresented: $showContact) { if let fields { NewContactView(fields: fields, cardImage: card).ignoresSafeArea() } }
+    }
+    private func read(_ image: UIImage) {
+        reading = true; problem = nil
+        Task {
+            do {
+                let blocks = try await OfflineWork.perform { try Imaging.recognize(image) }
+                let text = blocks.map(\.text).joined(separator: "\n")
+                guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw ScannerError.message("No text was found. Try a brighter, sharper photo of the card.") }
+                fields = DocumentInsight.cardFields(text: text)
+                card = image.preparingThumbnail(of: CGSize(width: 640, height: 640))?.jpegData(compressionQuality: 0.8)
+                showContact = true
+            } catch { problem = error.localizedDescription }
+            reading = false
+        }
+    }
+}
+
+/// Pick a saved document, then ask about it or summarize it on this iPhone.
+struct AskDocumentTool: View {
+    @EnvironmentObject private var store: LibraryStore
+    @State private var chosen: UUID?
+    private var documents: [ScanDocument] { store.active.filter { $0.pdfFile != nil } }
+    var body: some View {
+        ToolPage(title: "Ask a document", subtitle: "Get a summary, key dates and amounts, or answers. Apple's on-device model; nothing leaves this iPhone.") {
+            VStack(alignment: .leading, spacing: 8) {
+                SectionLabel(text: "Choose a document")
+                if documents.isEmpty { Text("No saved documents yet. Scan or import one first.").foregroundStyle(TK.grey500) }
+                else { DocumentChoiceList(documents: documents) { chosen = $0.id } }
+            }
+        } actions: { EmptyView() }
+        .sheet(item: Binding(get: { chosen.map(AskTarget.init) }, set: { chosen = $0?.id })) { target in
+            DocumentAskSheet(documentID: target.id).presentationDetents([.medium, .large])
+        }
+    }
+    private struct AskTarget: Identifiable { let id: UUID }
+}
+
+/// Choose the folder that receives every new scan.
+struct AutoSaveTool: View {
+    @State private var paywall = false
+    var body: some View {
+        ToolPage(title: "Auto-save to cloud", subtitle: "Every new scan is also saved as a PDF in a folder you choose — iCloud Drive, Dropbox, Google Drive or this iPhone.") {
+            AutoExportRow(openPaywall: { paywall = true })
+                .padding(16).background(TK.grey50, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            Text("You can change or turn this off any time here or in Settings.").font(.footnote).foregroundStyle(TK.grey500)
+        } actions: { EmptyView() }
+        .sheet(isPresented: $paywall) { PaywallView() }
     }
 }

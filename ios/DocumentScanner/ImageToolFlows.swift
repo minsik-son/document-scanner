@@ -680,7 +680,11 @@ private struct PortraitTool: View {
 
 // MARK: - Smart erase
 
+/// Smart erase that starts by finding fingers holding the page.
+struct FingerRemovalTool: View { var body: some View { EraseTool(fingers: true) } }
+
 private struct EraseTool: View {
+    var fingers = false
     @EnvironmentObject private var store: LibraryStore
     @Environment(\.dismiss) private var dismiss
     @StateObject private var work = ToolWork()
@@ -695,9 +699,17 @@ private struct EraseTool: View {
         StepStack(step: step, forward: forward) {
             switch step {
             case 0:
-                PhotoSourcePage(tool: .erase, title: "Erase anything", subtitle: "Paint over handwriting, stains or objects. We'll fill the spot from its surroundings.", work: work) { images in
+                PhotoSourcePage(tool: .erase, title: fingers ? "Remove fingers" : "Erase anything",
+                                subtitle: fingers ? "Scan or pick a page you held by hand. Fingers at the edges are found and filled in." : "Paint over handwriting, stains or objects. We'll fill the spot from its surroundings.", work: work) { images in
                     guard let image = images.first else { return }
                     original = image; input = image; strokes = []; go(1)
+                    if fingers {
+                        work.run("Finding fingers…") {
+                            let found = try await OfflineWork.perform { try ImageToolEngine.fingerStrokes(image) }
+                            strokes = found
+                            if found.isEmpty { work.message = "No fingers found at the edges. Paint over them instead." }
+                        }
+                    }
                 }
             case 1: paintPage
             case 2: resultPage
@@ -708,7 +720,9 @@ private struct EraseTool: View {
     }
     private func go(_ next: Int) { forward = next > step; step = next }
     private var paintPage: some View {
-        ToolPage(title: "Paint over what to erase", subtitle: "Pinch to zoom in for small spots. Cover it fully with a little margin.", scrolls: false) {
+        ToolPage(title: fingers ? "Check the marked fingers" : "Paint over what to erase",
+                 subtitle: fingers ? "Fingers are marked in red. Paint more or tap Erase." : "Pinch to zoom in for small spots. Cover it fully with a little margin.", scrolls: false) {
+            if let message = work.message { ToastMessage(text: message) }
             if let input { ErasePainter(image: input, strokes: $strokes, brush: $brush) }
         } actions: {
             Button("Erase") { erase() }.buttonStyle(CTAButtonStyle()).disabled(strokes.isEmpty).accessibilityIdentifier("erase-run")

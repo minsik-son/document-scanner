@@ -308,8 +308,8 @@ enum DocumentInsight {
 
     /// Fields read from a business card for a new contact.
     struct CardFields { var name = "", organization = "", jobTitle = "", phones: [String] = [], emails: [String] = [], urls: [String] = [], address = "" }
-    static func cardFields(_ doc: ScanDocument) -> CardFields {
-        let text = doc.text
+    static func cardFields(_ doc: ScanDocument) -> CardFields { cardFields(text: doc.text) }
+    static func cardFields(text: String) -> CardFields {
         let lines = text.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         var f = CardFields()
         f.name = personName(lines) ?? ""

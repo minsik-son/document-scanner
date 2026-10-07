@@ -30,6 +30,8 @@ struct CameraView: View {
     @State private var autoCaptureHint = false
     @State private var cardLocked = false
     @AppStorage("autoCaptureHintShown") private var autoCaptureHintShown = false
+    /// Automatic capture is on by default; turning it off is remembered.
+    @AppStorage("autoCaptureOn") private var autoCaptureOn = true
     var body: some View {
         ZStack {
             if let capturedPage {
@@ -53,7 +55,8 @@ struct CameraView: View {
         .onAppear {
             style = identityCapture ? .card : (store.document(documentID)?.captureStyle ?? .document)
             camera.setCaptureStyle(style)
-            if identityCapture { autoScan = true; camera.setAutoScan(true) }
+            autoScan = identityCapture || autoCaptureOn; camera.setAutoScan(autoScan)
+            if autoScan && !identityCapture { showAutoHintOnce() }
             visible = true; orientation.start(); Task { await startCamera() }
         }
         .onDisappear { visible = false; orientation.stop(); camera.stop() }
@@ -166,11 +169,20 @@ struct CameraView: View {
         .padding(3).background(.black.opacity(0.45), in: Capsule())
         .disabled(saving).accessibilityElement(children: .contain).accessibilityIdentifier("capture-style")
     }
+    private func showAutoHintOnce() {
+        guard !autoCaptureHintShown else { return }
+        autoCaptureHintShown = true
+        withAnimation(.easeOut(duration: 0.2)) { autoCaptureHint = true }
+        Task {
+            try? await Task.sleep(nanoseconds: 3_500_000_000)
+            withAnimation(.easeIn(duration: 0.3)) { autoCaptureHint = false }
+        }
+    }
     private func selectStyle(_ value: CaptureStyle) {
         guard value != style else { return }
         withAnimation(.snappy) { style = value }
         if var doc = store.document(documentID) { doc.captureStyle = value; store.perform { try store.update(doc) } }
-        autoScan = false; camera.setAutoScan(false); camera.setCaptureStyle(value)
+        camera.setAutoScan(autoScan); camera.setCaptureStyle(value)
     }
     private var bottomPanel: some View {
         VStack(spacing: 14) {
@@ -204,14 +216,8 @@ struct CameraView: View {
                     }
                     Button {
                         autoScan.toggle(); camera.setAutoScan(autoScan)
-                        if autoScan && !autoCaptureHintShown {
-                            autoCaptureHintShown = true
-                            withAnimation(.easeOut(duration: 0.2)) { autoCaptureHint = true }
-                            Task {
-                                try? await Task.sleep(nanoseconds: 3_500_000_000)
-                                withAnimation(.easeIn(duration: 0.3)) { autoCaptureHint = false }
-                            }
-                        }
+                        if !identityCapture { autoCaptureOn = autoScan }
+                        if autoScan { showAutoHintOnce() }
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: autoScan ? "a.circle.fill" : "a.circle").font(.system(size: 15, weight: .bold))

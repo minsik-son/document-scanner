@@ -29,32 +29,32 @@ struct PaywallView: View {
                 VStack(spacing: 0) {
                     ProFeatureCarousel()
                     HStack(spacing: 12) {
-                        Capsule().fill(.white.opacity(0.18)).frame(height: 1)
+                        Capsule().fill(TossPay.line).frame(height: 1)
                         Text("Unlimited access").font(.subheadline.weight(.semibold)).fixedSize()
-                        Capsule().fill(.white.opacity(0.18)).frame(height: 1)
+                        Capsule().fill(TossPay.line).frame(height: 1)
                     }.padding(.horizontal, 40).padding(.top, 22)
                     VStack(spacing: 10) {
                         if plans.isEmpty {
-                            Text("Plans are currently unavailable. You can keep scanning for free.").multilineTextAlignment(.center).foregroundStyle(.white.opacity(0.7))
+                            Text("Plans are currently unavailable. You can keep scanning for free.").multilineTextAlignment(.center).foregroundStyle(TossPay.sub)
                             Button("Reload plans") { Task { await subscription.load() } }.disabled(subscription.busy)
                         } else {
                             ForEach(plans) { plan in planCard(plan) }
                         }
                     }.padding(.horizontal, 16).padding(.top, 20)
                     Text("Scanning, PDF and signing stay free. Cancel anytime.")
-                        .font(.footnote).foregroundStyle(.white.opacity(0.6)).multilineTextAlignment(.center)
+                        .font(.footnote).foregroundStyle(TossPay.sub).multilineTextAlignment(.center)
                         .padding(.horizontal, 24).padding(.top, 14)
                     if typeSize.isAccessibilitySize { purchaseFooter.padding(.top, 12) }
                 }.padding(.bottom, 24)
             }
             .scrollIndicators(.hidden)
             .ignoresSafeArea(edges: .top)
-            .background(ProStyle.night.ignoresSafeArea())
+            .background(Color.white.ignoresSafeArea())
             .safeAreaInset(edge: .bottom, spacing: 0) { if !typeSize.isAccessibilitySize { purchaseFooter } }
             .overlay(alignment: .topTrailing) {
                 Button { dismiss() } label: {
                     Image(systemName: "xmark").font(.subheadline.weight(.bold)).foregroundStyle(.white)
-                        .frame(width: 36, height: 36).background(.black.opacity(0.35), in: Circle())
+                        .frame(width: 36, height: 36).background(.black.opacity(0.25), in: Circle())
                 }
                 .accessibilityLabel("Close").disabled(subscription.busy)
                 .padding(.trailing, 16).padding(.top, 6)
@@ -68,8 +68,8 @@ struct PaywallView: View {
             .interactiveDismissDisabled(subscription.busy)
             .sheet(isPresented: $privacy) { PrivacyView().environment(\.colorScheme, .light) }
         }
-        .environment(\.colorScheme, .dark)
-        .foregroundStyle(.white)
+        .environment(\.colorScheme, .light)
+        .foregroundStyle(TossPay.ink)
     }
     private var hero: some View {
         ZStack {
@@ -121,19 +121,19 @@ struct PaywallView: View {
                             if subscription.trialEligible, let days = subscription.trialDays { Text("\(days) days free · \((plan.price / 12).formatted(plan.priceFormatStyle))/month, billed yearly") }
                             else { Text("\((plan.price / 12).formatted(plan.priceFormatStyle)) / month, billed yearly") }
                         } else { Text("Cancel anytime") }
-                    }.font(.caption).foregroundStyle(.white.opacity(0.65)).fixedSize(horizontal: false, vertical: true)
+                    }.font(.caption).foregroundStyle(TossPay.sub).fixedSize(horizontal: false, vertical: true)
                 }.frame(maxWidth: .infinity, alignment: .leading)
                 Text(lifetime ? "\(plan.displayPrice) once" : "\(plan.displayPrice) / \(annual ? "year" : "month")").font(.headline)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(14)
-            .background(active ? AnyShapeStyle(Color(red: 0.1, green: 0.11, blue: 0.25)) : AnyShapeStyle(.white.opacity(0.06)), in: shape)
-            .overlay(shape.strokeBorder(active ? AnyShapeStyle(ProStyle.gradient) : AnyShapeStyle(.white.opacity(0.12)), lineWidth: active ? 2 : 1.5))
+            .background(active ? AnyShapeStyle(TossPay.selected) : AnyShapeStyle(Color.white), in: shape)
+            .overlay(shape.strokeBorder(active ? AnyShapeStyle(TossPay.blue) : AnyShapeStyle(TossPay.line), lineWidth: active ? 2 : 1.5))
             .overlay(alignment: .topTrailing) {
                 if annual, let saving {
-                    Text("BEST · SAVE \(saving)%").font(.caption2.weight(.heavy)).padding(.horizontal, 9).padding(.vertical, 3)
-                        .background(ProStyle.gradient, in: Capsule()).offset(x: -14, y: -10)
+                    Text("BEST · SAVE \(saving)%").font(.caption2.weight(.heavy)).foregroundStyle(.white).padding(.horizontal, 9).padding(.vertical, 3)
+                        .background(TossPay.blue, in: Capsule()).offset(x: -14, y: -10)
                 }
             }
             .padding(.top, annual ? 6 : 0)
@@ -142,7 +142,7 @@ struct PaywallView: View {
     }
     private var purchaseFooter: some View {
         VStack(spacing: 10) {
-            if let message = subscription.message { Text(message).font(.footnote).foregroundStyle(.white.opacity(0.75)).accessibilityIdentifier("purchase-status") }
+            if let message = subscription.message { Text(message).font(.footnote).foregroundStyle(TossPay.sub).accessibilityIdentifier("purchase-status") }
             if let product {
                 Button { Task { await subscription.purchase(product) } } label: {
                     VStack(spacing: 2) {
@@ -156,12 +156,11 @@ struct PaywallView: View {
                     }
                     .frame(maxWidth: .infinity).frame(minHeight: 54).padding(.vertical, 4)
                     .foregroundStyle(.white)
-                    .background(ProStyle.gradient, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay { if !typeSize.isAccessibilitySize { ProShine().clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)) } }
-                    .shadow(color: ProStyle.violet.opacity(0.4), radius: 12, y: 6)
+                    .background(TossPay.blue, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    
                 }.buttonStyle(.plain).disabled(subscription.busy).accessibilityIdentifier("subscribe-button")
                 Text(legal(product))
-                    .font(.caption2).foregroundStyle(.white.opacity(0.6)).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                    .font(.caption2).foregroundStyle(TossPay.sub).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             }
             HStack(spacing: 18) {
                 Link("Terms", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
@@ -169,10 +168,10 @@ struct PaywallView: View {
                 Button("Privacy") { privacy = true }
                 Text("|").opacity(0.3)
                 Button("Restore purchases") { Task { await subscription.restore() } }.disabled(subscription.busy)
-            }.font(.caption).foregroundStyle(.white.opacity(0.7))
+            }.font(.caption).foregroundStyle(TossPay.sub)
         }
         .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 10).frame(maxWidth: .infinity)
-        .background(ProStyle.night)
+        .background(Color.white)
     }
     private func legal(_ product: Product) -> String {
         if product.id == SubscriptionStore.lifetimeID {
@@ -232,21 +231,21 @@ struct ProFeatureCarousel: View {
             .frame(height: 430)
             HStack(spacing: 6) {
                 ForEach(Self.slides.indices, id: \.self) { i in
-                    Capsule().fill(i == index ? AnyShapeStyle(ProStyle.gradient) : AnyShapeStyle(.white.opacity(0.28)))
+                    Capsule().fill(i == index ? AnyShapeStyle(TossPay.blue) : AnyShapeStyle(TossPay.dotOff))
                         .frame(width: i == index ? 22 : 7, height: 7)
                 }
             }
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: index)
             .accessibilityElement().accessibilityLabel("Feature \(index + 1) of \(Self.slides.count)")
             Text("All \(PaywallView.proToolCount) Pro tools, unlimited signatures and merges")
-                .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.6))
+                .font(.caption.weight(.semibold)).foregroundStyle(TossPay.sub)
         }
     }
     private func slide(_ slide: Slide, live: Bool) -> some View {
-        // Two flat colours, no gradient: a light stage for the art, the night below for the words.
+        // Two flat colours, no gradient: a pale blue stage for the art, white below for the words.
         VStack(spacing: 0) {
             ZStack {
-                Color(red: 0.925, green: 0.918, blue: 1)
+                TossPay.stage
                 Group {
                     if let art = slide.art {
                         AnimatedPNG(asset: art, stillFrame: 60, animates: live && !reduceMotion)
@@ -262,11 +261,23 @@ struct ProFeatureCarousel: View {
             VStack(spacing: 6) {
                 Text(slide.title).font(.system(.title, weight: .black)).multilineTextAlignment(.center)
                     .minimumScaleFactor(0.6).lineLimit(2)
-                Text(slide.detail).font(.subheadline).foregroundStyle(.white.opacity(0.75)).multilineTextAlignment(.center)
+                Text(slide.detail).font(.subheadline).foregroundStyle(TossPay.sub).multilineTextAlignment(.center)
             }
-            .foregroundStyle(.white).padding(.horizontal, 24)
+            .foregroundStyle(TossPay.ink).padding(.horizontal, 24)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(ProStyle.night)
+            .background(Color.white)
         }
     }
+}
+
+
+/// Paywall colours: Toss-style light page with one blue.
+enum TossPay {
+    static let blue = Color(red: 0.192, green: 0.510, blue: 0.965)      // #3182F6
+    static let stage = Color(red: 0.910, green: 0.953, blue: 1)        // #E8F3FF
+    static let selected = Color(red: 0.957, green: 0.976, blue: 1)     // #F4F9FF
+    static let ink = Color(red: 0.098, green: 0.122, blue: 0.157)      // #191F28
+    static let sub = Color(red: 0.420, green: 0.463, blue: 0.518)      // #6B7684
+    static let line = Color(red: 0.898, green: 0.910, blue: 0.922)     // #E5E8EB
+    static let dotOff = Color(red: 0.820, green: 0.839, blue: 0.859)   // #D1D6DB
 }

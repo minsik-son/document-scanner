@@ -12,7 +12,7 @@ struct StartupView: View {
                     .frame(width: 168, height: 168)
                     .accessibilityHidden(true)
                 VStack(spacing: 8) {
-                    Text("Document Scanner").font(.system(.title2, weight: .bold))
+                    Text("Scanleaf").font(.system(.title2, weight: .bold))
                         .foregroundStyle(.white)
                     Text("Paper, made digital.").font(.body)
                         .foregroundStyle(Color(red: 0.55, green: 0.80, blue: 0.95))

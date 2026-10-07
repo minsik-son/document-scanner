@@ -119,7 +119,7 @@ enum HomeShortcut: Hashable, Identifiable {
     /// Every tool that opens straight from Home (Measure and 3D scan need their own screens).
     static let all: [HomeShortcut] = [.photos, .qr, .stitch]
         + LibraryTool.allCases.map { .library($0) }
-        + AdvancedTool.allCases.filter { $0 != .measure && $0 != .mesh }.map { .advanced($0) }
+        + AdvancedTool.allCases.filter { $0 != .measure && $0 != .mesh && !$0.hidden }.map { .advanced($0) }
     static let maximum = 7
     static func defaults(pro: Bool) -> [HomeShortcut] {
         pro ? [.photos, .library(.ocr), .advanced(.word), .advanced(.excel), .library(.annotate), .library(.compress), .qr]

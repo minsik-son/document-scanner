@@ -11,6 +11,8 @@ enum AdvancedTool:String,Identifiable,CaseIterable {
     case book = "Book pages", portrait = "ID photo", erase = "Smart erase", marks = "Remove colored marks", restore = "Restore photo"
     case mega = "Mega scan", count = "Count objects", measure = "Measure", mesh = "3D scan", math = "Math scan"
     var id:String { rawValue }
+    /// Hidden for now (too close to CamScanner); the code stays for a later update.
+    var hidden:Bool { self == .count }
     var office:Bool { [.word,.excel,.slides].contains(self) }
     var textTool:Bool { [.word,.excel,.translate,.math].contains(self) }
     var detail:String {
@@ -43,7 +45,7 @@ struct AdvancedOfflineHub: View {
     private var columns: [GridItem] { Array(repeating: GridItem(.flexible(), spacing: 8), count: typeSize.isAccessibilitySize ? 2 : 4) }
     private func matches(_ title: String) -> Bool { query.isEmpty || title.localizedCaseInsensitiveContains(query) }
     private var hasMatches: Bool {
-        (AdvancedTool.allCases.map(\.rawValue) + LibraryTool.allCases.map(\.rawValue) + ["QR code", "Stitch screenshots", "Scan document", "Whiteboard", "ID card"] + SmartTool.allCases.map(\.title)).contains { matches($0) }
+        (AdvancedTool.allCases.filter { !$0.hidden }.map(\.rawValue) + LibraryTool.allCases.map(\.rawValue) + ["QR code", "Stitch screenshots", "Scan document", "Whiteboard", "ID card"] + SmartTool.allCases.map(\.title)).contains { matches($0) }
     }
     var body: some View {
         NavigationStack {
@@ -114,7 +116,7 @@ struct AdvancedOfflineHub: View {
         }
     }
     @ViewBuilder private func advancedSection(_ title: String, tools: [AdvancedTool]) -> some View {
-        let visible = tools.filter { matches($0.rawValue) }
+        let visible = tools.filter { !$0.hidden && matches($0.rawValue) }
         if !visible.isEmpty {
             VStack(alignment: .leading, spacing: 16) {
                 Text(title).font(.headline)

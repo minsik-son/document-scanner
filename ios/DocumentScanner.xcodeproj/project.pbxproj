@@ -787,7 +787,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Configuration/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Scanleaf;
+				INFOPLIST_KEY_CFBundleDisplayName = Pageframe;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Scan paper documents and save them on your iPhone.";
 				INFOPLIST_KEY_NSContactsUsageDescription = "Save business cards you scan as new contacts.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your documents on this iPhone.";
@@ -910,7 +910,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Configuration/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Scanleaf;
+				INFOPLIST_KEY_CFBundleDisplayName = Pageframe;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Scan paper documents and save them on your iPhone.";
 				INFOPLIST_KEY_NSContactsUsageDescription = "Save business cards you scan as new contacts.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your documents on this iPhone.";

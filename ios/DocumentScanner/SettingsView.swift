@@ -93,7 +93,7 @@ struct SettingsView: View {
                     Text("Existing documents are preserved. Choose whether duplicate documents are skipped or restored as copies. Backups are streamed to disk; enough free space for the exported archive is required.").font(.caption).foregroundStyle(.secondary)
                 }
                 Section("About this build") {
-                    Text("Scanleaf · 0.1.0")
+                    Text("Pageframe · 0.1.0")
                     Text("Development preview. Subscription purchases launched through the Xcode StoreKit configuration are test purchases.").font(.subheadline).foregroundStyle(.secondary)
                 }
                 if let feedback { Section { Text(feedback) } }

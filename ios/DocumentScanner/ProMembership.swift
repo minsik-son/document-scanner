@@ -153,7 +153,7 @@ struct MembershipBanner: View {
     private var free: some View {
         ZStack(alignment: .bottomTrailing) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Unlock\nScanleaf Pro").font(.system(.title3, weight: .black)).fixedSize(horizontal: false, vertical: true)
+                Text("Unlock\nPageframe Pro").font(.system(.title3, weight: .black)).fixedSize(horizontal: false, vertical: true)
                 Text("Office export, translation, photo tools and no ads.").font(.footnote).opacity(0.92)
                     .frame(maxWidth: 190, alignment: .leading).fixedSize(horizontal: false, vertical: true)
                 Button(action: explore) {

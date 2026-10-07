@@ -10,7 +10,13 @@ struct AnnotationEditor: View {
   private func allowed(_ kind: AnnotationKind) -> Bool { kind == .signature || subscription.isPro }
   @Environment(\.dismiss) private var dismiss
   let documentID: UUID
+  /// Opened from Fill a form: fill from the saved profile once the page is ready.
+  var autoFill = false
   @State private var document: ScanDocument?
+  @State private var profileEditor = false
+  @State private var filling = false
+  @State private var fillNote: String?
+  @State private var autoFilled = false
   @State private var index = 0
   @State private var preview: UIImage?
   @State private var previewPageSize = CGSize(width: 612, height: 792)
@@ -140,11 +146,22 @@ struct AnnotationEditor: View {
               } label: { Label("Add text box", systemImage: "plus") }.buttonStyle(ChipStyle(selected: false))
             }
             if mode == .signature { Button { signature = true } label: { Label("Add signature", systemImage: "plus") }.buttonStyle(ChipStyle(selected: false)) }
+            if mode == .text {
+              Button { fillForm() } label: { Label("Fill from my info", systemImage: "wand.and.stars") }
+                .buttonStyle(ChipStyle(selected: false)).disabled(filling || preview == nil).accessibilityIdentifier("form-fill")
+            }
             if mode == .pen || mode == .highlight { Text("Draw on the page").font(.system(size: 15)).foregroundStyle(TK.grey600) }
             Spacer(minLength: 0)
             Button {
               if let old = history.popLast() { setMarks(old); selected = nil }
             } label: { Label("Undo", systemImage: "arrow.uturn.backward") }.buttonStyle(ChipStyle(selected: false)).disabled(history.isEmpty)
+          }
+          if mode == .text {
+            HStack(spacing: 8) {
+              if let fillNote { Text(fillNote).font(.system(size: 13)).foregroundStyle(TK.grey600) }
+              Spacer(minLength: 0)
+              Button("My info") { profileEditor = true }.font(.system(size: 14, weight: .semibold)).foregroundStyle(TK.blue)
+            }
           }
           if !subscription.isPro {
             Text("Signatures are free. Text, pen and highlight are Pro.").font(.system(size: 13)).foregroundStyle(TK.grey500)
@@ -200,6 +217,7 @@ struct AnnotationEditor: View {
         .overlay { if busy { BusyOverlay(text: "Saving annotations…") } }
         .interactiveDismissDisabled(busy)
         .sheet(isPresented: $paywall) { PaywallView() }
+        .sheet(isPresented: $profileEditor, onDismiss: { if autoFill && !autoFilled && !FormProfile.load().isEmpty { autoFilled = true; fillForm() } }) { FormProfileEditor() }
         .sheet(isPresented: $signature) {
           SignatureEditor(root: store.root) { item in
             remember()
@@ -213,6 +231,9 @@ struct AnnotationEditor: View {
             if !subscription.isPro { mode = .signature }
           }
           await loadPreview()
+          if autoFill && !autoFilled && preview != nil {
+            if FormProfile.load().isEmpty { profileEditor = true } else { autoFilled = true; fillForm() }
+          }
         }
     }
   }
@@ -228,6 +249,39 @@ struct AnnotationEditor: View {
           setMarks(items)
         }
       })
+  }
+  /// Reads the page, finds labels such as Name, Email, Phone, Address, Date and
+  /// Signature, and places the saved answers next to them as movable text boxes.
+  private func fillForm() {
+    guard subscription.isPro else { paywall = true; return }
+    let profile = FormProfile.load()
+    guard !profile.isEmpty else { profileEditor = true; return }
+    guard let preview else { return }
+    mode = .text; filling = true; fillNote = "Reading the form…"
+    let signatures = store.manifest.signatures ?? []
+    Task {
+      defer { filling = false }
+      let blocks = (try? await Task.detached { try Imaging.recognize(preview) }.value) ?? []
+      let spots = FormProfile.place(blocks: blocks, profile: profile)
+      guard !spots.isEmpty else { fillNote = "No form labels found. Add text boxes by hand."; return }
+      remember()
+      var items = marks
+      for spot in spots {
+        if spot.key == "signature" {
+          guard var sig = signatures.last else { continue }
+          sig.id = UUID(); sig.x = spot.rect.minX; sig.y = max(0, spot.rect.minY - spot.rect.height * 0.6)
+          sig.width = min(0.3, 1 - sig.x); sig.height = min(0.09, 1 - sig.y)
+          items.append(sig)
+        } else {
+          var item = PageAnnotation(kind: .text, text: spot.value)
+          item.x = spot.rect.minX; item.y = spot.rect.minY; item.width = spot.rect.width; item.height = spot.rect.height
+          item.color = "blue"
+          items.append(item)
+        }
+      }
+      setMarks(items)
+      fillNote = "Filled \(spots.count) \(spots.count == 1 ? "field" : "fields"). Drag to adjust."
+    }
   }
   private func setMarks(_ values: [PageAnnotation]) { document?.pages[index].annotations = values }
   private func remember() {
@@ -377,6 +431,81 @@ struct SignatureEditor: View {
     } catch {
       self.error = error.localizedDescription
       return false
+    }
+  }
+}
+
+
+/// Answers saved on this iPhone for filling forms.
+struct FormProfile {
+  static let fields: [(key: String, title: String, labels: [String])] = [
+    ("name", "Full name", ["full name", "name", "applicant", "성명", "이름", "신청인"]),
+    ("email", "Email", ["e-mail", "email", "이메일", "전자우편"]),
+    ("phone", "Phone", ["telephone", "phone", "mobile", "cell", "tel", "전화번호", "휴대폰", "연락처", "전화"]),
+    ("address", "Address", ["address", "주소"]),
+    ("city", "City", ["city", "시/군/구", "도시"]),
+    ("postal", "Postal code", ["postal code", "zip code", "postcode", "zip", "우편번호"]),
+    ("company", "Company", ["company", "organization", "employer", "회사", "소속"]),
+  ]
+  static func load() -> [String: String] {
+    (UserDefaults.standard.dictionary(forKey: "form-profile") as? [String: String] ?? [:]).filter { !$0.value.trimmingCharacters(in: .whitespaces).isEmpty }
+  }
+  static func save(_ values: [String: String]) { UserDefaults.standard.set(values, forKey: "form-profile") }
+
+  struct Spot { let key: String; let value: String; let rect: CGRect }
+  /// Where each answer goes: right after its label, or below it when the label sits at the right edge.
+  static func place(blocks: [TextBlock], profile: [String: String]) -> [Spot] {
+    var spots: [Spot] = []
+    var used = Set<String>()
+    let today = Date().formatted(date: .numeric, time: .omitted)
+    let extra: [(String, [String])] = [("date", ["date", "날짜", "일자", "작성일"]), ("signature", ["signature", "sign here", "서명"])]
+    let all = fields.map { ($0.key, $0.labels) } + extra
+    for block in blocks.sorted(by: { $0.y < $1.y }) {
+      let text = block.text.lowercased().trimmingCharacters(in: .whitespaces)
+      for (key, labels) in all where !used.contains(key) {
+        guard let label = labels.first(where: { text.hasPrefix($0) }) else { continue }
+        // Label alone (or with a colon or blank line), not a sentence that starts with the word.
+        let rest = text.dropFirst(label.count).trimmingCharacters(in: CharacterSet(charactersIn: " :：.-_()*"))
+        guard rest.count <= 2 || rest.allSatisfy({ $0 == "_" || $0 == "." }) else { continue }
+        let value: String
+        if key == "date" { value = today } else if key == "signature" { value = "" } else { guard let v = profile[key] else { continue }; value = v }
+        // End of the label word inside the line.
+        var end = block.x + block.width * min(1, Double(label.count + 1) / Double(max(1, block.text.count)))
+        if let words = block.words, let last = words.first(where: { label.hasSuffix($0.text.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: ":"))) }) {
+          end = last.x + last.width
+        }
+        let h = max(0.022, block.height * 1.4)
+        var rect = CGRect(x: end + 0.012, y: max(0, block.y - block.height * 0.2), width: min(0.5, 0.98 - end - 0.012), height: h)
+        if rect.width < 0.15 { rect = CGRect(x: block.x, y: min(1 - h, block.y + block.height * 1.1), width: min(0.5, 0.98 - block.x), height: h) }
+        guard rect.width > 0.05 else { continue }
+        used.insert(key)
+        spots.append(Spot(key: key, value: value, rect: rect))
+        break
+      }
+    }
+    return spots
+  }
+}
+
+/// Edit the answers used by Fill from my info.
+struct FormProfileEditor: View {
+  @Environment(\.dismiss) private var dismiss
+  @State private var values: [String: String] = UserDefaults.standard.dictionary(forKey: "form-profile") as? [String: String] ?? [:]
+  var body: some View {
+    NavigationStack {
+      Form {
+        Section {
+          ForEach(FormProfile.fields, id: \.key) { field in
+            TextField(field.title, text: Binding(get: { values[field.key] ?? "" }, set: { values[field.key] = $0 }))
+              .textContentType(field.key == "email" ? .emailAddress : field.key == "phone" ? .telephoneNumber : field.key == "name" ? .name : field.key == "postal" ? .postalCode : field.key == "address" ? .fullStreetAddress : nil)
+          }
+        } footer: { Text("Saved only on this iPhone. Dates are filled with today, and Signature uses your latest saved signature.") }
+      }
+      .navigationTitle("My info").navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+        ToolbarItem(placement: .confirmationAction) { Button("Save") { FormProfile.save(values); dismiss() } }
+      }
     }
   }
 }

@@ -407,7 +407,7 @@ private struct ResultPageImage: View {
     /// "Report (watermark) (merged)" → "Report (merged)": one tool suffix at a time.
     nonisolated static func named(_ title: String, _ suffix: String) -> String {
         var base = title
-        let known = try? NSRegularExpression(pattern: #"\s\((watermark|timestamp|merged|part \d+|extracted|compressed|locked)\)$"#)
+        let known = try? NSRegularExpression(pattern: #"\s\((watermark|timestamp|merged|part \d+|extracted|compressed|locked|redacted)\)$"#)
         while let known, let match = known.firstMatch(in: base, range: NSRange(base.startIndex..., in: base)), let range = Range(match.range, in: base) {
             base.removeSubrange(range)
         }
@@ -1476,5 +1476,252 @@ private struct ProtectToolStep: View {
             let files = try ExportFiles.write([(PDFTools.named(doc.title, "locked") + ".pdf", bytes)])
             finish(PDFToolResult(title: "Locked copy is ready", detail: "Share it now. It isn't saved in your documents.", files: files, shareTitle: "Share locked PDF"))
         }
+    }
+}
+
+// MARK: - Redact personal info
+
+/// Personal details found on a page by on-device text recognition.
+enum Redaction {
+    struct Box: Identifiable, Equatable {
+        let id = UUID()
+        /// Normalized to the page, origin top-left.
+        var rect: CGRect
+        var kind: String
+        var on = true
+    }
+    private static let accountWords = ["account", "acct", "bank", "transit", "routing", "iban", "계좌", "은행", "예금주"]
+    /// Finds ID, card, account and phone numbers and emails on a rendered page.
+    nonisolated static func detect(_ image: UIImage) throws -> [Box] {
+        let blocks = try Imaging.recognize(image)
+        var boxes: [Box] = []
+        for block in blocks {
+            let text = block.text, ns = text as NSString
+            // Character range of each recognized word inside the line.
+            var wordRanges: [(NSRange, CGRect)] = []
+            var cursor = 0
+            for w in block.words ?? [] {
+                let r = ns.range(of: w.text, options: [], range: NSRange(location: cursor, length: ns.length - cursor))
+                guard r.location != NSNotFound else { continue }
+                wordRanges.append((r, CGRect(x: w.x, y: w.y, width: w.width, height: w.height))); cursor = r.location + r.length
+            }
+            let lineRect = CGRect(x: block.x, y: block.y, width: block.width, height: block.height)
+            for (kind, range) in matches(text) {
+                let hit = wordRanges.filter { NSIntersectionRange($0.0, range).length > 0 }.map(\.1)
+                var rect = hit.isEmpty ? lineRect : hit.dropFirst().reduce(hit[0]) { $0.union($1) }
+                if hit.isEmpty, ns.length > 0 {
+                    // Estimate the span from character positions on the line.
+                    let a = CGFloat(range.location) / CGFloat(ns.length), b = CGFloat(range.location + range.length) / CGFloat(ns.length)
+                    rect = CGRect(x: lineRect.minX + lineRect.width * a, y: lineRect.minY, width: lineRect.width * (b - a), height: lineRect.height)
+                }
+                rect = rect.insetBy(dx: -0.004, dy: -0.003)
+                if !boxes.contains(where: { $0.rect.intersects(rect) && $0.kind == kind }) { boxes.append(Box(rect: rect, kind: kind)) }
+            }
+        }
+        return boxes
+    }
+    nonisolated static func matches(_ text: String) -> [(String, NSRange)] {
+        let full = NSRange(location: 0, length: (text as NSString).length)
+        var out: [(String, NSRange)] = []
+        func add(_ kind: String, _ r: NSRange) { if !out.contains(where: { NSIntersectionRange($0.1, r).length > 0 }) { out.append((kind, r)) } }
+        func regex(_ p: String, _ kind: String, _ ok: (String) -> Bool = { _ in true }) {
+            guard let re = try? NSRegularExpression(pattern: p, options: [.caseInsensitive]) else { return }
+            for m in re.matches(in: text, range: full) where ok((text as NSString).substring(with: m.range)) { add(kind, m.range) }
+        }
+        regex(#"\b\d{6}\s?-\s?[1-8]\d{6}\b"#, "ID number")                    // Korean resident registration
+        regex(#"\b\d{3}-\d{2}-\d{4}\b"#, "ID number")                          // US SSN
+        regex(#"\b\d{3}[ -]\d{3}[ -]\d{3}\b"#, "ID number")                    // Canadian SIN
+        regex(#"\b(?:\d[ -]?){12,18}\d\b"#, "Card number") { luhn($0.filter(\.isNumber)) }
+        regex(#"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}"#, "Email")
+        if accountWords.contains(where: { text.lowercased().contains($0) }) {
+            regex(#"\b\d[\d -]{6,}\d\b"#, "Account number") { $0.filter(\.isNumber).count >= 7 }
+        }
+        if let d = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.phoneNumber.rawValue) {
+            for m in d.matches(in: text, range: full) { add("Phone", m.range) }
+        }
+        return out
+    }
+    nonisolated static func luhn(_ digits: String) -> Bool {
+        guard (13...19).contains(digits.count) else { return false }
+        var sum = 0
+        for (i, c) in digits.reversed().enumerated() {
+            var d = Int(String(c)) ?? 0
+            if i % 2 == 1 { d *= 2; if d > 9 { d -= 9 } }
+            sum += d
+        }
+        return sum % 10 == 0
+    }
+    /// A new PDF of page pictures with the boxes filled solid black. No text layer
+    /// is kept, so hidden details can't be copied or searched back out.
+    nonisolated static func apply(_ url: URL, boxes: [Int: [CGRect]], pageCount: Int) throws -> Data {
+        guard let source = CGPDFDocument(url as CFURL) else { throw ScannerError.message("This PDF can't be opened.") }
+        let out = NSMutableData()
+        guard let consumer = CGDataConsumer(data: out as CFMutableData), let pdf = CGContext(consumer: consumer, mediaBox: nil, nil) else { throw ScannerError.message("The redacted PDF couldn't be made.") }
+        for i in 0..<pageCount {
+            try autoreleasepool {
+                guard let page = source.page(at: i + 1) else { return }
+                let box = page.getBoxRect(.cropBox)
+                let turned = abs(page.rotationAngle) % 180 == 90
+                var media = CGRect(origin: .zero, size: turned ? CGSize(width: box.height, height: box.width) : box.size)
+                let image = try ExtractRender.page(url, index: i, maxSide: 2200)
+                let redacted = UIGraphicsImageRenderer(size: image.size, format: { let f = UIGraphicsImageRendererFormat(); f.scale = 1; f.opaque = true; return f }()).image { c in
+                    image.draw(at: .zero)
+                    UIColor.black.setFill()
+                    for r in boxes[i] ?? [] {
+                        c.fill(CGRect(x: r.minX * image.size.width, y: r.minY * image.size.height, width: r.width * image.size.width, height: r.height * image.size.height))
+                    }
+                }
+                guard let jpeg = redacted.jpegData(compressionQuality: 0.85), let provider = CGDataProvider(data: jpeg as CFData),
+                      let cg = CGImage(jpegDataProviderSource: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent) else { throw ScannerError.message("The redacted PDF couldn't be made.") }
+                pdf.beginPage(mediaBox: &media)
+                pdf.draw(cg, in: media)
+                pdf.endPage()
+            }
+        }
+        pdf.closePDF()
+        return out as Data
+    }
+}
+
+/// Finds personal details in a saved document, lets the person check each box,
+/// then saves a copy with them blacked out for good.
+struct RedactTool: View {
+    @EnvironmentObject private var store: LibraryStore
+    @EnvironmentObject private var subscription: SubscriptionStore
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var work = ToolWork()
+    @State private var step = 0
+    @State private var forward = true
+    @State private var doc: ScanDocument?
+    @State private var boxes: [Int: [Redaction.Box]] = [:]
+    @State private var page = 0
+    @State private var image: UIImage?
+    @State private var draft: CGRect?
+    @State private var result: PDFToolResult?
+    @State private var paywall = false
+    private var documents: [ScanDocument] { store.active.filter { $0.pdfFile != nil } }
+    private var total: Int { boxes.values.reduce(0) { $0 + $1.filter(\.on).count } }
+    var body: some View {
+        StepStack(step: step, forward: forward) {
+            if step == 0 { choosePage }
+            else if step == 1 { editPage }
+            else if let result { PDFToolDone(result: result) { dismiss() } }
+        }
+        .stepChrome(step: $step, forward: $forward, last: 2, work: work)
+        .sheet(isPresented: $paywall) { PaywallView() }
+    }
+    private var choosePage: some View {
+        ToolPage(title: "Hide personal info", subtitle: "ID, card and account numbers, phone numbers and emails are found and blacked out in a new copy.") {
+            ToolHero(art: .redact)
+            VStack(alignment: .leading, spacing: 8) {
+                SectionLabel(text: "Choose a document")
+                if documents.isEmpty { Text("No saved documents yet. Scan or import one first.").foregroundStyle(TK.grey500) }
+                else { DocumentChoiceList(documents: documents) { start($0) } }
+            }
+            if let message = work.message { ToastMessage(text: message) }
+            Label("Found on this iPhone. Nothing is uploaded.", systemImage: "lock.shield").font(.system(size: 13)).foregroundStyle(TK.grey500)
+        } actions: { EmptyView() }
+    }
+    private var editPage: some View {
+        ToolPage(title: total == 0 ? "Nothing found yet" : "\(total) \(total == 1 ? "item" : "items") to hide",
+                 subtitle: "Tap a box to keep it visible. Drag on the page to hide anything else.", scrolls: false) {
+            if let doc, doc.pages.count > 1 {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(doc.pages.indices, id: \.self) { i in
+                            let n = boxes[i]?.filter(\.on).count ?? 0
+                            Button("Page \(i + 1)" + (n > 0 ? " · \(n)" : "")) { show(i) }.buttonStyle(ChipStyle(selected: page == i))
+                        }
+                    }
+                }
+            }
+            if let image {
+                GeometryReader { geo in
+                    let fit = FitRect.rect(image.size, in: geo.size)
+                    ZStack(alignment: .topLeading) {
+                        Image(uiImage: image).resizable().frame(width: fit.width, height: fit.height).position(x: fit.midX, y: fit.midY)
+                        ForEach(boxes[page] ?? []) { box in
+                            let r = CGRect(x: fit.minX + box.rect.minX * fit.width, y: fit.minY + box.rect.minY * fit.height, width: box.rect.width * fit.width, height: box.rect.height * fit.height)
+                            Group {
+                                if box.on { Rectangle().fill(.black) }
+                                else { Rectangle().strokeBorder(TK.red, style: StrokeStyle(lineWidth: 1.5, dash: [4])) }
+                            }
+                            .frame(width: max(8, r.width), height: max(8, r.height)).position(x: r.midX, y: r.midY)
+                            .onTapGesture { toggle(box.id) }
+                            .accessibilityLabel(box.kind + (box.on ? ", hidden" : ", visible"))
+                        }
+                        if let draft {
+                            Rectangle().fill(.black.opacity(0.6)).frame(width: draft.width, height: draft.height).position(x: draft.midX, y: draft.midY)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .gesture(DragGesture(minimumDistance: 10).onChanged { v in
+                        draft = CGRect(x: min(v.startLocation.x, v.location.x), y: min(v.startLocation.y, v.location.y),
+                                       width: abs(v.location.x - v.startLocation.x), height: abs(v.location.y - v.startLocation.y))
+                    }.onEnded { _ in
+                        if let d = draft?.intersection(fit), !d.isNull, d.width > 4, d.height > 4 {
+                            let n = CGRect(x: (d.minX - fit.minX) / fit.width, y: (d.minY - fit.minY) / fit.height, width: d.width / fit.width, height: d.height / fit.height)
+                            boxes[page, default: []].append(Redaction.Box(rect: n, kind: "Added"))
+                        }
+                        draft = nil
+                    })
+                }
+                .frame(maxHeight: .infinity)
+                .background(TK.grey100, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            } else { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
+            if let message = work.message { ToastMessage(text: message) }
+        } actions: {
+            Button(total == 0 ? "Draw boxes to hide" : "Hide \(total) and save a copy") { save() }
+                .buttonStyle(CTAButtonStyle()).disabled(total == 0).accessibilityIdentifier("redact-save")
+        }
+    }
+    private func toggle(_ id: UUID) {
+        guard var list = boxes[page], let i = list.firstIndex(where: { $0.id == id }) else { return }
+        if list[i].kind == "Added" { list.remove(at: i) } else { list[i].on.toggle() }
+        boxes[page] = list
+    }
+    private func start(_ chosen: ScanDocument) {
+        guard let file = chosen.pdfFile else { return }
+        let url = store.url(file), count = chosen.pages.count
+        doc = chosen; boxes = [:]; page = 0; image = nil
+        work.run("Looking for personal info…") {
+            for i in 0..<count {
+                work.busy = count > 1 ? "Looking for personal info… page \(i + 1) of \(count)" : "Looking for personal info…"
+                let found = try await OfflineWork.perform { try Redaction.detect(ExtractRender.page(url, index: i, maxSide: 2000)) }
+                boxes[i] = found
+            }
+            forward = true; step = 1
+            show(boxes.filter { !$0.value.isEmpty }.keys.min() ?? 0)
+        }
+    }
+    private func show(_ index: Int) {
+        guard let file = doc?.pdfFile else { return }
+        page = index; image = nil
+        let url = store.url(file)
+        Task { image = try? await OfflineWork.perform { try ExtractRender.page(url, index: index, maxSide: 1400) } }
+    }
+    private func save() {
+        guard subscription.isPro else { paywall = true; return }
+        guard let doc, let file = doc.pdfFile else { return }
+        let url = store.url(file), count = doc.pages.count
+        let rects = boxes.mapValues { $0.filter(\.on).map(\.rect) }
+        let title = PDFTools.named(doc.title, "redacted")
+        work.run("Hiding \(total) \(total == 1 ? "item" : "items")…") {
+            let data = try await OfflineWork.perform { try Redaction.apply(url, boxes: rects, pageCount: count) }
+            _ = try await store.saveGeneratedPDF(data, title: title, folder: doc.folder)
+            result = PDFToolResult(title: "Personal info hidden", detail: "Saved as \(title). The blacked-out details are removed, not just covered. The original is unchanged.",
+                                   files: PDFTools.share([(title + ".pdf", data)]))
+            forward = true; step = 2
+        }
+    }
+}
+
+/// Aspect-fit rectangle helper for the redaction canvas.
+enum FitRect {
+    static func rect(_ size: CGSize, in box: CGSize) -> CGRect {
+        guard size.width > 0, size.height > 0 else { return .zero }
+        let s = min(box.width / size.width, box.height / size.height)
+        let w = size.width * s, h = size.height * s
+        return CGRect(x: (box.width - w) / 2, y: (box.height - h) / 2, width: w, height: h)
     }
 }

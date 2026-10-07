@@ -8,13 +8,13 @@ enum ToolArt: String, CaseIterable {
     case ocr, annotate, watermark, timestamp, merge, split, extract, reorder, compress, protect, images, longImage, print
     case measure, mesh
     case word, excel, ppt, math, translate
-    case cardContact, askDocument, removeFingers, autoSave
+    case cardContact, askDocument, removeFingers, autoSave, redact, fillForm
 
     var background: LinearGradient {
         let pair: (Color, Color)
         switch self {
-        case .book, .ocr, .merge, .extract, .images, .measure, .word, .translate, .cardContact: pair = (Color(hex: 0xEAF3FF), Color(hex: 0xF4F8FF))
-        case .portrait, .count, .protect, .mesh, .split, .excel, .autoSave: pair = (Color(hex: 0xE6F8F3), Color(hex: 0xF3FBF9))
+        case .book, .ocr, .merge, .extract, .images, .measure, .word, .translate, .cardContact, .fillForm: pair = (Color(hex: 0xEAF3FF), Color(hex: 0xF4F8FF))
+        case .portrait, .count, .protect, .mesh, .split, .excel, .autoSave, .redact: pair = (Color(hex: 0xE6F8F3), Color(hex: 0xF3FBF9))
         case .erase, .marks, .annotate, .reorder, .longImage, .math, .askDocument, .removeFingers: pair = (Color(hex: 0xF1EEFF), Color(hex: 0xF8F6FF))
         case .restore, .watermark, .timestamp, .compress, .print, .mega, .ppt: pair = (Color(hex: 0xFFF3E9), Color(hex: 0xFFF9F3))
         }
@@ -63,6 +63,8 @@ struct ToolIllustration: View {
         case .askDocument: LoopArt(asset: "art-ask-document", still: 60)
         case .removeFingers: LoopArt(asset: "art-remove-fingers", still: 60)
         case .autoSave: LoopArt(asset: "art-auto-save", still: 60)
+        case .redact: LoopArt(asset: "art-redact", still: 60)
+        case .fillForm: LoopArt(asset: "art-fill-form", still: 60)
         }
     }
 }

@@ -1191,25 +1191,31 @@ struct CameraTextToolView: View {
 // MARK: - Smart tools (on-device)
 
 enum SmartTool: String, CaseIterable, Identifiable {
-    case businessCard, autoSave
+    case redact, fillForm, businessCard, autoSave
     var id: String { rawValue }
     var title: String {
         switch self {
+        case .redact: return "Hide personal info"
+        case .fillForm: return "Fill a form"
         case .businessCard: return "Business card to contact"
         case .autoSave: return "Auto-save to cloud"
         }
     }
     var icon: String {
         switch self {
+        case .redact: return "redact"
+        case .fillForm: return "fill-form"
         case .businessCard: return "card-contact"
         case .autoSave: return "auto-save"
         }
     }
-    var pro: Bool { self == .autoSave }
+    var pro: Bool { self == .autoSave || self == .redact || self == .fillForm }
     /// Asking needs Apple Intelligence; the tile is hidden elsewhere.
     var shown: Bool { true }
     @ViewBuilder var destination: some View {
         switch self {
+        case .redact: RedactTool()
+        case .fillForm: FillFormTool()
         case .businessCard: BusinessCardTool()
         case .autoSave: AutoSaveTool()
         }
@@ -1254,6 +1260,31 @@ struct BusinessCardTool: View {
             reading = false
         }
     }
+}
+
+/// Pick a document, then fill its blanks from the saved profile and sign.
+struct FillFormTool: View {
+    @EnvironmentObject private var store: LibraryStore
+    @State private var target: FormTarget?
+    @State private var profile = false
+    @State private var scanning = false
+    private var documents: [ScanDocument] { store.active.filter { $0.pdfFile != nil } }
+    var body: some View {
+        ToolPage(title: "Fill a form", subtitle: "Name, email, phone, address and today's date go next to their labels. Add your signature, then save.") {
+            ToolHero(art: .fillForm)
+            Button { profile = true } label: {
+                ChoiceRow(symbol: "person.text.rectangle", title: "My info", detail: FormProfile.load().isEmpty ? "Add the answers to fill in" : "\(FormProfile.load().count) answers saved on this iPhone")
+            }.buttonStyle(.plain).accessibilityIdentifier("form-profile")
+            VStack(alignment: .leading, spacing: 8) {
+                SectionLabel(text: "Choose the form")
+                if documents.isEmpty { Text("No saved documents yet. Scan or import the form first.").foregroundStyle(TK.grey500) }
+                else { DocumentChoiceList(documents: documents) { target = FormTarget(id: $0.id) } }
+            }
+        } actions: { EmptyView() }
+        .sheet(isPresented: $profile) { FormProfileEditor() }
+        .fullScreenCover(item: $target) { AnnotationEditor(documentID: $0.id, autoFill: true) }
+    }
+    private struct FormTarget: Identifiable { let id: UUID }
 }
 
 /// Choose the folder that receives every new scan.

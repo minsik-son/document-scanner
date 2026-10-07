@@ -29,7 +29,7 @@ struct PaywallView: View {
                 VStack(spacing: 0) {
                     hero.accessibilityHidden(true)
                     VStack(spacing: 10) {
-                        Text("DOCUMENT SCANNER PRO").font(.system(.caption2, weight: .heavy)).tracking(1.6).lineLimit(1).minimumScaleFactor(0.5)
+                        Text("PAGEFRAME PRO").font(.system(.caption2, weight: .heavy)).tracking(1.6).lineLimit(1).minimumScaleFactor(0.5)
                             .padding(.horizontal, 10).padding(.vertical, 5).background(.white.opacity(0.12), in: Capsule())
                         (Text("Every page.\n") + Text("More possibilities.").foregroundStyle(ProStyle.titleGradient))
                             .font(.system(.title, weight: .black)).multilineTextAlignment(.center)
@@ -38,9 +38,16 @@ struct PaywallView: View {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: typeSize.isAccessibilitySize ? 1 : 2), spacing: 8) {
                         feature("Word · Excel · PPT", icon: "doc.richtext.fill", tint: Color(red: 0.18, green: 0.42, blue: 1))
                         feature("Translate photos", icon: "character.bubble.fill", tint: Color(red: 0.13, green: 0.75, blue: 0.57))
-                        feature("Compress & lock", icon: "lock.doc.fill", tint: Color(red: 1, green: 0.42, blue: 0.55))
+                        feature("Extract text (OCR)", icon: "text.viewfinder", tint: Color(red: 0.25, green: 0.55, blue: 1))
+                        feature("Hide personal info", icon: "eye.slash.fill", tint: Color(red: 0.05, green: 0.66, blue: 0.62))
+                        feature("Fill forms · Auto-save", icon: "list.bullet.rectangle.fill", tint: Color(red: 0.36, green: 0.42, blue: 0.95))
+                        feature("Restore & fix photos", icon: "wand.and.stars", tint: Color(red: 1, green: 0.55, blue: 0.15))
+                        feature("Split · Compress · Lock", icon: "lock.doc.fill", tint: Color(red: 1, green: 0.42, blue: 0.55))
                         feature("No ads", icon: "nosign", tint: ProStyle.violet)
                     }.padding(.horizontal, 16).padding(.top, 18)
+                    Text("All \(Self.proToolCount) Pro tools, unlimited signatures and merges")
+                        .font(.footnote.weight(.semibold)).foregroundStyle(.white.opacity(0.7))
+                        .multilineTextAlignment(.center).padding(.horizontal, 20).padding(.top, 10)
                     VStack(spacing: 10) {
                         if plans.isEmpty {
                             Text("Plans are currently unavailable. You can keep scanning for free.").multilineTextAlignment(.center).foregroundStyle(.white.opacity(0.7))
@@ -107,6 +114,12 @@ struct PaywallView: View {
     }
     private func chip(_ text: String) -> some View {
         Text(text).font(.system(size: 12, weight: .heavy)).padding(.horizontal, 12).padding(.vertical, 6).background(.white.opacity(0.14), in: Capsule())
+    }
+    /// Every tool that shows a Pro badge, so the count stays right as tools change.
+    static var proToolCount: Int {
+        AdvancedTool.allCases.filter { $0.pro && !$0.hidden }.count
+            + LibraryTool.allCases.filter(\.pro).count
+            + SmartTool.allCases.filter { $0.pro && $0.shown }.count
     }
     private func feature(_ title: String, icon: String, tint: Color) -> some View {
         HStack(spacing: 8) {

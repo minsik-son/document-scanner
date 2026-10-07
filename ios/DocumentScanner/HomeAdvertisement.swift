@@ -281,6 +281,8 @@ struct HomeAdvertisementSlot<Fallback: View>: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var visible = false
     let homeUncovered: Bool
+    /// Home keeps the card's height while the ad loads; other pages show nothing.
+    var reserveSpace = true
     @ViewBuilder var fallback: () -> Fallback
     private var policy: HomeAdEligibility {
         HomeAdEligibility(subscriptionResolved: subscription.entitlementsResolved,
@@ -306,7 +308,7 @@ struct HomeAdvertisementSlot<Fallback: View>: View {
                     .accessibilityValue(testIdentity)
             } else {
                 fallback()
-                    .frame(height: HomeAdConfiguration.testAdsEnabled && !subscription.isPro ? 306 : nil)
+                    .frame(height: reserveSpace && HomeAdConfiguration.testAdsEnabled && !subscription.isPro ? 306 : nil)
                     .accessibilityIdentifier("home-introduction")
             }
         }

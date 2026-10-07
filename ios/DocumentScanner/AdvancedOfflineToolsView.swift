@@ -37,6 +37,12 @@ enum AdvancedTool:String,Identifiable,CaseIterable {
 struct AdvancedOfflineHub: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var store: LibraryStore
+    @EnvironmentObject private var subscription: SubscriptionStore
+    /// Its own ad, separate from the one on Home.
+    @StateObject private var toolAds = HomeAdvertisementStore()
+    @State private var paywall = false
+    @State private var smartRoute: SmartTool?
+    @State private var advancedRoute: AdvancedTool?
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var query = ""
     @State private var quick: QuickTool?
@@ -87,6 +93,13 @@ struct AdvancedOfflineHub: View {
                     smartSection
                     advancedSection("Convert & read", tools: [.word, .excel, .slides, .translate, .math])
                     advancedSection("Edit images", tools: [.book, .portrait, .erase, .marks, .restore, .mega, .count])
+                    if query.isEmpty {
+                        // Free users: one native ad card mid-page, styled like Home's. Nothing until it loads.
+                        HomeAdvertisementSlot(homeUncovered: quick == nil && capture == nil && !paywall && smartRoute == nil && advancedRoute == nil, reserveSpace: false) {
+                            EmptyView()
+                        }
+                        .environmentObject(toolAds)
+                    }
                     librarySection("PDF tools", tools: [.ocr, .annotate, .watermark, .timestamp, .merge, .split, .extract, .reorder, .compress, .protect, .images, .longImage, .print])
                     advancedSection("Camera utilities", tools: [.measure, .mesh])
                     if !hasMatches { ContentUnavailableView("No tools found", systemImage: "magnifyingglass", description: Text("Try another tool name.")) }
@@ -97,6 +110,13 @@ struct AdvancedOfflineHub: View {
                 .toolbar(.hidden, for: .navigationBar)
                 .buttonStyle(.plain)
                 .sheet(item: $quick) { QuickToolView(tool: $0, documentID: documentID) }
+                .sheet(isPresented: $paywall) { PaywallView() }
+                .navigationDestination(item: $smartRoute) { $0.destination }
+                .navigationDestination(item: $advancedRoute) { tool in
+                    if tool == .measure { MeasureToolView() }
+                    else if tool == .mesh { MeshToolView() }
+                    else { AdvancedOfflineToolView(tool: tool, documentID: documentID) }
+                }
                 .fullScreenCover(item: $capture, onDismiss: { store.perform { try store.discardEmptyDrafts() } }) { ReviewView(documentID: $0.id, captureOnOpen: true) }
                 .alert("Something needs attention", isPresented: Binding(get: { store.problem != nil }, set: { if !$0 { store.problem = nil } })) { Button("OK") { store.problem = nil } } message: { Text(store.problem ?? "") }
         }
@@ -108,7 +128,7 @@ struct AdvancedOfflineHub: View {
                 Text("Smart tools").font(.headline)
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(visible) { tool in
-                        NavigationLink { tool.destination } label: { ToolTile(title: tool.title, icon: tool.icon, pro: tool.pro) }
+                        Button { if locked(tool.pro) { paywall = true } else { smartRoute = tool } } label: { ToolTile(title: tool.title, icon: tool.icon, pro: tool.pro) }
                             .accessibilityIdentifier("smart-tool-" + tool.rawValue)
                     }
                 }
@@ -122,11 +142,7 @@ struct AdvancedOfflineHub: View {
                 Text(title).font(.headline)
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(visible) { tool in
-                        NavigationLink {
-                            if tool == .measure { MeasureToolView() }
-                            else if tool == .mesh { MeshToolView() }
-                            else { AdvancedOfflineToolView(tool: tool, documentID: documentID) }
-                        } label: { ToolTile(title: tool.rawValue, icon: tool.icon, pro: tool.pro) }.accessibilityLabel(tool.rawValue)
+                        Button { if locked(tool.pro) { paywall = true } else { advancedRoute = tool } } label: { ToolTile(title: tool.rawValue, icon: tool.icon, pro: tool.pro) }.accessibilityLabel(tool.rawValue)
                     }
                 }
             }.padding(20).background(.white, in: RoundedRectangle(cornerRadius: 26))
@@ -139,12 +155,22 @@ struct AdvancedOfflineHub: View {
                 Text(title).font(.headline)
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(visible) { tool in
-                        Button { quick = .library(tool) } label: { ToolTile(title: tool.rawValue, icon: tool.icon, pro: tool.pro) }
+                        Button { if locked(tool.pro) { paywall = true } else { quick = .library(tool) } } label: { ToolTile(title: tool.rawValue, icon: tool.icon, pro: tool.pro) }
                             .accessibilityLabel(tool.rawValue + (tool.pro ? ", Pro" : ""))
                     }
                 }
             }.padding(20).background(.white, in: RoundedRectangle(cornerRadius: 26))
         }
+    }
+    /// Free users who tap a Pro tool see the subscription page instead of the tool.
+    private func locked(_ pro: Bool) -> Bool {
+        guard pro, !subscription.isPro else { return false }
+        #if DEBUG
+        // UI tests reach Pro tools unless they test the gate itself.
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("--ui-test-session") && !args.contains("--test-pro-gate") { return false }
+        #endif
+        return true
     }
     private func startScan(_ style: CaptureStyle) {
         guard store.storageAvailable else { return }

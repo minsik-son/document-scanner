@@ -63,10 +63,11 @@ struct ToolTile: View {
     var pro = false
     var body: some View {
         VStack(spacing: 4) {
-            ToolArtwork(name: icon, size: 64)
+            ToolArtwork(name: icon, size: 64).overlay(alignment: .topTrailing) {
+                if pro { ProBadge().offset(x: 10, y: -5) }
+            }
             Text(title).font(.system(.caption, weight: .medium)).multilineTextAlignment(.center)
                 .foregroundStyle(Design.ink).fixedSize(horizontal: false, vertical: true)
-            if pro { ProBadge() }
         }.frame(maxWidth: .infinity, minHeight: 100, alignment: .top)
             .contentShape(Rectangle()).accessibilityElement(children: .ignore)
             .accessibilityLabel(title + (pro ? ", Pro" : ""))
@@ -239,7 +240,7 @@ struct ProBadge: View {
             Text("PRO").font(.system(size: 9, weight: .heavy)).tracking(0.4).foregroundStyle(.white)
                 .padding(.horizontal, 6).padding(.vertical, 3)
                 .background(LinearGradient(colors: [TK.purple, TK.blue], startPoint: .leading, endPoint: .trailing), in: Capsule())
-                .shadow(color: TK.purple.opacity(0.35), radius: 3, y: 1)
+                .overlay(Capsule().strokeBorder(.white, lineWidth: 1.5))
                 .accessibilityHidden(true)
         }
     }

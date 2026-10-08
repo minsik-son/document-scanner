@@ -3,7 +3,12 @@ import UIKit
 // Minimal standards-based OOXML packages. No macros, external links or executable formulas.
 enum OfficeExport {
     static func xml(_ value: String) -> String {
-        String(value.unicodeScalars.filter { $0.value == 9 || $0.value == 10 || $0.value == 13 || $0.value >= 32 })
+        // Only characters XML allows: a stray U+FFFE from recognition would make
+        // Word, Excel and PowerPoint refuse the whole file.
+        String(String.UnicodeScalarView(value.unicodeScalars.filter { v in
+            let c = v.value
+            return c == 9 || c == 10 || c == 13 || (c >= 0x20 && c <= 0xD7FF) || (c >= 0xE000 && c <= 0xFFFD) || c >= 0x10000
+        }))
             .replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;").replacingOccurrences(of: ">", with: "&gt;").replacingOccurrences(of: "\"", with: "&quot;")
     }
     static let declaration = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"

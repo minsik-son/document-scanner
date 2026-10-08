@@ -8,6 +8,8 @@ enum OfficeLayoutPages {
     static let analysisSide: CGFloat = 2700
     /// Long side used for text recognition of large photos.
     static let readingSide: CGFloat = 3800
+    /// Long side small pictures are enlarged to before reading.
+    static let minimumSide: CGFloat = 1600
 
     struct Prepared {
         let raster: LayoutRaster
@@ -19,7 +21,9 @@ enum OfficeLayoutPages {
     static func prepare(_ image: UIImage, maxSide: CGFloat = analysisSide) throws -> Prepared {
         let pixelW = image.size.width * image.scale, pixelH = image.size.height * image.scale
         guard pixelW >= 16, pixelH >= 16 else { throw ScannerError.message("This page is too small to read.") }
-        let scale = min(1, maxSide / max(pixelW, pixelH))
+        // Small pictures (a screenshot, a cropped table) are enlarged: text a few
+        // pixels tall reads poorly and the layout measures assume page-sized scans.
+        let scale = max(min(1, maxSide / max(pixelW, pixelH)), min(3, minimumSide / max(pixelW, pixelH)))
         let w = max(1, Int((pixelW * scale).rounded())), h = max(1, Int((pixelH * scale).rounded()))
         guard let space = CGColorSpace(name: CGColorSpace.sRGB),
               let context = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4, space: space,
@@ -145,9 +149,25 @@ enum OfficeLayoutPages {
             try Task.checkCancellation()
             // Small print reads better from more pixels; layout needs fewer.
             let large = max(flat.size.width, flat.size.height) * flat.scale > analysisSide * 1.1
-            let reading = try large ? prepare(flat, maxSide: readingSide).image : prepared.image
-            let blocks = try TextRecognition.recognize(reading)
+            var reading = try large ? prepare(flat, maxSide: readingSide).image : prepared.image
+            var blocks = try TextRecognition.recognize(reading)
             try Task.checkCancellation()
+            // A page scanned on its side: its text reads sideways and would only
+            // survive as a picture. Turn it the way that reads best.
+            if sidewaysText(blocks, reading) {
+                var best = (count: uprightCharacters(blocks, reading), flat: flat, prepared: prepared, reading: reading, blocks: blocks)
+                for orientation in [UIImage.Orientation.right, .left] {
+                    guard let cg = flat.cgImage else { break }
+                    let turned = UIImage(cgImage: cg, scale: flat.scale, orientation: orientation)
+                    let p = try prepare(turned)
+                    let r = try large ? prepare(turned, maxSide: readingSide).image : p.image
+                    let b = try TextRecognition.recognize(r)
+                    let n = uprightCharacters(b, r)
+                    if n > best.count { best = (n, UIImage(cgImage: p.image), p, r, b) }
+                    try Task.checkCancellation()
+                }
+                flat = best.flat; prepared = best.prepared; reading = best.reading; blocks = best.blocks
+            }
             var page = DocumentLayoutAnalyzer.analyze(prepared.raster, blocks: blocks, pageSize: pageSize)
             if refineCells { refineTableText(&page, image: reading, scale: CGFloat(reading.width) / CGFloat(prepared.raster.width)) }
             DocumentLayoutAnalyzer.tidyParagraphs(&page)
@@ -156,6 +176,19 @@ enum OfficeLayoutPages {
             }
             return page
         }
+    }
+
+    static func sideways(_ b: TextBlock, _ image: CGImage) -> Bool {
+        b.height * Double(image.height) > b.width * Double(image.width) * 1.3 && b.text.count >= 2
+    }
+    static func uprightCharacters(_ blocks: [TextBlock], _ image: CGImage) -> Int {
+        blocks.filter { !sideways($0, image) }.reduce(0) { $0 + $1.text.filter { $0.isLetter || $0.isNumber }.count }
+    }
+    static func sidewaysText(_ blocks: [TextBlock], _ image: CGImage) -> Bool {
+        let side = blocks.filter { sideways($0, image) }.reduce(0) { $0 + $1.text.filter { $0.isLetter || $0.isNumber }.count }
+        let upright = uprightCharacters(blocks, image)
+        // Nothing upright at all: the reader may not have found sideways lines either.
+        return (side >= 12 && side > upright * 2) || upright < 8
     }
 
     /// Turns the page back by `degrees` (positive: content falls to the right),

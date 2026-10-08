@@ -91,6 +91,20 @@ enum PhotoTranslation {
         var kept = 0, unchanged = 0, unclear = 0
         var boxes:[Int:CGRect] = [:]
         guard Set(regions.map(\.id)).count == regions.count else { throw ScannerError.message("Text areas must have unique identifiers.") }
+        // Text read at the very edge of the page can reach a hair past it; keep
+        // the part on the page instead of refusing the whole page.
+        let unit = CGRect(x:0,y:0,width:1,height:1)
+        func onPage(_ b:CGRect) -> CGRect? {
+            guard [b.minX,b.minY,b.width,b.height].allSatisfy(\.isFinite) else { return nil }
+            let c = b.standardized.intersection(unit)
+            return c.isNull || c.width <= 0 || c.height <= 0 ? nil : c
+        }
+        let regions = regions.map { r -> TranslationRegion in
+            var r = r
+            if let b = onPage(r.box) { r.box = b }
+            r.sourceBoxes = r.sourceBoxes.compactMap(onPage)
+            return r
+        }
         for region in regions {
             for b in [region.box]+region.sourceBoxes {
                 guard [b.minX,b.minY,b.width,b.height].allSatisfy(\.isFinite),b.width > 0,b.height > 0,

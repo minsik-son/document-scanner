@@ -30,6 +30,11 @@ enum OfficeLayoutExport {
         var media: [(String, Data)] = []
         var rels: [(String, String, String)] = [("rId1", "styles", "styles.xml"), ("rId2", "numbering", "numbering.xml")]
         var drawingID = 1
+        var columnsUsed = false
+        // Section properties; every section after the first starts on the same page.
+        func section(columns: String) -> String {
+            "<w:type w:val=\"continuous\"/><w:pgSz w:w=\"\(pageW)\" w:h=\"\(pageH)\"\(first.pageWidth > first.pageHeight ? " w:orient=\"landscape\"" : "")/><w:pgMar w:top=\"\(top)\" w:right=\"\(right)\" w:bottom=\"200\" w:left=\"\(left)\" w:header=\"0\" w:footer=\"0\" w:gutter=\"0\"/>" + columns
+        }
         for (pageIndex, page) in pages.enumerated() {
             let scale = page.pointsPerPixel * 20
             // Anchor paragraph: holds the page's pictures and starts the page.
@@ -47,32 +52,56 @@ enum OfficeLayoutExport {
                 body += wordPositioned(page, scale: scale)
                 continue
             }
-            for item in page.items {
-                switch item {
-                case .paragraph(let p):
-                    let lineH = max(p.linePitch, p.fontSize / page.pointsPerPixel * 1.18)
-                    let lineTop = p.lines[0].box.midY - lineH / 2
-                    // Gaps give back a little room, so text that renders slightly
-                    // taller in another font still fits the page.
-                    var before = max(0, lineTop - cursor) * 0.9
-                    // Keep the last lines (often a page number) on this page.
-                    let usable = Double(pageH - 200 - 40) / scale
-                    let bottom = lineTop + lineH * Double(p.lines.count)
-                    if bottom > usable { before = max(0, before - (bottom - usable)) }
-                    body += wordParagraph(p, before: before * scale, lineHeight: lineH * scale, areaLeft: areaLeft, areaRight: areaRight, scale: scale, rightMargin: right)
-                    cursor = lineTop + lineH * Double(p.lines.count)
-                case .table(let t):
-                    let gap = (t.box.y0 - cursor) * 0.9
-                    if gap > 1 { body += "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"\(max(20, i(gap * scale)))\" w:lineRule=\"exact\"/><w:rPr><w:sz w:val=\"2\"/></w:rPr></w:pPr></w:p>" }
-                    body += wordTable(t, areaLeft: areaLeft, scale: scale, pointsPerPixel: page.pointsPerPixel)
-                    cursor = max(cursor, t.box.y0) + t.box.height
+            // Writes items as flowing text between `l` and `r` (pixels), advancing `cursor`.
+            func flow(_ items: [LayoutItem], _ l: Double, _ r: Double, rightMargin: Int) {
+                for item in items {
+                    switch item {
+                    case .paragraph(let p):
+                        let lineH = max(p.linePitch, p.fontSize / page.pointsPerPixel * 1.18)
+                        let lineTop = p.lines[0].box.midY - lineH / 2
+                        // Gaps give back a little room, so text that renders slightly
+                        // taller in another font still fits the page.
+                        var before = max(0, lineTop - cursor) * 0.9
+                        // Keep the last lines (often a page number) on this page.
+                        let usable = Double(pageH - 200 - 40) / scale
+                        let bottom = lineTop + lineH * Double(p.lines.count)
+                        if bottom > usable { before = max(0, before - (bottom - usable)) }
+                        body += wordParagraph(p, before: before * scale, lineHeight: lineH * scale, areaLeft: l, areaRight: r, scale: scale, rightMargin: rightMargin)
+                        cursor = lineTop + lineH * Double(p.lines.count)
+                    case .table(let t):
+                        let gap = (t.box.y0 - cursor) * 0.9
+                        if gap > 1 { body += "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"\(max(20, i(gap * scale)))\" w:lineRule=\"exact\"/><w:rPr><w:sz w:val=\"2\"/></w:rPr></w:pPr></w:p>" }
+                        body += wordTable(t, areaLeft: l, scale: scale, pointsPerPixel: page.pointsPerPixel)
+                        cursor = max(cursor, t.box.y0) + t.box.height
+                    }
                 }
+            }
+            if let parts = page.columnParts(), let c = page.columns {
+                // Two columns: a continuous section with two Word columns, so the
+                // text stays editable and reads column by column.
+                flow(parts.above, areaLeft, areaRight, rightMargin: right)
+                let tiny = "<w:spacing w:before=\"0\" w:after=\"0\" w:line=\"20\" w:lineRule=\"exact\"/><w:rPr><w:sz w:val=\"2\"/></w:rPr>"
+                body += "<w:p><w:pPr>\(tiny)<w:sectPr>\(section(columns: ""))</w:sectPr></w:pPr></w:p>"
+                columnsUsed = true
+                let g0 = min(max(c[0], areaLeft + 20), areaRight - 40), g1 = max(min(c[1], areaRight - 20), g0 + 4)
+                let start = cursor
+                flow(parts.left, areaLeft, g0, rightMargin: i((g1 - g0) * scale * 0.5))
+                let leftEnd = cursor
+                body += "<w:p><w:pPr>\(tiny)</w:pPr><w:r><w:br w:type=\"column\"/></w:r></w:p>"
+                cursor = start
+                flow(parts.right, g1, areaRight, rightMargin: right)
+                let cols = "<w:cols w:num=\"2\" w:space=\"\(i((g1 - g0) * scale))\" w:equalWidth=\"0\"><w:col w:w=\"\(i((g0 - areaLeft) * scale))\" w:space=\"\(i((g1 - g0) * scale))\"/><w:col w:w=\"\(i((areaRight - g1) * scale))\"/></w:cols>"
+                body += "<w:p><w:pPr>\(tiny)<w:sectPr>\(section(columns: cols))</w:sectPr></w:pPr></w:p>"
+                cursor = max(leftEnd, cursor)
+                flow(parts.below, areaLeft, areaRight, rightMargin: right)
+            } else {
+                flow(page.items, areaLeft, areaRight, rightMargin: right)
             }
         }
         // A document must end with a paragraph (tables cannot be last).
         body += "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"20\" w:lineRule=\"exact\"/><w:rPr><w:sz w:val=\"2\"/></w:rPr></w:pPr></w:p>"
         let ns = "xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" xmlns:r=\"\(OfficeExport.officeNS)\" xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\" xmlns:wps=\"http://schemas.microsoft.com/office/word/2010/wordprocessingShape\""
-        let document = OfficeExport.declaration + "<w:document \(ns)><w:body>\(body)<w:sectPr><w:pgSz w:w=\"\(pageW)\" w:h=\"\(pageH)\"\(first.pageWidth > first.pageHeight ? " w:orient=\"landscape\"" : "")/><w:pgMar w:top=\"\(top)\" w:right=\"\(right)\" w:bottom=\"200\" w:left=\"\(left)\" w:header=\"0\" w:footer=\"0\" w:gutter=\"0\"/></w:sectPr></w:body></w:document>"
+        let document = OfficeExport.declaration + "<w:document \(ns)><w:body>\(body)<w:sectPr>\(columnsUsed ? section(columns: "") : String(section(columns: "").dropFirst("<w:type w:val=\"continuous\"/>".count)))</w:sectPr></w:body></w:document>"
         let fonts = "<w:rFonts w:ascii=\"\(latinFont)\" w:hAnsi=\"\(latinFont)\" w:eastAsia=\"\(eastAsianFont)\" w:cs=\"\(latinFont)\"/>"
         let styles = OfficeExport.declaration + "<w:styles xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:docDefaults><w:rPrDefault><w:rPr>\(fonts)<w:sz w:val=\"20\"/><w:szCs w:val=\"20\"/><w:lang w:val=\"en-US\" w:eastAsia=\"ko-KR\"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after=\"0\" w:line=\"240\" w:lineRule=\"auto\"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"Normal\"><w:name w:val=\"Normal\"/><w:qFormat/></w:style><w:style w:type=\"table\" w:default=\"1\" w:styleId=\"TableNormal\"><w:name w:val=\"Normal Table\"/><w:tblPr><w:tblInd w:w=\"0\" w:type=\"dxa\"/><w:tblCellMar><w:top w:w=\"0\" w:type=\"dxa\"/><w:left w:w=\"57\" w:type=\"dxa\"/><w:bottom w:w=\"0\" w:type=\"dxa\"/><w:right w:w=\"57\" w:type=\"dxa\"/></w:tblCellMar></w:tblPr></w:style></w:styles>"
         let numbering = OfficeExport.declaration + "<w:numbering xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:abstractNum w:abstractNumId=\"0\"><w:multiLevelType w:val=\"singleLevel\"/><w:lvl w:ilvl=\"0\"><w:start w:val=\"1\"/><w:numFmt w:val=\"bullet\"/><w:lvlText w:val=\"•\"/><w:lvlJc w:val=\"left\"/><w:pPr><w:ind w:left=\"720\" w:hanging=\"360\"/></w:pPr><w:rPr><w:rFonts w:ascii=\"\(latinFont)\" w:hAnsi=\"\(latinFont)\"/></w:rPr></w:lvl></w:abstractNum><w:num w:numId=\"1\"><w:abstractNumId w:val=\"0\"/></w:num></w:numbering>"

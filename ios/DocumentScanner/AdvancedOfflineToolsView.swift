@@ -746,7 +746,7 @@ struct AdvancedOfflineToolContent:View {
                 let session = TranslationSession(installedSource:sourceLanguage,target:target)
                 let result = try await session.translate(body).targetText;try Task.checkCancellation();translated = result;return
             }
-            if tool == .math { translated = String(try LocalMath.evaluate(body));return }
+            if tool == .math { translated = try LocalMath.solve(body);return }
             if tool.office {
                 let result = try await OfflineWork.perform { () throws -> (String,Data) in
                     if tool == .word {
@@ -1153,7 +1153,7 @@ struct CameraTextToolView: View {
         StepStack(step: step == .result ? 1 : 0, forward: step == .result) {
             if step == .result {
                 ToolPage(title: math ? "Your answer" : "Your translation", subtitle: text) {
-                    Text(L(result)).font(.system(size: math ? 40 : 22, weight: .bold)).foregroundStyle(TK.grey900)
+                    Text(L(result)).font(.system(size: math && !result.contains("\n") ? 40 : 22, weight: .bold)).foregroundStyle(TK.grey900)
                         .textSelection(.enabled).accessibilityIdentifier("text-tool-result")
                     HStack(spacing: 8) {
                         Button { UIPasteboard.general.string = result } label: { Label("Copy", systemImage: "doc.on.doc") }.buttonStyle(ChipStyle(selected: false))
@@ -1257,7 +1257,7 @@ struct CameraTextToolView: View {
         editing = false; beginWork(math ? "Calculating…" : "Translating…")
         let body = text, source = from, target = to
         job = Task { defer { busy = false }; do {
-            if math { result = String(try LocalMath.evaluate(body)) }
+            if math { result = try LocalMath.solve(body) }
             else {
                 guard body.count <= 20000 else { throw ScannerError.message("Use up to 20,000 characters at a time.") }
                 guard #available(iOS 26.0,*) else { throw ScannerError.message("Offline translation requires iOS 26 or later.") }

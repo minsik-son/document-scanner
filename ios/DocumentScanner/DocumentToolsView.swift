@@ -120,7 +120,7 @@ enum ExportFiles {
 
 /// Shared PDFs carry the document's name ("Lease agreement.pdf"), not the
 /// internal file name. A named copy is kept in a temporary folder and refreshed
-/// whenever the saved PDF changes. Creator and Producer say Pageframe.
+/// whenever the saved PDF changes. Creator and Producer say FoldScan.
 enum SharedPDF {
   static var root: URL { FileManager.default.temporaryDirectory.appendingPathComponent("SharedPDF", isDirectory: true) }
   static func fileName(_ title: String) -> String {
@@ -141,8 +141,8 @@ enum SharedPDF {
       try fm.createDirectory(at: folder, withIntermediateDirectories: true)
       if let pdf = PDFDocument(url: source), !pdf.isEncrypted {
         var attributes = pdf.documentAttributes ?? [:]
-        attributes[PDFDocumentAttribute.creatorAttribute] = "Pageframe"
-        attributes[PDFDocumentAttribute.producerAttribute] = "Pageframe"
+        attributes[PDFDocumentAttribute.creatorAttribute] = "FoldScan"
+        attributes[PDFDocumentAttribute.producerAttribute] = "FoldScan"
         if attributes[PDFDocumentAttribute.titleAttribute] == nil { attributes[PDFDocumentAttribute.titleAttribute] = title }
         pdf.documentAttributes = attributes
         if !pdf.write(to: target) { try fm.copyItem(at: source, to: target) }

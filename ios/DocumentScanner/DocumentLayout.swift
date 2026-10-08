@@ -127,6 +127,9 @@ struct PageLayout: Codable, Equatable {
     /// A form: its line art is one picture behind the page and the text that
     /// was read reliably sits on top of it at its exact position.
     var form = false
+    /// Two text columns: [left column's right edge, right column's left edge,
+    /// top, bottom] in pixels. Items inside the band flow as Word columns.
+    var columns: [Double]? = nil
     init(width: Int, height: Int, pageWidth: Double, pageHeight: Double, items: [LayoutItem], graphics: [LayoutGraphic]) {
         self.width = width; self.height = height; self.pageWidth = pageWidth; self.pageHeight = pageHeight
         self.items = items; self.graphics = graphics
@@ -138,6 +141,21 @@ struct PageLayout: Codable, Equatable {
         items = try c.decode([LayoutItem].self, forKey: .items); graphics = try c.decode([LayoutGraphic].self, forKey: .graphics)
         positioned = try c.decodeIfPresent(Bool.self, forKey: .positioned) ?? false
         form = try c.decodeIfPresent(Bool.self, forKey: .form) ?? false
+        columns = try c.decodeIfPresent([Double].self, forKey: .columns)
+    }
+    /// Items of a two-column page in reading order: above the columns, the left
+    /// column, the right column, below. Nil when the page has no columns.
+    func columnParts() -> (above: [LayoutItem], left: [LayoutItem], right: [LayoutItem], below: [LayoutItem])? {
+        guard let c = columns, c.count == 4 else { return nil }
+        var above: [LayoutItem] = [], left: [LayoutItem] = [], right: [LayoutItem] = [], below: [LayoutItem] = []
+        for item in items.sorted(by: { $0.box.y0 < $1.box.y0 }) {
+            let b = item.box
+            if b.y1 > c[2] && b.y0 < c[3] && b.x1 <= c[0] + 1 { left.append(item) }
+            else if b.y1 > c[2] && b.y0 < c[3] && b.x0 >= c[1] - 1 { right.append(item) }
+            else if b.midY < (c[2] + c[3]) / 2 { above.append(item) }
+            else { below.append(item) }
+        }
+        return (above, left, right, below)
     }
     var pointsPerPixel: Double { pageWidth / Double(width) }
     var contentBox: LBox {
@@ -164,6 +182,10 @@ struct LayoutRaster {
 }
 
 enum DocumentLayoutAnalyzer {
+    /// Switches for corpus before/after comparisons; always on in the app.
+    nonisolated(unsafe) static var detectsColumns = true
+    nonisolated(unsafe) static var keepsRecognizedLines = true
+    nonisolated(unsafe) static var splitsAlignedColumns = true
     // MARK: Words
     struct Word {
         var text: String
@@ -172,6 +194,8 @@ enum DocumentLayoutAnalyzer {
         var bold = false
         var underline = false
         var color: LayoutColor? = nil
+        /// Index of the recognized line this word came from (-1: unknown).
+        var line = -1
     }
 
     /// Converts recognized lines to pixel words and restores the spaces that
@@ -198,7 +222,7 @@ enum DocumentLayoutAnalyzer {
                 }
                 let box = LBox(part.x * w, part.y * h, (part.x + part.width) * w, (part.y + part.height) * h)
                 guard box.width > 0, box.height > 0 else { continue }
-                line.append(Word(text: part.text, box: box, spaceBefore: space && !line.isEmpty))
+                line.append(Word(text: part.text, box: box, spaceBefore: space && !line.isEmpty, line: lines.count))
             }
             if !line.isEmpty { lines.append(line) }
         }
@@ -216,7 +240,7 @@ enum DocumentLayoutAnalyzer {
         var ptPerPx = 1.0
         /// Stroke score above which a word counts as bold; set per page from
         /// the body text so photos and scans with different blur both work.
-        var boldThreshold = 1.25
+        var boldThreshold = 1.2
         init(_ raster: LayoutRaster) {
             self.raster = raster
             var histogram = [Int](repeating: 0, count: 256)
@@ -356,9 +380,18 @@ enum DocumentLayoutAnalyzer {
             guard x1 > x0, y1 > y0 else { return nil }
             var area = 0, edge = 0
             let w = raster.width
-            for y in y0..<y1 { for x in x0..<x1 where dark[y * w + x] {
+            // Ink against the paper right here: a shadow or uneven light across a
+            // photographed page would otherwise thicken every stroke in it.
+            var histogram = [Int](repeating: 0, count: 256)
+            for y in y0..<y1 { for x in x0..<x1 { histogram[raster.lum(x, y)] += 1 } }
+            var count = 0, local = 255
+            let target = (x1 - x0) * (y1 - y0) / 4
+            for l in stride(from: 255, through: 0, by: -1) { count += histogram[l]; if count >= target { local = l; break } }
+            let cut = min(115, Int(Double(local) * 0.48))
+            func ink(_ x: Int, _ y: Int) -> Bool { dark[y * w + x] && raster.lum(x, y) < cut }
+            for y in y0..<y1 { for x in x0..<x1 where ink(x, y) {
                 area += 1
-                if !dark[y * w + x - 1] || !dark[y * w + x + 1] || !dark[(y - 1) * w + x] || !dark[(y + 1) * w + x] { edge += 1 }
+                if !ink(x - 1, y) || !ink(x + 1, y) || !ink(x, y - 1) || !ink(x, y + 1) { edge += 1 }
             } }
             guard area >= 20, edge > 0 else { return nil }
             return 2 * Double(area) / Double(edge)
@@ -680,10 +713,26 @@ enum DocumentLayoutAnalyzer {
     }
     static func visualLines(_ words: [Word]) -> [VisualLine] {
         var lines: [VisualLine] = []
+        // Extent of each recognized line. Two recognized lines that sit over each
+        // other horizontally are stacked lines of a paragraph, never one baseline;
+        // with tight leading (CJK body text) their boxes can still overlap enough
+        // to pass the vertical test, which interleaved their words.
+        var extents: [Int: LBox] = [:]
+        for w in words where w.line >= 0 { extents[w.line] = extents[w.line].map { $0.union(w.box) } ?? w.box }
+        func stacked(_ line: VisualLine, _ word: Word) -> Bool {
+            guard keepsRecognizedLines, word.line >= 0, let mine = extents[word.line] else { return false }
+            return line.words.contains { other in
+                guard other.line >= 0, other.line != word.line, let theirs = extents[other.line] else { return false }
+                return mine.overlapX(theirs) > 0.3 * min(mine.width, theirs.width)
+            }
+        }
         for word in words.sorted(by: { $0.box.midY < $1.box.midY }) {
-            if let i = lines.lastIndex(where: { line in
+            if keepsRecognizedLines, word.line >= 0, let i = lines.lastIndex(where: { $0.words.contains { $0.line == word.line } }), !stacked(lines[i], word) {
+                lines[i].words.append(word); lines[i].box = lines[i].box.union(word.box)
+            } else if let i = lines.lastIndex(where: { line in
                 let overlap = line.box.overlapY(word.box)
                 return overlap >= 0.5 * min(line.box.height, word.box.height) && word.box.height < line.box.height * 2.2 && line.box.height < word.box.height * 2.2
+                    && !stacked(line, word)
             }) {
                 lines[i].words.append(word); lines[i].box = lines[i].box.union(word.box)
             } else { lines.append(VisualLine(words: [word], box: word.box)) }
@@ -740,7 +789,7 @@ enum DocumentLayoutAnalyzer {
         }
         if scores.count >= 8 {
             scores.sort()
-            textInk.boldThreshold = max(1.15, min(1.3, scores[scores.count / 2] * 1.27))
+            textInk.boldThreshold = max(1.15, min(1.6, scores[scores.count / 2] * 1.15))
         }
 
         var free: [Word] = []
@@ -815,8 +864,51 @@ enum DocumentLayoutAnalyzer {
             if let t = holders.min(by: { tables[$0].box.width * tables[$0].box.height < tables[$1].box.width * tables[$1].box.height }) { tableWords[t].append(word) }
             else { free.append(word) }
         } }
-        for t in tables.indices where tables[t].ruled { mergeCrossedWalls(&tables[t], words: tableWords[t]) }
-        for t in tables.indices { fillCells(&tables[t], words: tableWords[t], ink: textInk, ptPerPx: ptPerPx) }
+        // A box drawn with only its outline and a rule or two (an invoice's item
+        // list, a header line) holds columns made by alignment alone: rebuild it
+        // from the text, keeping the drawn lines as borders.
+        var rebuilt = Set<Int>()
+        for t in tables.indices where tables[t].ruled && splitsAlignedColumns {
+            let ws = tableWords[t]
+            guard ws.count >= 6 else { continue }
+            let lines = visualLines(ws)
+            guard lines.count >= 3,
+                  let g = borderlessGroups(lines, width: Double(W)).max(by: { $0.count < $1.count }),
+                  g.count >= 3, Double(g.count) >= Double(lines.count) * 0.6,
+                  var inner = borderlessTable(lines, rows: g, ink: textInk, ptPerPx: ptPerPx),
+                  inner.columnCount > tables[t].columnCount else { continue }
+            // Only when a drawn cell really holds several of the aligned columns.
+            let old = tables[t]
+            let crowded = old.cells.contains { cell in
+                let inside = ws.filter { cell.box.contains(x: $0.box.midX, y: $0.box.midY) }
+                return Set(inside.compactMap { w in inner.columns.indices.dropLast().first { inner.columns[$0] <= w.box.midX && w.box.midX < inner.columns[$0 + 1] } }).count >= 2
+            }
+            guard crowded else { continue }
+            inner.columns[0] = min(inner.columns[0], old.box.x0); inner.columns[inner.columns.count - 1] = max(inner.columns.last!, old.box.x1)
+            if g.first == 0 { inner.rows[0] = old.box.y0 }
+            if g.last == lines.count - 1 { inner.rows[inner.rows.count - 1] = old.box.y1 }
+            var ruleAfter = Set<Int>()
+            for y in old.rows.dropFirst().dropLast() {
+                guard let k = (1..<(inner.rows.count - 1)).min(by: { abs(inner.rows[$0] - y) < abs(inner.rows[$1] - y) }) else { continue }
+                inner.rows[k] = y; ruleAfter.insert(k - 1)
+            }
+            let lastRow = inner.rowCount - 1, lastColumn = inner.columnCount - 1
+            for i in inner.cells.indices {
+                let c = inner.cells[i]
+                inner.cells[i].box = LBox(inner.columns[c.column], inner.rows[c.row], inner.columns[c.column + c.columnSpan], inner.rows[c.row + c.rowSpan])
+                inner.cells[i].top = c.row == 0 || ruleAfter.contains(c.row - 1)
+                inner.cells[i].bottom = c.row + c.rowSpan - 1 == lastRow || ruleAfter.contains(c.row + c.rowSpan - 1)
+                inner.cells[i].left = c.column == 0
+                inner.cells[i].right = c.column + c.columnSpan - 1 == lastColumn
+            }
+            inner.ruled = true
+            tables[t] = inner; rebuilt.insert(t)
+            // Text in the box outside the aligned rows flows as paragraphs.
+            let used = Set(g)
+            for (k, line) in lines.enumerated() where !used.contains(k) { free += line.words }
+        }
+        for t in tables.indices where tables[t].ruled && !rebuilt.contains(t) { mergeCrossedWalls(&tables[t], words: tableWords[t]) }
+        for t in tables.indices where !rebuilt.contains(t) { fillCells(&tables[t], words: tableWords[t], ink: textInk, ptPerPx: ptPerPx) }
 
         // Underlines: short rules right below text that are not part of a table.
         let tableBoxes = tables.map { $0.box.inset(-6) }
@@ -873,6 +965,12 @@ enum DocumentLayoutAnalyzer {
         items.sort { $0.box.y0 < $1.box.y0 }
         var page = PageLayout(width: W, height: H, pageWidth: size.0, pageHeight: size.1, items: items, graphics: graphics)
         page.positioned = form || overlaps(items)
+        if detectsColumns, !form {
+            var split = items
+            if let c = columnSplit(&split, width: Double(W), textHeight: textHeight) {
+                page.items = split; page.positioned = false; page.columns = c
+            }
+        }
         tidyParagraphs(&page)
         return page
     }
@@ -976,6 +1074,66 @@ enum DocumentLayoutAnalyzer {
         return true
     }
 
+    /// Finds a gutter that splits the page into two text columns: every item is
+    /// either wholly on one side of it, or above / below the band both columns
+    /// share. Each column must flow on its own (no side-by-side items inside).
+    static func columnSplit(_ items: inout [LayoutItem], width W: Double, textHeight: Double) -> [Double]? {
+        guard items.count >= 4 else { return nil }
+        // A left and a right line on the same baseline become one line with a tab;
+        // such a paragraph is split at the gutter rather than blocking it.
+        func halves(_ item: LayoutItem, at x: Double) -> (LayoutParagraph, LayoutParagraph)? {
+            guard case .paragraph(let p) = item else { return nil }
+            var l = p, r = p
+            l.lines = []; r.lines = []
+            for line in p.lines {
+                guard line.segments.allSatisfy({ $0.box.x1 <= x || $0.box.x0 >= x }) else { return nil }
+                let a = line.segments.filter { $0.box.x1 <= x }, b = line.segments.filter { $0.box.x0 >= x }
+                if !a.isEmpty { l.lines.append(LayoutLine(segments: a, box: LBox.around(a.map(\.box))!)) }
+                if !b.isEmpty { r.lines.append(LayoutLine(segments: b, box: LBox.around(b.map(\.box))!)) }
+            }
+            guard !l.lines.isEmpty, !r.lines.isEmpty else { return nil }
+            l.box = LBox.around(l.lines.map(\.box))!; r.box = LBox.around(r.lines.map(\.box))!
+            l.alignment = .left; r.alignment = .left
+            if let b = p.bullet, b.x0 >= x { l.bullet = nil; l.marker = nil } else { r.bullet = nil; r.marker = nil }
+            return (l, r)
+        }
+        var best: (score: Double, x: Double, value: [Double])?
+        for step in 0...100 {
+            let x = W * (0.25 + 0.5 * Double(step) / 100)
+            var parts = items.filter { $0.box.x1 <= x || $0.box.x0 >= x }
+            var crossing: [LayoutItem] = []
+            for item in items where item.box.x0 < x && item.box.x1 > x {
+                if let (l, r) = halves(item, at: x) { parts += [.paragraph(l), .paragraph(r)] } else { crossing.append(item) }
+            }
+            let left = parts.filter { $0.box.x1 <= x }, right = parts.filter { $0.box.x0 >= x }
+            guard left.count >= 2, right.count >= 2 else { continue }
+            let lo = max(left.map(\.box.y0).min()!, right.map(\.box.y0).min()!)
+            let l1 = left.map(\.box.y1).max()!, r1 = right.map(\.box.y1).max()!
+            let hi = min(l1, r1)
+            let leftH = l1 - left.map(\.box.y0).min()!, rightH = r1 - right.map(\.box.y0).min()!
+            // Both columns run side by side over most of their height.
+            guard hi - lo > 0.4 * min(leftH, rightH), hi - lo > textHeight * 3 else { continue }
+            let y0 = min(left.map(\.box.y0).min()!, right.map(\.box.y0).min()!), y1 = max(l1, r1)
+            guard !crossing.contains(where: { $0.box.overlapY(LBox(0, y0, W, y1)) > min($0.box.height, textHeight) * 0.3 }) else { continue }
+            guard !overlaps(left), !overlaps(right) else { continue }
+            // Columns of text, not a narrow column of labels beside their values.
+            let lw = left.map(\.box.width).reduce(0, +) / Double(left.count), rw = right.map(\.box.width).reduce(0, +) / Double(right.count)
+            guard lw >= W * 0.18, rw >= W * 0.18 else { continue }
+            let g0 = left.map(\.box.x1).max()!, g1 = right.map(\.box.x0).min()!
+            let score = g1 - g0
+            guard score >= max(4, textHeight * 0.4) else { continue }
+            if best == nil || score > best!.score { best = (score, x, [g0, g1, y0, y1]) }
+        }
+        guard let best else { return nil }
+        var out: [LayoutItem] = []
+        for item in items {
+            if item.box.x0 < best.x && item.box.x1 > best.x, let (l, r) = halves(item, at: best.x) { out += [.paragraph(l), .paragraph(r)] }
+            else { out.append(item) }
+        }
+        items = out.sorted { $0.box.y0 < $1.box.y0 }
+        return best.value
+    }
+
     /// True when two items share page height side by side, which flowing text cannot reproduce.
     static func overlaps(_ items: [LayoutItem]) -> Bool {
         for (i, a) in items.enumerated() { for b in items[(i + 1)...] {
@@ -1041,8 +1199,12 @@ enum DocumentLayoutAnalyzer {
     /// (≈1.0 regular, ≥1.25 bold). Small text blurs thicker, hence the offset.
     static func boldScore(_ words: [Word], ink: Ink, fontPt: Double) -> Double? {
         var values: [Double] = []
+        // Regular strokes measured on 2,900 printed paragraphs grow about
+        // 0.35 + 0.053·size points (CJK, with many thin strokes: 0.42 + 0.042·size);
+        // bold ones are 1.25–1.6× that at every size.
         for w in words where w.text.contains(where: { $0.isLetter || $0.isNumber }) {
-            if let s = ink.strokeWidth(w.box) { values.append(s * ink.ptPerPx / (0.3 + 0.08 * fontPt)) }
+            let wide = w.text.filter { isWide($0) }.count * 2 > w.text.count
+            if let s = ink.strokeWidth(w.box) { values.append(s * ink.ptPerPx / (wide ? 0.42 + 0.042 * fontPt : 0.35 + 0.053 * fontPt)) }
         }
         guard !values.isEmpty else { return nil }
         values.sort()
@@ -1051,9 +1213,19 @@ enum DocumentLayoutAnalyzer {
     static func runs(_ words: [Word], ink: Ink, fontPx: Double) -> [LayoutRun] {
         let fontPt = fontPx * ink.ptPerPx
         var runs: [LayoutRun] = []
+        var previous: Word?
+        // A single word must stand out more than a whole line: short words give
+        // noisy stroke measures.
+        let lineBold = (boldScore(words, ink: ink, fontPt: fontPt) ?? 1) >= ink.boldThreshold
         for w in words {
-            let bold = (boldScore([w], ink: ink, fontPt: fontPt) ?? 1) >= ink.boldThreshold
-            let text = (w.spaceBefore && !runs.isEmpty ? " " : "") + w.text
+            let bold = (boldScore([w], ink: ink, fontPt: fontPt) ?? 1) >= ink.boldThreshold + (lineBold ? 0 : 0.12)
+            // Words from two separately recognized pieces (often two columns that
+            // ended up in one cell) are kept apart, except between CJK characters.
+            var space = w.spaceBefore
+            if !space, let p = previous, p.line >= 0, w.line >= 0, p.line != w.line,
+               let a = p.text.last, let b = w.text.first, !(isWide(a) && isWide(b)) { space = true }
+            previous = w
+            let text = (space && !runs.isEmpty ? " " : "") + w.text
             if var last = runs.last, last.bold == bold, last.underline == w.underline, last.color == w.color {
                 last.text += text; runs[runs.count - 1] = last
             } else {
@@ -1218,7 +1390,7 @@ enum DocumentLayoutAnalyzer {
         }
         for (i, ws) in byCell where table.cells[i].alignment == .left { table.cells[i].indent = max(0, LBox.around(ws.map(\.box))!.x0 - table.cells[i].box.x0) }
         harmonizeSizes(&table)
-        harmonizeWeight(&table, scores: scores)
+        harmonizeWeight(&table, scores: scores, threshold: ink.boldThreshold)
         fitCells(&table, words: byCell, ptPerPx: ptPerPx)
     }
     static func fitCells(_ table: inout LayoutTable, words: [Int: [Word]], ptPerPx: Double) {
@@ -1262,11 +1434,12 @@ enum DocumentLayoutAnalyzer {
         for i in table.cells.indices where table.cells[i].lines.isEmpty { table.cells[i].fontSize = body }
     }
     /// A table set mostly in bold is bold throughout; otherwise only clearly bold cells.
-    static func harmonizeWeight(_ table: inout LayoutTable, scores: [Int: Double]) {
+    static func harmonizeWeight(_ table: inout LayoutTable, scores: [Int: Double], threshold: Double = 1.15) {
         guard !scores.isEmpty else { return }
-        let share = Double(scores.values.filter { $0 >= 1.1 }.count) / Double(scores.count)
+        // Relative to the page's own threshold: a blurry photo thickens every stroke.
+        let share = Double(scores.values.filter { $0 >= threshold + 0.1 }.count) / Double(scores.count)
         for (i, score) in scores {
-            let bold = share >= 0.6 ? true : (share <= 0.25 ? score >= 1.35 : score >= 1.25)
+            let bold = share >= 0.6 ? true : (share <= 0.25 ? score >= threshold + 0.15 : score >= threshold + 0.07)
             table.cells[i].lines = table.cells[i].lines.map { line in
                 var merged: [LayoutRun] = []
                 for var r in line { r.bold = bold; if var last = merged.last, last.underline == r.underline, last.color == r.color { last.text += r.text; merged[merged.count - 1] = last } else { merged.append(r) } }
@@ -1303,6 +1476,15 @@ enum DocumentLayoutAnalyzer {
             } }
             return true
         }
+        // A row label that wraps: its first line stands alone in the first column
+        // and the row's values follow on the next line, which starts at the same x.
+        func wrappedLabel(_ i: Int) -> Bool {
+            guard lines[i].segments.count == 1, i + 1 < lines.count, lines[i + 1].segments.count >= 2, !current.isEmpty else { return false }
+            let b = LBox.around(lines[i].segments[0].map(\.box))!, next = LBox.around(lines[i + 1].segments[0].map(\.box))!
+            let cols = columnsOf(current)
+            return cols.count >= 2 && abs(b.x0 - next.x0) <= width * 0.02 && b.x1 < cols[1].0 && abs(b.x0 - cols[0].0) <= width * 0.03
+                && lines[i + 1].box.y0 - lines[i].box.y1 <= max(lines[i].box.height, lines[i + 1].box.height) * 1.2
+        }
         func flush() {
             let multi = current.filter { lines[$0].segments.count >= 2 }.count
             if current.count >= 3 && multi >= 3, columnsOf(current).count >= 2 { groups.append(current) }
@@ -1321,7 +1503,7 @@ enum DocumentLayoutAnalyzer {
                 // A single segment may continue a row only when it starts in a non-first column.
                 let cols = columnsOf(current), b = LBox.around(line.segments[0].map(\.box))!
                 return cols.count >= 2 && b.x0 > cols[0].1
-            }())
+            }() || wrappedLabel(i))
             if fits { current.append(i) } else { flush(); if line.segments.count >= 2 { current = [i] } }
         }
         flush()
@@ -1335,25 +1517,46 @@ enum DocumentLayoutAnalyzer {
             if let last = cols.last, iv.0 <= last.1 + 4 { cols[cols.count - 1].1 = max(last.1, iv.1) } else { cols.append(iv) }
         }
         guard cols.count >= 2 else { return nil }
+        // Two columns of running text line up like a table; prose in most cells
+        // (sentences, not values) means columns of text.
+        let pieces = rows.flatMap { lines[$0].segments }.map { seg in seg.filter { !$0.text.allSatisfy(\.isPunctuation) }.count }
+        if splitsAlignedColumns, pieces.count >= 6 {
+            let wordy = pieces.filter { $0 >= 5 }.count
+            if Double(wordy) >= Double(pieces.count) * 0.5 { return nil }
+        }
+        // Rows of one or more lines: a lone first-column line joins the row below.
+        var groups: [[Int]] = []
+        var pending: [Int] = []
+        for (k, li) in rows.enumerated() {
+            let segs = lines[li].segments.map { LBox.around($0.map(\.box))! }
+            if segs.count == 1, segs[0].x1 < cols[1].0, k + 1 < rows.count { pending.append(li); continue }
+            groups.append(pending + [li]); pending = []
+        }
+        if !pending.isEmpty { groups.append(pending) }
+        let rowLines = groups
         var xs = [cols[0].0 - 8]
         for c in 1..<cols.count { xs.append((cols[c - 1].1 + cols[c].0) / 2) }
         xs.append(cols.last!.1 + 8)
-        var ys = [lines[rows[0]].box.y0 - 6]
-        for r in 1..<rows.count { ys.append((lines[rows[r - 1]].box.y1 + lines[rows[r]].box.y0) / 2) }
-        ys.append(lines[rows.last!].box.y1 + 6)
+        var ys = [lines[rowLines[0][0]].box.y0 - 6]
+        for r in 1..<rowLines.count { ys.append((lines[rowLines[r - 1].last!].box.y1 + lines[rowLines[r][0]].box.y0) / 2) }
+        ys.append(lines[rowLines.last!.last!].box.y1 + 6)
+        func words(_ li: Int, _ c: Int) -> [Word] {
+            lines[li].segments.filter { s in let b = LBox.around(s.map(\.box))!; return b.x1 > cols[c].0 && b.x0 < cols[c].1 }.flatMap { $0 }
+        }
         var cells: [LayoutCell] = []
         var sizes: [Double] = []
         var cellWords: [Int: [Word]] = [:]
-        for (r, li) in rows.enumerated() {
+        for (r, group) in rowLines.enumerated() {
             for c in 0..<cols.count {
                 var cell = LayoutCell(row: r, column: c, box: LBox(xs[c], ys[r], xs[c + 1], ys[r + 1]))
                 cell.top = false; cell.left = false; cell.bottom = false; cell.right = false
-                let ws = lines[li].segments.filter { s in let b = LBox.around(s.map(\.box))!; return b.x1 > cols[c].0 && b.x0 < cols[c].1 }.flatMap { $0 }
+                let perLine = group.map { words($0, c) }.filter { !$0.isEmpty }
+                let ws = perLine.flatMap { $0 }
                 if !ws.isEmpty {
                     let size = fontSize(ws, ink: ink, ptPerPx: ptPerPx)
                     sizes.append(size)
                     cell.fontSize = size
-                    cell.lines = [runs(ws, ink: ink, fontPx: size / ptPerPx)]
+                    cell.lines = perLine.map { runs($0, ink: ink, fontPx: size / ptPerPx) }
                     cellWords[cells.count] = ws
                 }
                 cells.append(cell)
@@ -1361,10 +1564,8 @@ enum DocumentLayoutAnalyzer {
         }
         // Column alignment from where the text sits inside each column.
         for c in 0..<cols.count {
-            let boxes = rows.indices.compactMap { r -> LBox? in
-                let li = rows[r]
-                let ws = lines[li].segments.filter { s in let b = LBox.around(s.map(\.box))!; return b.x1 > cols[c].0 && b.x0 < cols[c].1 }.flatMap { $0 }
-                return LBox.around(ws.map(\.box))
+            let boxes = rowLines.compactMap { group -> LBox? in
+                LBox.around(group.flatMap { words($0, c) }.map(\.box))
             }
             let lefts = boxes.map(\.x0), rights = boxes.map(\.x1), mids = boxes.map(\.midX)
             func spread(_ v: [Double]) -> Double { (v.max() ?? 0) - (v.min() ?? 0) }

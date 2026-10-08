@@ -108,7 +108,11 @@ struct TranslationRaster {
             }
         }
         guard dark.count > 3,dark.count < rw*rh*55/100,safeRect.width > 5,safeRect.height > 5 else { return nil }
-        let fg = (0..<3).map { c in dark.map { $0[c] }.sorted()[dark.count/5] }
+        // Ink is the far end from the paper: the darkest fifth for print on light
+        // paper, the brightest fifth for light text on a dark or colored sign.
+        func lum(_ c:[UInt8]) -> Double { Double(c[0])*0.299+Double(c[1])*0.587+Double(c[2])*0.114 }
+        let light = dark.reduce(0.0) { $0+lum($1) }/Double(dark.count) > lum(bg)
+        let fg = (0..<3).map { c in dark.map { $0[c] }.sorted()[light ? dark.count*4/5 : dark.count/5] }
         let direction = (0..<3).map { Double(fg[$0])-Double(bg[$0]) }
         let length = max(1,direction.reduce(0) { $0+$1*$1 })
         let varied = dark.filter { c in

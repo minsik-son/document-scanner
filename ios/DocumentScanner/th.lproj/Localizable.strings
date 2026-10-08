@@ -1,4 +1,4 @@
-/* Pageframe — th */
+/* FoldScan — th */
 "Word export" = "ส่งออกเป็น Word";
 "Excel export" = "ส่งออกเป็น Excel";
 "PowerPoint export" = "ส่งออกเป็น PowerPoint";
@@ -1397,7 +1397,7 @@
 "Add %lld" = "เพิ่ม %lld รายการ";
 "Trial · 1 day left" = "ทดลองใช้ · เหลือ 1 วัน";
 "Trial · %lld days left" = "ทดลองใช้ · เหลือ %lld วัน";
-"Unlock\nPageframe Pro" = "ปลดล็อค\nPageframe Pro";
+"Unlock\nFoldScan Pro" = "ปลดล็อค\nFoldScan Pro";
 "Office export, translation, photo tools and no ads." = "ส่งออกไฟล์ Office แปลภาษา เครื่องมือรูปภาพ และไม่มีโฆษณา";
 "Try free" = "ทดลองใช้ฟรี";
 "See plans" = "ดูแผน";

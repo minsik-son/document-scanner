@@ -120,7 +120,7 @@ struct SettingsView: View {
                 } header: { Text("Developer") } footer: { Text("Debug builds only. Switches the app between the free and Pro layouts without buying. App Store follows the real purchase.") }
                 #endif
                 Section("About this build") {
-                    Text("Pageframe · 0.1.0")
+                    Text("FoldScan · 0.1.0")
                     Text("Development preview. Subscription purchases launched through the Xcode StoreKit configuration are test purchases.").font(.subheadline).foregroundStyle(.secondary)
                 }
                 if let feedback { Section { Text(L(feedback)) } }

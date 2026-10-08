@@ -1,4 +1,4 @@
-/* Pageframe — fr */
+/* FoldScan — fr */
 "Word export" = "Export Word";
 "Excel export" = "Export Excel";
 "PowerPoint export" = "Export PowerPoint";
@@ -1397,7 +1397,7 @@
 "Add %lld" = "Ajouter %lld";
 "Trial · 1 day left" = "Essai · 1 jour restant";
 "Trial · %lld days left" = "Essai · %lld jours restants";
-"Unlock\nPageframe Pro" = "Débloquez\nPageframe Pro";
+"Unlock\nFoldScan Pro" = "Débloquez\nFoldScan Pro";
 "Office export, translation, photo tools and no ads." = "Export Office, traduction, outils photo, sans publicité.";
 "Try free" = "Essayer gratuitement";
 "See plans" = "Voir les formules";

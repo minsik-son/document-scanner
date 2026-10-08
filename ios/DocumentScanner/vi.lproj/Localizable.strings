@@ -1,4 +1,4 @@
-/* Pageframe — vi */
+/* FoldScan — vi */
 "Word export" = "Xuất Word";
 "Excel export" = "Xuất Excel";
 "PowerPoint export" = "Xuất PowerPoint";
@@ -1397,7 +1397,7 @@
 "Add %lld" = "Thêm %lld";
 "Trial · 1 day left" = "Dùng thử · còn 1 ngày";
 "Trial · %lld days left" = "Dùng thử · còn %lld ngày";
-"Unlock\nPageframe Pro" = "Mở khóa\nPageframe Pro";
+"Unlock\nFoldScan Pro" = "Mở khóa\nFoldScan Pro";
 "Office export, translation, photo tools and no ads." = "Xuất Office, dịch thuật, công cụ ảnh và không quảng cáo.";
 "Try free" = "Dùng thử miễn phí";
 "See plans" = "Xem các gói";

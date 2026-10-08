@@ -1,4 +1,4 @@
-/* Pageframe — zh-Hans */
+/* FoldScan — zh-Hans */
 "Word export" = "导出 Word";
 "Excel export" = "导出 Excel";
 "PowerPoint export" = "导出 PowerPoint";
@@ -1397,7 +1397,7 @@
 "Add %lld" = "添加 %lld 项";
 "Trial · 1 day left" = "试用 · 剩 1 天";
 "Trial · %lld days left" = "试用 · 剩 %lld 天";
-"Unlock\nPageframe Pro" = "解锁\nPageframe Pro";
+"Unlock\nFoldScan Pro" = "解锁\nFoldScan Pro";
 "Office export, translation, photo tools and no ads." = "Office 导出、翻译、照片工具，并去除广告。";
 "Try free" = "免费试用";
 "See plans" = "查看方案";

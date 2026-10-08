@@ -1,4 +1,4 @@
-/* Pageframe — ja */
+/* FoldScan — ja */
 "Word export" = "Word書き出し";
 "Excel export" = "Excel書き出し";
 "PowerPoint export" = "PowerPoint書き出し";
@@ -1397,7 +1397,7 @@
 "Add %lld" = "%lld件を追加";
 "Trial · 1 day left" = "トライアル · 残り1日";
 "Trial · %lld days left" = "トライアル · 残り%lld日";
-"Unlock\nPageframe Pro" = "Pageframe Proを\nアンロック";
+"Unlock\nFoldScan Pro" = "FoldScan Proを\nアンロック";
 "Office export, translation, photo tools and no ads." = "Office書き出し、翻訳、写真ツール、広告なし。";
 "Try free" = "無料で試す";
 "See plans" = "プランを見る";

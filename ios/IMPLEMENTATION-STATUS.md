@@ -126,7 +126,7 @@ Selected-language + close-up OCR, word-gap column separation, mixed-script parag
 | rewarded | 소진 화면 "Watch a short ad · 1 more use", 묶음당 하루 1회, 광고 준비 안 되면 버튼 숨김, Google 공식 테스트 단위 | 단위 테스트(하루 1회). 실제 광고 표시는 실기 확인 필요 |
 | no-interstitial | 저장 후 전면 광고 계속 꺼 둠(`completionAdEnabled: false` 유지) | 기존 코드 유지 |
 | third-save-card | 3번째 저장 후 홈에 1회성 "Try Pro free for 7 days" 카드(닫으면 다시 안 뜸) | 코드 연결 |
-| share-filename | 공유 PDF 파일명 = 문서 제목.pdf, Creator/Producer = Pageframe (문서, 신분증, 저장 직후 공유) | 단위 테스트 `testSharedPDFNameIsCleaned` |
+| share-filename | 공유 PDF 파일명 = 문서 제목.pdf, Creator/Producer = FoldScan (문서, 신분증, 저장 직후 공유) | 단위 테스트 `testSharedPDFNameIsCleaned` |
 | review-prompt | `ReviewPrompter`: 3번째 저장, Pro 도구 결과 첫 공유, 구매 다음 날, 각 1회 | 코드 연결 |
 | (추가) privacy-copy | 개인정보 화면 광고 문구를 새 배치(홈·Tools·선택형 보상 광고, 첫날 없음)로 수정 | — |
 | (추가) l10n-new | 새 문구 35개를 15개 언어에 추가(복수형 포함) | 형식 지정자 검사 |

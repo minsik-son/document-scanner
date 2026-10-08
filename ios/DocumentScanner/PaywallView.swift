@@ -236,18 +236,18 @@ struct PrivacyView: View {
 /// The top of the paywall: one Pro feature per slide, with its animation,
 /// advancing on its own every few seconds (CamScanner-style, our colours).
 struct ProFeatureCarousel: View {
-    private struct Slide { let title: String; let detail: String; let art: String? }
+    private struct Slide { let title: String; let detail: String; let art: String?; let stage: Color }
     /// Only Pro benefits: text recognition, copying and search are free, so they are not here.
     private static let slides: [Slide] = [
-        Slide(title: "Word · Excel · PowerPoint", detail: "Turn any scan into a file you can edit", art: "art-word"),
-        Slide(title: "Translate photos", detail: "Read signs, menus and letters in your language", art: "art-translate"),
-        Slide(title: "Hide personal info", detail: "Cover ID, card and phone numbers in one tap", art: "art-redact"),
-        Slide(title: "Fill forms in seconds", detail: "Your name, address and signature, placed for you", art: "art-fill-form"),
-        Slide(title: "Restore old photos", detail: "Bring faded prints back to life", art: "art-restore"),
-        Slide(title: "Lock & compress PDFs", detail: "Password-protect and shrink big files", art: "art-protect"),
-        Slide(title: "Auto-save to iCloud Drive or Dropbox", detail: "Every new scan lands in your folder", art: "art-auto-save"),
-        Slide(title: "Unlimited signatures & merges", detail: "Save every signature and combine any number of PDFs", art: "art-merge"),
-        Slide(title: "No ads", detail: "Every screen stays clean", art: nil),
+        Slide(title: "Word · Excel · PowerPoint", detail: "Turn any scan into a file you can edit", art: "art-word", stage: TossPay.stage),
+        Slide(title: "Translate photos", detail: "Read signs, menus and letters in your language", art: "art-translate", stage: Color(hex: 0xE3F5EC)),
+        Slide(title: "Hide personal info", detail: "Cover ID, card and phone numbers in one tap", art: "art-redact", stage: Color(hex: 0xEFEAFE)),
+        Slide(title: "Fill forms in seconds", detail: "Your name, address and signature, placed for you", art: "art-fill-form", stage: Color(hex: 0xFFEFE0)),
+        Slide(title: "Restore old photos", detail: "Bring faded prints back to life", art: "art-restore", stage: Color(hex: 0xFFF4D6)),
+        Slide(title: "Lock & compress PDFs", detail: "Password-protect and shrink big files", art: "art-protect", stage: Color(hex: 0xFDE8EF)),
+        Slide(title: "Auto-save to iCloud Drive or Dropbox", detail: "Every new scan lands in your folder", art: "art-auto-save", stage: Color(hex: 0xF3EEE6)),
+        Slide(title: "Unlimited signatures & merges", detail: "Save every signature and combine any number of PDFs", art: "art-merge", stage: Color(hex: 0xE9F3DC)),
+        Slide(title: "No ads", detail: "Every screen stays clean", art: nil, stage: Color(hex: 0xFFE9E6)),
     ]
     static func index(for start: PaywallStart) -> Int {
         switch start {
@@ -285,10 +285,10 @@ struct ProFeatureCarousel: View {
         }
     }
     private func slide(_ slide: Slide, live: Bool) -> some View {
-        // Two flat colours, no gradient: a pale blue stage for the art, white below for the words.
+        // Two flat colours, no gradient: a pale stage of the slide's own colour for the art, white below for the words.
         VStack(spacing: 0) {
             ZStack {
-                TossPay.stage
+                slide.stage
                 Group {
                     if let art = slide.art {
                         AnimatedPNG(asset: art, stillFrame: 60, animates: live && !reduceMotion)

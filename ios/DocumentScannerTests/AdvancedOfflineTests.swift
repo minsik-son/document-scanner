@@ -232,6 +232,29 @@ import PDFKit
         XCTAssertEqual(try LocalMath.evaluate("2^3^2"),512);XCTAssertEqual(try LocalMath.evaluate("sqrt(81)+sin(pi/2)"),10,accuracy:0.0001)
         for invalid in ["1/0","sqrt(-1)","2+","shell(1)","1;2","("+String(repeating:"(",count:100)+"1"] { XCTAssertThrowsError(try LocalMath.evaluate(invalid)) }
     }
+    /// Lines as the camera reads an exercise sheet (from the convert corpus).
+    func testMathSolvesPhotographedExerciseLines() throws {
+        let cases: [(String, String)] = [
+            ("① 225÷25 =", "9"), ("Q2. 14 × 1.2 =", "16.8"), ("Q2.14 × 1.2=", "16.8"), ("3) (56 - 75) × 110 =", "-2090"),
+            ("5) (7 + 6)⁴ =", "28561"), ("√(8 × 5) + (2 + 2)² =", "22.32455532"), ("Q5. √144 =", "12"),
+            ("(35-97.08)x(47.6+476) = -32505.09", "-32505.088"), ("12,5 + 1,250", "1262.5"), ("2(3+4)", "14"),
+            ("⑥ 55.1×198 = 10909.8", "10909.8"), ("V(11*4)", "6.633249581")]
+        for (line, value) in cases { XCTAssertEqual(try LocalMath.solve(line), value, line) }
+        // An item number beside the sum is never read as part of the first number.
+        XCTAssertEqual(try LocalMath.solve("2 57 * 30"), "1710")
+        XCTAssertThrowsError(try LocalMath.evaluate("2 57 * 30"))
+        XCTAssertNil(LocalMath.expression("Name:")); XCTAssertNil(LocalMath.expression("Date : __————----"))
+        XCTAssertEqual(try LocalMath.solve("Homework\nName:\n1) 2+3 =\n2) 10 ÷ 4 = ____"), "2+3 = 5\n10÷4 = 2.5")
+        // Numbering that lost its space keeps counting down the sheet.
+        XCTAssertEqual(try LocalMath.solve("1. 2+3\n2.18x151+56.1\n3. 4×5\n4.576+85"), "2+3 = 5\n18×151+56.1 = 2774.1\n4×5 = 20\n576+85 = 661")
+        XCTAssertEqual(try LocalMath.solve("@ 55.1×198 = 10909.8"), "10909.8")
+    }
+    /// Recognition can return U+FFFE; the Office XML must stay readable.
+    func testOfficeXMLDropsCharactersXMLForbids() throws {
+        let escaped = OfficeExport.xml("a\u{FFFE}b\u{0B}c<&>")
+        XCTAssertEqual(escaped, "abc&lt;&amp;&gt;")
+        XCTAssertTrue(XMLParser(data: Data("<t>\(escaped)</t>".utf8)).parse())
+    }
     func testMeshWorldGeometryAndValidation() throws {
         let text = try MeshExport.obj(vertices:[SIMD3(0,0,0),SIMD3(1,0,0),SIMD3(0,1,0)],faces:[[0,1,2]],offset:4)
         XCTAssertTrue(text.contains("f 5 6 7"));XCTAssertThrowsError(try MeshExport.obj(vertices:[.zero],faces:[[0,1,2]]))

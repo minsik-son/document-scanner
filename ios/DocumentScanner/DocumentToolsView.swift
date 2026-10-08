@@ -141,8 +141,8 @@ enum SharedPDF {
       try fm.createDirectory(at: folder, withIntermediateDirectories: true)
       if let pdf = PDFDocument(url: source), !pdf.isEncrypted {
         var attributes = pdf.documentAttributes ?? [:]
-        attributes[PDFDocumentAttribute.creatorAttribute] = "FoldScan"
-        attributes[PDFDocumentAttribute.producerAttribute] = "FoldScan"
+        attributes[PDFDocumentAttribute.creatorAttribute] = AppInfo.name
+        attributes[PDFDocumentAttribute.producerAttribute] = AppInfo.name
         if attributes[PDFDocumentAttribute.titleAttribute] == nil { attributes[PDFDocumentAttribute.titleAttribute] = title }
         pdf.documentAttributes = attributes
         if !pdf.write(to: target) { try fm.copyItem(at: source, to: target) }

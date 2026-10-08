@@ -38,6 +38,7 @@
 		1E97AE410C367B9D7BDB8701 /* ToolIllustrations.swift in Sources */ = {isa = PBXBuildFile; fileRef = E68B466CC6A7BC040F4F3B2C /* ToolIllustrations.swift */; };
 		811108B5230C4A351FD2171C /* ToolKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68D3166AA0398584B7F04ACD /* ToolKit.swift */; };
 		43113C1E9E310D458C1652D2 /* PageThumbnailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE81C362B75AC44EFFAAA0F2 /* PageThumbnailCache.swift */; };
+		FA11CE0000000000000000B2 /* ReviewScreensUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA11CE0000000000000000F2 /* ReviewScreensUITests.swift */; };
 		45D1F6B22E378F6DDB11BAFE /* ToolDirectoryDesignTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7360897253E6674BA271468C /* ToolDirectoryDesignTests.swift */; };
 		487210D84A4DC820C6FB18FF /* OfficeTableEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3380FD94C796269AFA5B6CD9 /* OfficeTableEditor.swift */; };
 		48B1757F0C54A3C2F04ACFAE /* HomeAdvertisement.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0E059AEFB8E259DA0897D8F /* HomeAdvertisement.swift */; };
@@ -100,6 +101,7 @@
 		EA4B4EECA216B2D025587943 /* OfflineImageEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 197CB0D5C69B3E9751A05AFB /* OfflineImageEngine.swift */; };
 		EBA378FA954AEDB6B2762C22 /* CameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 961E7CEBB996D70937A8D13A /* CameraView.swift */; };
 		ECE74154DD6CFE237BD6312C /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A46FA0A5A496C37E088BC8 /* SettingsView.swift */; };
+		FA11CE0000000000000000B1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = FA11CE0000000000000000F1 /* PrivacyInfo.xcprivacy */; };
 		EE44DE370F08CEE48F95921C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7121F12CCF29CE7873E5050C /* Assets.xcassets */; };
 		F1E6DC6259CEAD72AB1A0CEF /* PDFTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD3ECDB4FE21845FED29E0D /* PDFTextTests.swift */; };
 		F274FF2876ADFFB042F89A42 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 6C94F784B80C8E019AA8DE7C /* LaunchScreen.storyboard */; };
@@ -206,9 +208,11 @@
 		5180A565D3C17A040B1CA6D0 /* OfficeSamplePhoto.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = OfficeSamplePhoto.jpg; sourceTree = "<group>"; };
 		F98948ECEFA0147D9AAD6DD5 /* OfficeSamplePriceList.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = OfficeSamplePriceList.jpg; sourceTree = "<group>"; };
 		1AB0E96F65E34FA1B165A896 /* OfficeSampleTable.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = OfficeSampleTable.jpg; sourceTree = "<group>"; };
+		FA11CE0000000000000000F1 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		7121F12CCF29CE7873E5050C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		71DCD8A16D2968388637B23A /* CompletionAdvertisementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletionAdvertisementTests.swift; sourceTree = "<group>"; };
 		7310CB426EB9702333690FE8 /* LocalDocumentTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalDocumentTools.swift; sourceTree = "<group>"; };
+		FA11CE0000000000000000F2 /* ReviewScreensUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewScreensUITests.swift; sourceTree = "<group>"; };
 		7360897253E6674BA271468C /* ToolDirectoryDesignTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolDirectoryDesignTests.swift; sourceTree = "<group>"; };
 		7541F30BD8B7A4A8FEC5D610 /* AdvancedToolsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedToolsUITests.swift; sourceTree = "<group>"; };
 		773F0A58A87D3AB6EFBB1C74 /* PhotoTranslation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoTranslation.swift; sourceTree = "<group>"; };
@@ -303,6 +307,7 @@
 				4C6CB2F35C20E89BABCC2033 /* PaywallDesignTests.swift */,
 				F9D443F9A450E2B27ED22180 /* ScannerFlowTests.swift */,
 				7360897253E6674BA271468C /* ToolDirectoryDesignTests.swift */,
+				FA11CE0000000000000000F2 /* ReviewScreensUITests.swift */,
 			);
 			path = DocumentScannerUITests;
 			sourceTree = "<group>";
@@ -336,6 +341,7 @@
 				AD6E03BC2F6CF9267D50E64A /* App.swift */,
 				E92CF39BFA2F3F9274651C6B /* AppLock.swift */,
 				7121F12CCF29CE7873E5050C /* Assets.xcassets */,
+				FA11CE0000000000000000F1 /* PrivacyInfo.xcprivacy */,
 				1F23B210A85E66989F31B118 /* Localizable.strings */,
 				93A58486F32A381474192796 /* Localizable.stringsdict */,
 				9E79422AF76DC13551AAC5AC /* BackupArchive.swift */,
@@ -573,6 +579,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				EE44DE370F08CEE48F95921C /* Assets.xcassets in Resources */,
+				FA11CE0000000000000000B1 /* PrivacyInfo.xcprivacy in Resources */,
 				B6E5464E60FB8BF914C1C71F /* Localizable.strings in Resources */,
 				0EF2F308948566C7DBE4FD1F /* Localizable.stringsdict in Resources */,
 				F274FF2876ADFFB042F89A42 /* LaunchScreen.storyboard in Resources */,
@@ -708,6 +715,7 @@
 				DCE20DC56949C16079B5AAB0 /* PaywallDesignTests.swift in Sources */,
 				FF87128E176720325C2A5AF7 /* ScannerFlowTests.swift in Sources */,
 				45D1F6B22E378F6DDB11BAFE /* ToolDirectoryDesignTests.swift in Sources */,
+				FA11CE0000000000000000B2 /* ReviewScreensUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -841,7 +849,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.documentscanner.DocumentScannerUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.foldscan.app.uitests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = DocumentScanner;
@@ -858,7 +866,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.documentscanner.DocumentScannerUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.foldscan.app.uitests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = DocumentScanner;
@@ -886,7 +894,7 @@
 					"@executable_path/Frameworks",
 				);
 				OTHER_LDFLAGS = "$(inherited) -ObjC";
-				PRODUCT_BUNDLE_IDENTIFIER = com.documentscanner.local;
+				PRODUCT_BUNDLE_IDENTIFIER = com.foldscan.app;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -904,7 +912,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.documentscanner.DocumentScannerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.foldscan.app.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DocumentScanner.app/DocumentScanner";
@@ -921,7 +929,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.documentscanner.DocumentScannerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.foldscan.app.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DocumentScanner.app/DocumentScanner";
@@ -1009,7 +1017,7 @@
 					"@executable_path/Frameworks",
 				);
 				OTHER_LDFLAGS = "$(inherited) -ObjC";
-				PRODUCT_BUNDLE_IDENTIFIER = com.documentscanner.local;
+				PRODUCT_BUNDLE_IDENTIFIER = com.foldscan.app;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;

@@ -52,6 +52,27 @@ final class SubscriptionTests: XCTestCase {
         XCTAssertEqual(SmartTool.redact.proFeature, .redact); XCTAssertEqual(SmartTool.fillForm.proFeature, .fillForm)
         XCTAssertNil(SmartTool.autoSave.proFeature); XCTAssertTrue(SmartTool.autoSave.pro)
     }
+    /// App Review: one app name everywhere and working public links.
+    func testAppNameAndPublicLinksAreConfigured() {
+        XCTAssertEqual(AppInfo.name, "FoldScan")
+        for link in [AppInfo.privacyPolicy, AppInfo.support, AppInfo.terms] {
+            let url = URL(string: link)
+            XCTAssertEqual(url?.scheme, "https", link)
+            XCTAssertFalse((url?.host ?? "").isEmpty, link)
+        }
+        XCTAssertTrue(SubscriptionStore.productIDs.allSatisfy { $0.hasPrefix("com.foldscan.pro.") })
+        XCTAssertEqual(Bundle.main.bundleIdentifier, "com.foldscan.app")
+    }
+    /// Tools page: every visible tool sits in exactly one section; Count objects stays hidden.
+    func testToolSectionsCoverEveryToolOnce() {
+        let entries = ToolSection.all.flatMap(\.entries)
+        XCTAssertEqual(Set(entries).count, entries.count)
+        XCTAssertFalse(entries.contains(.advanced(.count)))
+        for tool in AdvancedTool.allCases where !tool.hidden { XCTAssertTrue(entries.contains(.advanced(tool)), tool.rawValue) }
+        for tool in LibraryTool.allCases { XCTAssertTrue(entries.contains(.library(tool)), tool.rawValue) }
+        XCTAssertEqual(ToolSection.all.map(\.title), ["Before you send", "Fix a page", "Turn it into", "Capture more", "Camera utilities"])
+        XCTAssertEqual(AdvancedTool.erase.rawValue, "Spot eraser")
+    }
     func testSharedPDFNameIsCleaned() {
         XCTAssertEqual(SharedPDF.fileName("Lease: 2026/10"), "Lease  2026 10.pdf")
         XCTAssertEqual(SharedPDF.fileName("   "), "Document.pdf")

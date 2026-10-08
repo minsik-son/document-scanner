@@ -5,7 +5,7 @@
 "Photo translation" = "拍照翻译";
 "Book pages" = "书籍扫描";
 "ID photo" = "证件照";
-"Smart erase" = "智能擦除";
+"Spot eraser" = "局部橡皮擦";
 "Remove colored marks" = "去除彩色笔迹";
 "Restore photo" = "老照片修复";
 "Mega scan" = "拼接扫描";
@@ -1738,3 +1738,24 @@
 "Word export, photo translation, PDF tools and no ads. Cancel anytime." = "导出 Word、拍照翻译、PDF 工具，且无广告。可随时取消。";
 "See what's in Pro" = "查看 Pro 功能";
 "The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements. This development build uses official test advertisements only; release-build advertising is disabled pending live setup." = "免费版可能会在首页的文档下方展示一条 Google AdMob 广告，并在“工具”中展示一条。只有当你主动选择观看，以额外获得一次 Pro 工具免费试用时，才会播放短视频广告。广告绝不会自行全屏打开，也绝不会拖慢扫描或保存。安装后的第一天不会显示广告。Pro 用户不会加载或显示广告。此开发版本仅使用官方测试广告；正式版本的广告在完成上线配置前处于停用状态。";
+/* App Review readiness */
+"Privacy policy" = "隐私政策";
+"About" = "关于";
+"Contact support" = "联系支持";
+"Terms of Use" = "使用条款";
+"Read the full privacy policy" = "阅读完整隐私政策";
+"Before you send" = "发送之前";
+"Fix a page" = "修整页面";
+"Turn it into" = "转换为";
+"Capture more" = "更多拍摄";
+"Requires iOS 26" = "需要 iOS 26";
+"Photo translation uses Apple's on-device translation, available on iOS 26 or later. Update iOS to use it." = "照片翻译使用 Apple 的设备端翻译，需 iOS 26 或更高版本。请更新 iOS 后使用。";
+"Download the languages first" = "请先下载语言";
+"Translation runs offline on this iPhone, using languages you download from Apple. These aren't downloaded yet:" = "翻译在这台 iPhone 上离线进行，使用从 Apple 下载的语言。以下语言尚未下载：";
+"Open Settings, then Apps › Translate." = "打开“设置”，然后前往“App”›“翻译”。";
+"Tap Downloaded Languages and download both languages." = "轻点“已下载的语言”，下载这两种语言。";
+"Come back and tap Translate again. Your scan and text stay here." = "回到这里，再次轻点“翻译”。你的扫描件和文字会保留。";
+"This app never downloads languages itself, and your text never leaves this iPhone." = "本 App 不会自行下载语言，你的文字也不会离开这台 iPhone。";
+"OK" = "好";
+"The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements." = "免费版可能会在首页的文档下方展示一条 Google AdMob 广告，并在“工具”中展示一条。只有当你主动选择观看，以额外获得一次 Pro 工具免费试用时，才会播放短视频广告。广告绝不会自行全屏打开，也绝不会拖慢扫描或保存。安装后的第一天不会显示广告。Pro 用户不会加载或显示广告。";
+"Unlock\n%@ Pro" = "解锁\n%@ Pro";

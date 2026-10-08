@@ -5,7 +5,7 @@
 "Photo translation" = "Traduzione foto";
 "Book pages" = "Pagine di libro";
 "ID photo" = "Foto tessera";
-"Smart erase" = "Gomma smart";
+"Spot eraser" = "Gomma mirata";
 "Remove colored marks" = "Rimuovi segni colorati";
 "Restore photo" = "Restaura foto";
 "Mega scan" = "Mega scansione";
@@ -1738,3 +1738,24 @@
 "Word export, photo translation, PDF tools and no ads. Cancel anytime." = "Esportazione Word, traduzione di foto, strumenti PDF e niente pubblicità. Annulla quando vuoi.";
 "See what's in Pro" = "Scopri cosa include Pro";
 "The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements. This development build uses official test advertisements only; release-build advertising is disabled pending live setup." = "La versione gratuita può mostrare una pubblicità Google AdMob nella Home, sotto i documenti, e una in Strumenti. Un breve video pubblicitario viene riprodotto solo quando scegli di guardarlo per avere una prova gratuita in più di uno strumento Pro. La pubblicità non si apre mai a tutto schermo da sola e non rallenta mai la scansione o il salvataggio. Nel primo giorno dopo l’installazione non viene mostrata alcuna pubblicità. Gli utenti Pro non caricano né visualizzano pubblicità. Questa build di sviluppo usa solo pubblicità di prova ufficiali; la pubblicità nella build di rilascio è disattivata fino alla configurazione definitiva.";
+/* App Review readiness */
+"Privacy policy" = "Informativa sulla privacy";
+"About" = "Informazioni";
+"Contact support" = "Contatta l’assistenza";
+"Terms of Use" = "Condizioni d’uso";
+"Read the full privacy policy" = "Leggi l’informativa completa sulla privacy";
+"Before you send" = "Prima di inviare";
+"Fix a page" = "Sistema una pagina";
+"Turn it into" = "Trasforma in";
+"Capture more" = "Acquisisci altro";
+"Requires iOS 26" = "Richiede iOS 26";
+"Photo translation uses Apple's on-device translation, available on iOS 26 or later. Update iOS to use it." = "La traduzione delle foto usa la traduzione sul dispositivo di Apple, disponibile da iOS 26. Aggiorna iOS per usarla.";
+"Download the languages first" = "Prima scarica le lingue";
+"Translation runs offline on this iPhone, using languages you download from Apple. These aren't downloaded yet:" = "La traduzione funziona offline su questo iPhone con lingue scaricate da Apple. Non ancora scaricate:";
+"Open Settings, then Apps › Translate." = "Apri Impostazioni, poi App › Traduci.";
+"Tap Downloaded Languages and download both languages." = "Tocca Lingue scaricate e scarica entrambe le lingue.";
+"Come back and tap Translate again. Your scan and text stay here." = "Torna qui e tocca di nuovo Traduci. La scansione e il testo restano qui.";
+"This app never downloads languages itself, and your text never leaves this iPhone." = "Questa app non scarica mai lingue da sola e il tuo testo non lascia mai questo iPhone.";
+"OK" = "OK";
+"The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements." = "La versione gratuita può mostrare una pubblicità Google AdMob nella Home, sotto i documenti, e una in Strumenti. Un breve video pubblicitario viene riprodotto solo quando scegli di guardarlo per avere una prova gratuita in più di uno strumento Pro. La pubblicità non si apre mai a tutto schermo da sola e non rallenta mai la scansione o il salvataggio. Nel primo giorno dopo l’installazione non viene mostrata alcuna pubblicità. Gli utenti Pro non caricano né visualizzano pubblicità.";
+"Unlock\n%@ Pro" = "Sblocca\n%@ Pro";

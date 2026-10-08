@@ -5,7 +5,7 @@
 "Photo translation" = "写真翻訳";
 "Book pages" = "本のページ";
 "ID photo" = "証明写真";
-"Smart erase" = "スマート消去";
+"Spot eraser" = "スポット消しゴム";
 "Remove colored marks" = "色付きの書き込みを除去";
 "Restore photo" = "写真修復";
 "Mega scan" = "メガスキャン";
@@ -1738,3 +1738,24 @@
 "Word export, photo translation, PDF tools and no ads. Cancel anytime." = "Word書き出し、写真翻訳、PDFツール、広告なし。いつでも解約できます。";
 "See what's in Pro" = "Proの機能を見る";
 "The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements. This development build uses official test advertisements only; release-build advertising is disabled pending live setup." = "無料版では、ホーム画面の書類一覧の下に1件、ツール画面に1件、Google AdMob広告が表示される場合があります。短い動画広告が再生されるのは、Proツールの無料お試しを1回追加するために、ご自身で視聴を選んだときだけです。広告が勝手に全画面で開くことはなく、広告によってスキャンや保存が遅れることもありません。インストール後1日間は広告は表示されません。Proユーザーには広告を読み込まず、表示もしません。この開発ビルドは公式のテスト広告のみを使用し、リリースビルドの広告は本番設定が完了するまで無効になっています。";
+/* App Review readiness */
+"Privacy policy" = "プライバシーポリシー";
+"About" = "情報";
+"Contact support" = "サポートに問い合わせる";
+"Terms of Use" = "利用規約";
+"Read the full privacy policy" = "プライバシーポリシーの全文を読む";
+"Before you send" = "送る前に";
+"Fix a page" = "ページを直す";
+"Turn it into" = "別の形式に変える";
+"Capture more" = "もっと撮る";
+"Requires iOS 26" = "iOS 26以降が必要";
+"Photo translation uses Apple's on-device translation, available on iOS 26 or later. Update iOS to use it." = "写真翻訳は、iOS 26以降で利用できるAppleのデバイス上の翻訳を使います。使うにはiOSをアップデートしてください。";
+"Download the languages first" = "先に言語をダウンロードしてください";
+"Translation runs offline on this iPhone, using languages you download from Apple. These aren't downloaded yet:" = "翻訳は、Appleからダウンロードした言語を使ってこのiPhone上でオフラインで行われます。まだダウンロードされていない言語:";
+"Open Settings, then Apps › Translate." = "「設定」を開き、「アプリ」›「翻訳」へ進みます。";
+"Tap Downloaded Languages and download both languages." = "「ダウンロード済みの言語」をタップして、両方の言語をダウンロードします。";
+"Come back and tap Translate again. Your scan and text stay here." = "戻って、もう一度「翻訳」をタップします。スキャンとテキストはそのまま残ります。";
+"This app never downloads languages itself, and your text never leaves this iPhone." = "このアプリが言語を自動でダウンロードすることはなく、テキストがこのiPhoneの外に送られることもありません。";
+"OK" = "OK";
+"The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements." = "無料版では、ホーム画面の書類一覧の下に1件、ツール画面に1件、Google AdMob広告が表示される場合があります。短い動画広告が再生されるのは、Proツールの無料お試しを1回追加するために、ご自身で視聴を選んだときだけです。広告が勝手に全画面で開くことはなく、広告によってスキャンや保存が遅れることもありません。インストール後1日間は広告は表示されません。Proユーザーには広告を読み込まず、表示もしません。";
+"Unlock\n%@ Pro" = "%@ Proを\nアンロック";

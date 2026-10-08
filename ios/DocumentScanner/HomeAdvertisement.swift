@@ -112,7 +112,7 @@ final class HomeAdvertisementStore: NSObject, ObservableObject, NativeAdLoaderDe
     private var retryTask: Task<Void,Never>?
     private var preparationStartedAt: TimeInterval?
     private var requestStartedAt: TimeInterval?
-    private let logger = Logger(subsystem:"com.documentscanner.local",category:"HomeAdTiming")
+    private let logger = Logger(subsystem:"com.foldscan.app",category:"HomeAdTiming")
     /// Network status arrives asynchronously from NWPathMonitor.
     private var pathKnown = false
     /// Set by `preload` at launch; resumed once the network status is known.

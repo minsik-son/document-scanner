@@ -186,7 +186,7 @@ struct MembershipBanner: View {
     private var free: some View {
         ZStack(alignment: .bottomTrailing) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Unlock\nFoldScan Pro").font(.system(.title3, weight: .black)).fixedSize(horizontal: false, vertical: true)
+                Text("Unlock\n\(AppInfo.name) Pro").font(.system(.title3, weight: .black)).fixedSize(horizontal: false, vertical: true)
                 Text("Office export, translation, photo tools and no ads.").font(.footnote).opacity(0.92)
                     .frame(maxWidth: 190, alignment: .leading).fixedSize(horizontal: false, vertical: true)
                 Button(action: explore) {
@@ -199,8 +199,8 @@ struct MembershipBanner: View {
                     .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
                 }.buttonStyle(.plain).padding(.top, 8)
                     .accessibilityLabel("Explore Pro")
-                if let days = FoundingOffer.daysLeft,
-                   let lifetime = subscription.products.first(where: { $0.id == SubscriptionStore.lifetimeID }) {
+                if let lifetime = subscription.products.first(where: { $0.id == SubscriptionStore.lifetimeID }),
+                   FoundingOffer.applies(to: lifetime), let days = FoundingOffer.daysLeft {
                     // The launch price on the lifetime plan, with the days it has left.
                     Text(days == 1 ? "Lifetime \(lifetime.displayPrice) · founding price, 1 day left" : "Lifetime \(lifetime.displayPrice) · founding price, \(days) days left")
                         .font(.caption2.weight(.heavy)).padding(.horizontal, 9).padding(.vertical, 5)

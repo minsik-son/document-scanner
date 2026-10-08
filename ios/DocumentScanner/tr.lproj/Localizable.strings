@@ -5,7 +5,7 @@
 "Photo translation" = "Fotoğraf çevirisi";
 "Book pages" = "Kitap sayfaları";
 "ID photo" = "Vesikalık fotoğraf";
-"Smart erase" = "Akıllı silgi";
+"Spot eraser" = "Nokta silgisi";
 "Remove colored marks" = "Renkli işaretleri kaldır";
 "Restore photo" = "Fotoğrafı onar";
 "Mega scan" = "Mega tarama";
@@ -1738,3 +1738,24 @@
 "Word export, photo translation, PDF tools and no ads. Cancel anytime." = "Word'e aktarma, fotoğraf çevirisi, PDF araçları ve reklamsız kullanım. İstediğin zaman iptal et.";
 "See what's in Pro" = "Pro'da neler var?";
 "The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements. This development build uses official test advertisements only; release-build advertising is disabled pending live setup." = "Ücretsiz sürüm, Ana Sayfa'da belgelerinin altında bir ve Araçlar'da bir Google AdMob reklamı gösterebilir. Kısa video reklam yalnızca bir Pro aracı için ekstra ücretsiz deneme hakkı kazanmak amacıyla izlemeyi seçtiğinde oynatılır. Reklamlar asla kendiliğinden tam ekran açılmaz ve taramayı veya kaydetmeyi asla geciktirmez. Uygulama yüklendikten sonraki ilk gün reklam gösterilmez. Pro kullanıcılar için reklam yüklenmez veya gösterilmez. Bu geliştirme sürümü yalnızca resmî test reklamlarını kullanır; yayın sürümünde reklamlar, canlı kurulum tamamlanana kadar devre dışıdır.";
+/* App Review readiness */
+"Privacy policy" = "Gizlilik politikası";
+"About" = "Hakkında";
+"Contact support" = "Destekle iletişime geç";
+"Terms of Use" = "Kullanım Koşulları";
+"Read the full privacy policy" = "Gizlilik politikasının tamamını okuyun";
+"Before you send" = "Göndermeden önce";
+"Fix a page" = "Sayfayı düzelt";
+"Turn it into" = "Dönüştür";
+"Capture more" = "Daha fazla çek";
+"Requires iOS 26" = "iOS 26 gerekir";
+"Photo translation uses Apple's on-device translation, available on iOS 26 or later. Update iOS to use it." = "Fotoğraf çevirisi, iOS 26 ve sonrasında sunulan Apple’ın cihaz üzerindeki çevirisini kullanır. Kullanmak için iOS’u güncelleyin.";
+"Download the languages first" = "Önce dilleri indirin";
+"Translation runs offline on this iPhone, using languages you download from Apple. These aren't downloaded yet:" = "Çeviri, Apple’dan indirdiğiniz dillerle bu iPhone’da çevrimdışı çalışır. Henüz indirilmeyenler:";
+"Open Settings, then Apps › Translate." = "Ayarlar’ı açın, ardından Uygulamalar › Çeviri’ye gidin.";
+"Tap Downloaded Languages and download both languages." = "İndirilen Diller’e dokunun ve iki dili de indirin.";
+"Come back and tap Translate again. Your scan and text stay here." = "Geri dönün ve yeniden Çevir’e dokunun. Taramanız ve metniniz burada kalır.";
+"This app never downloads languages itself, and your text never leaves this iPhone." = "Bu uygulama dilleri asla kendisi indirmez ve metniniz bu iPhone’dan asla çıkmaz.";
+"OK" = "Tamam";
+"The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements." = "Ücretsiz sürüm, Ana Sayfa'da belgelerinin altında bir ve Araçlar'da bir Google AdMob reklamı gösterebilir. Kısa video reklam yalnızca bir Pro aracı için ekstra ücretsiz deneme hakkı kazanmak amacıyla izlemeyi seçtiğinde oynatılır. Reklamlar asla kendiliğinden tam ekran açılmaz ve taramayı veya kaydetmeyi asla geciktirmez. Uygulama yüklendikten sonraki ilk gün reklam gösterilmez. Pro kullanıcılar için reklam yüklenmez veya gösterilmez.";
+"Unlock\n%@ Pro" = "%@ Pro'nun\nkilidini aç";

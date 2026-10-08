@@ -13,7 +13,7 @@
           "locale": "en_US"
         }
       ],
-      "productID": "com.documentscanner.pro.lifetime",
+      "productID": "com.foldscan.pro.lifetime",
       "referenceName": "Pro lifetime",
       "type": "NonConsumable"
     }
@@ -51,7 +51,7 @@
               "locale": "en_US"
             }
           ],
-          "productID": "com.documentscanner.pro.monthly",
+          "productID": "com.foldscan.pro.monthly",
           "recurringSubscriptionPeriod": "P1M",
           "referenceName": "Pro monthly",
           "subscriptionGroupID": "scanner-pro",
@@ -77,7 +77,7 @@
               "locale": "en_US"
             }
           ],
-          "productID": "com.documentscanner.pro.yearly",
+          "productID": "com.foldscan.pro.yearly",
           "recurringSubscriptionPeriod": "P1Y",
           "referenceName": "Pro yearly",
           "subscriptionGroupID": "scanner-pro",

@@ -5,7 +5,7 @@
 "Photo translation" = "Tłumaczenie zdjęć";
 "Book pages" = "Strony książki";
 "ID photo" = "Zdjęcie do dokumentów";
-"Smart erase" = "Inteligentna gumka";
+"Spot eraser" = "Gumka punktowa";
 "Remove colored marks" = "Usuń kolorowe ślady";
 "Restore photo" = "Odnów zdjęcie";
 "Mega scan" = "Megaskan";
@@ -1738,3 +1738,24 @@
 "Word export, photo translation, PDF tools and no ads. Cancel anytime." = "Eksport do Worda, tłumaczenie zdjęć, narzędzia PDF i brak reklam. Możesz anulować w dowolnym momencie.";
 "See what's in Pro" = "Zobacz, co daje Pro";
 "The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements. This development build uses official test advertisements only; release-build advertising is disabled pending live setup." = "Wersja darmowa może wyświetlać jedną reklamę Google AdMob na ekranie Start, pod Twoimi dokumentami, i jedną w zakładce Narzędzia. Krótka reklama wideo jest odtwarzana tylko wtedy, gdy zdecydujesz się ją obejrzeć, aby dostać dodatkową darmową próbę narzędzia Pro. Reklamy nigdy nie otwierają się samoczynnie na pełnym ekranie i nigdy nie opóźniają skanowania ani zachowywania. Przez pierwszy dzień po instalacji reklamy się nie pojawiają. W wersji Pro reklamy nie są wczytywane ani wyświetlane. Ta wersja deweloperska używa wyłącznie oficjalnych reklam testowych; reklamy w wersji produkcyjnej są wyłączone do czasu ich uruchomienia.";
+/* App Review readiness */
+"Privacy policy" = "Polityka prywatności";
+"About" = "Informacje";
+"Contact support" = "Kontakt z pomocą";
+"Terms of Use" = "Warunki korzystania";
+"Read the full privacy policy" = "Przeczytaj pełną politykę prywatności";
+"Before you send" = "Przed wysłaniem";
+"Fix a page" = "Popraw stronę";
+"Turn it into" = "Zamień na";
+"Capture more" = "Więcej skanowania";
+"Requires iOS 26" = "Wymaga iOS 26";
+"Photo translation uses Apple's on-device translation, available on iOS 26 or later. Update iOS to use it." = "Tłumaczenie zdjęć korzysta z tłumaczenia Apple na urządzeniu, dostępnego w iOS 26 lub nowszym. Zaktualizuj iOS, aby z niego korzystać.";
+"Download the languages first" = "Najpierw pobierz języki";
+"Translation runs offline on this iPhone, using languages you download from Apple. These aren't downloaded yet:" = "Tłumaczenie działa offline na tym iPhonie, korzystając z języków pobranych od Apple. Jeszcze nie pobrano:";
+"Open Settings, then Apps › Translate." = "Otwórz Ustawienia, a następnie Aplikacje › Tłumacz.";
+"Tap Downloaded Languages and download both languages." = "Stuknij Pobrane języki i pobierz oba języki.";
+"Come back and tap Translate again. Your scan and text stay here." = "Wróć i ponownie stuknij Przetłumacz. Skan i tekst zostaną zachowane.";
+"This app never downloads languages itself, and your text never leaves this iPhone." = "Ta aplikacja nigdy sama nie pobiera języków, a Twój tekst nigdy nie opuszcza tego iPhone’a.";
+"OK" = "OK";
+"The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements." = "Wersja darmowa może wyświetlać jedną reklamę Google AdMob na ekranie Start, pod Twoimi dokumentami, i jedną w zakładce Narzędzia. Krótka reklama wideo jest odtwarzana tylko wtedy, gdy zdecydujesz się ją obejrzeć, aby dostać dodatkową darmową próbę narzędzia Pro. Reklamy nigdy nie otwierają się samoczynnie na pełnym ekranie i nigdy nie opóźniają skanowania ani zachowywania. Przez pierwszy dzień po instalacji reklamy się nie pojawiają. W wersji Pro reklamy nie są wczytywane ani wyświetlane.";
+"Unlock\n%@ Pro" = "Odblokuj\n%@ Pro";

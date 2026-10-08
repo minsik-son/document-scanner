@@ -11,7 +11,6 @@ struct PaywallView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var selected = SubscriptionStore.yearlyID
-    @State private var privacy = false
     let start: PaywallStart
     init(start: PaywallStart = .general) { self.start = start }
     private var product: Product? { subscription.products.first { $0.id == selected } }
@@ -73,7 +72,6 @@ struct PaywallView: View {
                 if !ids.contains(selected), let first = plans.first { selected = first.id }
             }
             .interactiveDismissDisabled(subscription.busy)
-            .sheet(isPresented: $privacy) { PrivacyView().environment(\.colorScheme, .light) }
         }
         .environment(\.colorScheme, .light)
         .foregroundStyle(TossPay.ink)
@@ -123,12 +121,8 @@ struct PaywallView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(lifetime ? "Lifetime" : annual ? "Yearly" : "Monthly").font(.headline)
                     Group {
-                        if lifetime, let end = FoundingOffer.endDate, FoundingOffer.active {
-                            if let regular = FoundingOffer.regularPrice(for: plan) {
-                                Text("Launch price until \(end.formatted(.dateTime.month(.abbreviated).day())), then \(regular)")
-                            } else {
-                                Text("Launch price until \(end.formatted(.dateTime.month(.abbreviated).day()))")
-                            }
+                        if lifetime, FoundingOffer.applies(to: plan), let end = FoundingOffer.endDate, let regular = FoundingOffer.regularPrice(for: plan) {
+                            Text("Launch price until \(end.formatted(.dateTime.month(.abbreviated).day())), then \(regular)")
                         }
                         else if lifetime { Text("One-time purchase. No subscription.") }
                         else if annual {
@@ -138,7 +132,7 @@ struct PaywallView: View {
                     }.font(.caption).foregroundStyle(TossPay.sub).fixedSize(horizontal: false, vertical: true)
                 }.frame(maxWidth: .infinity, alignment: .leading)
                 VStack(alignment: .trailing, spacing: 1) {
-                    if lifetime, FoundingOffer.active, let regular = FoundingOffer.regularPrice(for: plan) {
+                    if lifetime, FoundingOffer.applies(to: plan), let regular = FoundingOffer.regularPrice(for: plan) {
                         Text(verbatim: regular).font(.caption).strikethrough().foregroundStyle(TossPay.sub)
                     }
                     Text(LS(lifetime ? "\(plan.displayPrice) once" : annual ? "\(plan.displayPrice) / year" : "\(plan.displayPrice) / month")).font(.headline)
@@ -156,14 +150,14 @@ struct PaywallView: View {
                 }
             }
             .overlay(alignment: .topLeading) {
-                if lifetime, let days = FoundingOffer.daysLeft {
+                if lifetime, FoundingOffer.applies(to: plan), let days = FoundingOffer.daysLeft {
                     Text(days == 1 ? "FOUNDING PRICE · 1 DAY LEFT" : "FOUNDING PRICE · \(days) DAYS LEFT")
                         .font(.caption2.weight(.heavy)).foregroundStyle(.white).padding(.horizontal, 9).padding(.vertical, 3)
                         .background(FoundingOffer.ribbon, in: Capsule()).offset(x: 14, y: -10)
                         .accessibilityIdentifier("founding-price")
                 }
             }
-            .padding(.top, annual || (lifetime && FoundingOffer.active) ? 6 : 0)
+            .padding(.top, annual || (lifetime && FoundingOffer.applies(to: plan)) ? 6 : 0)
         }.buttonStyle(.plain).disabled(subscription.busy)
             .accessibilityIdentifier(lifetime ? "plan-lifetime" : annual ? "plan-yearly" : "plan-monthly").accessibilityAddTraits(active ? .isSelected : [])
     }
@@ -190,9 +184,9 @@ struct PaywallView: View {
                     .font(.caption2).foregroundStyle(TossPay.sub).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             }
             HStack(spacing: 18) {
-                Link("Terms", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
+                Link("Terms", destination: AppInfo.termsURL).accessibilityIdentifier("paywall-terms")
                 Text("|").opacity(0.3)
-                Button("Privacy") { privacy = true }
+                Link("Privacy", destination: AppInfo.privacyPolicyURL).accessibilityIdentifier("paywall-privacy")
                 Text("|").opacity(0.3)
                 Button("Restore purchases") { Task { await subscription.restore() } }.disabled(subscription.busy)
             }.font(.caption).foregroundStyle(TossPay.sub)
@@ -218,13 +212,17 @@ struct PrivacyView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     Text("Your documents stay with you").font(.title.bold())
                     Text("This build stores your scans and recognized text in the app on this iPhone. Camera processing and text recognition happen on device. There is no developer-operated document server or account system.")
-                    Text("The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements. This development build uses official test advertisements only; release-build advertising is disabled pending live setup.")
+                    Text("The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements.")
+                    #if DEBUG
+                    Text("This development build uses official test advertisements only.").font(.footnote).foregroundStyle(.secondary)
+                    #endif
                     Text("The app does not send your scanned pages, document names, or recognized text to the advertising SDK. Google may process device, network and ad-interaction information to serve advertisements. Scanning and PDF creation remain available offline.")
                     Link("Google advertising privacy information", destination: URL(string: "https://policies.google.com/technologies/ads")!)
                     Text("Sharing sends only the items you select to the app or destination you choose. Exported backups are not encrypted. Files saved outside this app are controlled by that destination.")
                     Text("Apple processes subscription and one-time payments. The app uses Apple's verified purchase records to check Pro access. Device backups may include app data according to your iPhone backup settings.")
                     Text("To remove local documents, move them to Trash and permanently delete them. Copies you previously exported must be removed separately.")
-                    Text("Development preview: a published privacy policy and developer contact must be supplied before App Store distribution.").font(.footnote).foregroundStyle(.secondary)
+                    Link("Read the full privacy policy", destination: AppInfo.privacyPolicyURL)
+                    Link("Contact support", destination: AppInfo.supportURL)
                 }.padding(24)
             }.navigationTitle("Privacy").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
@@ -234,7 +232,7 @@ struct PrivacyView: View {
 
 
 /// The top of the paywall: one Pro feature per slide, with its animation,
-/// advancing on its own every few seconds (CamScanner-style, our colours).
+/// advancing on its own every few seconds, as many apps do (our colours).
 struct ProFeatureCarousel: View {
     private struct Slide { let title: String; let detail: String; let art: String?; let stage: Color }
     /// Only Pro benefits: text recognition, copying and search are free, so they are not here.
@@ -319,7 +317,9 @@ struct ProFeatureCarousel: View {
 /// The paywall shows the days left and the regular price it goes back to.
 enum FoundingOffer {
     static let days = 30
-    /// Release day. Set this before submitting; Release builds hide the offer until it is set.
+    /// Release day: the first day of the App Store Connect price schedule for the
+    /// lifetime plan (founding price for `days` days, then the regular price).
+    /// Release builds hide the offer until it is set.
     static let launchDay: DateComponents? = nil
     static let ribbon = Color(red: 1, green: 0.541, blue: 0)                  // #FF8A00
     /// Regular lifetime price after the offer, per App Store currency.
@@ -340,6 +340,14 @@ enum FoundingOffer {
         return max(1, left)
     }
     static var active: Bool { daysLeft != nil }
+    /// The founding ribbon, strikethrough and days left show only while the offer
+    /// window is open AND the App Store still charges less than the regular price
+    /// for this storefront. Once App Store Connect switches to the regular price the
+    /// offer disappears even if the window date is wrong; storefronts without a
+    /// known regular price never show it.
+    static func applies(to product: Product) -> Bool {
+        product.id == SubscriptionStore.lifetimeID && daysLeft != nil && regularPrice(for: product) != nil
+    }
     static func regularPrice(for product: Product) -> String? {
         guard let value = regularPrices[product.priceFormatStyle.currencyCode], value > product.price else { return nil }
         return value.formatted(product.priceFormatStyle)

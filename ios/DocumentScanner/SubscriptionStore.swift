@@ -5,10 +5,10 @@ import UserNotifications
 
 @MainActor
 final class SubscriptionStore: ObservableObject {
-    static let monthlyID = "com.documentscanner.pro.monthly"
-    static let yearlyID = "com.documentscanner.pro.yearly"
+    static let monthlyID = "com.foldscan.pro.monthly"
+    static let yearlyID = "com.foldscan.pro.yearly"
     /// One-time purchase that unlocks Pro permanently (non-consumable).
-    static let lifetimeID = "com.documentscanner.pro.lifetime"
+    static let lifetimeID = "com.foldscan.pro.lifetime"
     static let productIDs = [yearlyID, monthlyID, lifetimeID]
     static func annualSavingsPercent(yearly: Decimal, monthly: Decimal) -> Int? {
         guard monthly > 0, yearly >= 0, yearly < monthly * 12 else { return nil }

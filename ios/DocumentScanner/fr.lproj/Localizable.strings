@@ -5,7 +5,7 @@
 "Photo translation" = "Traduction de photos";
 "Book pages" = "Pages de livre";
 "ID photo" = "Photo d’identité";
-"Smart erase" = "Gomme intelligente";
+"Spot eraser" = "Gomme ciblée";
 "Remove colored marks" = "Effacer les traits de couleur";
 "Restore photo" = "Restaurer une photo";
 "Mega scan" = "Méga scan";
@@ -1738,3 +1738,24 @@
 "Word export, photo translation, PDF tools and no ads. Cancel anytime." = "Export Word, traduction de photos, outils PDF, sans publicité. Résiliable à tout moment.";
 "See what's in Pro" = "Voir ce qu’inclut Pro";
 "The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements. This development build uses official test advertisements only; release-build advertising is disabled pending live setup." = "La version gratuite peut afficher une publicité Google AdMob sur l’écran d’accueil, sous vos documents, et une autre dans Outils. Une courte publicité vidéo n’est lue que si vous choisissez de la regarder pour obtenir un essai gratuit supplémentaire d’un outil Pro. Les publicités ne s’ouvrent jamais d’elles-mêmes en plein écran et ne retardent jamais le scan ni l’enregistrement. Aucune publicité n’apparaît pendant la première journée suivant l’installation. Les abonnés Pro ne chargent ni n’affichent de publicités. Cette version de développement utilise uniquement des publicités de test officielles ; la publicité de la version finale est désactivée en attendant sa mise en service.";
+/* App Review readiness */
+"Privacy policy" = "Politique de confidentialité";
+"About" = "À propos";
+"Contact support" = "Contacter l’assistance";
+"Terms of Use" = "Conditions d’utilisation";
+"Read the full privacy policy" = "Lire la politique de confidentialité complète";
+"Before you send" = "Avant d’envoyer";
+"Fix a page" = "Corriger une page";
+"Turn it into" = "Transformer en";
+"Capture more" = "Capturer plus";
+"Requires iOS 26" = "Nécessite iOS 26";
+"Photo translation uses Apple's on-device translation, available on iOS 26 or later. Update iOS to use it." = "La traduction de photos utilise la traduction sur l’appareil d’Apple, disponible à partir d’iOS 26. Mettez à jour iOS pour l’utiliser.";
+"Download the languages first" = "Téléchargez d’abord les langues";
+"Translation runs offline on this iPhone, using languages you download from Apple. These aren't downloaded yet:" = "La traduction fonctionne hors ligne sur cet iPhone avec des langues téléchargées depuis Apple. Pas encore téléchargées :";
+"Open Settings, then Apps › Translate." = "Ouvrez Réglages, puis Apps › Traduire.";
+"Tap Downloaded Languages and download both languages." = "Touchez Langues téléchargées et téléchargez les deux langues.";
+"Come back and tap Translate again. Your scan and text stay here." = "Revenez et touchez Traduire à nouveau. Votre scan et votre texte sont conservés.";
+"This app never downloads languages itself, and your text never leaves this iPhone." = "Cette app ne télécharge jamais de langues elle-même, et votre texte ne quitte jamais cet iPhone.";
+"OK" = "OK";
+"The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements." = "La version gratuite peut afficher une publicité Google AdMob sur l’écran d’accueil, sous vos documents, et une autre dans Outils. Une courte publicité vidéo n’est lue que si vous choisissez de la regarder pour obtenir un essai gratuit supplémentaire d’un outil Pro. Les publicités ne s’ouvrent jamais d’elles-mêmes en plein écran et ne retardent jamais le scan ni l’enregistrement. Aucune publicité n’apparaît pendant la première journée suivant l’installation. Les abonnés Pro ne chargent ni n’affichent de publicités.";
+"Unlock\n%@ Pro" = "Débloquez\n%@ Pro";

@@ -49,6 +49,13 @@ struct DocumentScannerApp: App {
                    ProcessInfo.processInfo.arguments.contains("--hold-launch-screen") { return }
 #endif
                 await prepareFirstScreen()
+#if DEBUG
+                // Screenshot of the missing-language guide for App Review notes.
+                if ProcessInfo.processInfo.arguments.contains("--preview-translation-guide") {
+                    try? await Task.sleep(for: .seconds(2))
+                    TranslationLanguageGuide.present(source: "ko", target: "en")
+                }
+#endif
             }
             .onChange(of: scenePhase) { _, phase in
                 lock.sceneChanged(phase)
@@ -84,6 +91,22 @@ struct DocumentScannerApp: App {
         await AdvertisingSDK.waitForStart(timeout: .milliseconds(1200))
     }
 }
+/// Name, version and public links in one place. The name shown in the app is the
+/// home-screen name from Info.plist, so the two can never disagree.
+enum AppInfo {
+    static var name: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "FoldScan" }
+    static var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0" }
+    static var build: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1" }
+    /// Published privacy policy and support pages (GitHub Pages, docs/ folder of the repository).
+    static let privacyPolicy = "https://minsik-son.github.io/document-scanner/privacy.html"
+    static let support = "https://minsik-son.github.io/document-scanner/support.html"
+    /// Apple's standard licensed application end user license agreement.
+    static let terms = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
+    static var privacyPolicyURL: URL { URL(string: privacyPolicy)! }
+    static var supportURL: URL { URL(string: support)! }
+    static var termsURL: URL { URL(string: terms)! }
+}
+
 enum Design {
     static let blue = Color(red: 55/255, green: 105/255, blue: 159/255)
     static let cameraBlue = Color(red: 37/255, green: 99/255, blue: 235/255)

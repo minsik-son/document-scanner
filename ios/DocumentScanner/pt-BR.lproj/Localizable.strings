@@ -5,7 +5,7 @@
 "Photo translation" = "Tradução de fotos";
 "Book pages" = "Páginas de livro";
 "ID photo" = "Foto para documento";
-"Smart erase" = "Borracha inteligente";
+"Spot eraser" = "Borracha pontual";
 "Remove colored marks" = "Remover marcas coloridas";
 "Restore photo" = "Restaurar foto";
 "Mega scan" = "Digitalização XL";
@@ -1738,3 +1738,24 @@
 "Word export, photo translation, PDF tools and no ads. Cancel anytime." = "Exportação para Word, tradução de fotos, ferramentas de PDF e sem anúncios. Cancele quando quiser.";
 "See what's in Pro" = "Ver o que vem no Pro";
 "The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements. This development build uses official test advertisements only; release-build advertising is disabled pending live setup." = "A versão grátis pode mostrar um anúncio do Google AdMob no Início, abaixo dos seus documentos, e outro em Ferramentas. Um anúncio curto em vídeo só é reproduzido quando você escolhe assisti-lo para ganhar um uso grátis extra de uma ferramenta Pro. Os anúncios nunca abrem em tela cheia por conta própria e nunca atrasam a digitalização nem o salvamento. Nenhum anúncio aparece no primeiro dia após a instalação. Usuários Pro não carregam nem veem anúncios. Esta versão de desenvolvimento usa apenas anúncios de teste oficiais; os anúncios da versão final estão desativados até a configuração definitiva.";
+/* App Review readiness */
+"Privacy policy" = "Política de privacidade";
+"About" = "Sobre";
+"Contact support" = "Falar com o suporte";
+"Terms of Use" = "Termos de uso";
+"Read the full privacy policy" = "Ler a política de privacidade completa";
+"Before you send" = "Antes de enviar";
+"Fix a page" = "Corrigir uma página";
+"Turn it into" = "Transformar em";
+"Capture more" = "Capturar mais";
+"Requires iOS 26" = "Requer iOS 26";
+"Photo translation uses Apple's on-device translation, available on iOS 26 or later. Update iOS to use it." = "A tradução de fotos usa a tradução no dispositivo da Apple, disponível no iOS 26 ou posterior. Atualize o iOS para usá-la.";
+"Download the languages first" = "Primeiro baixe os idiomas";
+"Translation runs offline on this iPhone, using languages you download from Apple. These aren't downloaded yet:" = "A tradução funciona offline neste iPhone com idiomas baixados da Apple. Ainda não foram baixados:";
+"Open Settings, then Apps › Translate." = "Abra Ajustes e vá para Apps › Traduzir.";
+"Tap Downloaded Languages and download both languages." = "Toque em Idiomas Baixados e baixe os dois idiomas.";
+"Come back and tap Translate again. Your scan and text stay here." = "Volte e toque em Traduzir de novo. Sua digitalização e seu texto continuam aqui.";
+"This app never downloads languages itself, and your text never leaves this iPhone." = "Este app nunca baixa idiomas sozinho, e seu texto nunca sai deste iPhone.";
+"OK" = "OK";
+"The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements." = "A versão grátis pode mostrar um anúncio do Google AdMob no Início, abaixo dos seus documentos, e outro em Ferramentas. Um anúncio curto em vídeo só é reproduzido quando você escolhe assisti-lo para ganhar um uso grátis extra de uma ferramenta Pro. Os anúncios nunca abrem em tela cheia por conta própria e nunca atrasam a digitalização nem o salvamento. Nenhum anúncio aparece no primeiro dia após a instalação. Usuários Pro não carregam nem veem anúncios.";
+"Unlock\n%@ Pro" = "Desbloqueie o\n%@ Pro";

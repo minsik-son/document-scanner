@@ -5,7 +5,7 @@
 "Photo translation" = "Terjemahan foto";
 "Book pages" = "Halaman buku";
 "ID photo" = "Pasfoto";
-"Smart erase" = "Penghapus pintar";
+"Spot eraser" = "Penghapus titik";
 "Remove colored marks" = "Hapus coretan warna";
 "Restore photo" = "Pulihkan foto";
 "Mega scan" = "Pindai mega";
@@ -1738,3 +1738,24 @@
 "Word export, photo translation, PDF tools and no ads. Cancel anytime." = "Ekspor Word, terjemahan foto, alat PDF, dan tanpa iklan. Batalkan kapan saja.";
 "See what's in Pro" = "Lihat fitur Pro";
 "The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements. This development build uses official test advertisements only; release-build advertising is disabled pending live setup." = "Versi gratis dapat menampilkan satu iklan Google AdMob di Beranda, di bawah dokumen Anda, dan satu di Alat. Iklan video singkat hanya diputar jika Anda memilih untuk menontonnya demi tambahan kali coba gratis untuk alat Pro. Iklan tidak pernah terbuka sendiri dalam layar penuh dan tidak pernah menunda pemindaian atau penyimpanan. Tidak ada iklan pada hari pertama setelah app diinstal. Pengguna Pro tidak memuat atau melihat iklan. Build pengembangan ini hanya menggunakan iklan uji resmi; iklan pada build rilis dinonaktifkan sampai pengaturan live selesai.";
+/* App Review readiness */
+"Privacy policy" = "Kebijakan privasi";
+"About" = "Tentang";
+"Contact support" = "Hubungi dukungan";
+"Terms of Use" = "Ketentuan Penggunaan";
+"Read the full privacy policy" = "Baca kebijakan privasi lengkap";
+"Before you send" = "Sebelum mengirim";
+"Fix a page" = "Perbaiki halaman";
+"Turn it into" = "Ubah menjadi";
+"Capture more" = "Ambil lebih banyak";
+"Requires iOS 26" = "Memerlukan iOS 26";
+"Photo translation uses Apple's on-device translation, available on iOS 26 or later. Update iOS to use it." = "Terjemahan foto menggunakan terjemahan di perangkat dari Apple, tersedia di iOS 26 atau yang lebih baru. Perbarui iOS untuk menggunakannya.";
+"Download the languages first" = "Unduh bahasanya terlebih dahulu";
+"Translation runs offline on this iPhone, using languages you download from Apple. These aren't downloaded yet:" = "Terjemahan berjalan offline di iPhone ini dengan bahasa yang Anda unduh dari Apple. Belum diunduh:";
+"Open Settings, then Apps › Translate." = "Buka Pengaturan, lalu App › Terjemahan.";
+"Tap Downloaded Languages and download both languages." = "Ketuk Bahasa yang Diunduh dan unduh kedua bahasa.";
+"Come back and tap Translate again. Your scan and text stay here." = "Kembali dan ketuk Terjemahkan lagi. Pindaian dan teks Anda tetap di sini.";
+"This app never downloads languages itself, and your text never leaves this iPhone." = "Aplikasi ini tidak pernah mengunduh bahasa sendiri, dan teks Anda tidak pernah meninggalkan iPhone ini.";
+"OK" = "OK";
+"The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements." = "Versi gratis dapat menampilkan satu iklan Google AdMob di Beranda, di bawah dokumen Anda, dan satu di Alat. Iklan video singkat hanya diputar jika Anda memilih untuk menontonnya demi tambahan kali coba gratis untuk alat Pro. Iklan tidak pernah terbuka sendiri dalam layar penuh dan tidak pernah menunda pemindaian atau penyimpanan. Tidak ada iklan pada hari pertama setelah app diinstal. Pengguna Pro tidak memuat atau melihat iklan.";
+"Unlock\n%@ Pro" = "Aktifkan\n%@ Pro";

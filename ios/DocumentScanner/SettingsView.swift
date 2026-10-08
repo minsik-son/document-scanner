@@ -80,6 +80,7 @@ struct SettingsView: View {
                     }
                 }
                 Section("Privacy") {
+                    Link("Privacy policy", destination: AppInfo.privacyPolicyURL).accessibilityIdentifier("settings-privacy-policy")
                     NavigationLink("Privacy details") { PrivacyView() }
                     Toggle("App lock", isOn: Binding(get: { lock.enabled }, set: { value in Task { await lock.setEnabled(value) } })).disabled(lock.authenticating)
                     Text("Use Face ID, Touch ID or your device passcode. App lock also hides documents in the app switcher.").font(.caption)
@@ -119,9 +120,13 @@ struct SettingsView: View {
                         .accessibilityIdentifier("dev-replay-intro")
                 } header: { Text("Developer") } footer: { Text("Debug builds only. Switches the app between the free and Pro layouts without buying. App Store follows the real purchase.") }
                 #endif
-                Section("About this build") {
-                    Text("FoldScan · 0.1.0")
+                Section("About") {
+                    LabeledContent(AppInfo.name, value: "\(AppInfo.version) (\(AppInfo.build))").accessibilityIdentifier("settings-version")
+                    Link("Contact support", destination: AppInfo.supportURL).accessibilityIdentifier("settings-support")
+                    Link("Terms of Use", destination: AppInfo.termsURL)
+                    #if DEBUG
                     Text("Development preview. Subscription purchases launched through the Xcode StoreKit configuration are test purchases.").font(.subheadline).foregroundStyle(.secondary)
+                    #endif
                 }
                 if let feedback { Section { Text(L(feedback)) } }
             }

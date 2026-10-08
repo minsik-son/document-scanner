@@ -119,7 +119,7 @@ struct AdvancedOfflineHub: View {
                 .toolbar(.hidden, for: .navigationBar)
                 .buttonStyle(.plain)
                 .sheet(item: $quick) { QuickToolView(tool: $0, documentID: documentID) }
-                .sheet(isPresented: $paywall) { PaywallView() }
+                .sheet(isPresented: $paywall) { PaywallView(start: .smartTool) }
                 .navigationDestination(item: $smartRoute) { $0.destination }
                 .navigationDestination(item: $advancedRoute) { tool in
                     if tool == .measure { MeasureToolView() }
@@ -137,7 +137,7 @@ struct AdvancedOfflineHub: View {
                 Text("Smart tools").font(.headline)
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(visible) { tool in
-                        Button { if locked(tool.pro) { paywall = true } else { smartRoute = tool } } label: { ToolTile(title: tool.title, icon: tool.icon, pro: tool.pro) }
+                        Button { if tool.proFeature == nil && locked(tool.pro) { paywall = true } else { smartRoute = tool } } label: { ToolTile(title: tool.title, icon: tool.icon, pro: tool.pro, feature: tool.proFeature) }
                             .accessibilityIdentifier("smart-tool-" + tool.rawValue)
                     }
                 }
@@ -151,7 +151,7 @@ struct AdvancedOfflineHub: View {
                 Text(L(title)).font(.headline)
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(visible) { tool in
-                        Button { if locked(tool.pro) { paywall = true } else { advancedRoute = tool } } label: { ToolTile(title: tool.rawValue, icon: tool.icon, pro: tool.pro) }.accessibilityLabel(tool.rawValue)
+                        Button { advancedRoute = tool } label: { ToolTile(title: tool.rawValue, icon: tool.icon, pro: tool.pro, feature: tool.proFeature) }.accessibilityLabel(tool.rawValue)
                     }
                 }
             }.padding(20).background(.white, in: RoundedRectangle(cornerRadius: 26))
@@ -164,14 +164,15 @@ struct AdvancedOfflineHub: View {
                 Text(L(title)).font(.headline)
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(visible) { tool in
-                        Button { if locked(tool.pro) { paywall = true } else { quick = .library(tool) } } label: { ToolTile(title: tool.rawValue, icon: tool.icon, pro: tool.pro) }
+                        Button { quick = .library(tool) } label: { ToolTile(title: tool.rawValue, icon: tool.icon, pro: tool.pro, feature: tool.proFeature) }
                             .accessibilityLabel(tool.rawValue + (tool.pro ? ", Pro" : ""))
                     }
                 }
             }.padding(20).background(.white, in: RoundedRectangle(cornerRadius: 26))
         }
     }
-    /// Free users who tap a Pro tool see the subscription page instead of the tool.
+    /// Pro tools without a free try (Auto-save) open the subscription page for free users.
+    /// Every other Pro tool opens and shows its free-try screen first.
     private func locked(_ pro: Bool) -> Bool {
         guard pro, !subscription.isPro else { return false }
         #if DEBUG
@@ -193,22 +194,15 @@ struct AdvancedOfflineHub: View {
 /// Entry point for advanced tools. Pro tools show a lock screen with a few
 /// free tries before the actual tool opens.
 struct AdvancedOfflineToolView:View {
-    @EnvironmentObject private var subscription:SubscriptionStore
     let tool:AdvancedTool
     var documentID:UUID?
-    @State private var unlocked = false
-    @State private var paywall = false
-    @State private var trials = ProTrials()
     var body:some View {
-        if let feature = tool.proFeature, !subscription.isPro, !unlocked, !trials.bypassed {
-            ProToolLockView(tool:tool, feature:feature, remaining:trials.remaining(feature),
-                            tryFree:{ if trials.consume(feature) { unlocked = true } },
-                            upgrade:{ paywall = true })
-                .sheet(isPresented:$paywall) { PaywallView() }
-        } else if tool.imageTool {
-            ImageToolFlow(tool:tool, documentID:documentID)
-        } else {
-            AdvancedOfflineToolContent(tool:tool, documentID:documentID)
+        ProTrialGate(feature: tool.proFeature, title: tool.rawValue, detail: tool.detail, art: tool.art) {
+            if tool.imageTool {
+                ImageToolFlow(tool:tool, documentID:documentID)
+            } else {
+                AdvancedOfflineToolContent(tool:tool, documentID:documentID)
+            }
         }
     }
 }
@@ -216,31 +210,100 @@ extension AdvancedTool {
     /// Photo tools with their own step-by-step flow.
     var imageTool: Bool { [.book, .portrait, .erase, .marks, .restore, .mega, .count].contains(self) }
 }
+/// Every way into a Pro tool goes through here: Pro members go straight in,
+/// free users see the free-try screen first (before choosing any document),
+/// and families without a free try open the subscription page.
+struct ProTrialGate<Content: View>: View {
+    @EnvironmentObject private var subscription: SubscriptionStore
+    let feature: ProFeature?
+    let title: String
+    let detail: String
+    let art: ToolArt
+    /// Shown as Close on the free-try screen when the gate is a sheet's root.
+    var close: (() -> Void)? = nil
+    let content: () -> Content
+    @State private var unlocked = false
+    @State private var paywall = false
+    @State private var trials = ProTrials()
+    @State private var refresh = 0
+    init(feature: ProFeature?, title: String, detail: String, art: ToolArt, close: (() -> Void)? = nil, @ViewBuilder content: @escaping () -> Content) {
+        self.feature = feature; self.title = title; self.detail = detail; self.art = art; self.close = close; self.content = content
+    }
+    var body: some View {
+        if subscription.isPro || unlocked || trials.bypassed || feature == nil {
+            content()
+        } else if let feature {
+            let _ = refresh
+            ProToolLockView(title: title, detail: detail, art: art, feature: feature,
+                            remaining: trials.remaining(feature), adUnlocksLeft: trials.adUnlocksLeftToday(feature),
+                            tryFree: { ProTrialSession.begin(feature); unlocked = true },
+                            upgrade: { paywall = true },
+                            rewarded: { trials.grantAdUse(feature); refresh += 1 })
+                .sheet(isPresented: $paywall) { PaywallView(start: .feature(feature)) }
+                .toolbar { if let close { ToolbarItem(placement: .cancellationAction) { Button("Close", action: close).accessibilityIdentifier("tool-close") } } }
+        }
+    }
+}
 struct ProToolLockView:View {
-    let tool:AdvancedTool
+    let title:String
+    let detail:String
+    let art:ToolArt
     let feature:ProFeature
     let remaining:Int
+    var adUnlocksLeft = 0
     let tryFree:() -> Void
     let upgrade:() -> Void
+    var rewarded:(() -> Void)? = nil
+    @StateObject private var ad = RewardedAdStore()
+    init(title: String, detail: String, art: ToolArt, feature: ProFeature, remaining: Int, adUnlocksLeft: Int = 0,
+         tryFree: @escaping () -> Void, upgrade: @escaping () -> Void, rewarded: (() -> Void)? = nil) {
+        self.title = title; self.detail = detail; self.art = art; self.feature = feature; self.remaining = remaining
+        self.adUnlocksLeft = adUnlocksLeft; self.tryFree = tryFree; self.upgrade = upgrade; self.rewarded = rewarded
+    }
     var body:some View {
-        ToolPage(title: tool.rawValue, subtitle: tool.detail) {
-            ToolHero(art: tool.art)
-            HStack(spacing: 10) {
-                Image(systemName: "crown.fill").foregroundStyle(TK.orange)
-                Text(remaining > 0
-                     ? (remaining == 1 ? "\(feature.title) is part of Pro. You have 1 free try left on this iPhone." : "\(feature.title) is part of Pro. You have \(remaining) free tries left on this iPhone.")
-                     : "You've used your free tries of \(feature.title.lowercased()). Upgrade to keep using it.")
+        ToolPage(title: title, subtitle: detail) {
+            ToolHero(art: art)
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: remaining > 0 ? "sparkles" : "crown.fill").foregroundStyle(remaining > 0 ? TK.blue : TK.orange)
+                Text(L(status))
                     .font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("pro-trial-status")
-            }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(TK.orangeSoft, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }.padding(16).frame(maxWidth: .infinity, alignment: .leading)
+                .background(remaining > 0 ? TK.grey50 : TK.orangeSoft, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         } actions: {
             if remaining > 0 {
-                Button("Try free (\(remaining) left)", action:tryFree).buttonStyle(SecondaryCTAStyle())
+                Button("Try free (\(remaining) left)", action:tryFree).buttonStyle(CTAButtonStyle())
                     .accessibilityIdentifier("pro-try-free")
+                Button("Upgrade to Pro", action:upgrade).buttonStyle(SecondaryCTAStyle())
+                    .accessibilityIdentifier("pro-upgrade")
+                Text("Files you make with a free try are yours to keep.").font(.system(size: 13)).foregroundStyle(TK.grey500)
+                    .frame(maxWidth: .infinity)
+            } else {
+                Button("Upgrade to Pro", action:upgrade).buttonStyle(CTAButtonStyle())
+                    .accessibilityIdentifier("pro-upgrade")
+                if adUnlocksLeft > 0, ad.ready, let rewarded {
+                    Button { ad.show { rewarded() } } label: { Label("Watch a short ad · 1 more use", systemImage: "play.rectangle") }
+                        .buttonStyle(SecondaryCTAStyle()).accessibilityIdentifier("pro-rewarded-ad")
+                    Text(adUnlocksLeft == 1 ? "1 ad unlock left today" : "\(adUnlocksLeft) ad unlocks left today")
+                        .font(.system(size: 13)).foregroundStyle(TK.grey500).frame(maxWidth: .infinity)
+                }
             }
-            Button("Upgrade to Pro", action:upgrade).buttonStyle(CTAButtonStyle())
-                .accessibilityIdentifier("pro-upgrade")
         }
+        .onAppear { if remaining == 0 && adUnlocksLeft > 0 && rewarded != nil { ad.load() } }
+    }
+    private var status: String {
+        if remaining > 0 {
+            return remaining == 1
+                ? "\(title) is part of Pro. You have 1 free try of \(feature.title) on this iPhone."
+                : "\(title) is part of Pro. You have \(remaining) free tries of \(feature.title) on this iPhone."
+        }
+        let canWatch = ad.ready && adUnlocksLeft > 0 && rewarded != nil
+        if feature.limit == 1 {
+            return canWatch ? "You've used your free try of \(feature.title). Upgrade to keep using it, or watch a short ad for one more."
+                            : "You've used your free try of \(feature.title). Upgrade to keep using it."
+        }
+        return canWatch ? "You've used your \(feature.limit) free tries of \(feature.title). Upgrade to keep using it, or watch a short ad for one more."
+                        : "You've used your \(feature.limit) free tries of \(feature.title). Upgrade to keep using it."
     }
 }
 struct AdvancedOfflineToolContent:View {
@@ -706,7 +769,7 @@ struct AdvancedOfflineToolContent:View {
                         return images[index]
                     }
                     return ("Slides.pptx",data)
-                };try Task.checkCancellation();files = try ExportFiles.write([result])
+                };try Task.checkCancellation();files = try ExportFiles.write([result]);Task { @MainActor in ProTrialSession.commit() }
                 if tool == .word { wordForward = true; wordStep = .ready; message = nil }
                 else { message = "File created on this iPhone. Preview before sharing." }
                 // Show the finished file at full size right away, like a scan result.
@@ -752,7 +815,7 @@ struct AdvancedOfflineToolContent:View {
                 }
                 return (try OfflineImageEngine.pdf(images,millimeters:size,text:blocks),failed)
             }
-            try Task.checkCancellation();_ = try await store.saveGeneratedPDF(result.0,title:tool.rawValue);saved = true
+            try Task.checkCancellation();_ = try await store.saveGeneratedPDF(result.0,title:tool.rawValue);saved = true;Task { @MainActor in ProTrialSession.commit() }
             message = result.1 ? "Copy saved. Some text could not be recognized; retry from the document's Text tool." : "Copy saved on this iPhone. Original unchanged."
         } catch { report(error) } }
     }
@@ -769,7 +832,7 @@ struct AdvancedOfflineToolContent:View {
             }
             try Task.checkCancellation()
             if let files { ExportFiles.remove(files.directory) }
-            files = try ExportFiles.write(entries);message = "Image export ready."
+            files = try ExportFiles.write(entries);message = "Image export ready.";Task { @MainActor in ProTrialSession.commit() }
         } catch { report(error) } }
     }
 
@@ -1007,6 +1070,7 @@ struct CameraTextToolView: View {
             }
         }
         .onChange(of:scenePhase) { _, value in if value == .active { startCamera() } else { camera.stop() } }
+        .onChange(of:result) { _, value in if !value.isEmpty { ProTrialSession.commit() } }
         .onChange(of:text) { _, _ in result = "" }
         .onChange(of:from) { _, _ in result = ""; error = nil }
         .onChange(of:to) { _, _ in result = ""; error = nil }
@@ -1253,8 +1317,10 @@ enum SmartTool: String, CaseIterable, Identifiable {
     var shown: Bool { true }
     @ViewBuilder var destination: some View {
         switch self {
-        case .redact: RedactTool()
-        case .fillForm: FillFormTool()
+        case .redact:
+            ProTrialGate(feature: .redact, title: title, detail: "ID, card and account numbers, phone numbers and emails are found and blacked out in a new copy.", art: .redact) { RedactTool() }
+        case .fillForm:
+            ProTrialGate(feature: .fillForm, title: title, detail: "Name, email, phone, address and today's date go next to their labels. Add your signature, then save.", art: .fillForm) { FillFormTool() }
         case .businessCard: BusinessCardTool()
         case .autoSave: AutoSaveTool()
         }
@@ -1321,7 +1387,7 @@ struct FillFormTool: View {
             }
         } actions: { EmptyView() }
         .sheet(isPresented: $profile) { FormProfileEditor() }
-        .fullScreenCover(item: $target) { AnnotationEditor(documentID: $0.id, autoFill: true) }
+        .fullScreenCover(item: $target) { AnnotationEditor(documentID: $0.id, autoFill: true, trialUnlocked: ProTrialSession.active == .fillForm) }
     }
     private struct FormTarget: Identifiable { let id: UUID }
 }

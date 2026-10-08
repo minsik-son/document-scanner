@@ -117,3 +117,42 @@ enum ExportFiles {
     }
   }
 }
+
+/// Shared PDFs carry the document's name ("Lease agreement.pdf"), not the
+/// internal file name. A named copy is kept in a temporary folder and refreshed
+/// whenever the saved PDF changes. Creator and Producer say Pageframe.
+enum SharedPDF {
+  static var root: URL { FileManager.default.temporaryDirectory.appendingPathComponent("SharedPDF", isDirectory: true) }
+  static func fileName(_ title: String) -> String {
+    let banned = CharacterSet(charactersIn: "/\\:?%*|\"<>").union(.newlines).union(.controlCharacters)
+    var name = title.components(separatedBy: banned).joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+    while name.hasPrefix(".") { name.removeFirst() }
+    if name.isEmpty { name = "Document" }
+    return String(name.prefix(80)) + ".pdf"
+  }
+  static func url(for source: URL, title: String) -> URL {
+    let fm = FileManager.default
+    let folder = root.appendingPathComponent(source.deletingPathExtension().lastPathComponent, isDirectory: true)
+    let target = folder.appendingPathComponent(fileName(title))
+    let sourceDate = (try? fm.attributesOfItem(atPath: source.path)[.modificationDate] as? Date) ?? Date()
+    if let copied = try? fm.attributesOfItem(atPath: target.path)[.modificationDate] as? Date, copied >= sourceDate { return target }
+    do {
+      try? fm.removeItem(at: folder)
+      try fm.createDirectory(at: folder, withIntermediateDirectories: true)
+      if let pdf = PDFDocument(url: source), !pdf.isEncrypted {
+        var attributes = pdf.documentAttributes ?? [:]
+        attributes[PDFDocumentAttribute.creatorAttribute] = "Pageframe"
+        attributes[PDFDocumentAttribute.producerAttribute] = "Pageframe"
+        if attributes[PDFDocumentAttribute.titleAttribute] == nil { attributes[PDFDocumentAttribute.titleAttribute] = title }
+        pdf.documentAttributes = attributes
+        if !pdf.write(to: target) { try fm.copyItem(at: source, to: target) }
+      } else {
+        try fm.copyItem(at: source, to: target)
+      }
+      try? (target as NSURL).setResourceValue(Date(), forKey: .contentModificationDateKey)
+      return target
+    } catch {
+      return source
+    }
+  }
+}

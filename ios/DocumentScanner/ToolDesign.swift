@@ -79,10 +79,12 @@ struct ToolTile: View {
     let title: String
     let icon: String
     var pro = false
+    /// Family of free tries; free users see "N free" instead of PRO while tries remain.
+    var feature: ProFeature? = nil
     var body: some View {
         VStack(spacing: 4) {
             ToolArtwork(name: icon, size: 64).overlay(alignment: .topTrailing) {
-                if pro { ProBadge().offset(x: 10, y: -5) }
+                if pro { ProTrialBadge(feature: feature).offset(x: 10, y: -5) }
             }
             Text(L(title)).font(.system(.caption, weight: .medium)).multilineTextAlignment(.center)
                 .foregroundStyle(Design.ink).fixedSize(horizontal: false, vertical: true)
@@ -248,6 +250,28 @@ enum QuickToolPrefs {
         return Array((pro ? list : list.filter { !$0.pro }).prefix(HomeShortcut.maximum))
     }
     static func encode(_ list: [HomeShortcut]) -> String { list.map(\.id).joined(separator: ",") }
+}
+
+/// "3 free" while a free user still has tries in the tool's family, PRO once
+/// they are used up or the tool has none. Hidden for Pro members.
+struct ProTrialBadge: View {
+    @EnvironmentObject private var subscription: SubscriptionStore
+    let feature: ProFeature?
+    @State private var tick = 0
+    var body: some View {
+        let _ = tick
+        Group {
+            if subscription.isPro { EmptyView() }
+            else if let feature, ProTrials().remaining(feature) > 0, !ProTrials().bypassed {
+                Text("\(ProTrials().remaining(feature)) free").font(.system(size: 9, weight: .heavy)).foregroundStyle(TK.blue)
+                    .padding(.horizontal, 6).padding(.vertical, 3)
+                    .background(TK.blueSoft, in: Capsule())
+                    .overlay(Capsule().strokeBorder(.white, lineWidth: 1.5))
+                    .accessibilityHidden(true)
+            } else { ProBadge() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .proTrialsChanged)) { _ in tick += 1 }
+    }
 }
 
 /// Small "PRO" mark on tool icons. Hidden for Pro members.

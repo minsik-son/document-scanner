@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 import PhotosUI
 import UniformTypeIdentifiers
 
@@ -15,6 +16,11 @@ struct HomeView: View {
     @AppStorage(OnboardingFlags.scanTip) private var scanTip = false
     @AppStorage(OnboardingFlags.firstScanPending) private var firstScanPending = false
     @AppStorage("pro-welcome-shown") private var welcomeShown = false
+    /// Scans saved from Home; the third one brings a one-time Pro card and a review prompt.
+    @AppStorage("home-saved-count") private var savedCount = 0
+    /// 0 not yet, 1 showing, 2 closed for good.
+    @AppStorage("home-pro-card") private var proCard = 0
+    @AppStorage("pro-purchased-at") private var purchasedAt = 0.0
     @State private var query = ""
     @State private var kindFilter: DocumentKind?
     @State private var showingDocuments = false
@@ -58,9 +64,7 @@ struct HomeView: View {
                         if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill") }.accessibilityLabel("Clear document search") }
                     }.padding(.horizontal, 14).frame(height: 44).background(.white, in: Capsule())
                     if query.isEmpty && !showingDocuments {
-                        HomeAdvertisementSlot(homeUncovered: route == nil && !advanced && quick == nil && !settings && !paywall && !photos && !files && !importMenu && !importing && fileBatch == nil) {
-                            scanCard
-                        }
+                        scanCard
                         shortcutsCard
                     }
                     VStack(alignment: .leading, spacing: 14) {
@@ -110,6 +114,11 @@ struct HomeView: View {
                     .buttonStyle(.plain)
                     .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                     .listRowSeparator(.hidden).listRowBackground(Color.clear)
+                if showsProCard {
+                    proTrialCard
+                        .listRowInsets(EdgeInsets(top: 5, leading: 20, bottom: 5, trailing: 20))
+                        .listRowSeparator(.hidden).listRowBackground(Color.clear)
+                }
                 if filtered.isEmpty {
                     VStack(spacing: 16) {
                         ToolArtwork(name: "scan", size: 72)
@@ -118,6 +127,7 @@ struct HomeView: View {
                     }.frame(maxWidth: .infinity).padding(.vertical, 28).background(.white, in: RoundedRectangle(cornerRadius: 24))
                         .listRowSeparator(.hidden).listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 16, trailing: 20))
+                    if showsAd { adRow }
                 } else if grid {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: 20) {
                         ForEach(filtered) { doc in
@@ -126,8 +136,9 @@ struct HomeView: View {
                             }.buttonStyle(.plain).contextMenu { trashAction(doc) }
                         }
                     }.listRowSeparator(.hidden).listRowBackground(Color.clear)
+                    if showsAd { adRow }
                 } else {
-                    ForEach(filtered) { doc in
+                    ForEach(Array(filtered.enumerated()), id: \.element.id) { index, doc in
                         NavigationLink { DocumentView(documentID: doc.id, initialPage: matchingPage(doc)) } label: { DocumentRow(document: doc, query: query).padding(.horizontal, 14).background(.white, in: RoundedRectangle(cornerRadius: 20)) }
                             .accessibilityIdentifier("document-row-" + doc.id.uuidString)
                             .listRowInsets(EdgeInsets(top: 5, leading: 20, bottom: 5, trailing: 20))
@@ -136,6 +147,8 @@ struct HomeView: View {
                             // and navigation, including reversal and full-swipe cancellation.
                             .swipeActions(edge: .leading, allowsFullSwipe: true) { trashAction(doc) }
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) { trashAction(doc) }
+                        // Free users: one ad below the third document, or after the last when there are fewer.
+                        if showsAd && index == min(2, filtered.count - 1) { adRow }
                     }
                 }
             }
@@ -152,12 +165,13 @@ struct HomeView: View {
             }
             .overlay { if importing { ProgressView("Importing pages…").padding(24).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16)) } }
             .fullScreenCover(isPresented: $advanced) { AdvancedOfflineHub() }
-            .sheet(isPresented: $paywall) { PaywallView() }
+            .sheet(isPresented: $paywall) { PaywallView(start: .general) }
             .fullScreenCover(isPresented: $welcomePro) { WelcomeToProView() }
             .fullScreenCover(isPresented: $firstScanDone) {
                 FirstScanDoneView(seeDocument: { firstScanDone = false; showingDocuments = true }, goHome: { firstScanDone = false })
             }
             .onAppear {
+                if purchasedAt > 0, Date().timeIntervalSince1970 - purchasedAt > 86400 { ReviewPrompter.request(.dayAfterPurchase) }
                 // "Scan now" on the last intro page opens the camera straight away.
                 if startScanFromIntro { startScanFromIntro = false; startCapture() }
                 if !store.active.isEmpty { scanTip = false }
@@ -165,6 +179,7 @@ struct HomeView: View {
             .onChange(of: subscription.isPro) { _, pro in
                 // After a purchase (not on launch): wait for the paywall sheet to close.
                 guard pro, !welcomeShown else { return }
+                if purchasedAt == 0 { purchasedAt = Date().timeIntervalSince1970 }
                 welcomeShown = true
                 Task { try? await Task.sleep(for: .seconds(0.7)); welcomePro = true }
             }
@@ -181,7 +196,7 @@ struct HomeView: View {
                 if !importing { store.perform { try store.discardEmptyDrafts() } }
             }) { value in
                 ReviewView(documentID: value.id, captureOnOpen: newCapture, completionAdEnabled: false,
-                           onCompleted: { showingDocuments = false; query = ""; celebrateFirstScan() }, savedBackTitle: "Home")
+                           onCompleted: { showingDocuments = false; query = ""; celebrateFirstScan(); countSave() }, savedBackTitle: "Home")
             }
             .confirmationDialog("Import pages", isPresented: $importMenu) {
                 Button("Choose photos") { photos = true }
@@ -202,6 +217,42 @@ struct HomeView: View {
     private func startCapture() {
         scanTip = false
         store.perform { let id = try store.createDraft(); newCapture = true; Instant.run { route = ScanRoute(id: id) } }
+    }
+    private var homeUncovered: Bool {
+        route == nil && !advanced && quick == nil && !settings && !paywall && !photos && !files && !importMenu && !importing && fileBatch == nil
+    }
+    private var showsAd: Bool { query.isEmpty && !showingDocuments && !subscription.isPro }
+    private var adRow: some View {
+        HomeAdvertisementSlot(homeUncovered: homeUncovered, reserveSpace: false) { EmptyView() }
+            .listRowInsets(EdgeInsets(top: 5, leading: 20, bottom: 5, trailing: 20))
+            .listRowSeparator(.hidden).listRowBackground(Color.clear)
+    }
+    private var showsProCard: Bool { proCard == 1 && !subscription.isPro && query.isEmpty && !showingDocuments }
+    /// After the third saved scan, once: what Pro adds. Never a full-screen paywall.
+    private var proTrialCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top) {
+                Text(subscription.trialEligible && subscription.trialDays != nil ? "Try Pro free for \(subscription.trialDays ?? 7) days" : "Get more done with Pro")
+                    .font(.headline).foregroundStyle(Design.ink)
+                Spacer()
+                Button { proCard = 2 } label: { Image(systemName: "xmark").font(.caption.weight(.bold)).foregroundStyle(.secondary).frame(width: 28, height: 28) }
+                    .buttonStyle(.plain).accessibilityLabel("Close").accessibilityIdentifier("home-pro-card-close")
+            }
+            Text("Word export, photo translation, PDF tools and no ads. Cancel anytime.").font(.subheadline).foregroundStyle(TK.grey700)
+            Button { proCard = 2; paywall = true } label: {
+                Text("See what's in Pro").font(.subheadline.weight(.bold)).foregroundStyle(.white)
+                    .padding(.horizontal, 14).padding(.vertical, 9).background(TK.blue, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }.buttonStyle(.plain).padding(.top, 4).accessibilityIdentifier("home-pro-card-open")
+        }
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+        .background(TK.blueSoft, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .accessibilityIdentifier("home-pro-card")
+    }
+    private func countSave() {
+        savedCount += 1
+        guard savedCount == 3 else { return }
+        if proCard == 0 && !subscription.isPro { proCard = 1 }
+        ReviewPrompter.request(.thirdSave)
     }
     /// The first page ever saved after the intro gets a short celebration.
     private func celebrateFirstScan() {
@@ -428,5 +479,22 @@ struct LockedThumb: View {
             RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Design.blue.opacity(0.08))
             Image(systemName: "lock.fill").font(.system(size: 18, weight: .semibold)).foregroundStyle(Design.blue)
         }.accessibilityLabel("Locked")
+    }
+}
+
+/// Asks for an App Store rating only at good moments, once each: right after the
+/// third saved scan, after sharing a Pro tool's result for the first time, and the
+/// day after someone becomes Pro. iOS still decides whether the prompt appears.
+@MainActor
+enum ReviewPrompter {
+    enum Moment: String { case thirdSave, firstProShare, dayAfterPurchase }
+    static func request(_ moment: Moment) {
+        let info = ProcessInfo.processInfo
+        if info.environment["XCTestConfigurationFilePath"] != nil || info.arguments.contains("--ui-test-session") { return }
+        let key = "review-asked-" + moment.rawValue
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        guard let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene else { return }
+        UserDefaults.standard.set(true, forKey: key)
+        Task { try? await Task.sleep(for: .seconds(1)); AppStore.requestReview(in: scene) }
     }
 }

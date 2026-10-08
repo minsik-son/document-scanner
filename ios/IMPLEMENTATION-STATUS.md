@@ -105,3 +105,32 @@ CamScanner iPhone 미러링에서 Word/Excel/PPT의 스캔·사진·기기 파�
 ## Photo translation quality follow-up — 2026-10-01
 
 Selected-language + close-up OCR, word-gap column separation, mixed-script paragraph boundaries, ink-based font sizing, missing batch response retry, and source snippets added only to photo translation files. 15 tests passed; installed-model test skipped (simulator assets absent). iPhone target build succeeded. The latest user PDF regression uses six supplied translations, not a verified full automatic translation. See `Verification/photo-translation-quality-20261001/README.md` for scope and limits.
+
+## 마케팅 검토 반영 (2026-10-07, 기준: `../마케팅 리포트/06_개발_전달사항.md`)
+
+| 체크 id | 반영 내용 | 검증 범위 |
+|---|---|---|
+| trial-families | `ProFeature`에 pdf / redact / fillForm 추가, 묶음별 한도 3·3·3·3·1·1, 기기당·묶음 안 공유 | 단위 테스트 `testFamilyLimitsAndAdUnlockOncePerDay`, `testPDFAndSmartToolFamilies` 통과 |
+| trial-entry | 모든 진입점(Tools 탭, 홈 Quick tools, 문서 Tools 메뉴)이 `ProTrialGate`를 거침. 무료 사용자는 결제 화면 대신 체험 화면, 체험 없는 Auto-save만 결제 화면 | UI 테스트 `testProToolFreeTriesThenUpgrade` 갱신(실행 미확인), Min 실기 빌드·실행 |
+| pdf-before-pick | PDF Pro 도구는 문서 선택 전에 체험 화면 | UI 테스트 `testPDFProToolShowsFreeTryBeforeChoosingADocument` 추가(실행 미확인) |
+| trial-on-success | 체험은 결과가 나왔을 때만 차감: 결과 화면(`ToolDonePage`), Office 내보내기·저장, 번역/수식 결과, 양식 저장. 열고 나가면 차감 없음 | 코드 연결. UI 테스트에서 "열고 나가기 = 3회 그대로" 확인 |
+| (추가) lock-view | 체험 남음: "Try free (N left)" 주 버튼 + "Upgrade to Pro" 보조 + "Files you make with a free try are yours to keep." / 소진: "Upgrade to Pro" 주 버튼 + 보상형 광고 보조 | 실기 화면 확인 필요 |
+| tools-badges | Tools 그리드 배지 "N free" / PRO / Pro 사용자 없음. 체험 차감·광고 보상 시 즉시 갱신 | 실기 화면 확인 필요 |
+| me-benefits | My benefits에 6개 묶음 + No ads + Auto-save, "Scanning, PDF, text recognition and signing are always free." | 실기 화면 확인 필요 |
+| paywall-ocr-slide | "Text from any page" 삭제, "Auto-save to iCloud Drive or Dropbox", "Unlimited signatures & merges" 추가, 신뢰 문구 교체 | UI 테스트에서 OCR 슬라이드 없음 확인 |
+| paywall-context | `PaywallView(start:)` — 기능별 슬라이드부터 시작, 광고 링크는 "No ads"부터 | UI 테스트(Word, Compress) |
+| lifetime-price | 평생 카드에 "FOUNDING PRICE · N DAYS LEFT" 리본, 정가 취소선(USD 59.99 / KRW 79,000), "Launch price until …". Me 배너에도 표시. `FoundingOffer.launchDay` 출시일 설정 필요(Debug는 출시 7일 차로 미리보기, Release는 설정 전 숨김) | 실기 화면 확인 필요 |
+| home-ad-move | 홈 광고를 문서 3번째 아래(적으면 목록 끝)로 이동, 상단은 원래 스캔 카드. 카드 높이 축소(미디어 120×120) | 실기 화면 확인 필요 |
+| remove-ads-link | 홈·Tools 광고 카드 아래 "Remove ads with Pro" → `PaywallView(start: .noAds)` | 실기 화면 확인 필요 |
+| first-24h | 설치 후 24시간 광고 숨김(`AdTiming`, 기존 설치는 Documents 폴더 생성일 기준) | 코드 연결 |
+| rewarded | 소진 화면 "Watch a short ad · 1 more use", 묶음당 하루 1회, 광고 준비 안 되면 버튼 숨김, Google 공식 테스트 단위 | 단위 테스트(하루 1회). 실제 광고 표시는 실기 확인 필요 |
+| no-interstitial | 저장 후 전면 광고 계속 꺼 둠(`completionAdEnabled: false` 유지) | 기존 코드 유지 |
+| third-save-card | 3번째 저장 후 홈에 1회성 "Try Pro free for 7 days" 카드(닫으면 다시 안 뜸) | 코드 연결 |
+| share-filename | 공유 PDF 파일명 = 문서 제목.pdf, Creator/Producer = Pageframe (문서, 신분증, 저장 직후 공유) | 단위 테스트 `testSharedPDFNameIsCleaned` |
+| review-prompt | `ReviewPrompter`: 3번째 저장, Pro 도구 결과 첫 공유, 구매 다음 날, 각 1회 | 코드 연결 |
+| (추가) privacy-copy | 개인정보 화면 광고 문구를 새 배치(홈·Tools·선택형 보상 광고, 첫날 없음)로 수정 | — |
+| (추가) l10n-new | 새 문구 35개를 15개 언어에 추가(복수형 포함) | 형식 지정자 검사 |
+
+미반영/보류: StoreKit 설정의 평생 가격은 출시가 $39.99 유지(출시 한정가를 앱에서 미리 보여주기 위해; 정가 $59.99는 App Store Connect 가격 일정으로), CFBundleDisplayName(최종 이름 미정), String Catalog 전환(이미 15개 언어 .strings 운영), 분석 SDK(개인정보 라벨 영향으로 출시 전 결정), 위젯·App Intents.
+
+테스트: 단위 테스트 9개 중 8개 통과. 실패 1개 `testUSPricesVerifiedPurchaseAndExpiration`(108행, StoreKit 만료 전파 대기)는 이번 변경과 무관한 기존 StoreKit 테스트.

@@ -239,13 +239,55 @@ final class SubscriptionStore: ObservableObject {
 }
 
 /// Families of Pro tools that free users can try a few times before upgrading.
+/// Tries are shared inside a family and counted per device.
 enum ProFeature: String, CaseIterable {
-    case office, translate, image
+    case office, translate, image, pdf, redact, fillForm
     var title: String {
         switch self {
         case .office: return "Office export"
         case .translate: return "Photo translation"
         case .image: return "Photo tools"
+        case .pdf: return "PDF tools"
+        case .redact: return "Hide personal info"
+        case .fillForm: return "Fill a form"
+        }
+    }
+    /// Short label for the Me screen's benefit grid.
+    var shortTitle: String {
+        switch self {
+        case .office: return "Office"
+        case .translate: return "Translate"
+        case .image: return "Photo tools"
+        case .pdf: return "PDF tools"
+        case .redact: return "Hide info"
+        case .fillForm: return "Fill a form"
+        }
+    }
+    var icon: String {
+        switch self {
+        case .office: return "word"
+        case .translate: return "translate"
+        case .image: return "eraser"
+        case .pdf: return "compress"
+        case .redact: return "redact"
+        case .fillForm: return "fill-form"
+        }
+    }
+    /// Free tries per device.
+    var limit: Int { self == .redact || self == .fillForm ? 1 : 3 }
+}
+
+extension LibraryTool {
+    /// Pro PDF tools share one family of free tries; nil means free or no trial.
+    var proFeature: ProFeature? { pro ? .pdf : nil }
+}
+extension SmartTool {
+    /// nil for free tools and for Pro tools without a free try (Auto-save).
+    var proFeature: ProFeature? {
+        switch self {
+        case .redact: return .redact
+        case .fillForm: return .fillForm
+        case .businessCard, .autoSave: return nil
         }
     }
 }
@@ -266,6 +308,9 @@ extension AdvancedTool {
 /// Counts free tries of Pro tools on this device. UI tests get their own
 /// session-scoped counters and skip the gate unless `--test-pro-gate` is passed.
 struct ProTrials {
+    /// A rewarded ad gives one more use, once a day per family.
+    static let adUnlocksPerDay = 1
+    /// Size of the larger families (office, translate, photo tools, PDF tools).
     static let limit = 3
     let defaults: UserDefaults
     let bypassed: Bool
@@ -283,12 +328,50 @@ struct ProTrials {
         self.prefix = prefix; self.bypassed = bypassed
     }
     func used(_ feature: ProFeature) -> Int { defaults.integer(forKey: prefix + feature.rawValue) }
-    func remaining(_ feature: ProFeature) -> Int { max(0, Self.limit - used(feature)) }
+    func remaining(_ feature: ProFeature) -> Int { max(0, feature.limit - used(feature)) }
     /// Uses one free try. Returns false when none are left.
     @discardableResult func consume(_ feature: ProFeature) -> Bool {
         guard remaining(feature) > 0 else { return false }
         defaults.set(used(feature) + 1, forKey: prefix + feature.rawValue)
         return true
     }
+    private static func day(_ date: Date = Date()) -> String {
+        let c = Calendar.current.dateComponents([.year, .month, .day], from: date)
+        return "\(c.year ?? 0)-\(c.month ?? 0)-\(c.day ?? 0)"
+    }
+    /// Ad unlocks still available today for this family.
+    func adUnlocksLeftToday(_ feature: ProFeature) -> Int {
+        let key = prefix + "ad." + feature.rawValue
+        guard defaults.string(forKey: key + ".day") == Self.day() else { return Self.adUnlocksPerDay }
+        return max(0, Self.adUnlocksPerDay - defaults.integer(forKey: key + ".count"))
+    }
+    /// A finished rewarded ad hands back one try.
+    func grantAdUse(_ feature: ProFeature) {
+        guard adUnlocksLeftToday(feature) > 0 else { return }
+        let key = prefix + "ad." + feature.rawValue
+        let today = Self.day()
+        let count = defaults.string(forKey: key + ".day") == today ? defaults.integer(forKey: key + ".count") : 0
+        defaults.set(today, forKey: key + ".day"); defaults.set(count + 1, forKey: key + ".count")
+        defaults.set(max(0, used(feature) - 1), forKey: prefix + feature.rawValue)
+        NotificationCenter.default.post(name: .proTrialsChanged, object: nil)
+    }
+}
+
+/// A free try is only spent when it produced something: the tool reached its
+/// result screen, saved or exported. Opening a tool and backing out is free.
+@MainActor
+enum ProTrialSession {
+    private(set) static var active: ProFeature?
+    static func begin(_ feature: ProFeature) { active = feature }
+    /// Called by result screens. Spends the open try once.
+    static func commit() {
+        guard let feature = active else { return }
+        active = nil
+        ProTrials().consume(feature)
+        NotificationCenter.default.post(name: .proTrialsChanged, object: nil)
+    }
+}
+extension Notification.Name {
+    static let proTrialsChanged = Notification.Name("pro-trials-changed")
 }
 

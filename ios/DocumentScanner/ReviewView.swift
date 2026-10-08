@@ -76,8 +76,8 @@ struct ReviewView: View {
                                         .font(.system(size: 13)).foregroundStyle(TK.grey600).lineLimit(1)
                                 }
                                 Spacer(minLength: 8)
-                                if let file = store.document(documentID)?.pdfFile {
-                                    ShareLink(item: store.url(file)) {
+                                if let saved = store.document(documentID), let file = saved.pdfFile {
+                                    ShareLink(item: SharedPDF.url(for: store.url(file), title: saved.title)) {
                                         Label("Share", systemImage: "square.and.arrow.up").font(.system(size: 15, weight: .semibold))
                                             .padding(.horizontal, 14).frame(height: 36).background(TK.blueSoft, in: Capsule()).foregroundStyle(TK.blue)
                                     }.accessibilityLabel("Share PDF")

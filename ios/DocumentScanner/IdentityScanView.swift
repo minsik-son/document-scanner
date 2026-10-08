@@ -136,7 +136,7 @@ struct IdentityScanView: View {
             }.frame(maxWidth: .infinity)
         } actions: {
             if let file = result.pdfFile {
-                ShareLink(item: store.url(file)) { Text("Share PDF") }.buttonStyle(SecondaryCTAStyle())
+                ShareLink(item: SharedPDF.url(for: store.url(file), title: result.title)) { Text("Share PDF") }.buttonStyle(SecondaryCTAStyle())
             }
             Button("Done") { finish() }.buttonStyle(CTAButtonStyle()).accessibilityIdentifier("id-saved-done")
         }

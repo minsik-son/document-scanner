@@ -409,7 +409,7 @@ struct PowerPointExportView: View {
                         try selection[index].image(root:root)
                     }
                 }
-                try Task.checkCancellation(); forward = true; export = try ExportFiles.write([(excel ? "Tables.xlsx" : "Slides.pptx",data)])
+                try Task.checkCancellation(); forward = true; export = try ExportFiles.write([(excel ? "Tables.xlsx" : "Slides.pptx",data)]); Task { @MainActor in ProTrialSession.commit() }
                 // Show the finished file at full size right away, like a scan result.
                 preview = true
             } catch { message = error is CancellationError ? "Canceled. Your selected pages are unchanged." : error.localizedDescription }

@@ -199,6 +199,14 @@ struct MembershipBanner: View {
                     .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
                 }.buttonStyle(.plain).padding(.top, 8)
                     .accessibilityLabel("Explore Pro")
+                if let days = FoundingOffer.daysLeft,
+                   let lifetime = subscription.products.first(where: { $0.id == SubscriptionStore.lifetimeID }) {
+                    // The launch price on the lifetime plan, with the days it has left.
+                    Text(days == 1 ? "Lifetime \(lifetime.displayPrice) · founding price, 1 day left" : "Lifetime \(lifetime.displayPrice) · founding price, \(days) days left")
+                        .font(.caption2.weight(.heavy)).padding(.horizontal, 9).padding(.vertical, 5)
+                        .background(.white.opacity(0.22), in: Capsule()).padding(.top, 4)
+                        .accessibilityIdentifier("founding-banner")
+                }
             }.frame(maxWidth: .infinity, alignment: .leading)
             ProArt().frame(width: 96, height: 90).offset(x: 6, y: 6)
         }
@@ -295,57 +303,62 @@ private extension View {
     }
 }
 
-/// "My benefits": each Pro tool family with its lock, free tries left or a check.
+/// "My benefits": every Pro tool family with its free tries left, plus the
+/// Pro-only extras. Free users see what they can still try; Pro members a check.
 struct ProBenefitsCard: View {
     @EnvironmentObject var subscription: SubscriptionStore
-    private let trials = ProTrials()
-    private struct Item: Identifiable {
-        let title: String, icon: String, tint: Color, feature: ProFeature?
-        var id: String { title }
-    }
-    private let items = [
-        Item(title: "Office", icon: "doc.richtext.fill", tint: Color(red: 0.18, green: 0.42, blue: 1), feature: .office),
-        Item(title: "Translate", icon: "character.bubble.fill", tint: Color(red: 0.13, green: 0.75, blue: 0.57), feature: .translate),
-        Item(title: "Photo tools", icon: "wand.and.stars", tint: Color(red: 1, green: 0.42, blue: 0.55), feature: .image),
-        Item(title: "No ads", icon: "nosign", tint: ProStyle.violet, feature: nil),
-    ]
+    @State private var trials = ProTrials()
+    @State private var tick = 0
+    private enum Extra: String, CaseIterable { case noAds = "No ads", autoSave = "Auto-save" }
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 4)
     var body: some View {
+        let _ = tick
         VStack(alignment: .leading, spacing: 12) {
-            Text("My benefits").font(.headline).foregroundStyle(Design.ink)
-            HStack(alignment: .top, spacing: 4) {
-                ForEach(items) { item in
-                    VStack(spacing: 6) {
-                        ZStack(alignment: .bottomTrailing) {
-                            Image(systemName: item.icon).font(.system(size: 20, weight: .semibold)).foregroundStyle(item.tint)
-                                .frame(width: 50, height: 50).background(item.tint.opacity(0.12), in: Circle())
-                            badge(for: item)
-                        }
-                        Text(L(item.title)).font(.caption.weight(.bold)).foregroundStyle(Design.ink).lineLimit(1).minimumScaleFactor(0.8)
-                        Text(caption(for: item)).font(.caption2).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.center)
-                    }.frame(maxWidth: .infinity)
-                        .accessibilityElement(children: .combine)
+            HStack {
+                Text("My benefits").font(.headline).foregroundStyle(Design.ink)
+                Spacer()
+                if !subscription.isPro { Text("Free tries on this iPhone").font(.caption).foregroundStyle(.secondary) }
+            }
+            LazyVGrid(columns: columns, alignment: .center, spacing: 14) {
+                ForEach(ProFeature.allCases, id: \.self) { feature in
+                    cell(title: feature.shortTitle, art: ToolArtwork(name: feature.icon, size: 46), caption: caption(feature),
+                         warn: !subscription.isPro && trials.remaining(feature) == 0)
+                        .accessibilityIdentifier("benefit-" + feature.rawValue)
                 }
+                cell(title: Extra.noAds.rawValue, art: Image(systemName: "nosign").font(.system(size: 20, weight: .semibold)).foregroundStyle(TK.grey500)
+                        .frame(width: 46, height: 46).background(TK.grey100, in: RoundedRectangle(cornerRadius: 13, style: .continuous)),
+                     caption: subscription.isPro ? "On" : "Pro only", warn: false)
+                cell(title: Extra.autoSave.rawValue, art: ToolArtwork(name: "auto-save", size: 46),
+                     caption: subscription.isPro ? "On" : "Pro only", warn: false)
+            }
+            if !subscription.isPro {
+                Divider()
+                Text("Scanning, PDF, text recognition and signing are always free.")
+                    .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity).multilineTextAlignment(.center)
             }
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
         .background(.white, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .onAppear { trials = ProTrials(); tick += 1 }
+        .onReceive(NotificationCenter.default.publisher(for: .proTrialsChanged)) { _ in tick += 1 }
     }
-    @ViewBuilder private func badge(for item: Item) -> some View {
-        if subscription.isPro {
-            Image(systemName: "checkmark").font(.system(size: 9, weight: .black)).foregroundStyle(.white)
-                .frame(width: 20, height: 20).background(Color(red: 0.09, green: 0.64, blue: 0.29), in: Circle())
-                .overlay(Circle().stroke(.white, lineWidth: 2)).offset(x: 3, y: 3)
-        } else if item.feature.map({ trials.remaining($0) == 0 }) ?? true {
-            Image(systemName: "lock.fill").font(.system(size: 9, weight: .bold)).foregroundStyle(.white)
-                .frame(width: 20, height: 20).background(Color(red: 0.36, green: 0.42, blue: 0.55), in: Circle())
-                .overlay(Circle().stroke(.white, lineWidth: 2)).offset(x: 3, y: 3)
-        }
+    private func cell<Art: View>(title: String, art: Art, caption: String, warn: Bool) -> some View {
+        VStack(spacing: 5) {
+            art.overlay(alignment: .bottomTrailing) {
+                if subscription.isPro {
+                    Image(systemName: "checkmark").font(.system(size: 9, weight: .black)).foregroundStyle(.white)
+                        .frame(width: 18, height: 18).background(Color(red: 0.09, green: 0.64, blue: 0.29), in: Circle())
+                        .overlay(Circle().stroke(.white, lineWidth: 2)).offset(x: 4, y: 4)
+                }
+            }
+            Text(L(title)).font(.caption.weight(.bold)).foregroundStyle(Design.ink).lineLimit(1).minimumScaleFactor(0.75)
+            Text(L(caption)).font(.caption2.weight(warn ? .bold : .regular)).foregroundStyle(warn ? TK.red : .secondary)
+                .lineLimit(2).multilineTextAlignment(.center)
+        }.frame(maxWidth: .infinity).accessibilityElement(children: .combine)
     }
-    private func caption(for item: Item) -> String {
-        if subscription.isPro { return item.feature == nil ? "On" : "Unlimited" }
-        guard let feature = item.feature else { return "Pro only" }
-        let left = trials.remaining(feature)
-        return left > 0 ? "\(left) of \(ProTrials.limit) free left" : "Pro only"
+    private func caption(_ feature: ProFeature) -> String {
+        if subscription.isPro { return "Unlimited" }
+        return "\(trials.remaining(feature)) of \(feature.limit) left"
     }
 }
 

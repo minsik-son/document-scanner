@@ -25,19 +25,38 @@ final class AdvancedToolsUITests:XCTestCase {
             app.buttons["home-tools"].tap();XCTAssertTrue(app.buttons["Word export"].waitForExistence(timeout:5));app.buttons["Word export"].tap()
             return app
         }
+        // From the Tools tab a free user gets the free-try screen, not the paywall; Try free is the main button.
         var app = open()
         let tryFree = app.buttons["pro-try-free"]
         XCTAssertTrue(tryFree.waitForExistence(timeout:5));XCTAssertTrue(tryFree.label.contains("3 left"))
-        let lock = XCTAttachment(screenshot:app.screenshot());lock.name = "Pro tool lock";lock.lifetime = .keepAlways;add(lock)
+        XCTAssertFalse(app.buttons["subscribe-button"].exists)
+        let lock = XCTAttachment(screenshot:app.screenshot());lock.name = "Pro tool free try";lock.lifetime = .keepAlways;add(lock)
         tryFree.tap()
         XCTAssertFalse(app.buttons["pro-try-free"].waitForExistence(timeout:2))
         XCTAssertFalse(app.staticTexts["pro-trial-status"].exists)
         app.terminate()
+        // Leaving without making anything does not spend the try.
         app = open()
-        XCTAssertTrue(app.buttons["pro-try-free"].waitForExistence(timeout:5));XCTAssertTrue(app.buttons["pro-try-free"].label.contains("2 left"))
+        XCTAssertTrue(app.buttons["pro-try-free"].waitForExistence(timeout:5));XCTAssertTrue(app.buttons["pro-try-free"].label.contains("3 left"))
         app.buttons["pro-upgrade"].tap()
-        XCTAssertTrue(app.staticTexts["Every page.\nMore possibilities."].waitForExistence(timeout:10))
+        XCTAssertTrue(app.buttons["subscribe-button"].waitForExistence(timeout:10) || app.buttons["Reload plans"].waitForExistence(timeout:5))
+        XCTAssertTrue(app.staticTexts["Word · Excel · PowerPoint"].exists,"The paywall opens on the tapped tool's slide")
+        XCTAssertFalse(app.staticTexts["Text from any page"].exists,"Text recognition is free and never sold as Pro")
         let pay = XCTAttachment(screenshot:app.screenshot());pay.name = "Paywall from tool";pay.lifetime = .keepAlways;add(pay)
+    }
+    @MainActor func testPDFProToolShowsFreeTryBeforeChoosingADocument() {
+        let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"--test-pro-gate","--seed-saved"];app.launch()
+        app.buttons["home-tools"].tap()
+        let compress = app.buttons["Compress PDF, Pro"]
+        for _ in 0..<8 where !compress.isHittable { app.swipeUp() }
+        compress.tap()
+        let tryFree = app.buttons["pro-try-free"]
+        XCTAssertTrue(tryFree.waitForExistence(timeout:5));XCTAssertTrue(tryFree.label.contains("3 left"))
+        XCTAssertFalse(app.buttons["pdf-import"].exists,"No document choice before the free-try screen")
+        app.buttons["pro-upgrade"].tap()
+        XCTAssertTrue(app.buttons["subscribe-button"].waitForExistence(timeout:10) || app.buttons["Reload plans"].waitForExistence(timeout:5))
+        XCTAssertTrue(app.staticTexts["Lock & compress PDFs"].exists,"Paywall from Compress starts on its slide")
+        let shot = XCTAttachment(screenshot:app.screenshot());shot.name = "Paywall from Compress PDF";shot.lifetime = .keepAlways;add(shot)
     }
     @MainActor func testHubListsAllToolsAndHonestDeviceRequirements() {
         for populated in [false,true] {

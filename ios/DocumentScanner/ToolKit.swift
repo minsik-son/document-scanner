@@ -305,7 +305,11 @@ struct ToolDonePage<Extra: View>: View {
             }
             Button(primaryTitle, action: primary).buttonStyle(CTAButtonStyle()).accessibilityIdentifier("tool-done-primary")
         }
-        .onAppear { withAnimation(.spring(response: 0.45, dampingFraction: 0.62)) { appeared = true } }
+        .onAppear {
+            // A result exists: an open free try of a Pro tool is spent now.
+            ProTrialSession.commit()
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.62)) { appeared = true }
+        }
     }
 }
 extension ToolDonePage where Extra == EmptyView {

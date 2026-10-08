@@ -7,11 +7,15 @@ struct AnnotationEditor: View {
   @EnvironmentObject var subscription: SubscriptionStore
   @State private var paywall = false
   /// Free users can place signatures; text, pen and highlight are Pro.
-  private func allowed(_ kind: AnnotationKind) -> Bool { kind == .signature || subscription.isPro }
+  private func allowed(_ kind: AnnotationKind) -> Bool { kind == .signature || pro }
+  /// Pro, or a free try of Fill a form is open.
+  private var pro: Bool { subscription.isPro || trialUnlocked }
   @Environment(\.dismiss) private var dismiss
   let documentID: UUID
   /// Opened from Fill a form: fill from the saved profile once the page is ready.
   var autoFill = false
+  /// Opened inside a free try of Fill a form: text boxes are allowed.
+  var trialUnlocked = false
   @State private var document: ScanDocument?
   @State private var profileEditor = false
   @State private var filling = false
@@ -163,7 +167,7 @@ struct AnnotationEditor: View {
               Button("My info") { profileEditor = true }.font(.system(size: 14, weight: .semibold)).foregroundStyle(TK.blue)
             }
           }
-          if !subscription.isPro {
+          if !pro {
             Text("Signatures are free. Text, pen and highlight are Pro.").font(.system(size: 13)).foregroundStyle(TK.grey500)
               .accessibilityIdentifier("annotate-free-limit")
           }
@@ -228,7 +232,7 @@ struct AnnotationEditor: View {
         .task(id: index) {
           if document == nil {
             document = store.document(documentID)
-            if !subscription.isPro { mode = .signature }
+            if !pro { mode = .signature }
           }
           await loadPreview()
           if autoFill && !autoFilled && preview != nil {
@@ -253,7 +257,7 @@ struct AnnotationEditor: View {
   /// Reads the page, finds labels such as Name, Email, Phone, Address, Date and
   /// Signature, and places the saved answers next to them as movable text boxes.
   private func fillForm() {
-    guard subscription.isPro else { paywall = true; return }
+    guard pro else { paywall = true; return }
     let profile = FormProfile.load()
     guard !profile.isEmpty else { profileEditor = true; return }
     guard let preview else { return }
@@ -322,6 +326,7 @@ struct AnnotationEditor: View {
       do {
         let result = try await PDFExport.prepare(doc, root: store.root)
         try store.savePDF(result.data, document: result.document)
+        if trialUnlocked { ProTrialSession.commit() }
         dismiss()
       } catch { self.error = error.localizedDescription }
       busy = false

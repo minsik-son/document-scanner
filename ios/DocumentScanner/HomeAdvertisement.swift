@@ -8,6 +8,8 @@ import OSLog
 enum HomeAdConfiguration {
     static let sampleAppID = "ca-app-pub-3940256099942544~1458002511"
     static let videoTestUnitID = "ca-app-pub-3940256099942544/2521693316"
+    /// Google's official iOS rewarded test unit.
+    static let rewardedTestUnitID = "ca-app-pub-3940256099942544/1712485313"
     static var testAdsEnabled: Bool {
 #if DEBUG
         let args = ProcessInfo.processInfo.arguments
@@ -53,6 +55,29 @@ enum AdvertisingSDK {
     }
 }
 
+/// No ads in the first 24 hours after install: people meet the app before any advertising.
+enum AdTiming {
+    private static let key = "scanner-first-launch-at"
+    static let quietPeriod: TimeInterval = 86400
+    /// When the app was first opened. Older installs that never stored it use the
+    /// creation date of the app's Documents folder, which is made at install.
+    static var firstLaunchAt: Date {
+        if let saved = UserDefaults.standard.object(forKey: key) as? Date { return saved }
+        let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+        let created = folder.flatMap { try? FileManager.default.attributesOfItem(atPath: $0.path)[.creationDate] as? Date }
+        let value = min(created ?? Date(), Date())
+        UserDefaults.standard.set(value, forKey: key)
+        return value
+    }
+    static var settled: Bool {
+#if DEBUG
+        // UI tests that exercise ads run on a fresh install.
+        if ProcessInfo.processInfo.arguments.contains("--ui-test-session") { return true }
+#endif
+        return Date().timeIntervalSince(firstLaunchAt) >= quietPeriod
+    }
+}
+
 struct HomeAdEligibility: Equatable {
     var subscriptionResolved: Bool
     var isPro: Bool
@@ -61,8 +86,9 @@ struct HomeAdEligibility: Equatable {
     var homeVisible: Bool
     var unlocked: Bool
     var configured: Bool
+    var settled = AdTiming.settled
     var canRequest: Bool {
-        subscriptionResolved && !isPro && online && foreground && homeVisible && unlocked && configured
+        subscriptionResolved && !isPro && online && foreground && homeVisible && unlocked && configured && settled
     }
 }
 
@@ -132,7 +158,7 @@ final class HomeAdvertisementStore: NSObject, ObservableObject, NativeAdLoaderDe
     /// usually ready when home first appears. Nothing about documents is involved.
     /// Presentation is still gated by `HomeAdEligibility` in the slot.
     func preload(locked: Bool, configured: Bool = HomeAdConfiguration.testAdsEnabled) {
-        guard configured, !locked, !suppressedAfterCompletion, !Self.lastKnownPro else { return }
+        guard configured, !locked, !suppressedAfterCompletion, !Self.lastKnownPro, AdTiming.settled else { return }
         AdvertisingSDK.begin()
         preloadRequested = true
         if pathKnown { preloadNow() }
@@ -160,7 +186,7 @@ final class HomeAdvertisementStore: NSObject, ObservableObject, NativeAdLoaderDe
             logger.notice("Home ad shown \(elapsed, privacy:.public)s after launch")
         }
         retentionAllowed = policy.subscriptionResolved && !policy.isPro && policy.unlocked
-            && policy.configured && !suppressedAfterCompletion
+            && policy.configured && policy.settled && !suppressedAfterCompletion
         guard retentionAllowed else { stop(); return }
         if let loadedAt, Date().timeIntervalSince(loadedAt) >= 3300 {
             nativeAd = nil; self.loadedAt = nil
@@ -280,6 +306,7 @@ struct HomeAdvertisementSlot<Fallback: View>: View {
     @EnvironmentObject private var ads: HomeAdvertisementStore
     @Environment(\.scenePhase) private var scenePhase
     @State private var visible = false
+    @State private var removeAds = false
     let homeUncovered: Bool
     /// Home keeps the card's height while the ad loads; other pages show nothing.
     var reserveSpace = true
@@ -293,7 +320,7 @@ struct HomeAdvertisementSlot<Fallback: View>: View {
     }
     private var keepsAd: Bool {
         subscription.entitlementsResolved && !subscription.isPro && !lock.locked && HomeAdConfiguration.testAdsEnabled
-            && !ads.suppressedAfterCompletion
+            && !ads.suppressedAfterCompletion && AdTiming.settled
     }
     private var testIdentity: String {
 #if DEBUG
@@ -308,13 +335,27 @@ struct HomeAdvertisementSlot<Fallback: View>: View {
             // Keep showing a loaded ad while the app is backgrounded or in the app
             // switcher; only Pro, a lock, or missing configuration hide it.
             if keepsAd, let ad = ads.nativeAd {
-                NativeHomeAdvertisement(ad: ad, active: visible && policy.canRequest)
-                    .frame(height: 306)
-                    .accessibilityIdentifier("home-native-ad")
-                    .accessibilityValue(testIdentity)
+                VStack(spacing: 0) {
+                    NativeHomeAdvertisement(ad: ad, active: visible && policy.canRequest)
+                        .frame(height: NativeAdLayout.height)
+                        .accessibilityIdentifier("home-native-ad")
+                        .accessibilityValue(testIdentity)
+                    Divider().padding(.horizontal, 14)
+                    Button { removeAds = true } label: {
+                        HStack {
+                            Text("Remove ads with Pro")
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.caption.weight(.bold))
+                        }.font(.subheadline.weight(.semibold)).foregroundStyle(TK.blue)
+                            .padding(.horizontal, 14).frame(height: 44).contentShape(Rectangle())
+                    }.buttonStyle(.plain).accessibilityIdentifier("remove-ads")
+                }
+                .background(.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .sheet(isPresented: $removeAds) { PaywallView(start: .noAds) }
             } else {
                 fallback()
-                    .frame(height: reserveSpace && HomeAdConfiguration.testAdsEnabled && !subscription.isPro ? 306 : nil)
+                    .frame(height: reserveSpace && HomeAdConfiguration.testAdsEnabled && !subscription.isPro && AdTiming.settled ? NativeAdLayout.height + 45 : nil)
                     .accessibilityIdentifier("home-introduction")
             }
         }
@@ -327,6 +368,11 @@ struct HomeAdvertisementSlot<Fallback: View>: View {
         .onChange(of: visible) { _, value in ads.update(policy, visible: value) }
         .onDisappear { ads.suspend() }
     }
+}
+
+enum NativeAdLayout {
+    /// Compact card: label row, then a square media view next to the headline and button.
+    static let height: CGFloat = 172
 }
 
 /// SDK asset registration preserves click/impression handling and standard video controls.
@@ -351,7 +397,6 @@ private final class HomeNativeAdView: NativeAdView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = .white
-        layer.cornerRadius = 24
         // Keep the SDK's top-right AdChoices overlay unobscured.
         let badge = UILabel()
         badge.text = "Ad"
@@ -369,13 +414,11 @@ private final class HomeNativeAdView: NativeAdView {
         media.backgroundColor = UIColor(Design.muted)
         media.layer.cornerRadius = 14
         media.clipsToBounds = true
-        headline.font = .preferredFont(forTextStyle: .subheadline)
-        headline.numberOfLines = 2
+        headline.font = .systemFont(ofSize: 15, weight: .semibold)
+        headline.numberOfLines = 3
         advertiser.font = .preferredFont(forTextStyle: .caption1)
         advertiser.textColor = .secondaryLabel
         advertiser.numberOfLines = 1
-        let copy = UIStackView(arrangedSubviews: [headline, advertiser])
-        copy.axis = .vertical; copy.spacing = 3
         action.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
         action.titleLabel?.numberOfLines = 2
         action.backgroundColor = UIColor(Design.pastelBlue)
@@ -385,10 +428,15 @@ private final class HomeNativeAdView: NativeAdView {
         icon.contentMode = .scaleAspectFit
         icon.layer.cornerRadius = 8
         icon.clipsToBounds = true
-        let bottom = UIStackView(arrangedSubviews: [icon, copy, action])
-        bottom.spacing = 12; bottom.alignment = .center
-        let stack = UIStackView(arrangedSubviews: [labelRow, media, bottom])
-        stack.axis = .vertical; stack.spacing = 10
+        // Compact: square media on the left, words and the button on the right.
+        let nameRow = UIStackView(arrangedSubviews: [icon, advertiser])
+        nameRow.spacing = 6; nameRow.alignment = .center
+        let right = UIStackView(arrangedSubviews: [nameRow, headline, action, UIView()])
+        right.axis = .vertical; right.spacing = 6; right.alignment = .leading
+        let bottom = UIStackView(arrangedSubviews: [media, right])
+        bottom.spacing = 12; bottom.alignment = .top
+        let stack = UIStackView(arrangedSubviews: [labelRow, bottom])
+        stack.axis = .vertical; stack.spacing = 8
         addSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -396,12 +444,14 @@ private final class HomeNativeAdView: NativeAdView {
             stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
             stack.topAnchor.constraint(equalTo: topAnchor, constant: 12),
             stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -14),
-            labelRow.heightAnchor.constraint(equalToConstant: 20),
-            media.heightAnchor.constraint(equalToConstant: 180),
-            icon.widthAnchor.constraint(equalToConstant: 40),
-            icon.heightAnchor.constraint(equalToConstant: 40),
-            action.widthAnchor.constraint(equalToConstant: 88),
-            action.heightAnchor.constraint(equalToConstant: 44)
+            labelRow.heightAnchor.constraint(equalToConstant: 18),
+            // AdMob requires at least 120 × 120 pt for a media view.
+            media.widthAnchor.constraint(equalToConstant: 120),
+            media.heightAnchor.constraint(equalToConstant: 120),
+            icon.widthAnchor.constraint(equalToConstant: 20),
+            icon.heightAnchor.constraint(equalToConstant: 20),
+            action.widthAnchor.constraint(greaterThanOrEqualToConstant: 76),
+            action.heightAnchor.constraint(equalToConstant: 34)
         ])
         headlineView = headline
         advertiserView = advertiser
@@ -421,5 +471,45 @@ private final class HomeNativeAdView: NativeAdView {
         action.isHidden = ad.callToAction == nil
         media.mediaContent = ad.mediaContent
         nativeAd = ad
+    }
+}
+
+/// One rewarded ad at a time, for the "Watch a short ad · 1 more use" button on a
+/// used-up Pro tool. Same gates as the other ads (configuration, Pro, lock, tests).
+/// The button only shows when an ad is ready; nobody waits for one to load.
+@MainActor
+final class RewardedAdStore: NSObject, ObservableObject, FullScreenContentDelegate {
+    @Published private(set) var ready = false
+    private var ad: RewardedAd?
+    private var loading = false
+    func load() {
+        guard HomeAdConfiguration.testAdsEnabled, ad == nil, !loading else { return }
+        loading = true
+        AdvertisingSDK.begin()
+        let request = Request()
+        let extras = Extras()
+        extras.additionalParameters = ["npa": "1"]
+        request.register(extras)
+        RewardedAd.load(with: HomeAdConfiguration.rewardedTestUnitID, request: request) { [weak self] loaded, _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.loading = false
+                guard let loaded else { self.ready = false; return }
+                loaded.fullScreenContentDelegate = self
+                self.ad = loaded
+                self.ready = true
+            }
+        }
+    }
+    /// Plays the ad; `reward` runs only if it was watched to the end.
+    func show(reward: @escaping () -> Void) {
+        guard let ad else { return }
+        ad.present(from: nil) { reward() }
+    }
+    nonisolated func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
+        Task { @MainActor in self.ad = nil; self.ready = false }
+    }
+    nonisolated func ad(_ ad: FullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
+        Task { @MainActor in self.ad = nil; self.ready = false }
     }
 }

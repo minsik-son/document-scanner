@@ -288,5 +288,38 @@
 			<key>other</key><string>%lld Messungen</string>
 		</dict>
 	</dict>
+	<key>%lld ad unlocks left today</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>Heute noch %lld Freischaltung per Werbung</string>
+			<key>other</key><string>Heute noch %lld Freischaltungen per Werbung</string>
+		</dict>
+	</dict>
+	<key>FOUNDING PRICE · %lld DAYS LEFT</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>GRÜNDERPREIS · NUR NOCH %lld TAG</string>
+			<key>other</key><string>GRÜNDERPREIS · NUR NOCH %lld TAGE</string>
+		</dict>
+	</dict>
+	<key>Try Pro free for %lld days</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>Pro %lld Tag gratis testen</string>
+			<key>other</key><string>Pro %lld Tage gratis testen</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

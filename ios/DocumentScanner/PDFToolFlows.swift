@@ -75,7 +75,12 @@ struct PDFToolFlow: View {
     var documentID: UUID? = nil
     @Environment(\.dismiss) private var dismiss
     var body: some View {
-        NavigationStack { PDFToolRoot(tool: tool, preselected: documentID) { dismiss() } }
+        NavigationStack {
+            // Free users see the free-try screen before choosing a document.
+            ProTrialGate(feature: tool.proFeature, title: tool.headline, detail: tool.promise, art: tool.art, close: { dismiss() }) {
+                PDFToolRoot(tool: tool, preselected: documentID) { dismiss() }
+            }
+        }
     }
 }
 
@@ -102,7 +107,7 @@ private struct PDFToolRoot: View {
         StepStack(step: step, forward: forward) {
             if step == 0 { landing }
             else if step == 1, let doc = primary { toolStep(doc) }
-            else if step == 2, let result { PDFToolDone(result: result, close: close) }
+            else if step == 2, let result { PDFToolDone(result: result, proTool: tool.pro, close: close) }
         }
         .stepChrome(step: $step, forward: $forward, last: 2, work: work)
         .toolbar {
@@ -111,7 +116,7 @@ private struct PDFToolRoot: View {
         .sheet(isPresented: $paywall, onDismiss: {
             if subscription.isPro, let id = pending { proceed(id) }
             pending = nil
-        }) { PaywallView() }
+        }) { PaywallView(start: .general) }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.pdf]) { response in
             guard case .success(let url) = response else { return }
             work.run("Adding your PDF…") {
@@ -152,9 +157,6 @@ private struct PDFToolRoot: View {
                 }
             }
             if let message = work.message { ToastMessage(text: message) }
-            if tool.pro && !subscription.isPro {
-                Label("Part of Pro", systemImage: "crown.fill").font(.system(size: 13, weight: .semibold)).foregroundStyle(TK.orange)
-            }
         } actions: {
             if tool == .merge {
                 Button(chosen.count < 2 ? "Choose 2 or more" : "Next · \(chosen.count) documents") { forward = true; step = 1 }
@@ -169,7 +171,6 @@ private struct PDFToolRoot: View {
             if !subscription.isPro && chosen.count >= DocumentTool.freeMergeDocuments + 1 { pending = nil; paywall = true; return }
             chosen.append(id); return
         }
-        if tool.pro && !subscription.isPro { pending = id; paywall = true; return }
         proceed(id)
     }
     private func proceed(_ id: UUID) {
@@ -235,6 +236,8 @@ private struct ToolScanCamera: View {
 
 private struct PDFToolDone: View {
     let result: PDFToolResult
+    /// A Pro tool's result: sharing it the first time may ask for a rating.
+    var proTool = false
     let close: () -> Void
     @State private var sharing: ExportedFiles?
     private var imageURLs: [URL] {
@@ -252,7 +255,7 @@ private struct PDFToolDone: View {
                      secondary: result.files == nil ? nil : { sharing = result.files }) {
             if let urls = result.files?.urls, !urls.isEmpty { ResultReview(urls: urls).padding(.top, 6) }
         }
-            .sheet(item: $sharing) { files in ShareSheet(items: files.urls) }
+            .sheet(item: $sharing, onDismiss: { if proTool { ReviewPrompter.request(.firstProShare) } }) { files in ShareSheet(items: files.urls) }
             .onDisappear { if let files = result.files { ExportFiles.remove(files.directory) } }
     }
 }
@@ -1670,7 +1673,7 @@ struct RedactTool: View {
         StepStack(step: step, forward: forward) {
             if step == 0 { choosePage }
             else if step == 1 { editPage }
-            else if let result { PDFToolDone(result: result) { dismiss() } }
+            else if let result { PDFToolDone(result: result, proTool: true) { dismiss() } }
         }
         .stepChrome(step: $step, forward: $forward, last: 2, work: work)
         .sheet(isPresented: $paywall) { PaywallView() }
@@ -1766,7 +1769,6 @@ struct RedactTool: View {
         Task { image = try? await OfflineWork.perform { try ExtractRender.page(url, index: index, maxSide: 1400) } }
     }
     private func save() {
-        guard subscription.isPro else { paywall = true; return }
         guard let doc, let file = doc.pdfFile else { return }
         let url = store.url(file), count = doc.pages.count
         let rects = boxes.mapValues { $0.filter(\.on).map(\.rect) }

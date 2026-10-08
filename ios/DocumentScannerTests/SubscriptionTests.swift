@@ -32,6 +32,31 @@ final class SubscriptionTests: XCTestCase {
         XCTAssertEqual(ProTrials(defaults: defaults, arguments: ["--ui-test-session", "B", "--test-pro-gate"]).remaining(.image), ProTrials.limit)
         XCTAssertEqual(ProTrials(defaults: defaults, arguments: []).remaining(.image), ProTrials.limit)
     }
+    func testFamilyLimitsAndAdUnlockOncePerDay() throws {
+        let name = "ProTrialsTests." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name)); defer { defaults.removePersistentDomain(forName: name) }
+        let trials = ProTrials(defaults: defaults, arguments: [])
+        XCTAssertEqual(trials.remaining(.pdf), 3); XCTAssertEqual(trials.remaining(.redact), 1); XCTAssertEqual(trials.remaining(.fillForm), 1)
+        XCTAssertTrue(trials.consume(.redact)); XCTAssertFalse(trials.consume(.redact))
+        XCTAssertEqual(trials.adUnlocksLeftToday(.redact), 1)
+        trials.grantAdUse(.redact)
+        XCTAssertEqual(trials.remaining(.redact), 1, "A watched ad gives one more use")
+        XCTAssertEqual(trials.adUnlocksLeftToday(.redact), 0, "Only once a day per family")
+        trials.grantAdUse(.redact); XCTAssertTrue(trials.consume(.redact)); XCTAssertEqual(trials.remaining(.redact), 0)
+        XCTAssertEqual(trials.adUnlocksLeftToday(.pdf), 1, "Other families keep their own ad unlock")
+        XCTAssertTrue(trials.consume(.pdf)); XCTAssertTrue(trials.consume(.pdf)); XCTAssertEqual(trials.remaining(.pdf), 1)
+    }
+    func testPDFAndSmartToolFamilies() {
+        for tool in [LibraryTool.compress, .protect, .split, .extract, .watermark, .timestamp, .longImage] { XCTAssertEqual(tool.proFeature, .pdf) }
+        for tool in [LibraryTool.ocr, .reorder, .images, .print, .merge, .annotate] { XCTAssertNil(tool.proFeature) }
+        XCTAssertEqual(SmartTool.redact.proFeature, .redact); XCTAssertEqual(SmartTool.fillForm.proFeature, .fillForm)
+        XCTAssertNil(SmartTool.autoSave.proFeature); XCTAssertTrue(SmartTool.autoSave.pro)
+    }
+    func testSharedPDFNameIsCleaned() {
+        XCTAssertEqual(SharedPDF.fileName("Lease: 2026/10"), "Lease  2026 10.pdf")
+        XCTAssertEqual(SharedPDF.fileName("   "), "Document.pdf")
+        XCTAssertEqual(SharedPDF.fileName(".hidden"), "hidden.pdf")
+    }
     func testAdvancedToolFamilies() {
         XCTAssertEqual(AdvancedTool.word.proFeature, .office); XCTAssertEqual(AdvancedTool.math.proFeature, .office)
         XCTAssertEqual(AdvancedTool.translate.proFeature, .translate); XCTAssertEqual(AdvancedTool.restore.proFeature, .image)

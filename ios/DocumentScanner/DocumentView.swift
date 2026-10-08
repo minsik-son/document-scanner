@@ -68,14 +68,14 @@ struct DocumentView: View {
                             Button { text = true } label: { Label("Text", systemImage: "text.viewfinder") }
                             Menu { ForEach(DocumentTool.allCases) { tool in
                                 Button(tool.rawValue + (tool.pro ? " · PRO" : "")) {
-                                    if tool.pro && !subscription.isPro { pendingTool = tool; toolPaywall = true }
-                                    else { activeTool = tool }
+                                    // Pro tools show their free-try screen first, inside the tool.
+                                    activeTool = tool
                                 }
                             } } label: { Label("Tools", systemImage: "ellipsis.circle") }.accessibilityIdentifier("document-tools")
                             Spacer()
                             Button { store.toggleFavorite(doc) } label: { Image(systemName: doc.favorite ? "star.fill" : "star").frame(width: 44, height: 44) }.accessibilityLabel(doc.favorite ? "Remove favorite" : "Favorite")
                         }.font(.headline)
-                        if let file = doc.pdfFile { ShareLink(item: store.url(file)) { Label("Share PDF", systemImage: "square.and.arrow.up") }.buttonStyle(PrimaryButton()) }
+                        if let file = doc.pdfFile { ShareLink(item: SharedPDF.url(for: store.url(file), title: doc.title)) { Label("Share PDF", systemImage: "square.and.arrow.up") }.buttonStyle(PrimaryButton()) }
                     }.padding(24)
                 }.navigationTitle(L(doc.title)).navigationBarTitleDisplayMode(.inline)
                 .toolbar(.visible, for: .navigationBar)

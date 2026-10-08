@@ -359,7 +359,7 @@ enum TranslationGlossary {
 enum SourceLanguageGuess {
     nonisolated static func detect(_ texts: [String]) -> String? {
         let joined = texts.joined(separator: "\n")
-        guard joined.filter(\.isLetter).count >= 20 else { return nil }
+        guard joined.filter(\.isLetter).count >= 12 else { return nil }
         let recognizer = NLLanguageRecognizer()
         recognizer.processString(joined)
         guard let best = recognizer.languageHypotheses(withMaximum: 3).max(by: { $0.value < $1.value }), best.value >= 0.6,

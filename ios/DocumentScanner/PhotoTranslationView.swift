@@ -273,7 +273,8 @@ struct PhotoTranslationView: View {
                     guard #available(iOS 26.0,*) else { throw ScannerError.message("Offline translation requires iOS 26 or later. You can enter translations in Review text areas.") }
                     let a = Locale.Language(identifier:source),b = Locale.Language(identifier:target)
                     guard await LanguageAvailability().status(from:a,to:b) == .installed else {
-                        throw ScannerError.message("Install these languages in Apple's Translate app, then try again. Your scan is kept here. No download was started.")
+                        TranslationLanguageGuide.present(source: source, target: target)
+                        return
                     }
                     let session = TranslationSession(installedSource:a,target:b)
                     // Keep successful batches even when one paragraph fails. Retrying only fills missing targets.
@@ -413,5 +414,60 @@ private struct TranslationLanguageList: View {
             }
         }
         .accessibilityAddTraits(code == selected ? .isSelected : [])
+    }
+}
+
+/// Shown instead of an error when the chosen languages are not downloaded yet.
+/// Translation stays fully on device: the app never downloads language models
+/// itself, so it explains where the user downloads them and keeps their work.
+struct TranslationLanguageGuide: View {
+    let source: String
+    let target: String
+    var close: () -> Void = {}
+    private func name(_ code: String) -> String {
+        Locale.current.localizedString(forIdentifier: code) ?? code
+    }
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Image(systemName: "character.bubble").font(.system(size: 40, weight: .semibold)).foregroundStyle(TK.blue)
+                    Text("Download the languages first").font(.system(size: 26, weight: .bold)).foregroundStyle(TK.grey900)
+                        .accessibilityIdentifier("translation-guide-title")
+                    Text("Translation runs offline on this iPhone, using languages you download from Apple. These aren't downloaded yet:")
+                        .font(.system(size: 16)).foregroundStyle(TK.grey700).fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach([source, target], id: \.self) { code in
+                            Label { Text(verbatim: name(code)).font(.system(size: 17, weight: .semibold)) } icon: { Image(systemName: "arrow.down.circle") }
+                        }
+                    }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(TK.grey50, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    VStack(alignment: .leading, spacing: 12) {
+                        step(1, "Open Settings, then Apps › Translate.")
+                        step(2, "Tap Downloaded Languages and download both languages.")
+                        step(3, "Come back and tap Translate again. Your scan and text stay here.")
+                    }
+                    Text("This app never downloads languages itself, and your text never leaves this iPhone.")
+                        .font(.footnote).foregroundStyle(TK.grey500).fixedSize(horizontal: false, vertical: true)
+                }.padding(24)
+            }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("OK") { close() }.accessibilityIdentifier("translation-guide-ok") } }
+        }
+    }
+    private func step(_ n: Int, _ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(verbatim: "\(n)").font(.system(size: 15, weight: .bold)).foregroundStyle(.white).frame(width: 26, height: 26).background(TK.blue, in: Circle())
+            Text(L(text)).font(.system(size: 16)).foregroundStyle(TK.grey800).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+    /// Presents the guide over whatever screen the user is on.
+    @MainActor static func present(source: String, target: String) {
+        guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first(where: { $0.activationState == .foregroundActive }) ?? UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first,
+              var top = scene.keyWindow?.rootViewController else { return }
+        while let next = top.presentedViewController { top = next }
+        weak var host: UIViewController?
+        let guide = TranslationLanguageGuide(source: source, target: target, close: { host?.dismiss(animated: true) })
+        let controller = UIHostingController(rootView: guide.environment(\.locale, AppLanguage.locale))
+        host = controller
+        top.present(controller, animated: true)
     }
 }

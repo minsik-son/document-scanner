@@ -431,3 +431,15 @@ struct SpatialToolsView: View {
     let mesh: Bool
     var body: some View { if mesh { MeshToolView() } else { MeasureToolView() } }
 }
+
+extension AdvancedTool {
+    /// Measure needs AR world tracking; 3D scan needs a LiDAR scanner. The tiles are
+    /// hidden on devices without them instead of opening into a dead end.
+    var supportedOnThisDevice: Bool {
+        switch self {
+        case .measure: return ARWorldTrackingConfiguration.isSupported
+        case .mesh: return ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh)
+        default: return true
+        }
+    }
+}

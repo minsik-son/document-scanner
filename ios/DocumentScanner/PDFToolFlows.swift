@@ -1013,7 +1013,11 @@ enum ExtractRender {
             UIColor.white.setFill(); c.fill(CGRect(origin: .zero, size: target))
             let cg = c.cgContext
             cg.translateBy(x: 0, y: target.height); cg.scaleBy(x: 1, y: -1)
-            cg.concatenate(page.getDrawingTransform(.cropBox, rect: CGRect(origin: .zero, size: target), rotate: 0, preserveAspectRatio: true))
+            // getDrawingTransform never scales a page up, so a page smaller than
+            // `target` used to come out small in one corner. Scale explicitly and
+            // let the transform only handle rotation and the crop box origin.
+            cg.scaleBy(x: target.width / size.width, y: target.height / size.height)
+            cg.concatenate(page.getDrawingTransform(.cropBox, rect: CGRect(origin: .zero, size: size), rotate: 0, preserveAspectRatio: true))
             cg.drawPDFPage(page)
         }
     }
@@ -1493,6 +1497,15 @@ enum Redaction {
         var kind: String
         var on = true
     }
+    /// The one mapping from a normalized box (origin top-left) to a frame on
+    /// screen or on the page picture. The preview and the saved copy both use it.
+    nonisolated static func place(_ r: CGRect, in frame: CGRect) -> CGRect {
+        CGRect(x: frame.minX + r.minX * frame.width, y: frame.minY + r.minY * frame.height,
+               width: r.width * frame.width, height: r.height * frame.height)
+    }
+    /// Labels whose value is a personal number even without a known format
+    /// ("Insurance member ID: RFC 4418 2209 7731"). Found boxes stay tappable.
+    private static let memberLabel = #"\b(id|member|membership|policy|account|acct|customer|subscriber|patient)\b|계좌|회원번호|회원 번호|보험|고객번호|가입자|증권번호|환자번호"#
     private static let accountWords = ["account", "acct", "a/c", "bank", "transit", "routing", "iban", "swift", "계좌", "은행", "예금주", "입금"]
     private static let passportWords = ["passport", "여권"]
     private static let licenceWords = ["licence", "license", "driver", "운전면허", "면허번호"]
@@ -1575,7 +1588,21 @@ enum Redaction {
             regex(#"(?<!\d)\d[\d -]{5,}\d(?!\d)"#, "Account number") { $0.filter(\.isNumber).count >= 7 }
         }
         for r in PhoneCheck.find(in: text, context: context) { add("Phone", r) }
+        // A labelled value with at least four digits ("member ID: RFC 4418 2209 7731").
+        if ctx.range(of: memberLabel, options: .regularExpression) != nil {
+            regex(#"(?<![\w/.:-])(?:[A-Z]{1,4}[ -]?)?\d[\dA-Z -]*\d(?![\w/.:-])"#, "ID number", caseless: false) { s in
+                let digits = s.filter(\.isNumber).count
+                return digits >= 4 && !isDateOrAmount(s)
+            }
+        }
         return out
+    }
+    /// Dates, times, years and money are never personal numbers.
+    nonisolated static func isDateOrAmount(_ s: String) -> Bool {
+        let t = s.trimmingCharacters(in: .whitespaces)
+        if t.range(of: #"^\d{1,4}[./-]\d{1,2}[./-]\d{1,4}$"#, options: .regularExpression) != nil { return true }
+        if t.range(of: #"^(19|20)\d{2}$"#, options: .regularExpression) != nil { return true }
+        return false
     }
     nonisolated static func luhn(_ digits: String, lengths: ClosedRange<Int> = 13...19) -> Bool {
         guard lengths.contains(digits.count) else { return false }
@@ -1635,9 +1662,7 @@ enum Redaction {
                 let redacted = UIGraphicsImageRenderer(size: image.size, format: { let f = UIGraphicsImageRendererFormat(); f.scale = 1; f.opaque = true; return f }()).image { c in
                     image.draw(at: .zero)
                     UIColor.black.setFill()
-                    for r in boxes[i] ?? [] {
-                        c.fill(CGRect(x: r.minX * image.size.width, y: r.minY * image.size.height, width: r.width * image.size.width, height: r.height * image.size.height))
-                    }
+                    for r in boxes[i] ?? [] { c.fill(place(r, in: CGRect(origin: .zero, size: image.size))) }
                 }
                 guard let jpeg = redacted.jpegData(compressionQuality: 0.85), let provider = CGDataProvider(data: jpeg as CFData),
                       let cg = CGImage(jpegDataProviderSource: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent) else { throw ScannerError.message("The redacted PDF couldn't be made.") }
@@ -1709,7 +1734,7 @@ struct RedactTool: View {
                     ZStack(alignment: .topLeading) {
                         Image(uiImage: image).resizable().frame(width: fit.width, height: fit.height).position(x: fit.midX, y: fit.midY)
                         ForEach(boxes[page] ?? []) { box in
-                            let r = CGRect(x: fit.minX + box.rect.minX * fit.width, y: fit.minY + box.rect.minY * fit.height, width: box.rect.width * fit.width, height: box.rect.height * fit.height)
+                            let r = Redaction.place(box.rect, in: fit)
                             Group {
                                 if box.on { Rectangle().fill(.black) }
                                 else { Rectangle().strokeBorder(TK.red, style: StrokeStyle(lineWidth: 1.5, dash: [4])) }

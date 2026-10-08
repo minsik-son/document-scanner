@@ -50,6 +50,11 @@ struct DocumentScannerApp: App {
 #endif
                 await prepareFirstScreen()
 #if DEBUG
+                // Store screenshots and UI tests: add sample photos (host file paths) as saved documents.
+                let args = ProcessInfo.processInfo.arguments
+                for (i, arg) in args.enumerated() where arg == "--seed-image" && i + 1 < args.count {
+                    if let store { await DebugSeed.add(URL(fileURLWithPath: args[i + 1]), to: store) }
+                }
                 // Screenshot of the missing-language guide for App Review notes.
                 if ProcessInfo.processInfo.arguments.contains("--preview-translation-guide") {
                     try? await Task.sleep(for: .seconds(2))
@@ -361,3 +366,22 @@ final class Localizer {
         return result.sorted { $0.weight > $1.weight }
     }
 }
+
+#if DEBUG
+/// Debug builds only: turns a photo into a saved letter-size document, as an
+/// imported photo would be, so UI tests and store screenshots use real samples.
+enum DebugSeed {
+    @MainActor static func add(_ url: URL, to store: LibraryStore) async {
+        let title = url.deletingPathExtension().lastPathComponent
+        guard !store.active.contains(where: { $0.title == title }), let image = UIImage(contentsOfFile: url.path) else { return }
+        let page = CGRect(x: 0, y: 0, width: 612, height: 792)
+        let data = UIGraphicsPDFRenderer(bounds: page).pdfData { c in
+            c.beginPage()
+            let s = min(page.width / image.size.width, page.height / image.size.height)
+            let w = image.size.width * s, h = image.size.height * s
+            image.draw(in: CGRect(x: (page.width - w) / 2, y: (page.height - h) / 2, width: w, height: h))
+        }
+        _ = try? await store.saveGeneratedPDF(data, title: title)
+    }
+}
+#endif

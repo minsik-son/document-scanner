@@ -79,7 +79,7 @@ change to an existing one must follow it. Code lives in `ToolKit.swift`
 ## 7. Current status (2026-10-05)
 
 Follows the system:
-- Photo tools in `ImageToolFlows.swift`: Book pages, ID photo, Smart erase, Remove colored marks, Restore photo, Mega scan, Count objects.
+- Photo tools in `ImageToolFlows.swift`: Book pages, ID photo, Spot eraser, Remove colored marks, Restore photo, Mega scan, Count objects.
 - PDF tools in `PDFToolFlows.swift`: Merge, Split, Extract, Reorder, Compress, Protect, Export images, Print, Watermark, Timestamp, Long image.
 - Photo translation, Word / Excel export, PowerPoint export, Math scan, ID card layout, Sign & annotate (+ signature), Measure / 3D scan, OCR text editor, Excel/Word cell editors, Trim margins.
 

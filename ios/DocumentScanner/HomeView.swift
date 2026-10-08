@@ -48,7 +48,7 @@ struct HomeView: View {
         NavigationStack {
             List {
                 VStack(alignment: .leading, spacing: 18) {
-                    // Like CamScanner and Alarmy: no screen title. Pro sits top left
+                    // Like many utility apps: no screen title. Pro sits top left
                     // (Get PRO, trial countdown or a crown), Import top right, search below.
                     HStack(spacing: 10) {
                         ProHeaderBadge(openPaywall: { paywall = true }, openMembership: { settings = true })

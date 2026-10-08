@@ -5,7 +5,7 @@ Project: DocumentScanner.xcodeproj; scheme: DocumentScanner.
 DerivedData: /private/tmp/DocumentScannerBuild. Signing disabled for simulator tests.
 
 Scope: eight on-device additions. No new server, external AI endpoint or model download.
-CamScanner observation scope and limitations: ../../CAMSCANNER-LOCAL-TOOLS.md.
+Competitor app A observation scope and limitations: ../../competitor-tool-survey.md.
 
 43 distinct unit tests and 5 distinct UI tests passed across the targeted runs below.
 This is a combined count of distinct tests, not a claim that the full application suite
@@ -43,7 +43,7 @@ only in DEBUG with a valid UUID test-session flag. StoreKitTest supplies a local
 entitlement for the paid document tools. No actual purchase or outbound share occurred.
 
 Limitations:
-- CamScanner camera access was unavailable through iPhone Mirroring. Its ID guide,
+- Competitor app A camera access was unavailable through iPhone Mirroring. Its ID guide,
   timestamp intro and PDF-to-long-image preview were observed; internal algorithms
   and server use were not reverse engineered.
 - Simulator camera inputs are fixtures; live capture/QR reading, glare-heavy boards,

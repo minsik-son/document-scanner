@@ -75,7 +75,7 @@ struct CheckScanQuality {
         if args.count == 4 {
             let referenceURL = URL(fileURLWithPath: args[3])
             guard let image = NSImage(contentsOf: referenceURL), let reference = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { throw ScannerError.message("The reference image couldn't be opened.") }
-            images.append((reference, "CamScanner · reference"))
+            images.append((reference, "Competitor app A · reference"))
         }
         let width = 720.0, height = 1000.0
         let comparison = NSImage(size: NSSize(width: width*Double(images.count), height: height+50))

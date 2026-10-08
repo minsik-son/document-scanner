@@ -48,7 +48,7 @@ enum ImageToolEngine {
         return UIImage(cgImage: cg)
     }
 
-    // MARK: Smart erase
+    // MARK: Spot eraser
 
     /// A brush stroke in normalized image coordinates; width is a fraction of the image width.
     struct Stroke: Equatable {

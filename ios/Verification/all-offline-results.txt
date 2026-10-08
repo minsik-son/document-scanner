@@ -60,7 +60,7 @@ Not physically verified:
 - Strict translation requires iOS 26 and installed language resources, and uses
   installedSource without downloads. iOS 18 remains the app minimum for other tools.
 - These tools implement the documented local subset. No claim of complete
-  CamScanner algorithm parity, generative restoration, generic semantic counting,
+  Competitor app A algorithm parity, generative restoration, generic semantic counting,
   arbitrary automatic dewarping, or AI word-problem solving.
 - No actual purchase, outbound message, physical-phone installation, or deployment.
 

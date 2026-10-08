@@ -679,7 +679,7 @@ private struct PortraitTool: View {
     }
 }
 
-// MARK: - Smart erase
+// MARK: - Spot eraser
 
 private struct EraseTool: View {
     var fingers = false
@@ -775,7 +775,7 @@ private struct EraseTool: View {
 
 /// Photo canvas for painting what to erase: pinch or buttons to zoom up to 6x,
 /// Move mode to pan, and a brush that keeps its on-screen size so zoomed
-/// strokes are finer. Used by Smart erase and the page editor.
+/// strokes are finer. Used by Spot eraser and the page editor.
 struct ErasePainter: View {
     let image: UIImage
     @Binding var strokes: [ImageToolEngine.Stroke]

@@ -48,7 +48,7 @@ final class ToolDirectoryDesignTests: XCTestCase {
         app.buttons["Cancel"].tap()
         app.buttons["nav-tools"].tap()
         XCTAssertTrue(app.textFields["tool-search"].waitForExistence(timeout: 5))
-        app.navigationBars.buttons["Close"].tap()
+        app.buttons["Close"].firstMatch.tap()
         app.buttons["nav-settings"].tap()
         XCTAssertTrue(app.navigationBars.buttons["Done"].waitForExistence(timeout: 5))
         app.navigationBars.buttons["Done"].tap()

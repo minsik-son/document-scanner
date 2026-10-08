@@ -8,10 +8,10 @@ import UniformTypeIdentifiers
 
 enum AdvancedTool:String,Identifiable,CaseIterable {
     case word = "Word export", excel = "Excel export", slides = "PowerPoint export", translate = "Photo translation"
-    case book = "Book pages", portrait = "ID photo", erase = "Smart erase", marks = "Remove colored marks", restore = "Restore photo"
+    case book = "Book pages", portrait = "ID photo", erase = "Spot eraser", marks = "Remove colored marks", restore = "Restore photo"
     case mega = "Mega scan", count = "Count objects", measure = "Measure", mesh = "3D scan", math = "Math scan"
     var id:String { rawValue }
-    /// Hidden for now (too close to CamScanner); the code stays for a later update.
+    /// Hidden for now; the code stays for a later update.
     var hidden:Bool { self == .count }
     var office:Bool { [.word,.excel,.slides].contains(self) }
     var textTool:Bool { [.word,.excel,.translate,.math].contains(self) }
@@ -47,17 +47,18 @@ struct AdvancedOfflineHub: View {
     @State private var query = ""
     @State private var quick: QuickTool?
     @State private var capture: ScanRoute?
+    @State private var unsupported: AdvancedTool?
     var documentID: UUID? = nil
     private var columns: [GridItem] { Array(repeating: GridItem(.flexible(), spacing: 8), count: typeSize.isAccessibilitySize ? 2 : 4) }
     private func matches(_ title: String) -> Bool { query.isEmpty || title.localizedCaseInsensitiveContains(query) }
     private var hasMatches: Bool {
-        (AdvancedTool.allCases.filter { !$0.hidden }.map(\.rawValue) + LibraryTool.allCases.map(\.rawValue) + ["QR code", "Stitch screenshots", "Scan document", "Whiteboard", "ID card"] + SmartTool.allCases.map(\.title)).contains { matches($0) }
+        ToolSection.all.contains { section in section.entries.contains { $0.available && (matches($0.title) || $0.keywords.contains(where: matches)) } }
     }
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    // No large title: close and search share the top row, as in CamScanner's tools.
+                    // No large title: close and search share the top row, a common pattern in scanner apps.
                     HStack(spacing: 10) {
                         Button { dismiss() } label: {
                             Image(systemName: "xmark").font(.system(size: 17, weight: .semibold)).foregroundStyle(Design.ink)
@@ -79,38 +80,17 @@ struct AdvancedOfflineHub: View {
                         }
                         .foregroundStyle(.white).padding(.horizontal, 4).padding(.top, -8)
                     }
-                    if query.isEmpty {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Everyday essentials").font(.headline)
-                            LazyVGrid(columns: columns, spacing: 12) {
-                                Button { startScan(.document) } label: { ToolTile(title: "Scan document", icon: "scan") }
-                                Button { quick = .qr } label: { ToolTile(title: "QR code", icon: "qr") }.accessibilityLabel("QR code")
-                                Button { quick = .stitch } label: { ToolTile(title: "Stitch screenshots", icon: "stitch") }.accessibilityLabel("Stitch screenshots")
-                                Button { startScan(.whiteboard) } label: { ToolTile(title: "Whiteboard", icon: "whiteboard") }
-                                Button { quick = .library(.identity) } label: { ToolTile(title: "ID scan", icon: "identity") }.accessibilityIdentifier("id-scan-tool")
+                    // Sections follow what the user is trying to get done.
+                    ForEach(Array(ToolSection.all.enumerated()), id: \.offset) { index, section in
+                        toolSection(section)
+                        if index == 1 && query.isEmpty {
+                            // Free users: one native ad card mid-page, styled like Home's. Nothing until it loads.
+                            HomeAdvertisementSlot(homeUncovered: quick == nil && capture == nil && !paywall && smartRoute == nil && advancedRoute == nil, reserveSpace: false) {
+                                EmptyView()
                             }
-                        }.padding(20).background(.white, in: RoundedRectangle(cornerRadius: 26))
-                    } else {
-                        LazyVGrid(columns: columns, spacing: 12) {
-                            if matches("QR code") { Button { quick = .qr } label: { ToolTile(title: "QR code", icon: "qr") } }
-                            if matches("Stitch screenshots") { Button { quick = .stitch } label: { ToolTile(title: "Stitch screenshots", icon: "stitch") } }
-                            if matches("Scan document") { Button { startScan(.document) } label: { ToolTile(title: "Scan document", icon: "scan") } }
-                            if matches("ID scan") || matches("ID card") { Button { quick = .library(.identity) } label: { ToolTile(title: "ID scan", icon: "identity") }.accessibilityIdentifier("id-scan-tool") }
-                            if matches("Whiteboard") { Button { startScan(.whiteboard) } label: { ToolTile(title: "Whiteboard", icon: "whiteboard") } }
+                            .environmentObject(toolAds)
                         }
                     }
-                    smartSection
-                    advancedSection("Convert & read", tools: [.word, .excel, .slides, .translate, .math])
-                    advancedSection("Edit images", tools: [.book, .portrait, .erase, .marks, .restore, .mega, .count])
-                    if query.isEmpty {
-                        // Free users: one native ad card mid-page, styled like Home's. Nothing until it loads.
-                        HomeAdvertisementSlot(homeUncovered: quick == nil && capture == nil && !paywall && smartRoute == nil && advancedRoute == nil, reserveSpace: false) {
-                            EmptyView()
-                        }
-                        .environmentObject(toolAds)
-                    }
-                    librarySection("PDF tools", tools: [.ocr, .annotate, .watermark, .timestamp, .merge, .split, .extract, .reorder, .compress, .protect, .images, .longImage, .print])
-                    advancedSection("Camera utilities", tools: [.measure, .mesh])
                     if !hasMatches { ContentUnavailableView("No tools found", systemImage: "magnifyingglass", description: Text("Try another tool name.")) }
                     Label("Processed on this iPhone", systemImage: "iphone").font(.footnote).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.vertical, 8)
                 }.padding(.horizontal, 20).padding(.top, 4).padding(.bottom, 20)
@@ -128,47 +108,39 @@ struct AdvancedOfflineHub: View {
                 }
                 .fullScreenCover(item: $capture, onDismiss: { store.perform { try store.discardEmptyDrafts() } }) { ReviewView(documentID: $0.id, captureOnOpen: true) }
                 .alert("Something needs attention", isPresented: Binding(get: { store.problem != nil }, set: { if !$0 { store.problem = nil } })) { Button("OK") { store.problem = nil } } message: { Text(store.problem ?? "") }
+                .alert("Requires iOS 26", isPresented: Binding(get: { unsupported != nil }, set: { if !$0 { unsupported = nil } })) { Button("OK") { unsupported = nil } } message: {
+                    Text("Photo translation uses Apple's on-device translation, available on iOS 26 or later. Update iOS to use it.")
+                }
         }
     }
-    @ViewBuilder private var smartSection: some View {
-        let visible = SmartTool.allCases.filter { $0.shown && matches($0.title) }
+    @ViewBuilder private func toolSection(_ section: ToolSection) -> some View {
+        let visible = section.entries.filter { $0.available && (matches($0.title) || $0.keywords.contains(where: matches)) }
         if !visible.isEmpty {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Smart tools").font(.headline)
+                Text(L(section.title)).font(.headline).accessibilityIdentifier("tool-section-" + section.id)
                 LazyVGrid(columns: columns, spacing: 16) {
-                    ForEach(visible) { tool in
-                        Button { if tool.proFeature == nil && locked(tool.pro) { paywall = true } else { smartRoute = tool } } label: { ToolTile(title: tool.title, icon: tool.icon, pro: tool.pro, feature: tool.proFeature) }
-                            .accessibilityIdentifier("smart-tool-" + tool.rawValue)
-                    }
+                    ForEach(visible) { entry in tile(entry) }
                 }
             }.padding(20).background(.white, in: RoundedRectangle(cornerRadius: 26))
         }
     }
-    @ViewBuilder private func advancedSection(_ title: String, tools: [AdvancedTool]) -> some View {
-        let visible = tools.filter { !$0.hidden && matches($0.rawValue) }
-        if !visible.isEmpty {
-            VStack(alignment: .leading, spacing: 16) {
-                Text(L(title)).font(.headline)
-                LazyVGrid(columns: columns, spacing: 16) {
-                    ForEach(visible) { tool in
-                        Button { advancedRoute = tool } label: { ToolTile(title: tool.rawValue, icon: tool.icon, pro: tool.pro, feature: tool.proFeature) }.accessibilityLabel(tool.rawValue)
-                    }
-                }
-            }.padding(20).background(.white, in: RoundedRectangle(cornerRadius: 26))
-        }
-    }
-    @ViewBuilder private func librarySection(_ title: String, tools: [LibraryTool]) -> some View {
-        let visible = tools.filter { matches($0.rawValue) }
-        if !visible.isEmpty {
-            VStack(alignment: .leading, spacing: 16) {
-                Text(L(title)).font(.headline)
-                LazyVGrid(columns: columns, spacing: 16) {
-                    ForEach(visible) { tool in
-                        Button { quick = .library(tool) } label: { ToolTile(title: tool.rawValue, icon: tool.icon, pro: tool.pro, feature: tool.proFeature) }
-                            .accessibilityLabel(tool.rawValue + (tool.pro ? ", Pro" : ""))
-                    }
-                }
-            }.padding(20).background(.white, in: RoundedRectangle(cornerRadius: 26))
+    @ViewBuilder private func tile(_ entry: ToolEntry) -> some View {
+        switch entry {
+        case .scan: Button { startScan(.document) } label: { ToolTile(title: entry.title, icon: "scan") }
+        case .whiteboard: Button { startScan(.whiteboard) } label: { ToolTile(title: entry.title, icon: "whiteboard") }
+        case .qr: Button { quick = .qr } label: { ToolTile(title: entry.title, icon: "qr") }.accessibilityLabel("QR code")
+        case .stitch: Button { quick = .stitch } label: { ToolTile(title: entry.title, icon: "stitch") }.accessibilityLabel("Stitch screenshots")
+        case .library(let tool):
+            Button { quick = .library(tool) } label: { ToolTile(title: tool.rawValue, icon: tool.icon, pro: tool.pro, feature: tool.proFeature) }
+                .accessibilityLabel(tool.rawValue + (tool.pro ? ", Pro" : ""))
+                .accessibilityIdentifier(tool == .identity ? "id-scan-tool" : "library-tool-" + tool.icon)
+        case .advanced(let tool):
+            Button {
+                if tool == .translate && !PhotoTranslationSupport.available { unsupported = tool } else { advancedRoute = tool }
+            } label: { ToolTile(title: tool.rawValue, icon: tool.icon, pro: tool.pro, feature: tool.proFeature) }.accessibilityLabel(tool.rawValue)
+        case .smart(let tool):
+            Button { if tool.proFeature == nil && locked(tool.pro) { paywall = true } else { smartRoute = tool } } label: { ToolTile(title: tool.title, icon: tool.icon, pro: tool.pro, feature: tool.proFeature) }
+                .accessibilityIdentifier("smart-tool-" + tool.rawValue)
         }
     }
     /// Pro tools without a free try (Auto-save) open the subscription page for free users.
@@ -197,6 +169,15 @@ struct AdvancedOfflineToolView:View {
     let tool:AdvancedTool
     var documentID:UUID?
     var body:some View {
+        if tool == .translate && !PhotoTranslationSupport.available {
+            // Before any free try is used: this iPhone cannot run Apple's translation.
+            ContentUnavailableView("Requires iOS 26", systemImage: "character.bubble",
+                                   description: Text("Photo translation uses Apple's on-device translation, available on iOS 26 or later. Update iOS to use it."))
+        } else {
+            gate
+        }
+    }
+    private var gate: some View {
         ProTrialGate(feature: tool.proFeature, title: tool.rawValue, detail: tool.detail, art: tool.art) {
             if tool.imageTool {
                 ImageToolFlow(tool:tool, documentID:documentID)
@@ -742,7 +723,7 @@ struct AdvancedOfflineToolContent:View {
                 if from == to { translated = body;return }
                 guard #available(iOS 26.0,*) else { throw ScannerError.message("Strict offline translation requires iOS 26 or later.") }
                 let sourceLanguage = Locale.Language(identifier:from),target = Locale.Language(identifier:to)
-                guard await LanguageAvailability().status(from:sourceLanguage,to:target) == .installed else { throw ScannerError.message("These languages are not installed. Install them in Apple's Translate app separately, then return here. No download was started.") }
+                guard await LanguageAvailability().status(from:sourceLanguage,to:target) == .installed else { TranslationLanguageGuide.present(source: from, target: to); return }
                 let session = TranslationSession(installedSource:sourceLanguage,target:target)
                 let result = try await session.translate(body).targetText;try Task.checkCancellation();translated = result;return
             }
@@ -1265,7 +1246,8 @@ struct CameraTextToolView: View {
                 else {
                     let a = Locale.Language(identifier:source), b = Locale.Language(identifier:target)
                     guard await LanguageAvailability().status(from:a,to:b) == .installed else {
-                        throw ScannerError.message("Install these languages in Apple's Translate app, then return and try again. No download was started.")
+                        TranslationLanguageGuide.present(source: source, target: target)
+                        return
                     }
                     let session = TranslationSession(installedSource:a,target:b)
                     result = try await session.translate(body).targetText

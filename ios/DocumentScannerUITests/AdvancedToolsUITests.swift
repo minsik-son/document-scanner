@@ -22,7 +22,7 @@ final class AdvancedToolsUITests:XCTestCase {
         let session = UUID().uuidString
         func open() -> XCUIApplication {
             let app = XCUIApplication();app.launchArguments = ["--ui-test-session",session,"--test-pro-gate"];app.launch()
-            app.buttons["home-tools"].tap();XCTAssertTrue(app.buttons["Word export"].waitForExistence(timeout:5));app.buttons["Word export"].tap()
+            app.buttons["home-tools"].tap();XCTAssertTrue(app.tool("Word export").waitForExistence(timeout:5));app.tool("Word export").tap()
             return app
         }
         // From the Tools tab a free user gets the free-try screen, not the paywall; Try free is the main button.
@@ -64,30 +64,31 @@ final class AdvancedToolsUITests:XCTestCase {
             let entry = home.buttons["home-tools"]
             XCTAssertTrue(entry.waitForExistence(timeout:5));XCTAssertTrue(entry.isHittable,"Tools must be visible without scrolling or opening a menu")
             let screenshot = XCTAttachment(screenshot:home.screenshot());screenshot.name = populated ? "Home tools with documents" : "Home tools empty library";screenshot.lifetime = .keepAlways;add(screenshot)
-            entry.tap();XCTAssertTrue(home.buttons["Word export"].waitForExistence(timeout:5));XCTAssertTrue(home.buttons["QR code"].exists)
+            entry.tap();XCTAssertTrue(home.textFields["tool-search"].waitForExistence(timeout:5));XCTAssertTrue(home.tool("Word export").exists);XCTAssertTrue(home.tool("QR code").exists)
             home.buttons["Close"].tap();XCTAssertTrue(home.buttons["home-tools"].isHittable);home.terminate()
         }
         let app = launch()
-        for label in ["Word export","Excel export","PowerPoint export","Photo translation","Math scan","Book pages","ID photo","Smart erase","Remove colored marks","Restore photo","Mega scan","Count objects","Measure","3D scan"] {
-            let item = app.buttons[label]
-            for _ in 0..<6 where !item.isHittable { app.swipeUp() }
-            XCTAssertTrue(item.exists,"Missing \(label)")
+        // In page order: Fix a page, Turn it into, Capture more.
+        for label in ["Spot eraser","Remove colored marks","Restore photo","Book pages","Word export","Excel export","PowerPoint export","Photo translation","Math scan","ID photo","Mega scan"] {
+            XCTAssertTrue(app.tool(label).exists,"Missing \(label)")
         }
-        app.buttons["3D scan"].tap();XCTAssertTrue(app.staticTexts["LiDAR required"].waitForExistence(timeout:5))
-        let shot = XCTAttachment(screenshot:app.screenshot());shot.name = "3D device capability";shot.lifetime = .keepAlways;add(shot)
+        // Count objects stays hidden. Measure and 3D scan appear only where the device has
+        // AR and LiDAR, so the simulator never offers a tool it cannot run.
+        XCTAssertFalse(app.buttons["Count objects"].exists)
+        let shot = XCTAttachment(screenshot:app.screenshot());shot.name = "Tools sections";shot.lifetime = .keepAlways;add(shot)
     }
     @MainActor func testLocalMathAndEditableWordExport() {
-        let app = launch();app.buttons["Math scan"].tap()
+        let app = launch();app.tool("Math scan").tap()
         XCTAssertTrue(app.buttons["text-tool-capture"].waitForExistence(timeout:5))
         app.buttons["text-tool-more"].tap();app.buttons["Type expression"].tap()
         let editor = app.textViews["offline-text"]
         for _ in 0..<4 where !editor.isHittable { app.swipeUp() }
         editor.tap();editor.typeText("sqrt(81)+2^3")
         app.buttons["offline-run"].tap()
-        XCTAssertTrue(app.staticTexts["17.0"].waitForExistence(timeout:5))
+        XCTAssertTrue(app.staticTexts["17"].waitForExistence(timeout:5))
         app.buttons["Close"].tap()
         for _ in 0..<6 where !app.buttons["Word export"].isHittable { app.swipeDown() }
-        app.buttons["Word export"].tap()
+        app.tool("Word export").tap()
         XCTAssertFalse(app.buttons["offline-run"].exists)
         XCTAssertFalse(app.buttons["word-extract"].isEnabled)
         app.swipeUp()
@@ -103,7 +104,7 @@ final class AdvancedToolsUITests:XCTestCase {
     @MainActor func testCameraFirstMathRecognizesReviewsAndReturnsWithoutSaving() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-session",UUID().uuidString,"--simulate-camera"]
-        app.launch();app.buttons["home-tools"].tap();app.buttons["Math scan"].tap()
+        app.launch();app.buttons["home-tools"].tap();app.tool("Math scan").tap()
         XCTAssertTrue(app.buttons["text-tool-capture"].waitForExistence(timeout:5))
         XCTAssertFalse(app.textViews["offline-text"].exists)
         XCTAssertFalse(app.buttons["offline-run"].exists)
@@ -148,7 +149,7 @@ final class AdvancedToolsUITests:XCTestCase {
     @MainActor func testCameraFirstTranslationKeepsReviewAndLanguageSetupSeparate() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-session",UUID().uuidString,"--simulate-camera"]
-        app.launch();app.buttons["home-tools"].tap();app.buttons["Photo translation"].tap()
+        app.launch();app.buttons["home-tools"].tap();app.tool("Photo translation").tap()
         XCTAssertTrue(app.buttons["text-tool-capture"].waitForExistence(timeout:5))
         XCTAssertFalse(app.textViews["offline-text"].exists)
         app.buttons["text-tool-capture"].tap()
@@ -169,7 +170,7 @@ final class AdvancedToolsUITests:XCTestCase {
     }
     @MainActor func testPhotoTranslationManualCorrectionRebuildsPageAndSharesPDF() {
         let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"--simulate-camera"]
-        app.launch();app.buttons["home-tools"].tap();app.buttons["Photo translation"].tap()
+        app.launch();app.buttons["home-tools"].tap();app.tool("Photo translation").tap()
         app.buttons["text-tool-capture"].tap()
         XCTAssertTrue(app.buttons["translation-edit-areas"].waitForExistence(timeout:45))
         for _ in 0..<3 where !app.buttons["translation-edit-areas"].isHittable { app.swipeUp() }
@@ -190,7 +191,7 @@ final class AdvancedToolsUITests:XCTestCase {
     }
     @MainActor func testPhotoTranslationUnplacedTextCanBeReviewedAndCopied() {
         let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"--simulate-camera"]
-        app.launch();app.buttons["home-tools"].tap();app.buttons["Photo translation"].tap()
+        app.launch();app.buttons["home-tools"].tap();app.tool("Photo translation").tap()
         app.buttons["text-tool-capture"].tap()
         XCTAssertTrue(app.buttons["translation-edit-areas"].waitForExistence(timeout:45))
         app.buttons["translation-edit-areas"].tap()
@@ -218,7 +219,7 @@ final class AdvancedToolsUITests:XCTestCase {
         attachment.name = name;attachment.lifetime = .keepAlways;add(attachment)
     }
     @MainActor func testEditingTextInvalidatesPreparedOfficeFile() {
-        let app = launch();app.buttons["Word export"].tap()
+        let app = launch();app.tool("Word export").tap()
         app.swipeUp()
         app.buttons["word-type-text"].tap()
         let editor = app.textViews["offline-text"]
@@ -233,7 +234,7 @@ final class AdvancedToolsUITests:XCTestCase {
     }
     @MainActor func testWordCameraShowsEachPageBeforeContinuing() {
         let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"--simulate-camera"];app.launch()
-        app.buttons["home-tools"].tap();ready(app.buttons["Word export"]);app.buttons["Word export"].tap()
+        app.buttons["home-tools"].tap();ready(app.tool("Word export"));app.tool("Word export").tap()
         ready(app.buttons["word-camera"]);app.buttons["word-camera"].tap()
         // Each shot is shown for checking before scanning more or continuing.
         ready(app.buttons["Capture page"]);app.buttons["Capture page"].tap()
@@ -247,7 +248,7 @@ final class AdvancedToolsUITests:XCTestCase {
         XCTAssertFalse(app.buttons["Capture page"].exists)
     }
     @MainActor func testWordPDFExportHasOnePrimaryActionPerStep() {
-        let app = launch(document:true);app.buttons["Word export"].tap()
+        let app = launch(document:true);app.tool("Word export").tap()
         ready(app.buttons["word-extract"])
         XCTAssertTrue(app.buttons["word-input-preview"].exists)
         XCTAssertTrue(app.buttons["word-camera"].exists)
@@ -282,7 +283,7 @@ final class AdvancedToolsUITests:XCTestCase {
         XCTAssertTrue(app.cells["Save to Files"].exists)
     }
     @MainActor func testWordReviewShowsTablesWithEditableCells() {
-        let app = launch(document:true,table:true);app.buttons["Word export"].tap()
+        let app = launch(document:true,table:true);app.tool("Word export").tap()
         ready(app.buttons["word-extract"]);app.buttons["word-extract"].tap();ready(app.buttons["offline-run"])
         let header = app.buttons["word-cell-0-0"]
         XCTAssertTrue(header.waitForExistence(timeout:5),"Tables are shown as tables")
@@ -302,7 +303,7 @@ final class AdvancedToolsUITests:XCTestCase {
         app.buttons["offline-run"].tap();closePreview(app);ready(app.buttons["word-share"])
     }
     @MainActor func testPowerPointMultiplePagesOrderRemovalAndExport() {
-        let app = launch(document:true);app.buttons["PowerPoint export"].tap()
+        let app = launch(document:true);app.tool("PowerPoint export").tap()
         ready(app.buttons["office-continue"])
         XCTAssertTrue(app.staticTexts["ppt-source-1"].label.contains("Page 1"))
         XCTAssertTrue(app.staticTexts["ppt-source-2"].label.contains("Page 2"))
@@ -330,7 +331,7 @@ final class AdvancedToolsUITests:XCTestCase {
         XCTAssertTrue(app.cells["Save to Files"].exists)
     }
     @MainActor func testPowerPointEmptySelectionAndMultiPagePicker() {
-        let app = launch(document:true);app.buttons["PowerPoint export"].tap()
+        let app = launch(document:true);app.tool("PowerPoint export").tap()
         ready(app.buttons["office-continue"])
         for _ in 0..<2 { app.buttons["ppt-options-1"].tap();app.buttons["Remove slide"].tap() }
         XCTAssertFalse(app.buttons["office-continue"].isEnabled)
@@ -343,7 +344,7 @@ final class AdvancedToolsUITests:XCTestCase {
         XCTAssertTrue(app.staticTexts["ppt-source-2"].label.contains("Page 1"))
     }
     @MainActor func testExcelReviewCellsBeforeExport() {
-        let app = launch(document:true,table:true);app.buttons["Excel export"].tap()
+        let app = launch(document:true,table:true);app.tool("Excel export").tap()
         ready(app.buttons["office-continue"])
         XCTAssertFalse(app.buttons["ppt-create"].exists)
         app.buttons["office-continue"].tap()
@@ -366,7 +367,7 @@ final class AdvancedToolsUITests:XCTestCase {
         XCTAssertFalse(app.buttons["ppt-share"].exists)
     }
     @MainActor func testPowerPointEditableTextSteps() {
-        let app = launch(document:true);app.buttons["PowerPoint export"].tap()
+        let app = launch(document:true);app.tool("PowerPoint export").tap()
         app.buttons["office-continue"].tap()
         XCTAssertFalse(app.buttons["ppt-photos"].exists)
         app.buttons["ppt-mode-text"].tap();app.buttons["office-extract"].tap()
@@ -422,25 +423,25 @@ final class AdvancedToolsUITests:XCTestCase {
     @MainActor func testDesignSystemScreens() throws {
         guard ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] != nil else { throw XCTSkip("Developer Mac only.") }
         // Word: source, review, ready.
-        var app = launch(document:true);app.buttons["Word export"].tap()
+        var app = launch(document:true);app.tool("Word export").tap()
         ready(app.buttons["word-extract"]);designShot(app,"word-1-source")
         app.buttons["word-extract"].tap();ready(app.buttons["offline-run"]);designShot(app,"word-2-review")
         app.buttons["offline-run"].tap();closePreview(app);ready(app.buttons["word-share"]);designShot(app,"word-3-ready")
         app.terminate()
         // PowerPoint: pages, look, ready.
-        app = launch(document:true);app.buttons["PowerPoint export"].tap()
+        app = launch(document:true);app.tool("PowerPoint export").tap()
         ready(app.buttons["office-continue"]);designShot(app,"ppt-1-pages")
         app.buttons["office-continue"].tap();ready(app.buttons["ppt-create"]);designShot(app,"ppt-2-look")
         app.buttons["ppt-create"].tap();closePreview(app);ready(app.buttons["ppt-share"]);designShot(app,"ppt-3-ready")
         app.terminate()
         // Excel: check cells.
-        app = launch(document:true,table:true);app.buttons["Excel export"].tap()
+        app = launch(document:true,table:true);app.tool("Excel export").tap()
         ready(app.buttons["office-continue"]);app.buttons["office-continue"].tap()
         XCTAssertTrue(app.buttons["excel-cell-0-0"].waitForExistence(timeout:60));designShot(app,"excel-2-review")
         app.terminate()
         // Photo translation: camera, language, result.
         app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"--simulate-camera"]
-        app.launch();app.buttons["home-tools"].tap();app.buttons["Photo translation"].tap()
+        app.launch();app.buttons["home-tools"].tap();app.tool("Photo translation").tap()
         XCTAssertTrue(app.buttons["text-tool-capture"].waitForExistence(timeout:5));designShot(app,"translate-0-camera")
         app.buttons["text-tool-capture"].tap()
         XCTAssertTrue(app.buttons["translation-run"].waitForExistence(timeout:45));designShot(app,"translate-1-language")
@@ -452,12 +453,22 @@ final class AdvancedToolsUITests:XCTestCase {
         app.terminate()
         // Math: corrected scan and text.
         app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"--simulate-camera"]
-        app.launch();app.buttons["home-tools"].tap();app.buttons["Math scan"].tap()
+        app.launch();app.buttons["home-tools"].tap();app.tool("Math scan").tap()
         XCTAssertTrue(app.buttons["text-tool-capture"].waitForExistence(timeout:5));app.buttons["text-tool-capture"].tap()
         XCTAssertTrue(app.buttons["math-scan-preview"].waitForExistence(timeout:40));designShot(app,"math-1-scan")
         app.buttons["math-primary"].tap()
         XCTAssertTrue(app.textViews["math-text"].waitForExistence(timeout:60));designShot(app,"math-2-text")
         app.buttons["math-primary"].tap();designShot(app,"math-3-format")
         app.terminate()
+    }
+}
+
+extension XCUIApplication {
+    /// A tile on the Tools page, scrolled into view (sections run below the fold).
+    @MainActor func tool(_ label: String) -> XCUIElement {
+        let button = buttons[label]
+        _ = button.waitForExistence(timeout: 2)
+        for _ in 0..<8 where !(button.exists && button.isHittable) { swipeUp() }
+        return button
     }
 }

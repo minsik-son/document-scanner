@@ -20,13 +20,13 @@ New camera/photos default to Document mode; PDF import defaults to Original. Pre
 
 ## Evidence and limits
 
-The latest `BEFEE178-BAFA-4522-AF94-9B995913ED6F.pdf` and CamScanner JPG were captured under the same viewpoint/conditions according to the user. Its embedded image is 1573×2113; the table remains trapezoidal, blank paper has a blue shadow, and the PDF has no selectable text. The revised local comparison uses that supplied image and the shared app processor. It straightens the grid, reduces paper shadow and strengthens ink while retaining lower handwriting. This is evidence of improvement on this sample, not proof of identical quality on all documents. The app retains original camera photos; the comparison can only use pixels embedded in the supplied export.
+The latest `BEFEE178-BAFA-4522-AF94-9B995913ED6F.pdf` and Competitor app A JPG were captured under the same viewpoint/conditions according to the user. Its embedded image is 1573×2113; the table remains trapezoidal, blank paper has a blue shadow, and the PDF has no selectable text. The revised local comparison uses that supplied image and the shared app processor. It straightens the grid, reduces paper shadow and strengthens ink while retaining lower handwriting. This is evidence of improvement on this sample, not proof of identical quality on all documents. The app retains original camera photos; the comparison can only use pixels embedded in the supplied export.
 
 Ordinary Save PDF now runs on-device OCR on the final corrected image and adds a real invisible Unicode text layer. Word positions use the exact image rectangle fitted into the PDF, including margins. English/Korean selection, coordinate alignment and unchanged visible PDF pixels are covered by PDFKit tests. Metadata and the new PDF commit together; failed export leaves the previously saved PDF intact. OCR versioning invalidates old coordinates when the processing pipeline changes. Basic selectable PDF text is free; Pro provides whole-document text sharing.
 
 `Tools/EmbeddedPDFImage.swift` extracts a single opaque RGB photo with its ICC profile from an image-only PDF when supported. The comparison tool falls back to rendering the page for other PDFs. Private generated files under `Verification/scan-quality-sample` are ignored by Git.
 
-Camera preview alignment, autofocus/exposure, processing latency, automatic capture timing and interruption recovery need physical iPhone validation. Synthetic state/coordinate tests and simulator UI tests do not prove hardware behavior. Low-contrast backgrounds, occlusion, hard shadows, curved pages and pale marks can still need manual adjustments. No claim of universal CamScanner parity is made.
+Camera preview alignment, autofocus/exposure, processing latency, automatic capture timing and interruption recovery need physical iPhone validation. Synthetic state/coordinate tests and simulator UI tests do not prove hardware behavior. Low-contrast backgrounds, occlusion, hard shadows, curved pages and pale marks can still need manual adjustments. No claim of universal Competitor app A parity is made.
 
 ## Verification
 

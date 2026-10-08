@@ -50,7 +50,7 @@ Photo / saved-page / text input paths (12; unchanged in this change)
   Mega scan, Count objects.
   Book, ID photo, Mega scan and Count objects still lack dedicated capture flows.
   Translation/math/OCR entry also offers no direct capture here.
-  These are processors with previews/exports, not full CamScanner-equivalent
+  These are processors with previews/exports, not full Competitor app A-equivalent
   capture experiences. Office conversion and photo editing naturally accept
   existing input, but adding a new camera source would improve several tools.
 

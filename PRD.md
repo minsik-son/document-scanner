@@ -8,7 +8,7 @@
 
 **사진을 업무에 쓸 수 있는 문서로 바꾸고, 정리·서명·저장·전달까지 iPhone에서 끝내는 오프라인 우선 스캐너.**
 
-CamScanner의 빠른 촬영, 유용한 보정, 다중 페이지 처리, 문서 도구 통합, 간편 공유를 흡수한다. 촬영·편집·저장을 광고와 결제로 막지 않고 문서 보존과 이동성을 강화한다. 무료 사용자의 저장 완료 후 홈 복귀에는 제한된 광고를 허용한다. 경쟁사의 브랜드·그래픽·코드·유료 자산을 복제하는 목표는 아니다.
+경쟁 앱 A의 빠른 촬영, 유용한 보정, 다중 페이지 처리, 문서 도구 통합, 간편 공유를 흡수한다. 촬영·편집·저장을 광고와 결제로 막지 않고 문서 보존과 이동성을 강화한다. 무료 사용자의 저장 완료 후 홈 복귀에는 제한된 광고를 허용한다. 경쟁사의 브랜드·그래픽·코드·유료 자산을 복제하는 목표는 아니다.
 
 | 항목 | 결정 |
 |---|---|
@@ -45,7 +45,7 @@ CamScanner의 빠른 촬영, 유용한 보정, 다중 페이지 처리, 문서 �
 
 대표 시나리오: 5장 서류 촬영 → 페이지 확인 → A4 PDF 저장 → 서명 추가 → 파일 공유. 신호가 없는 곳에서도 저장까지 완료하고, 전송은 연결 가능한 앱·환경에서 수행한다.
 
-## 4. CamScanner 장점 흡수 매트릭스
+## 4. 경쟁 앱 A 장점 흡수 매트릭스
 
 단계: **A** = 내부 동작 시제품, **B** = 1.0 출시 필수, **C** = 후속 확장, **D** = 별도 기술·사업 검증. A 기능도 B에 포함된다. C는 삭제된 요구가 아니며 후속 백로그다.
 
@@ -173,7 +173,7 @@ Pro 작업 진입 전에 표시한다. 결제를 닫으면 원래 편집 상태�
 - LIB-05: 백업 복원은 별도 임시 영역에서 검사 후 추가 방식으로 반영. 기존 라이브러리를 먼저 지우지 않는다. 중복은 건너뛰기/사본 추가 선택.
 - LIB-06: Last backup created는 백업 파일 작성·전달 완료 시각이며 클라우드 업로드 검증을 뜻하지 않는다. 연결된 File Provider의 원격 저장 완료를 보장하지 않는다.
 - LIB-07: 1.0 자체 백업은 비암호화 아카이브로 명시하고 민감 문서 포함 안내. 암호화 백업은 C. 저장한 서명 자산은 기본 백업 제외, 명시 선택 시 포함.
-- LIB-08: CamScanner 등이 내보낸 PDF/이미지는 Files로 가져올 수 있다. 기존 OCR 텍스트는 가능한 보존·추출하되 경쟁 앱의 폴더·태그 자동 이전은 약속하지 않는다.
+- LIB-08: 경쟁 앱 A 등이 내보낸 PDF/이미지는 Files로 가져올 수 있다. 기존 OCR 텍스트는 가능한 보존·추출하되 경쟁 앱의 폴더·태그 자동 이전은 약속하지 않는다.
 - LIB-09: PDF 내부에 이미 찍힌 기존 워터마크는 자동 제거하지 않는다. 우리 앱이 새 워터마크를 추가하지 않는 것과 구분한다.
 - LIB-10: 홈 문서 행은 평소 휴지통 아이콘을 표시하지 않는다. 왼쪽·오른쪽으로 짧게 밀고 놓으면 해당 방향의 휴지통 버튼이 열린 채로 남고 반대로 밀면 닫힌다. 끝까지 밀거나 열린 휴지통 버튼을 누르면 추가 확인창 없이 휴지통으로 이동한다. Settings → Trash에서 복원할 수 있다. 미완료 스캔은 Settings → Unfinished scans의 버튼과 확인창으로 정리한다. 저장된 페이지·PDF가 있는 미완료 스캔은 자동 삭제하지 않는다.
 
@@ -331,7 +331,7 @@ StoreKit 2 기반, 월간/연간은 동일 subscription group과 동일 서비�
 
 문서 테스트 세트: A4/Letter 계약서, 작은 글씨 영수증, 색 문서, 사진 포함 자료, 저조도, 한쪽 그림자, 종이/배경 유사색, 구겨짐, 다단, 표, 90도 회전, 1·5·20·50·100페이지. OCR는 우선 영어 정답 전사 데이터 100페이지, 확장 언어별 별도 세트를 만든다.
 
-품질 비교: 동일 조명·문서·기기로 CamScanner, iOS 기본 스캔, 우리 앱을 비교한다. 경계 성공률, 잘린 글자 유무, OCR 문자 오류율, 저장 시간·탭 수, PDF 가독성·용량을 기록한다. 동급 이상 목표는 비교 후에만 달성했다고 말한다. 광고·결제 편의성과 OCR 우위를 혼동하지 않는다.
+품질 비교: 동일 조명·문서·기기로 경쟁 앱 A, iOS 기본 스캔, 우리 앱을 비교한다. 경계 성공률, 잘린 글자 유무, OCR 문자 오류율, 저장 시간·탭 수, PDF 가독성·용량을 기록한다. 동급 이상 목표는 비교 후에만 달성했다고 말한다. 광고·결제 편의성과 OCR 우위를 혼동하지 않는다.
 
 필수 수용 테스트:
 
@@ -387,8 +387,8 @@ StoreKit 2 기반, 월간/연간은 동일 subscription group과 동일 서비�
 
 ## 16. 근거와 추적
 
-- [R1] [사용자 제공 CamScanner 인기 요인 분석](/Users/minmac/Downloads/camscanner-popularity-analysis.md): 장점 매핑 근거. 전체 인과관계는 미검증.
-- [R2] [사용자 제공 CamScanner 부정 리뷰 분석](/Users/minmac/Downloads/camscanner-negative-reviews.md): 결제·데이터·UI 개선 근거. 실제 결함 재현과 구분.
+- [R1] [사용자 제공 경쟁 앱 A 인기 요인 분석](/Users/minmac/Downloads/competitor-a-popularity-analysis.md): 장점 매핑 근거. 전체 인과관계는 미검증.
+- [R2] [사용자 제공 경쟁 앱 A 부정 리뷰 분석](/Users/minmac/Downloads/competitor-a-negative-reviews.md): 결제·데이터·UI 개선 근거. 실제 결함 재현과 구분.
 - [A1] [Apple VisionKit](https://developer.apple.com/documentation/visionkit), [Document camera delegate](https://developer.apple.com/documentation/visionkit/vndocumentcameraviewcontrollerdelegate): 시스템 스캐너 후보. 페이지별 영속 저장 API 적합성은 기술 검증 필요.
 - [A2] [Apple Recognizing Text in Images](https://developer.apple.com/documentation/vision/recognizing-text-in-images): 텍스트 인식과 런타임 지원 언어 확인.
 - [A3] [Apple PDFDocument write options](https://developer.apple.com/documentation/pdfkit/pdfdocumentwriteoption): PDF 출력 비밀번호 옵션 후보.

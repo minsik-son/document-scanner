@@ -791,7 +791,7 @@ struct CropView: View {
 
 }
 
-/// Smart erase on a scanned page: paint over stains or shadows left after the
+/// Spot eraser on a scanned page: paint over stains or shadows left after the
 /// automatic cleanup. The strokes are stored on the page and applied when it
 /// renders, so the original photo is never changed.
 struct PageEraseSheet: View {

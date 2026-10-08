@@ -75,7 +75,7 @@ struct PageTrim: Codable, Equatable {
     }
     func rotatedClockwise() -> PageTrim { PageTrim(top:left,right:top,bottom:right,left:bottom) }
 }
-/// Spots painted out with Smart erase in the page editor. Strokes are
+/// Spots painted out with Spot eraser in the page editor. Strokes are
 /// normalized to the finished page, so they only apply while the crop, rotation
 /// and margins they were painted on are unchanged.
 struct PageErasure: Codable, Equatable {

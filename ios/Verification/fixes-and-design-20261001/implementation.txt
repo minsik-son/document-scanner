@@ -26,7 +26,7 @@ Validation scope
 - Official native-ad scroll test skipped: no test ad supplied within the timeout. Local eligibility/caching policy tests pass; this is not evidence of a fresh network ad impression.
 - StoreKit uses the local test configuration (USD 4.99 monthly / 29.99 yearly), not production App Store transactions.
 - Test fixtures are mostly synthesized. Real-camera image quality, ID-photo masks, physical printing, AR/LiDAR, installed-language translation, and Microsoft Office roundtrips still require device/application checks.
-- This update does not claim CamScanner parity or universal language recognition.
+- This update does not claim Competitor app A parity or universal language recognition.
 
 Evidence
 - home.png, all-tools.png: native simulator screenshots.

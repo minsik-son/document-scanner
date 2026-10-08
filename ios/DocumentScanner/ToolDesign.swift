@@ -174,7 +174,7 @@ enum HomeShortcut: Hashable, Identifiable {
         + LibraryTool.allCases.map { .library($0) }
         + AdvancedTool.allCases.filter { $0 != .measure && $0 != .mesh && !$0.hidden }.map { .advanced($0) }
     static let maximum = 7
-    /// Ranked by how often scanner-app users reach for each job (CamScanner's yearly
+    /// Ranked by how often scanner-app users reach for each job (public scanner-app
     /// reports and 38k competitor reviews, Oct 2026): import, ID, sign, merge, text,
     /// Word, then shrinking a file to send it.
     static func defaults(pro: Bool) -> [HomeShortcut] {
@@ -345,5 +345,68 @@ struct QuickToolsEditor: View {
             Spacer()
             trailing()
         }.padding(.vertical, 2)
+    }
+}
+
+/// One tile on the Tools page.
+enum ToolEntry: Identifiable, Hashable {
+    case scan, whiteboard, qr, stitch
+    case library(LibraryTool), advanced(AdvancedTool), smart(SmartTool)
+    var id: String {
+        switch self {
+        case .scan: return "scan"
+        case .whiteboard: return "whiteboard"
+        case .qr: return "qr"
+        case .stitch: return "stitch"
+        case .library(let t): return "library-" + t.rawValue
+        case .advanced(let t): return "advanced-" + t.rawValue
+        case .smart(let t): return "smart-" + t.rawValue
+        }
+    }
+    var title: String {
+        switch self {
+        case .scan: return "Scan document"
+        case .whiteboard: return "Whiteboard"
+        case .qr: return "QR code"
+        case .stitch: return "Stitch screenshots"
+        case .library(let t): return t.rawValue
+        case .advanced(let t): return t.rawValue
+        case .smart(let t): return t.title
+        }
+    }
+    /// Other words people search for.
+    var keywords: [String] {
+        if case .library(.identity) = self { return ["ID card"] }
+        return []
+    }
+    /// Tools the device cannot run are not shown at all (no dead ends).
+    var available: Bool {
+        switch self {
+        case .advanced(let t): return !t.hidden && t.supportedOnThisDevice
+        case .smart(let t): return t.shown
+        default: return true
+        }
+    }
+}
+
+/// Tools grouped by the job the user wants done.
+struct ToolSection {
+    let id: String
+    let title: String
+    let entries: [ToolEntry]
+    static let all: [ToolSection] = [
+        ToolSection(id: "send", title: "Before you send", entries: [.library(.compress), .library(.protect), .library(.annotate), .smart(.fillForm), .library(.merge), .library(.split), .library(.extract), .library(.watermark), .library(.timestamp)]),
+        ToolSection(id: "fix", title: "Fix a page", entries: [.smart(.redact), .advanced(.erase), .advanced(.marks), .advanced(.restore), .advanced(.book), .library(.reorder)]),
+        ToolSection(id: "convert", title: "Turn it into", entries: [.advanced(.word), .advanced(.excel), .advanced(.slides), .advanced(.translate), .advanced(.math), .library(.ocr), .library(.longImage), .library(.images), .library(.print)]),
+        ToolSection(id: "capture", title: "Capture more", entries: [.scan, .library(.identity), .advanced(.portrait), .qr, .whiteboard, .stitch, .smart(.businessCard), .advanced(.mega)]),
+        ToolSection(id: "camera", title: "Camera utilities", entries: [.advanced(.measure), .advanced(.mesh)]),
+    ]
+}
+
+/// Photo translation needs Apple's Translation framework (iOS 26 or later).
+enum PhotoTranslationSupport {
+    static var available: Bool {
+        if #available(iOS 26.0, *) { return true }
+        return false
     }
 }

@@ -156,7 +156,7 @@ Eight additions use on-device processing with no new backend or external AI call
 
 All generated PDFs are previewed before saving a separate library copy. Watermarks accept text or a logo and preserve PDF text/links; form fields are flattened. Identity layout uses tightly cropped source pages with no export-paper padding. Timestamp labels are editable and not certified capture times. QR read results never open links automatically. Screenshots need ordered selection, optional header/footer trimming, and seam confirmation. Long PNGs split at 10,000 pixels and have a total pixel budget rather than allocating one unbounded image.
 
-CamScanner observations and scope: `../CAMSCANNER-LOCAL-TOOLS.md`. Validation: `Verification/local-tools-results.txt`. Real camera/QR capture, glare-heavy whiteboards, photographed slides, physical print dimensions and low-memory devices require device validation. Source picker items stored only in iCloud may need an OS download; local inputs process offline.
+Competitor app A observations and scope: `../competitor-tool-survey.md`. Validation: `Verification/local-tools-results.txt`. Real camera/QR capture, glare-heavy whiteboards, photographed slides, physical print dimensions and low-memory devices require device validation. Source picker items stored only in iCloud may need an OS download; local inputs process offline.
 
 
 ### Remaining local tools — 2026-09-30
@@ -165,7 +165,7 @@ Home → Tools and Document → Tools → More offline tools expose fourteen add
 
 DOCX/XLSX/PPTX are actual OOXML ZIP packages without macros, external links or executable spreadsheet formulas. XLSX uses inline strings to retain leading zeroes and avoid formula interpretation. PPTX offers image fidelity or editable text, not a reconstruction of every original shape/table. Image edits save new PDF copies; book/erase/mark/mega outputs rebuild the OCR layer. A failed OCR pass is reported and can be retried from Text. Results can be enlarged with native pinch zoom.
 
-Strict offline translation uses iOS 26's installed-source TranslationSession and never prepares/downloads languages. Other tools retain the iOS 18 minimum. 3D capture requires supported LiDAR; it exports an untextured OBJ surface mesh. AR measurement is approximate. Book curve correction is a manual cylindrical model; erase interpolates nearby paper colors; restoration is denoise/contrast/sharpen; counting finds separated contrast components with manual corrections. None of these claims general generative AI reconstruction or complete CamScanner parity.
+Strict offline translation uses iOS 26's installed-source TranslationSession and never prepares/downloads languages. Other tools retain the iOS 18 minimum. 3D capture requires supported LiDAR; it exports an untextured OBJ surface mesh. AR measurement is approximate. Book curve correction is a manual cylindrical model; erase interpolates nearby paper colors; restoration is denoise/contrast/sharpen; counting finds separated contrast components with manual corrections. None of these claims general generative AI reconstruction or complete Competitor app A parity.
 
 Acceptance walkthrough and limitations: `../OFFLINE-TOOLS-ACCEPTANCE.md`. Validation: `Verification/all-offline-results.txt`. The device-only capture/model paths still require testing on the user's iPhone. This build has not been installed on the physical phone automatically.
 

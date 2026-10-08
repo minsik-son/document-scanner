@@ -1,25 +1,73 @@
 import SwiftUI
 import GoogleMobileAds
+import UserMessagingPlatform
 import Network
 import Combine
 import OSLog
 
 /// No scan, document name, recognized text or library metadata enters this module.
 enum HomeAdConfiguration {
+    /// HushScan in AdMob (also GADApplicationIdentifier in Info.plist).
+    static let appID = "ca-app-pub-9921649727270589~5824656756"
+    static let homeNativeLiveID = "ca-app-pub-9921649727270589/3406287684"
+    static let toolsNativeLiveID = "ca-app-pub-9921649727270589/6320314928"
+    static let rewardedLiveID = "ca-app-pub-9921649727270589/3986987592"
     static let sampleAppID = "ca-app-pub-3940256099942544~1458002511"
     static let videoTestUnitID = "ca-app-pub-3940256099942544/2521693316"
     /// Google's official iOS rewarded test unit.
     static let rewardedTestUnitID = "ca-app-pub-3940256099942544/1712485313"
-    static var testAdsEnabled: Bool {
+    enum Placement { case home, tools }
+    /// Debug builds only ever request Google's demo units; Release requests the live ones.
+    static func nativeUnitID(_ placement: Placement) -> String {
+#if DEBUG
+        return videoTestUnitID
+#else
+        return placement == .home ? homeNativeLiveID : toolsNativeLiveID
+#endif
+    }
+    static var rewardedUnitID: String {
+#if DEBUG
+        return rewardedTestUnitID
+#else
+        return rewardedLiveID
+#endif
+    }
+    static var adsEnabled: Bool {
 #if DEBUG
         let args = ProcessInfo.processInfo.arguments
         if args.contains("--ui-test-session") { return args.contains("--test-native-ad-sdk") }
         return ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
 #else
-        // Never turn a sample ID into a production monetization path by accident.
-        // Live IDs, UMP messaging and store privacy disclosures must be configured first.
-        return false
+        return true
 #endif
+    }
+}
+
+/// Google's consent message (UMP). Shown only where the law requires it (EEA, UK,
+/// Switzerland); elsewhere it resolves at once. No ad is requested before it resolves.
+@MainActor
+enum AdConsent {
+    private static var gathering: Task<Void, Never>?
+    static func gather() async {
+        if gathering == nil {
+            gathering = Task { @MainActor in
+                await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+                    ConsentInformation.shared.requestConsentInfoUpdate(with: RequestParameters()) { _ in done.resume() }
+                }
+                await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+                    ConsentForm.loadAndPresentIfRequired(from: nil) { _ in done.resume() }
+                }
+            }
+        }
+        await gathering?.value
+    }
+    static var canRequestAds: Bool { ConsentInformation.shared.canRequestAds }
+    /// Settings shows "Ad privacy choices" only when Google says the user needs it.
+    static var privacyOptionsRequired: Bool {
+        ConsentInformation.shared.privacyOptionsRequirementStatus == .required
+    }
+    static func presentPrivacyOptions() {
+        ConsentForm.presentPrivacyOptionsForm(from: nil) { _ in }
     }
 }
 
@@ -33,6 +81,7 @@ enum AdvertisingSDK {
         guard startup == nil else { return }
         MobileAds.shared.requestConfiguration.maxAdContentRating = .general
         startup = Task {
+            await AdConsent.gather()
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
                 MobileAds.shared.start { _ in continuation.resume() }
             }
@@ -133,7 +182,9 @@ final class HomeAdvertisementStore: NSObject, ObservableObject, NativeAdLoaderDe
     func beginDocumentTask() { suppressedAfterCompletion = false }
     func suppressAfterCompletion() { suppressedAfterCompletion = true; stop() }
 
-    override init() {
+    private let unitID: String
+    init(placement: HomeAdConfiguration.Placement = .home) {
+        unitID = HomeAdConfiguration.nativeUnitID(placement)
         super.init()
         monitor.pathUpdateHandler = { [weak self] path in
             Task { @MainActor [weak self] in
@@ -157,7 +208,7 @@ final class HomeAdvertisementStore: NSObject, ObservableObject, NativeAdLoaderDe
     /// Called at app launch, in parallel with opening the library, so the ad is
     /// usually ready when home first appears. Nothing about documents is involved.
     /// Presentation is still gated by `HomeAdEligibility` in the slot.
-    func preload(locked: Bool, configured: Bool = HomeAdConfiguration.testAdsEnabled) {
+    func preload(locked: Bool, configured: Bool = HomeAdConfiguration.adsEnabled) {
         guard configured, !locked, !suppressedAfterCompletion, !Self.lastKnownPro, AdTiming.settled else { return }
         AdvertisingSDK.begin()
         preloadRequested = true
@@ -237,12 +288,21 @@ final class HomeAdvertisementStore: NSObject, ObservableObject, NativeAdLoaderDe
     }
 
     private func requestAd(token: Int) {
-        // All requests from this build are Google's official demo unit, including on devices.
+        guard AdConsent.canRequestAds else {
+            // Wait for the consent message to resolve, then try once more.
+            Task { [weak self] in
+                await AdvertisingSDK.start()
+                guard let self, self.generation == token, AdConsent.canRequestAds else { return }
+                self.requestAd(token: token)
+            }
+            return
+        }
+        // Debug builds request Google's demo unit; Release the live unit for this placement.
         let video = VideoOptions()
         video.shouldStartMuted = true
         let placement = NativeAdViewAdOptions()
         placement.preferredAdChoicesPosition = .topRightCorner
-        let value = AdLoader(adUnitID: HomeAdConfiguration.videoTestUnitID,
+        let value = AdLoader(adUnitID: unitID,
                              rootViewController: nil, adTypes: [.native], options: [video, placement])
         loader = value
         value.delegate = self
@@ -316,10 +376,10 @@ struct HomeAdvertisementSlot<Fallback: View>: View {
                           isPro: subscription.isPro, online: ads.online,
                           foreground: scenePhase == .active,
                           homeVisible: homeUncovered && !ads.suppressedAfterCompletion,
-                          unlocked: !lock.locked, configured: HomeAdConfiguration.testAdsEnabled)
+                          unlocked: !lock.locked, configured: HomeAdConfiguration.adsEnabled)
     }
     private var keepsAd: Bool {
-        subscription.entitlementsResolved && !subscription.isPro && !lock.locked && HomeAdConfiguration.testAdsEnabled
+        subscription.entitlementsResolved && !subscription.isPro && !lock.locked && HomeAdConfiguration.adsEnabled
             && !ads.suppressedAfterCompletion && AdTiming.settled
     }
     private var testIdentity: String {
@@ -355,7 +415,7 @@ struct HomeAdvertisementSlot<Fallback: View>: View {
                 .sheet(isPresented: $removeAds) { PaywallView(start: .noAds) }
             } else {
                 fallback()
-                    .frame(height: reserveSpace && HomeAdConfiguration.testAdsEnabled && !subscription.isPro && AdTiming.settled ? NativeAdLayout.height + 45 : nil)
+                    .frame(height: reserveSpace && HomeAdConfiguration.adsEnabled && !subscription.isPro && AdTiming.settled ? NativeAdLayout.height + 45 : nil)
                     .accessibilityIdentifier("home-introduction")
             }
         }
@@ -483,14 +543,21 @@ final class RewardedAdStore: NSObject, ObservableObject, FullScreenContentDelega
     private var ad: RewardedAd?
     private var loading = false
     func load() {
-        guard HomeAdConfiguration.testAdsEnabled, ad == nil, !loading else { return }
+        guard HomeAdConfiguration.adsEnabled, ad == nil, !loading else { return }
         loading = true
-        AdvertisingSDK.begin()
+        Task { [weak self] in
+            await AdvertisingSDK.start()
+            guard let self else { return }
+            guard AdConsent.canRequestAds else { self.loading = false; return }
+            self.loadRewarded()
+        }
+    }
+    private func loadRewarded() {
         let request = Request()
         let extras = Extras()
         extras.additionalParameters = ["npa": "1"]
         request.register(extras)
-        RewardedAd.load(with: HomeAdConfiguration.rewardedTestUnitID, request: request) { [weak self] loaded, _ in
+        RewardedAd.load(with: HomeAdConfiguration.rewardedUnitID, request: request) { [weak self] loaded, _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.loading = false

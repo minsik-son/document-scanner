@@ -16,7 +16,7 @@ Thank you for reviewing HushScan.
 
 **Rewarded ads (optional).** After a Pro tool's free tries are used, a free user may choose "Watch a short ad · 1 more use" (once per day per tool family). This is always optional; the same tool is available by subscribing. The button only appears when an ad has loaded.
 
-**Ads.** The free version shows at most one native ad on Home and one in Tools. Ads are requested as non-personalized; the app does not use App Tracking Transparency and does not track users. No ads appear during the first 24 hours after install. Pro users see no ads.
+**Ads.** The free version shows at most one native ad on Home and one in Tools. Ads are requested as non-personalized; the app does not use App Tracking Transparency and does not track users. No ads appear during the first 24 hours after install. Pro users see no ads. In the EEA, UK and Switzerland, Google's consent message (UMP) appears before any ad request; Settings → "Ad privacy choices" reopens it.
 
 **Photo translation** uses Apple's Translation framework on device and requires iOS 26 or later. The app never downloads language models itself. If the languages are not on the device, the app shows step-by-step instructions instead of an error: Settings → Apps → Translate → Downloaded Languages → download both languages → return and tap Translate. To test quickly, download English and Korean (or Spanish) beforehand. On iOS 18–25 the tool explains that it needs iOS 26 before any free try is used.
 

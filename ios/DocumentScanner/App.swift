@@ -71,7 +71,7 @@ struct DocumentScannerApp: App {
     /// and the first layout/draw of onboarding or home. Each wait is bounded, so
     /// a slow network or StoreKit never holds the app on the loading screen.
     @MainActor private func prepareFirstScreen() async {
-        let adsWanted = HomeAdConfiguration.testAdsEnabled && !HomeAdvertisementStore.lastKnownPro
+        let adsWanted = HomeAdConfiguration.adsEnabled && !HomeAdvertisementStore.lastKnownPro
         if adsWanted {
             // Starts the SDK and requests the home ad in parallel with the library.
             advertisements.preload(locked: lock.locked)

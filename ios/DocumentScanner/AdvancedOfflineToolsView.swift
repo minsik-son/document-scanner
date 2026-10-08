@@ -39,7 +39,7 @@ struct AdvancedOfflineHub: View {
     @EnvironmentObject private var store: LibraryStore
     @EnvironmentObject private var subscription: SubscriptionStore
     /// Its own ad, separate from the one on Home.
-    @StateObject private var toolAds = HomeAdvertisementStore()
+    @StateObject private var toolAds = HomeAdvertisementStore(placement: .tools)
     @State private var paywall = false
     @State private var smartRoute: SmartTool?
     @State private var advancedRoute: AdvancedTool?

@@ -82,6 +82,10 @@ struct SettingsView: View {
                 Section("Privacy") {
                     Link("Privacy policy", destination: AppInfo.privacyPolicyURL).accessibilityIdentifier("settings-privacy-policy")
                     NavigationLink("Privacy details") { PrivacyView() }
+                    if !subscription.isPro, AdConsent.privacyOptionsRequired {
+                        Button("Ad privacy choices") { AdConsent.presentPrivacyOptions() }
+                            .accessibilityIdentifier("settings-ad-privacy")
+                    }
                     Toggle("App lock", isOn: Binding(get: { lock.enabled }, set: { value in Task { await lock.setEnabled(value) } })).disabled(lock.authenticating)
                     Text("Use Face ID, Touch ID or your device passcode. App lock also hides documents in the app switcher.").font(.caption)
                     if let message = lock.message { Text(L(message)).foregroundStyle(.secondary) }

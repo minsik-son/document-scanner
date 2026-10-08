@@ -1759,3 +1759,4 @@
 "OK" = "ตกลง";
 "The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements." = "เวอร์ชันฟรีอาจแสดงโฆษณา Google AdMob หนึ่งรายการในหน้าแรกใต้เอกสารของคุณ และอีกหนึ่งรายการในเครื่องมือ โฆษณาวิดีโอสั้นจะเล่นเฉพาะเมื่อคุณเลือกดูเองเพื่อรับสิทธิ์ทดลองใช้เครื่องมือ Pro ฟรีเพิ่มอีก 1 ครั้ง โฆษณาจะไม่เปิดแบบเต็มหน้าจอเอง และจะไม่ทำให้การสแกนหรือการบันทึกล่าช้า จะไม่มีโฆษณาในวันแรกหลังติดตั้ง ผู้ใช้ Pro จะไม่มีการโหลดหรือแสดงโฆษณา";
 "Unlock\n%@ Pro" = "ปลดล็อค\n%@ Pro";
+"Ad privacy choices" = "ตัวเลือกความเป็นส่วนตัวของโฆษณา";

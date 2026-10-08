@@ -29,7 +29,7 @@ struct ReviewView: View {
         HomeAdEligibility(subscriptionResolved: subscription.entitlementsResolved,
                           isPro: subscription.isPro, online: homeAds.online,
                           foreground: scenePhase == .active, homeVisible: completionAdEnabled && saved && !saving,
-                          unlocked: !lock.locked, configured: HomeAdConfiguration.testAdsEnabled)
+                          unlocked: !lock.locked, configured: HomeAdConfiguration.adsEnabled)
     }
     @State private var document: ScanDocument?
     @State private var camera = false

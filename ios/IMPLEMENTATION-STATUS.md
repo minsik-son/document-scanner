@@ -156,3 +156,5 @@ Selected-language + close-up OCR, word-gap column separation, mixed-script parag
 남은 결정: 지원 이메일, GitHub Pages 게시(저장소 Settings › Pages › main /docs), AdMob 실제 ID(현재 Release는 광고 꺼짐), `FoundingOffer.launchDay`, 마케팅 버전(현재 0.1.0).
 
 이름 변경(2026-10-08): FoldScan → **HushScan**. 표시 이름, Bundle ID `com.hushscan.app`(테스트 `.tests`/`.uitests`), 상품 ID `com.hushscan.pro.monthly/yearly/lifetime`, 문서·개인정보 페이지 반영. 마케팅 버전 1.0. 위 표의 FoldScan 표기는 당시 기록.
+
+광고 켜기(2026-10-08): AdMob 앱 HushScan(`ca-app-pub-9921649727270589~5824656756`), 광고 단위 Home native·Tools native·Extra free use rewarded. Release는 실제 단위, Debug는 Google 데모 단위. Google 동의 메시지(UMP)가 끝나기 전에는 광고를 요청하지 않음, EEA 등에서는 설정에 "Ad privacy choices"(15개 언어). SKAdNetwork(Google) 추가. 개인정보 페이지 광고 문단 갱신. HomeAdvertisementTests를 첫 24시간 규칙에 맞게 수정(통과). CompletionAdvertisementTests 실패 2건은 전면 광고를 끈 마케팅 반영 이전부터의 것(전면 광고는 사용 안 함).

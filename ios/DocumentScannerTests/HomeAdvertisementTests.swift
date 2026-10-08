@@ -14,7 +14,7 @@ final class HomeAdvertisementTests: XCTestCase {
         let ad = NativeAd()
         store.cache(ad)
         var policy = HomeAdEligibility(subscriptionResolved: false, isPro: false, online: true,
-                                       foreground: true, homeVisible: true, unlocked: true, configured: true)
+                                       foreground: true, homeVisible: true, unlocked: true, configured: true, settled: true)
         XCTAssertFalse(policy.canRequest, "Nothing is shown before entitlements resolve")
         store.update(policy)
         XCTAssertTrue(store.nativeAd === ad, "A launch preload must not be discarded while StoreKit is still loading")
@@ -41,7 +41,7 @@ final class HomeAdvertisementTests: XCTestCase {
     func testPreparationStartsBelowFoldAndSurvivesScrollingButNotPro() {
         let store = HomeAdvertisementStore()
         var policy = HomeAdEligibility(subscriptionResolved:true,isPro:false,online:true,
-            foreground:true,homeVisible:true,unlocked:true,configured:true)
+            foreground:true,homeVisible:true,unlocked:true,configured:true, settled: true)
         store.update(policy,visible:false)
         XCTAssertTrue(store.hasScheduledPreparation,"Home must preload even before the slot becomes visible")
         store.setScrolling(true)
@@ -58,7 +58,7 @@ final class HomeAdvertisementTests: XCTestCase {
         let store = HomeAdvertisementStore()
         let ad = NativeAd()
         var policy = HomeAdEligibility(subscriptionResolved: true, isPro: false, online: true,
-                                       foreground: true, homeVisible: true, unlocked: true, configured: true)
+                                       foreground: true, homeVisible: true, unlocked: true, configured: true, settled: true)
         store.cache(ad)
         for _ in 0..<10 {
             store.update(policy, visible: false)
@@ -78,7 +78,7 @@ final class HomeAdvertisementTests: XCTestCase {
     }
     func testPackagedAdMobConfiguration() {
         XCTAssertEqual(Bundle.main.object(forInfoDictionaryKey: "GADApplicationIdentifier") as? String,
-                       HomeAdConfiguration.sampleAppID)
+                       HomeAdConfiguration.appID)
         XCTAssertEqual(Bundle.main.object(forInfoDictionaryKey: "GADDelayAppMeasurementInit") as? Bool, true)
     }
     func testOnlyVerifiedFreeVisibleOnlineHomeCanRequestAds() {
@@ -87,7 +87,7 @@ final class HomeAdvertisementTests: XCTestCase {
             let value: (Int) -> Bool = { bits & (1 << $0) != 0 }
             let policy = HomeAdEligibility(subscriptionResolved: value(0), isPro: value(1),
                                            online: value(2), foreground: value(3),
-                                           homeVisible: value(4), unlocked: value(5), configured: value(6))
+                                           homeVisible: value(4), unlocked: value(5), configured: value(6), settled: true)
             XCTAssertEqual(policy.canRequest, bits == 125, "Unexpected eligibility for \(bits)")
         }
     }

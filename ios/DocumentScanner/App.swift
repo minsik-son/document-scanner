@@ -192,17 +192,38 @@ private func makeLibrary() async -> LibraryStore {
 /// The app's own language setting (Settings › Language). Defaults to the
 /// device language when it is one we ship, otherwise English.
 enum AppLanguage: String, CaseIterable, Identifiable {
-    case en, ko, ja
+    case en, ko, ja, es, ptBR = "pt-BR", de, fr, zhHans = "zh-Hans", zhHant = "zh-Hant"
     var id: String { rawValue }
     /// Each language is named in itself, as in the iOS language list.
     var nativeName: String {
-        switch self { case .en: "English"; case .ko: "한국어"; case .ja: "日本語" }
+        switch self {
+        case .en: "English"
+        case .ko: "한국어"
+        case .ja: "日本語"
+        case .es: "Español"
+        case .ptBR: "Português (Brasil)"
+        case .de: "Deutsch"
+        case .fr: "Français"
+        case .zhHans: "简体中文"
+        case .zhHant: "繁體中文"
+        }
     }
     static let key = "app-language"
     static var current: AppLanguage {
         if let saved = UserDefaults.standard.string(forKey: key), let value = AppLanguage(rawValue: saved) { return value }
-        let device = Locale.preferredLanguages.first.map { String($0.prefix(2)) } ?? "en"
-        return AppLanguage(rawValue: device) ?? .en
+        return matching(Locale.preferredLanguages.first ?? "en")
+    }
+    /// Maps a device language code (e.g. "zh-Hant-TW", "zh-HK", "pt-PT", "es-MX") to a language we ship.
+    static func matching(_ code: String) -> AppLanguage {
+        let parts = code.split(separator: "-").map(String.init)
+        guard let base = parts.first else { return .en }
+        switch base {
+        case "zh":
+            let rest = Set(parts.dropFirst())
+            return rest.contains("Hant") || rest.contains("TW") || rest.contains("HK") || rest.contains("MO") ? .zhHant : .zhHans
+        case "pt": return .ptBR
+        default: return AppLanguage(rawValue: base) ?? .en
+        }
     }
     static var locale: Locale { Locale(identifier: current.rawValue) }
     /// Strings for the chosen language (English lives in the source itself).
@@ -221,8 +242,92 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 /// Translates a runtime string (tool names, messages built from literals) into the
 /// chosen app language. Strings without a translation come back unchanged.
 func L(_ text: String) -> String {
-    AppLanguage.current == .en ? text : AppLanguage.bundle.localizedString(forKey: text, value: text, table: nil)
+    AppLanguage.current == .en ? text : Localizer.shared.translate(text)
 }
 func L(_ key: LocalizedStringKey) -> LocalizedStringKey { key }
 func L(_ text: AttributedString) -> AttributedString { text }
 func L(_ text: Substring) -> String { L(String(text)) }
+/// Single-overload form for ternaries of literals, which `L` can't disambiguate.
+func LS(_ text: String) -> String { L(text) }
+
+/// Looks strings up in the chosen language. A string that was built at runtime
+/// ("Reading page 3 of 8…") has no key of its own, so it is matched against the
+/// format keys ("Reading page %lld of %lld…"), its values pulled out and the
+/// translated format filled in — counts get the language's plural rules from the
+/// .stringsdict, and text values are translated too.
+final class Localizer {
+    static let shared = Localizer()
+    private struct Pattern { let key: String; let regex: NSRegularExpression; let numbers: [Bool]; let weight: Int }
+    private let lock = NSLock()
+    private var cache: [String: String] = [:]
+    private var cachedLanguage: AppLanguage?
+    private lazy var patterns: [Pattern] = Localizer.loadPatterns()
+
+    func translate(_ text: String) -> String {
+        lock.lock(); defer { lock.unlock() }
+        let language = AppLanguage.current
+        if language != cachedLanguage { cache.removeAll(); cachedLanguage = language }
+        if let hit = cache[text] { return hit }
+        let result = resolve(text, depth: 0)
+        cache[text] = result
+        return result
+    }
+
+    private func lookup(_ key: String) -> String? {
+        let missing = "\u{1}"
+        let value = AppLanguage.bundle.localizedString(forKey: key, value: missing, table: nil)
+        return value == missing ? nil : value
+    }
+
+    private func resolve(_ text: String, depth: Int) -> String {
+        if let value = lookup(text) { return value }
+        guard depth < 3, !text.isEmpty, text.count < 600 else { return text }
+        let ns = text as NSString
+        let whole = NSRange(location: 0, length: ns.length)
+        for pattern in patterns {
+            guard let match = pattern.regex.firstMatch(in: text, range: whole) else { continue }
+            var args: [CVarArg] = []
+            for (index, isNumber) in pattern.numbers.enumerated() {
+                let piece = ns.substring(with: match.range(at: index + 1))
+                if isNumber {
+                    guard let number = Int(piece.replacingOccurrences(of: ",", with: "")) else { break }
+                    args.append(number)
+                } else {
+                    args.append(resolve(piece, depth: depth + 1) as NSString)
+                }
+            }
+            guard args.count == pattern.numbers.count, let format = lookup(pattern.key) else { continue }
+            return String(format: format, locale: AppLanguage.locale, arguments: args)
+        }
+        return text
+    }
+
+    private static func loadPatterns() -> [Pattern] {
+        guard let path = Bundle.main.path(forResource: "Localizable", ofType: "strings", inDirectory: nil, forLocalization: "ko"),
+              let table = NSDictionary(contentsOfFile: path) as? [String: String],
+              let spec = try? NSRegularExpression(pattern: "%%|%(?:\\d+\\$)?(lld|ld|d|@)") else { return [] }
+        var result: [Pattern] = []
+        for key in table.keys where key.contains("%") {
+            let ns = key as NSString
+            var regex = "^", numbers: [Bool] = [], cursor = 0, literal = 0
+            for match in spec.matches(in: key, range: NSRange(location: 0, length: ns.length)) {
+                let text = ns.substring(with: NSRange(location: cursor, length: match.range.location - cursor))
+                regex += NSRegularExpression.escapedPattern(for: text); literal += text.count
+                if match.range(at: 1).location == NSNotFound {
+                    regex += "%"; literal += 1
+                } else {
+                    let isNumber = ns.substring(with: match.range(at: 1)) != "@"
+                    numbers.append(isNumber)
+                    regex += isNumber ? "(-?\\d[\\d,]*)" : "(.+?)"
+                }
+                cursor = match.range.location + match.range.length
+            }
+            let tail = ns.substring(from: cursor)
+            regex += NSRegularExpression.escapedPattern(for: tail) + "$"; literal += tail.count
+            guard !numbers.isEmpty, literal >= 3,
+                  let compiled = try? NSRegularExpression(pattern: regex, options: [.dotMatchesLineSeparators]) else { continue }
+            result.append(Pattern(key: key, regex: compiled, numbers: numbers, weight: literal))
+        }
+        return result.sorted { $0.weight > $1.weight }
+    }
+}

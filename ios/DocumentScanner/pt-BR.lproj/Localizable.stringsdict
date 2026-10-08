@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>All %lld Pro tools unlocked</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>%lld ferramenta Pro desbloqueada</string>
+			<key>other</key><string>Todas as %lld ferramentas Pro desbloqueadas</string>
+		</dict>
+	</dict>
+	<key>Try free (%lld left)</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>Testar grátis (resta %lld)</string>
+			<key>other</key><string>Testar grátis (restam %lld)</string>
+		</dict>
+	</dict>
+	<key>%lld pages</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>%lld página</string>
+			<key>other</key><string>%lld páginas</string>
+		</dict>
+	</dict>
+	<key>All %lld pages</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>%lld página</string>
+			<key>other</key><string>Todas as %lld páginas</string>
+		</dict>
+	</dict>
+	<key>%lld selected photos</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>%lld foto selecionada</string>
+			<key>other</key><string>%lld fotos selecionadas</string>
+		</dict>
+	</dict>
+	<key>%lld candidates. Tap the input image to correct the markers, then preview the corrected count.</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>%lld candidato. Toque na imagem de entrada para corrigir os marcadores e pré-visualize a contagem corrigida.</string>
+			<key>other</key><string>%lld candidatos. Toque na imagem de entrada para corrigir os marcadores e pré-visualize a contagem corrigida.</string>
+		</dict>
+	</dict>
+	<key>%lld answers saved on this iPhone</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>%lld resposta salva neste iPhone</string>
+			<key>other</key><string>%lld respostas salvas neste iPhone</string>
+		</dict>
+	</dict>
+	<key>%lld pages added</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>%lld página adicionada</string>
+			<key>other</key><string>%lld páginas adicionadas</string>
+		</dict>
+	</dict>
+	<key>Share %lld images</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>Compartilhar %lld imagem</string>
+			<key>other</key><string>Compartilhar %lld imagens</string>
+		</dict>
+	</dict>
+	<key>Saved %lld pages</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>%lld página salva</string>
+			<key>other</key><string>%lld páginas salvas</string>
+		</dict>
+	</dict>
+	<key>%lld to fix</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>%lld item para corrigir</string>
+			<key>other</key><string>%lld itens para corrigir</string>
+		</dict>
+	</dict>
+	<key>%lld photos matched by their overlap.</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>%lld foto alinhada pela sobreposição.</string>
+			<key>other</key><string>%lld fotos alinhadas pela sobreposição.</string>
+		</dict>
+	</dict>
+	<key>Saved with %lld markers</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>Salvo com %lld marcador</string>
+			<key>other</key><string>Salvo com %lld marcadores</string>
+		</dict>
+	</dict>
+	<key>%lld PNG file(s). Tall results are split into numbered parts.</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>%lld arquivo PNG. Resultados altos são divididos em partes numeradas.</string>
+			<key>other</key><string>%lld arquivos PNG. Resultados altos são divididos em partes numeradas.</string>
+		</dict>
+	</dict>
+	<key>%lld QR code(s) read on this iPhone.</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>%lld código QR lido neste iPhone.</string>
+			<key>other</key><string>%lld códigos QR lidos neste iPhone.</string>
+		</dict>
+	</dict>
+	<key>%lld PNG file(s). Long results are split into numbered parts.</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>%lld arquivo PNG. Resultados longos são divididos em partes numeradas.</string>
+			<key>other</key><string>%lld arquivos PNG. Resultados longos são divididos em partes numeradas.</string>
+		</dict>
+	</dict>
+	<key>Next · %lld documents</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>Seguinte · %lld documento</string>
+			<key>other</key><string>Seguinte · %lld documentos</string>
+		</dict>
+	</dict>
+	<key>Merge %lld documents</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>Combinar %lld documento</string>
+			<key>other</key><string>Combinar %lld documentos</string>
+		</dict>
+	</dict>
+	<key>Split into %lld files</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>Dividir em %lld arquivo</string>
+			<key>other</key><string>Dividir em %lld arquivos</string>
+		</dict>
+	</dict>
+	<key>%lld images are ready</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>%lld imagem está pronta</string>
+			<key>other</key><string>%lld imagens estão prontas</string>
+		</dict>
+	</dict>
+	<key>%lld joined top to bottom.</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>%lld página unida de cima para baixo.</string>
+			<key>other</key><string>%lld páginas unidas de cima para baixo.</string>
+		</dict>
+	</dict>
+	<key>Very long results are split into %lld numbered parts.</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>Resultados muito longos são divididos em %lld parte numerada.</string>
+			<key>other</key><string>Resultados muito longos são divididos em %lld partes numeradas.</string>
+		</dict>
+	</dict>
+	<key>Start %lld-day free trial</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>Começar teste grátis de %lld dia</string>
+			<key>other</key><string>Começar teste grátis de %lld dias</string>
+		</dict>
+	</dict>
+	<key>All %lld Pro tools, unlimited signatures and merges</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>%lld ferramenta Pro, assinaturas e combinações ilimitadas</string>
+			<key>other</key><string>Todas as %lld ferramentas Pro, assinaturas e combinações ilimitadas</string>
+		</dict>
+	</dict>
+	<key>%lld text areas found</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>%lld área de texto encontrada</string>
+			<key>other</key><string>%lld áreas de texto encontradas</string>
+		</dict>
+	</dict>
+	<key>%lld areas need a look</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>%lld área precisa de revisão</string>
+			<key>other</key><string>%lld áreas precisam de revisão</string>
+		</dict>
+	</dict>
+	<key>%lld selected · in this order</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>%lld selecionada · nesta ordem</string>
+			<key>other</key><string>%lld selecionadas · nesta ordem</string>
+		</dict>
+	</dict>
+	<key>Trial · %lld days left</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>Teste · resta %lld dia</string>
+			<key>other</key><string>Teste · restam %lld dias</string>
+		</dict>
+	</dict>
+	<key>%lld pages · Not exported yet</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>%lld página · Ainda não exportada</string>
+			<key>other</key><string>%lld páginas · Ainda não exportadas</string>
+		</dict>
+	</dict>
+	<key>%lld measurements</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key><string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key><string>lld</string>
+			<key>one</key><string>%lld medição</string>
+			<key>other</key><string>%lld medições</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

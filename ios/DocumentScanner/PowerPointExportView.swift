@@ -238,7 +238,7 @@ struct PowerPointExportView: View {
                     Image(systemName: "checkmark").font(.system(size: 38, weight: .bold)).foregroundStyle(.white)
                 }.padding(.top, 24).accessibilityHidden(true)
                 VStack(spacing: 8) {
-                    Text(excel ? "\(tables.count) \(tables.count == 1 ? "table" : "tables") ready" : "\(pages.count) \(pages.count == 1 ? "slide" : "slides") ready")
+                    Text(LS(excel ? (tables.count == 1 ? "1 table ready" : "\(tables.count) tables ready") : (pages.count == 1 ? "1 slide ready" : "\(pages.count) slides ready")))
                         .font(.system(size: 24, weight: .bold)).foregroundStyle(TK.grey900).accessibilityIdentifier("ppt-ready")
                     Text(export?.urls.first?.lastPathComponent ?? (excel ? "Table.xlsx" : "Slides.pptx")).font(.system(size: 16)).foregroundStyle(TK.grey600)
                 }

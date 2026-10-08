@@ -228,7 +228,7 @@ struct ProToolLockView:View {
             HStack(spacing: 10) {
                 Image(systemName: "crown.fill").foregroundStyle(TK.orange)
                 Text(remaining > 0
-                     ? "\(feature.title) is part of Pro. You have \(remaining) free \(remaining == 1 ? "try" : "tries") left on this iPhone."
+                     ? (remaining == 1 ? "\(feature.title) is part of Pro. You have 1 free try left on this iPhone." : "\(feature.title) is part of Pro. You have \(remaining) free tries left on this iPhone.")
                      : "You've used your free tries of \(feature.title.lowercased()). Upgrade to keep using it.")
                     .font(.system(size: 15, weight: .medium)).foregroundStyle(TK.grey800).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("pro-trial-status")

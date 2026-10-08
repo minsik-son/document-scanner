@@ -562,7 +562,7 @@ private struct WatermarkToolStep: View {
             Toggle(isOn: $stamp.repeated) { Text("Repeat across the page").font(.system(size: 16, weight: .semibold)).foregroundStyle(TK.grey800) }.tint(TK.blue)
             if let message = work.message { ToastMessage(text: message) }
         } actions: {
-            Button("Add to \(document.pages.count) \(document.pages.count == 1 ? "page" : "pages")") { apply() }
+            Button(LS(document.pages.count == 1 ? "Add to 1 page" : "Add to \(document.pages.count) pages")) { apply() }
                 .buttonStyle(CTAButtonStyle()).disabled(!stamp.valid).accessibilityIdentifier("watermark-apply")
         }
         .task(id: stampKey) { await render() }
@@ -677,7 +677,7 @@ private struct TimestampToolStep: View {
             }
         } actions: {
             Button("Change style") { detailsShown = false }.buttonStyle(SecondaryCTAStyle()).accessibilityIdentifier("timestamp-style")
-            Button("Add to \(document.pages.count) \(document.pages.count == 1 ? "page" : "pages")") { apply() }
+            Button(LS(document.pages.count == 1 ? "Add to 1 page" : "Add to \(document.pages.count) pages")) { apply() }
                 .buttonStyle(CTAButtonStyle()).accessibilityIdentifier("timestamp-apply")
         }
     }
@@ -910,7 +910,7 @@ private struct ExtractToolStep: View {
     @State private var selected: [Int] = []
     @State private var choosing = false
     @State private var format = ExtractFormat.pdf
-    private var count: String { "\(selected.count) \(selected.count == 1 ? "page" : "pages")" }
+    private var count: String { selected.count == 1 ? "1 page" : "\(selected.count) pages" }
     var body: some View {
         ZStack {
             if choosing { formatPage.transition(.move(edge: .trailing).combined(with: .opacity)) }
@@ -950,7 +950,7 @@ private struct ExtractToolStep: View {
             work.run("Extracting…") {
                 var copy = doc; copy.title = PDFTools.named(doc.title, "extracted"); copy.pages = picks.map { doc.pages[$0] }
                 let saved = try await PDFTools.saveCopies([copy], store: store)
-                finish(PDFToolResult(title: "Extracted \(picks.count) \(picks.count == 1 ? "page" : "pages")", detail: "Saved as \(copy.title). The original is unchanged.",
+                finish(PDFToolResult(title: picks.count == 1 ? "Extracted 1 page" : "Extracted \(picks.count) pages", detail: "Saved as \(copy.title). The original is unchanged.",
                                      files: PDFTools.share(saved.map { ($0.0.title + ".pdf", $0.1) })))
             }
             return
@@ -989,7 +989,7 @@ private struct ExtractToolStep: View {
             }
             let title = kind == .images ? (files.count == 1 ? "Your image is ready" : "\(files.count) images are ready") : "\(kind.title) is ready"
             finish(PDFToolResult(title: title,
-                                 detail: "Made from \(picks.count) \(picks.count == 1 ? "page" : "pages") of \(doc.title). The original is unchanged.",
+                                 detail: picks.count == 1 ? "Made from 1 page of \(doc.title). The original is unchanged." : "Made from \(picks.count) pages of \(doc.title). The original is unchanged.",
                                  files: PDFTools.share(files), shareTitle: kind == .images ? "Share images" : "Share file"))
         }
     }
@@ -1025,7 +1025,7 @@ private struct ExportImagesToolStep: View {
     @State private var choosing = false
     @State private var png = false
     @State private var pixels = 2400
-    private var count: String { "\(selected.count) \(selected.count == 1 ? "page" : "pages")" }
+    private var count: String { selected.count == 1 ? "1 page" : "\(selected.count) pages" }
     var body: some View {
         ZStack {
             if choosing { optionsPage.transition(.move(edge: .trailing).combined(with: .opacity)) }
@@ -1043,7 +1043,7 @@ private struct ExportImagesToolStep: View {
         }
     }
     private var optionsPage: some View {
-        ToolPage(title: "Choose the image type", subtitle: "\(count) will become \(selected.count == 1 ? "a picture" : "pictures").") {
+        ToolPage(title: "Choose the image type", subtitle: selected.count == 1 ? "\(count) will become a picture." : "\(count) will become pictures.") {
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(text: "Format")
                 Button { png = false } label: { OptionCard(title: "JPG", detail: "Smaller files. Best for sharing and chat.", selected: !png) }
@@ -1060,7 +1060,7 @@ private struct ExportImagesToolStep: View {
             if let message = work.message { ToastMessage(text: message) }
         } actions: {
             Button("Change pages") { choosing = false }.buttonStyle(SecondaryCTAStyle())
-            Button("Export \(selected.count) \(selected.count == 1 ? "image" : "images")") { export() }
+            Button(LS(selected.count == 1 ? "Export 1 image" : "Export \(selected.count) images")) { export() }
                 .buttonStyle(CTAButtonStyle()).accessibilityIdentifier("images-run")
         }
     }
@@ -1076,7 +1076,7 @@ private struct ExportImagesToolStep: View {
                 guard let pdf = PDFDocument(url: url) else { throw ScannerError.message("This PDF can't be opened.") }
                 return try ExportFiles.images(pdf, indices: picks, pixels: size, png: format)
             }
-            finish(PDFToolResult(title: "\(picks.count) \(picks.count == 1 ? "image is" : "images are") ready", detail: "Share them or save them to Photos.", files: files, shareTitle: "Share images"))
+            finish(PDFToolResult(title: picks.count == 1 ? "1 image is ready" : "\(picks.count) images are ready", detail: "Share them or save them to Photos.", files: files, shareTitle: "Share images"))
         }
     }
 }
@@ -1090,7 +1090,7 @@ private struct LongImageToolStep: View {
     @State private var choosing = false
     @State private var width = 1080
     @State private var gap = 0
-    private var count: String { "\(selected.count) \(selected.count == 1 ? "page" : "pages")" }
+    private var count: String { selected.count == 1 ? "1 page" : "\(selected.count) pages" }
     var body: some View {
         ZStack {
             if choosing { optionsPage.transition(.move(edge: .trailing).combined(with: .opacity)) }
@@ -1160,7 +1160,7 @@ private struct PrintToolStep: View {
         ToolPage(title: "Which pages to print?", subtitle: "Printer settings open next.") {
             PageSelection(document: document, selected: $selected)
         } actions: {
-            Button(selected.isEmpty ? "Select pages" : "Print \(selected.count) \(selected.count == 1 ? "page" : "pages")") { print() }
+            Button(LS(selected.isEmpty ? "Select pages" : selected.count == 1 ? "Print 1 page" : "Print \(selected.count) pages")) { print() }
                 .buttonStyle(CTAButtonStyle()).disabled(selected.isEmpty).accessibilityIdentifier("print-run")
         }
         .onAppear { if selected.isEmpty { selected = Array(document.pages.indices) } }
@@ -1688,7 +1688,7 @@ struct RedactTool: View {
         } actions: { EmptyView() }
     }
     private var editPage: some View {
-        ToolPage(title: total == 0 ? "Nothing found yet" : "\(total) \(total == 1 ? "item" : "items") to hide",
+        ToolPage(title: total == 0 ? "Nothing found yet" : total == 1 ? "1 item to hide" : "\(total) items to hide",
                  subtitle: "Tap a box to keep it visible. Drag on the page to hide anything else.", scrolls: false) {
             if let doc, doc.pages.count > 1 {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -1771,7 +1771,7 @@ struct RedactTool: View {
         let url = store.url(file), count = doc.pages.count
         let rects = boxes.mapValues { $0.filter(\.on).map(\.rect) }
         let title = PDFTools.named(doc.title, "redacted")
-        work.run("Hiding \(total) \(total == 1 ? "item" : "items")…") {
+        work.run(total == 1 ? "Hiding 1 item…" : "Hiding \(total) items…") {
             let data = try await OfflineWork.perform { try Redaction.apply(url, boxes: rects, pageCount: count) }
             _ = try await store.saveGeneratedPDF(data, title: title, folder: doc.folder)
             result = PDFToolResult(title: "Personal info hidden", detail: "Saved as \(title). The blacked-out details are removed, not just covered. The original is unchanged.",

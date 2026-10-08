@@ -1,4 +1,4 @@
-/* Pageframe — generated from the Swift sources */
+/* Pageframe — ko */
 "Word export" = "Word로 내보내기";
 "Excel export" = "Excel로 내보내기";
 "PowerPoint export" = "PowerPoint로 내보내기";
@@ -598,7 +598,7 @@
 "Ready to print" = "인화 준비 완료";
 "Ready to upload" = "업로드 준비 완료";
 "%@. Print at 300 dpi or use it online." = "%@. 300 dpi로 인화하거나 온라인에서 사용하세요.";
-"%@ copies on %@ paper. Print at 100% and cut along the marks." = "%2$@ 용지에 %1$@장. 100% 크기로 인쇄한 뒤 표시선을 따라 자르세요.";
+"%@ copies on %@ paper. Print at 100%% and cut along the marks." = "%2$@ 용지에 %1$@장. 100%% 크기로 인쇄한 뒤 표시선을 따라 자르세요.";
 "Exact pixels and file size for the form. Share the file or save it to Documents." = "양식에 맞는 정확한 픽셀과 파일 크기예요. 파일을 공유하거나 문서에 저장하세요.";
 "Photo check" = "사진 점검";
 "All good" = "모두 통과";
@@ -980,7 +980,7 @@
 "Auto-enhanced" = "자동 보정됨";
 "Works offline" = "오프라인에서도 사용";
 "No account" = "계정 필요 없음";
-"Your PDF is saved. Text recognition couldn't finish on pages %lld. You can retry without taking new photos." = "PDF는 저장됐어요. %lld페이지에서 텍스트 인식을 마치지 못했어요. 다시 찍지 않고 재시도할 수 있어요.";
+"Your PDF is saved. Text recognition couldn't finish on pages %@. You can retry without taking new photos." = "PDF는 저장됐어요. %@페이지에서 텍스트 인식을 마치지 못했어요. 다시 찍지 않고 재시도할 수 있어요.";
 "No text was detected. Your scan is saved as an image PDF." = "텍스트를 찾지 못했어요. 스캔은 이미지 PDF로 저장됐어요.";
 "Reading text on page %lld of %lld…" = "%2$lld페이지 중 %1$lld페이지 텍스트 읽는 중…";
 "Saving PDF…" = "PDF 저장 중…";
@@ -1170,7 +1170,7 @@
 "High quality" = "고화질";
 "Keeps fine detail for printing." = "인쇄를 위해 세밀한 디테일을 유지해요.";
 "Compress" = "압축";
-"%@% smaller" = "%@% 작아짐";
+"%@%% smaller" = "%@%% 작아짐";
 "Already as small as it gets" = "이미 최대한 작은 크기예요";
 "Check the copy before you share it." = "공유하기 전에 사본을 확인하세요.";
 "This document can't get smaller with this setting." = "이 설정으로는 더 작게 만들 수 없어요.";
@@ -1231,7 +1231,7 @@
 "%@ / month, billed yearly" = "월 %@, 연 단위 결제";
 "Cancel anytime" = "언제든 해지 가능";
 "%@ once" = "%@ 1회 결제";
-"BEST · SAVE %lld%" = "추천 · %lld% 할인";
+"BEST · SAVE %lld%%" = "추천 · %lld%% 할인";
 "Start %lld-day free trial" = "%lld일 무료 체험 시작";
 "then %@/year" = "이후 연 %@";
 "Buy once for %@" = "%@에 한 번만 구매";
@@ -1672,3 +1672,34 @@
 "Trimmed page preview" = "자른 페이지 미리보기";
 "Page with selected margins" = "여백이 선택된 페이지";
 "Language" = "언어";
+"Me" = "나";
+"%@ is part of Pro. You have 1 free try left on this iPhone." = "%@은(는) Pro 기능이에요. 이 iPhone에서 무료 체험이 1회 남았어요.";
+"%@ is part of Pro. You have %lld free tries left on this iPhone." = "%1$@은(는) Pro 기능이에요. 이 iPhone에서 무료 체험이 %2$lld회 남았어요.";
+"Filled 1 field. Drag to adjust." = "1개 칸을 채웠어요. 드래그해서 조정하세요.";
+"Filled %lld fields. Drag to adjust." = "%lld개 칸을 채웠어요. 드래그해서 조정하세요.";
+"Add to 1 page" = "1페이지에 추가";
+"Add to %lld pages" = "%lld페이지에 추가";
+"Extracted 1 page" = "1페이지를 추출했어요";
+"Extracted %lld pages" = "%lld페이지를 추출했어요";
+"Made from 1 page of %@. The original is unchanged." = "%@의 1페이지로 만들었어요. 원본은 그대로예요.";
+"Made from %lld pages of %@. The original is unchanged." = "%2$@의 %1$lld페이지로 만들었어요. 원본은 그대로예요.";
+"%@ will become a picture." = "%@가 이미지로 바뀌어요.";
+"%@ will become pictures." = "%@가 이미지로 바뀌어요.";
+"Export 1 image" = "이미지 1장 내보내기";
+"Export %lld images" = "이미지 %lld장 내보내기";
+"1 image is ready" = "이미지 1장이 준비됐어요";
+"Print 1 page" = "1페이지 인쇄";
+"Print %lld pages" = "%lld페이지 인쇄";
+"1 item to hide" = "가릴 항목 1개";
+"%lld items to hide" = "가릴 항목 %lld개";
+"Hiding 1 item…" = "항목 1개 가리는 중…";
+"Hiding %lld items…" = "항목 %lld개 가리는 중…";
+"1 table ready" = "표 1개 준비됨";
+"%lld tables ready" = "표 %lld개 준비됨";
+"1 slide ready" = "슬라이드 1장 준비됨";
+"%lld slides ready" = "슬라이드 %lld장 준비됨";
+"1 page · %@" = "1페이지 · %@";
+"%lld pages · %@" = "%1$lld페이지 · %2$@";
+"%@ · 1 page" = "%@ · 1페이지";
+"Subscribe for %@/year" = "연 %@에 구독하기";
+"Subscribe for %@/month" = "월 %@에 구독하기";

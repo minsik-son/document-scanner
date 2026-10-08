@@ -152,7 +152,7 @@ struct PaywallView: View {
                             Text("then \(product.displayPrice)/year").font(.caption.weight(.semibold)).opacity(0.85)
                         }
                         else if product.id == SubscriptionStore.lifetimeID { Text("Buy once for \(product.displayPrice)").font(.headline.weight(.heavy)) }
-                        else { Text("Subscribe for \(product.displayPrice)/\(product.id == SubscriptionStore.yearlyID ? "year" : "month")").font(.headline.weight(.heavy)) }
+                        else { Text(LS(product.id == SubscriptionStore.yearlyID ? "Subscribe for \(product.displayPrice)/year" : "Subscribe for \(product.displayPrice)/month")).font(.headline.weight(.heavy)) }
                     }
                     .frame(maxWidth: .infinity).frame(minHeight: 54).padding(.vertical, 4)
                     .foregroundStyle(.white)

@@ -280,7 +280,7 @@ struct AnnotationEditor: View {
         }
       }
       setMarks(items)
-      fillNote = "Filled \(spots.count) \(spots.count == 1 ? "field" : "fields"). Drag to adjust."
+      fillNote = spots.count == 1 ? "Filled 1 field. Drag to adjust." : "Filled \(spots.count) fields. Drag to adjust."
     }
   }
   private func setMarks(_ values: [PageAnnotation]) { document?.pages[index].annotations = values }

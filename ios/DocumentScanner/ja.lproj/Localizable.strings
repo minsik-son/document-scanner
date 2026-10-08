@@ -1,4 +1,4 @@
-/* Pageframe — generated from the Swift sources */
+/* Pageframe — ja */
 "Word export" = "Word書き出し";
 "Excel export" = "Excel書き出し";
 "PowerPoint export" = "PowerPoint書き出し";
@@ -598,7 +598,7 @@
 "Ready to print" = "印刷の準備ができました";
 "Ready to upload" = "アップロードの準備ができました";
 "%@. Print at 300 dpi or use it online." = "%@。300 dpiで印刷するか、オンラインで使用してください。";
-"%@ copies on %@ paper. Print at 100% and cut along the marks." = "%2$@用紙に%1$@枚。100%で印刷し、トンボに沿って切ってください。";
+"%@ copies on %@ paper. Print at 100%% and cut along the marks." = "%2$@用紙に%1$@枚。100%%で印刷し、トンボに沿って切ってください。";
 "Exact pixels and file size for the form. Share the file or save it to Documents." = "申請フォームに合わせた正確なピクセル数とファイルサイズです。ファイルを共有するか書類に保存してください。";
 "Photo check" = "写真チェック";
 "All good" = "問題なし";
@@ -980,7 +980,7 @@
 "Auto-enhanced" = "自動補正済み";
 "Works offline" = "オフラインで使える";
 "No account" = "アカウント不要";
-"Your PDF is saved. Text recognition couldn't finish on pages %lld. You can retry without taking new photos." = "PDFは保存されました。%lldページでテキスト認識を完了できませんでした。撮り直さずに再試行できます。";
+"Your PDF is saved. Text recognition couldn't finish on pages %@. You can retry without taking new photos." = "PDFは保存されました。%@ページでテキスト認識を完了できませんでした。撮り直さずに再試行できます。";
 "No text was detected. Your scan is saved as an image PDF." = "テキストが検出されませんでした。スキャンは画像PDFとして保存されました。";
 "Reading text on page %lld of %lld…" = "%2$lldページ中 %1$lldページ目のテキストを読み取り中…";
 "Saving PDF…" = "PDFを保存中…";
@@ -1170,7 +1170,7 @@
 "High quality" = "高画質";
 "Keeps fine detail for printing." = "印刷用に細部まで保持します。";
 "Compress" = "圧縮";
-"%@% smaller" = "%@%削減";
+"%@%% smaller" = "%@%%削減";
 "Already as small as it gets" = "すでに最小サイズです";
 "Check the copy before you share it." = "共有する前にコピーを確認してください。";
 "This document can't get smaller with this setting." = "この設定ではこれ以上小さくできません。";
@@ -1231,7 +1231,7 @@
 "%@ / month, billed yearly" = "月あたり%@、年払い";
 "Cancel anytime" = "いつでも解約OK";
 "%@ once" = "%@（1回のみ）";
-"BEST · SAVE %lld%" = "おすすめ · %lld%お得";
+"BEST · SAVE %lld%%" = "おすすめ · %lld%%お得";
 "Start %lld-day free trial" = "%lld日間の無料トライアルを開始";
 "then %@/year" = "その後は年額%@";
 "Buy once for %@" = "%@で買い切り購入";
@@ -1672,3 +1672,34 @@
 "Trimmed page preview" = "トリミング後のページのプレビュー";
 "Page with selected margins" = "余白を選択したページ";
 "Language" = "言語";
+"Me" = "マイページ";
+"%@ is part of Pro. You have 1 free try left on this iPhone." = "%@はPro機能です。このiPhoneで無料お試しがあと1回使えます。";
+"%@ is part of Pro. You have %lld free tries left on this iPhone." = "%1$@はPro機能です。このiPhoneで無料お試しがあと%2$lld回使えます。";
+"Filled 1 field. Drag to adjust." = "1か所に入力しました。ドラッグで調整できます。";
+"Filled %lld fields. Drag to adjust." = "%lldか所に入力しました。ドラッグで調整できます。";
+"Add to 1 page" = "1ページに追加";
+"Add to %lld pages" = "%lldページに追加";
+"Extracted 1 page" = "1ページを抽出しました";
+"Extracted %lld pages" = "%lldページを抽出しました";
+"Made from 1 page of %@. The original is unchanged." = "「%@」の1ページから作成しました。元のファイルはそのままです。";
+"Made from %lld pages of %@. The original is unchanged." = "「%2$@」の%1$lldページから作成しました。元のファイルはそのままです。";
+"%@ will become a picture." = "%@を画像にします。";
+"%@ will become pictures." = "%@を画像にします。";
+"Export 1 image" = "画像1枚を書き出す";
+"Export %lld images" = "画像%lld枚を書き出す";
+"1 image is ready" = "画像1枚の準備ができました";
+"Print 1 page" = "1ページを印刷";
+"Print %lld pages" = "%lldページを印刷";
+"1 item to hide" = "隠す項目：1件";
+"%lld items to hide" = "隠す項目：%lld件";
+"Hiding 1 item…" = "1件を隠しています…";
+"Hiding %lld items…" = "%lld件を隠しています…";
+"1 table ready" = "表1件の準備ができました";
+"%lld tables ready" = "表%lld件の準備ができました";
+"1 slide ready" = "スライド1枚の準備ができました";
+"%lld slides ready" = "スライド%lld枚の準備ができました";
+"1 page · %@" = "1ページ · %@";
+"%lld pages · %@" = "%1$lldページ · %2$@";
+"%@ · 1 page" = "%@ · 1ページ";
+"Subscribe for %@/year" = "年額%@で登録";
+"Subscribe for %@/month" = "月額%@で登録";

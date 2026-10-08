@@ -470,7 +470,7 @@ struct DocumentChoiceList: View {
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                         VStack(alignment: .leading, spacing: 4) {
                             Text(L(doc.title)).font(.system(size: 16, weight: .semibold)).foregroundStyle(TK.grey900).lineLimit(2)
-                            Text("\(doc.pages.count) \(doc.pages.count == 1 ? "page" : "pages") · \(doc.updatedAt.formatted(date: .abbreviated, time: .omitted))")
+                            Text(LS(doc.pages.count == 1 ? "1 page · \(doc.updatedAt.formatted(date: .abbreviated, time: .omitted))" : "\(doc.pages.count) pages · \(doc.updatedAt.formatted(date: .abbreviated, time: .omitted))"))
                                 .font(.system(size: 13)).foregroundStyle(TK.grey500)
                         }
                         Spacer(minLength: 8)
@@ -585,7 +585,7 @@ struct PhotoSourceChoices: View {
             if let current = currentID.flatMap({ store.document($0) }), !current.pages.isEmpty {
                 Button { useCurrent(current) } label: {
                     ChoiceRow(symbol: "doc.richtext.fill", title: multiple ? "Use this document's pages" : "Use this document",
-                              detail: "\(current.title) · \(current.pages.count) \(current.pages.count == 1 ? "page" : "pages")")
+                              detail: current.pages.count == 1 ? "\(current.title) · 1 page" : "\(current.title) · \(current.pages.count) pages")
                 }.buttonStyle(.plain).accessibilityIdentifier("source-current")
             }
             if documentScan && CameraPhotoPicker.available {

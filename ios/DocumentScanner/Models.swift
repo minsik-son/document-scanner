@@ -1,5 +1,6 @@
 import Foundation
 import CoreGraphics
+import NaturalLanguage
 
 struct ScanPoint: Codable, Equatable {
     var x: Double
@@ -374,8 +375,9 @@ enum DocumentInsight {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
         let lines = (doc.pages.first?.plainText ?? text).split(whereSeparator: \.isNewline)
             .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-        let date = firstDate(text) ?? doc.createdAt
-        let day = Self.dayFormat.string(from: date)
+        // An ambiguous date (10/05/2026 with no way to tell the order) is left out.
+        let found = paperDate(text)
+        let day: String? = found.ambiguous ? nil : Self.dayFormat.string(from: found.date ?? doc.createdAt)
         var parts: [String] = []
         switch kind {
         case .businessCard:
@@ -389,7 +391,7 @@ enum DocumentInsight {
         case .contract, .form, .letter, .book, .other:
             if let head = heading(lines) { parts.append(head) } else { parts.append(kind == .other ? "Scan" : kind.label) }
         }
-        parts.append(day)
+        if let day { parts.append(day) }
         return clip(parts.joined(separator: " "))
     }
 
@@ -469,12 +471,47 @@ enum DocumentInsight {
         guard let re = try? NSRegularExpression(pattern: #"(\$|₩|€|£|rp\.?|rm)\s?\d|\d+[.,]\d{2}\b|\d{1,3}(,\d{3})+원?"#, options: [.caseInsensitive]) else { return 0 }
         return re.numberOfMatches(in: text, range: NSRange(text.startIndex..., in: text))
     }
-    private static func firstDate(_ text: String) -> Date? {
-        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.date.rawValue) else { return nil }
-        let now = Date()
-        // Only plausible paper dates: within 30 years back and a year ahead.
-        return detector.matches(in: text, range: NSRange(text.startIndex..., in: text)).compactMap(\.date)
-            .first { $0 < now.addingTimeInterval(366 * 86400) && $0 > now.addingTimeInterval(-30 * 366 * 86400) }
+    /// The first plausible date printed on the paper. Numeric dates with both
+    /// parts ≤ 12 ("10/05/2026") are read month-first or day-first from the
+    /// document's language, then the iPhone's region; if neither decides, the
+    /// date is reported as ambiguous.
+    static func paperDate(_ text: String, region: String? = Locale.current.region?.identifier) -> (date: Date?, ambiguous: Bool) {
+        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.date.rawValue) else { return (nil, false) }
+        let now = Date(), ns = text as NSString
+        func plausible(_ d: Date) -> Bool { d < now.addingTimeInterval(366 * 86400) && d > now.addingTimeInterval(-30 * 366 * 86400) }
+        let numeric = try! NSRegularExpression(pattern: #"^\s*(\d{1,2})\s*[/.\-]\s*(\d{1,2})\s*[/.\-]\s*(\d{4})\s*$"#)
+        for match in detector.matches(in: text, range: NSRange(location: 0, length: ns.length)) {
+            guard let detected = match.date else { continue }
+            let piece = ns.substring(with: match.range)
+            if let m = numeric.firstMatch(in: piece, range: NSRange(location: 0, length: (piece as NSString).length)) {
+                let p = piece as NSString
+                let a = Int(p.substring(with: m.range(at: 1))) ?? 0, b = Int(p.substring(with: m.range(at: 2))) ?? 0, y = Int(p.substring(with: m.range(at: 3))) ?? 0
+                var monthFirst: Bool?
+                if a > 12 && b <= 12 { monthFirst = false } else if b > 12 && a <= 12 { monthFirst = true }
+                else if a <= 12 && b <= 12 { monthFirst = Self.monthFirst(text, region: region) }
+                guard let first = monthFirst else { return (nil, true) }
+                var c = DateComponents(); c.year = y; c.month = first ? a : b; c.day = first ? b : a; c.hour = 12
+                guard let d = Calendar(identifier: .gregorian).date(from: c), plausible(d) else { continue }
+                return (d, false)
+            }
+            if plausible(detected) { return (detected, false) }
+        }
+        return (nil, false)
+    }
+    /// nil when neither the document's language nor the region settles the order.
+    static func monthFirst(_ text: String, region: String?) -> Bool? {
+        let recognizer = NLLanguageRecognizer(); recognizer.processString(text)
+        if let lang = recognizer.dominantLanguage, lang != .english, lang != .undetermined {
+            // Languages written day-first; East Asian dates are year-first and never reach here ambiguous.
+            let dayFirst: Set<NLLanguage> = [.french, .german, .spanish, .italian, .portuguese, .dutch, .polish, .turkish, .vietnamese, .indonesian, .russian, .thai]
+            if dayFirst.contains(lang) { return false }
+        }
+        switch region {
+        case "US", "PH", "PR", "GU", "FM", "MH": return true
+        case nil: return nil
+        default:
+            return ["GB", "IE", "AU", "NZ", "IN", "ZA", "SG", "MY", "FR", "DE", "ES", "IT", "BR", "PT", "PL", "TR", "VN", "ID", "TH", "NL", "BE", "CH", "AT", "MX"].contains(region!) ? false : nil
+        }
     }
     private static let generic: Set<String> = ["receipt", "invoice", "tax invoice", "statement", "page", "date", "welcome", "thank you", "customer copy", "merchant copy", "original", "copy",
                                                "cash bill", "bill", "official receipt", "simplified tax invoice", "영수증", "청구서", "고객용", "가맹점용", "카드영수증", "현금영수증"]

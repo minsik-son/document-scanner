@@ -50,6 +50,7 @@ struct ReviewView: View {
     @State private var cropWasConfirmed = false
     @State private var undoHistory: [ScanDocument] = []
     @State private var redoHistory: [ScanDocument] = []
+    @State private var confirmDiscard = false
     @State private var deletingLast = false
     @State private var retakingPage: UUID?
     @State private var workingDraftID: UUID?
@@ -169,7 +170,12 @@ struct ReviewView: View {
                         Button { finishSaved() } label: {
                             HStack(spacing: 4) { Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold)); Text(L(savedBackTitle)) }
                         }.disabled(saving || finishing).accessibilityIdentifier("saved-done")
-                    } else { Button(document?.isDraft == true ? "Close" : "Cancel") { cancelEditing() }.disabled(saving) }
+                    } else {
+                        Button(document?.isDraft == true ? "Close" : "Cancel") {
+                            // A new scan with pages is never thrown away by one tap.
+                            if document?.isDraft == true && !(document?.pages.isEmpty ?? true) { confirmDiscard = true } else { cancelEditing() }
+                        }.disabled(saving).accessibilityIdentifier("review-close")
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     if !saved {
@@ -185,6 +191,10 @@ struct ReviewView: View {
                 }
             }
             .overlay(alignment: .top) { if saving { Button("Cancel export") { saveTask?.cancel() }.padding(10).background(.regularMaterial, in: Capsule()) } }
+            .alert("Discard this scan?", isPresented: $confirmDiscard) {
+                Button("Discard", role: .destructive) { cancelEditing() }
+                Button("Keep editing", role: .cancel) {}
+            } message: { Text("Its pages will be deleted from this iPhone.") }
             .alert("Delete the last page?", isPresented: $deletingLast) {
                 Button("Move document to Trash", role: .destructive) { if let doc = store.document(documentID) { store.moveToTrash(doc); if store.problem == nil { cancelEditing() } } }
                 Button("Cancel", role: .cancel) {}
@@ -381,7 +391,7 @@ struct ReviewView: View {
     private func save(forceText: Bool = false) {
         guard var doc = document else { return }
         doc.title = doc.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        if doc.title.isEmpty { doc.title = "Scan \(Date().formatted(date: .abbreviated, time: .shortened))"; doc.autoTitled = true }
+        if doc.title.isEmpty { doc.title = ScanDocument.defaultTitle(); doc.autoTitled = true }
         document = doc
         if let unchecked = doc.pages.first(where: { $0.cropReviewNeeded == true }) {
             resumeSaveAfterCrop = true; cropWasConfirmed = false

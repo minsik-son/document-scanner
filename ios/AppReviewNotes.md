@@ -24,4 +24,4 @@ Thank you for reviewing HushScan.
 
 **Permissions**: Camera (scanning), Photos add-only (saving images you create), Contacts (only when saving a scanned business card), Face ID (optional App lock), Notifications (only after starting a free trial, for a reminder 2 days before renewal).
 
-**Contact**: _(to be added)_
+**Contact**: minsik.son@gmail.com · Support page: https://minsik-son.github.io/document-scanner/support.html

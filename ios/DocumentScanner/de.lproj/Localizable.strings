@@ -1,4 +1,4 @@
-/* FoldScan — de */
+/* HushScan — de */
 "Word export" = "Word-Export";
 "Excel export" = "Excel-Export";
 "PowerPoint export" = "PowerPoint-Export";
@@ -1397,7 +1397,7 @@
 "Add %lld" = "%lld hinzufügen";
 "Trial · 1 day left" = "Testphase · noch 1 Tag";
 "Trial · %lld days left" = "Testphase · noch %lld Tage";
-"Unlock\nFoldScan Pro" = "FoldScan Pro\nfreischalten";
+"Unlock\nHushScan Pro" = "HushScan Pro\nfreischalten";
 "Office export, translation, photo tools and no ads." = "Office-Export, Übersetzung, Foto-Tools und keine Werbung.";
 "Try free" = "Gratis testen";
 "See plans" = "Tarife ansehen";

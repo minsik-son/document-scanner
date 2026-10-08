@@ -1,4 +1,4 @@
-/* FoldScan — tr */
+/* HushScan — tr */
 "Word export" = "Word'e aktar";
 "Excel export" = "Excel'e aktar";
 "PowerPoint export" = "PowerPoint'e aktar";
@@ -1397,7 +1397,7 @@
 "Add %lld" = "Ekle (%lld)";
 "Trial · 1 day left" = "Deneme · 1 gün kaldı";
 "Trial · %lld days left" = "Deneme · %lld gün kaldı";
-"Unlock\nFoldScan Pro" = "FoldScan Pro'nun\nkilidini aç";
+"Unlock\nHushScan Pro" = "HushScan Pro'nun\nkilidini aç";
 "Office export, translation, photo tools and no ads." = "Office'e aktarma, çeviri, fotoğraf araçları ve reklamsız kullanım.";
 "Try free" = "Ücretsiz dene";
 "See plans" = "Planları gör";

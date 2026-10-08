@@ -1,4 +1,4 @@
-/* FoldScan — id */
+/* HushScan — id */
 "Word export" = "Ekspor Word";
 "Excel export" = "Ekspor Excel";
 "PowerPoint export" = "Ekspor PowerPoint";
@@ -1397,7 +1397,7 @@
 "Add %lld" = "Tambahkan %lld";
 "Trial · 1 day left" = "Uji coba · Sisa 1 hari";
 "Trial · %lld days left" = "Uji coba · Sisa %lld hari";
-"Unlock\nFoldScan Pro" = "Aktifkan\nFoldScan Pro";
+"Unlock\nHushScan Pro" = "Aktifkan\nHushScan Pro";
 "Office export, translation, photo tools and no ads." = "Ekspor Office, terjemahan, alat foto, dan tanpa iklan.";
 "Try free" = "Coba gratis";
 "See plans" = "Lihat paket";

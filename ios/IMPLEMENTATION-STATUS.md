@@ -154,3 +154,5 @@ Selected-language + close-up OCR, word-gap column separation, mixed-script parag
 | D 심사 메모 | `AppReviewNotes.md` (연락처 빈칸) | — |
 
 남은 결정: 지원 이메일, GitHub Pages 게시(저장소 Settings › Pages › main /docs), AdMob 실제 ID(현재 Release는 광고 꺼짐), `FoundingOffer.launchDay`, 마케팅 버전(현재 0.1.0).
+
+이름 변경(2026-10-08): FoldScan → **HushScan**. 표시 이름, Bundle ID `com.hushscan.app`(테스트 `.tests`/`.uitests`), 상품 ID `com.hushscan.pro.monthly/yearly/lifetime`, 문서·개인정보 페이지 반영. 마케팅 버전 1.0. 위 표의 FoldScan 표기는 당시 기록.

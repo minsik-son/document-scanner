@@ -1,4 +1,4 @@
-/* FoldScan — ko */
+/* HushScan — ko */
 "Word export" = "Word로 내보내기";
 "Excel export" = "Excel로 내보내기";
 "PowerPoint export" = "PowerPoint로 내보내기";
@@ -1397,7 +1397,7 @@
 "Add %lld" = "%lld개 추가";
 "Trial · 1 day left" = "체험 · 1일 남음";
 "Trial · %lld days left" = "체험 · %lld일 남음";
-"Unlock\nFoldScan Pro" = "FoldScan Pro\n잠금 해제";
+"Unlock\nHushScan Pro" = "HushScan Pro\n잠금 해제";
 "Office export, translation, photo tools and no ads." = "Office 내보내기, 번역, 사진 도구, 광고 없음.";
 "Try free" = "무료로 체험";
 "See plans" = "요금제 보기";

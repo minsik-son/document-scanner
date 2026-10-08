@@ -44,7 +44,7 @@ final class ScannerFlowTests: XCTestCase {
         let config = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "Scanner", withExtension: "storekit"))
         let session = try SKTestSession(contentsOf: config); session.disableDialogs = true; session.clearTransactions()
         defer { session.clearTransactions() }
-        try session.buyProduct(productIdentifier: "com.foldscan.pro.yearly")
+        try session.buyProduct(productIdentifier: "com.hushscan.pro.yearly")
         let app = XCUIApplication(); app.launchArguments = ["--ui-test-session", UUID().uuidString, "--seed-saved"]
         app.launch(); XCTAssertTrue(app.staticTexts["Test document"].waitForExistence(timeout: 10)); app.staticTexts["Test document"].tap()
         func finished(_ name: String) {
@@ -132,7 +132,7 @@ final class ScannerFlowTests: XCTestCase {
         let session = try SKTestSession(contentsOf: url)
         session.disableDialogs = true; session.clearTransactions()
         defer { session.clearTransactions() }
-        try session.buyProduct(productIdentifier: "com.foldscan.pro.yearly")
+        try session.buyProduct(productIdentifier: "com.hushscan.pro.yearly")
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-session", UUID().uuidString, "--seed-saved"]
         app.launch()

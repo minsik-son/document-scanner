@@ -1,10 +1,10 @@
-# FoldScan — Notes for App Review
+# HushScan — Notes for App Review
 
 Paste into App Store Connect → App Review Information → Notes.
 
 ---
 
-Thank you for reviewing FoldScan.
+Thank you for reviewing HushScan.
 
 **No account needed.** The app has no sign-in. Every document is processed on the device: scanning, text recognition, Word/Excel/PowerPoint conversion, PDF tools and photo translation all run locally. We operate no server that receives documents.
 

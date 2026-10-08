@@ -13,7 +13,7 @@
           "locale": "en_US"
         }
       ],
-      "productID": "com.foldscan.pro.lifetime",
+      "productID": "com.hushscan.pro.lifetime",
       "referenceName": "Pro lifetime",
       "type": "NonConsumable"
     }
@@ -51,7 +51,7 @@
               "locale": "en_US"
             }
           ],
-          "productID": "com.foldscan.pro.monthly",
+          "productID": "com.hushscan.pro.monthly",
           "recurringSubscriptionPeriod": "P1M",
           "referenceName": "Pro monthly",
           "subscriptionGroupID": "scanner-pro",
@@ -77,7 +77,7 @@
               "locale": "en_US"
             }
           ],
-          "productID": "com.foldscan.pro.yearly",
+          "productID": "com.hushscan.pro.yearly",
           "recurringSubscriptionPeriod": "P1Y",
           "referenceName": "Pro yearly",
           "subscriptionGroupID": "scanner-pro",

@@ -54,14 +54,14 @@ final class SubscriptionTests: XCTestCase {
     }
     /// App Review: one app name everywhere and working public links.
     func testAppNameAndPublicLinksAreConfigured() {
-        XCTAssertEqual(AppInfo.name, "FoldScan")
+        XCTAssertEqual(AppInfo.name, "HushScan")
         for link in [AppInfo.privacyPolicy, AppInfo.support, AppInfo.terms] {
             let url = URL(string: link)
             XCTAssertEqual(url?.scheme, "https", link)
             XCTAssertFalse((url?.host ?? "").isEmpty, link)
         }
-        XCTAssertTrue(SubscriptionStore.productIDs.allSatisfy { $0.hasPrefix("com.foldscan.pro.") })
-        XCTAssertEqual(Bundle.main.bundleIdentifier, "com.foldscan.app")
+        XCTAssertTrue(SubscriptionStore.productIDs.allSatisfy { $0.hasPrefix("com.hushscan.pro.") })
+        XCTAssertEqual(Bundle.main.bundleIdentifier, "com.hushscan.app")
     }
     /// Tools page: every visible tool sits in exactly one section; Count objects stays hidden.
     func testToolSectionsCoverEveryToolOnce() {

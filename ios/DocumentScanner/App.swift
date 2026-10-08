@@ -94,7 +94,7 @@ struct DocumentScannerApp: App {
 /// Name, version and public links in one place. The name shown in the app is the
 /// home-screen name from Info.plist, so the two can never disagree.
 enum AppInfo {
-    static var name: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "FoldScan" }
+    static var name: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "HushScan" }
     static var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0" }
     static var build: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1" }
     /// Published privacy policy and support pages (GitHub Pages, docs/ folder of the repository).

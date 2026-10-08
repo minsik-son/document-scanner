@@ -120,7 +120,7 @@ enum ExportFiles {
 
 /// Shared PDFs carry the document's name ("Lease agreement.pdf"), not the
 /// internal file name. A named copy is kept in a temporary folder and refreshed
-/// whenever the saved PDF changes. Creator and Producer say FoldScan.
+/// whenever the saved PDF changes. Creator and Producer say HushScan.
 enum SharedPDF {
   static var root: URL { FileManager.default.temporaryDirectory.appendingPathComponent("SharedPDF", isDirectory: true) }
   static func fileName(_ title: String) -> String {

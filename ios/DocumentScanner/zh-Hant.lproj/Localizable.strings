@@ -203,7 +203,7 @@
 "Save" = "儲存";
 "Saving annotations…" = "正在儲存註解…";
 "Reading the form…" = "正在讀取表單…";
-"No form labels found. Add text boxes by hand." = "找不到表單欄位。請手動加入文字框。";
+"No form labels found. Add text boxes by hand." = "找不到表單欄位標籤。請手動加入文字框。";
 "Page unavailable." = "無法使用頁面。";
 "Draw your signature" = "寫下你的簽名";
 "A handwritten signature, not a certified digital one." = "這是手寫簽名，並非經認證的數位簽章。";
@@ -359,7 +359,7 @@
 "Text could not be extracted. %@" = "無法擷取文字。%@";
 "Name" = "名稱";
 "Type" = "類型";
-"Sorted automatically on this iPhone. Your choice is kept." = "已在這部 iPhone 上自動分類，你的選擇會保留。";
+"Sorted automatically on this iPhone. Your choice is kept." = "已在這部 iPhone 上自動判斷文件類型，你的選擇會保留。";
 "Name & type" = "名稱與類型";
 "Scanned business card" = "掃描的名片";
 "Loading full detail…" = "正在載入完整畫質…";
@@ -380,7 +380,7 @@
 "%@ · %lld pages" = "%1$@ · %2$lld 頁";
 "Imported pages are also available in Settings → Unfinished scans." = "匯入的頁面也可以在「設定」→「未完成的掃描」中找到。";
 "Import files" = "匯入檔案";
-"Retry remaining files" = "重試其餘檔案";
+"Retry remaining files" = "重新匯入其餘檔案";
 "Downloading or importing %@…" = "正在下載或匯入「%@」…";
 "Image could not be read." = "無法讀取影像。";
 "Import canceled. Already imported pages are kept." = "已取消匯入，已匯入的頁面會保留。";
@@ -505,7 +505,7 @@
 "Blue" = "藍色";
 "Red" = "紅色";
 "This photo couldn't be analysed on this device. Try another photo." = "無法在此裝置上分析這張照片。請換一張照片試試。";
-"No face found. Use a photo that faces the camera." = "找不到臉部。請使用正面朝向相機的照片。";
+"No face found. Use a photo that faces the camera." = "找不到臉部。請使用臉部正對相機的照片。";
 "More than one face was found. Use a photo of one person." = "偵測到不只一張臉。請使用單人照片。";
 "The person couldn't be separated from the background. Use a plain background." = "無法將人物與背景分離。請使用素色背景。";
 "Head size" = "頭部大小";
@@ -640,7 +640,7 @@
 "Save clean copy" = "儲存乾淨副本";
 "Cleaning the full page…" = "正在清理整頁…";
 "Restore an old photo" = "修復舊照片";
-"Fix faded colors, dust, small scratches and blur in one step." = "一次修正褪色、灰塵、細小刮痕和模糊。";
+"Fix faded colors, dust, small scratches and blur in one step." = "一次恢復褪色，去除灰塵和細小刮痕，並減少模糊。";
 "Your restored photo is saved" = "已儲存修復後的照片";
 "Restored" = "已修復";
 "Drag to compare with the original." = "拖移以與原圖比較。";
@@ -702,7 +702,7 @@
 "The preview couldn't be resized. Try again." = "無法調整預覽大小。請再試一次。";
 "This preview couldn't be opened." = "無法開啟此預覽。";
 "These adjustments couldn't be previewed. Try again." = "無法預覽這些調整。請再試一次。";
-"This page couldn't be prepared for text recognition. Your scanned page is still saved." = "無法為此頁面準備文字辨識。你掃描的頁面仍已儲存。";
+"This page couldn't be prepared for text recognition. Your scanned page is still saved." = "無法為此頁面準備文字辨識。你掃描的頁面仍保留在這裡。";
 "Add at least one page before saving." = "儲存前請至少加入一頁。";
 "This PDF cannot be opened. Unlock it before importing." = "無法開啟此 PDF。請先解鎖再匯入。";
 "Import up to 100 pages at a time." = "每次最多可匯入 100 頁。";
@@ -1042,7 +1042,7 @@
 "Color %@" = "顏色 %@";
 "Diagonal" = "斜向";
 "Straight" = "水平";
-"Steep" = "陡斜";
+"Steep" = "大角度";
 "Repeat across the page" = "在頁面上重複排列";
 "Add to %lld %@" = "加到 %1$lld %2$@";
 "Adding the watermark…" = "正在加入浮水印…";
@@ -1196,7 +1196,7 @@
 "Face ID or your passcode to open it here" = "在這裡開啟時需要 Face ID 或裝置密碼";
 "Everything in “%@”" = "「%@」中的所有內容";
 "Locks the whole folder, including new scans" = "鎖定整個檔案夾，包括新的掃描";
-"The password is only for the shared copy. Locking in the app works without it." = "密碼只用於分享的副本。App 內鎖定不需要密碼。";
+"The password is only for the shared copy. Locking in the app works without it." = "這組密碼只用於分享的副本。App 內鎖定不需要設定這組密碼。";
 "Lock and share" = "鎖定並分享";
 "Locking a copy…" = "正在鎖定副本…";
 "Locked copy is ready" = "已鎖定的副本已準備好";
@@ -1212,7 +1212,7 @@
 ", hidden" = "，已隱藏";
 ", visible" = "，可見";
 "Added" = "已加入";
-"Draw boxes to hide" = "畫框以隱藏";
+"Draw boxes to hide" = "框選要隱藏的內容";
 "Hide %lld and save a copy" = "隱藏 %lld 項並儲存副本";
 "Looking for personal info…" = "正在尋找個人資訊…";
 "Looking for personal info… page %lld of %lld" = "正在尋找個人資訊…第 %1$lld 頁，共 %2$lld 頁";
@@ -1234,7 +1234,7 @@
 "BEST · SAVE %lld%%" = "最划算 · 省 %lld%%";
 "Start %lld-day free trial" = "開始 %lld 天免費試用";
 "then %@/year" = "之後每年 %@";
-"Buy once for %@" = "一次購買 %@";
+"Buy once for %@" = "以 %@ 一次購買";
 "Subscribe for %@/%@" = "訂閱 %1$@/%2$@";
 "Terms" = "使用條款";
 "Privacy" = "隱私權政策";
@@ -1255,7 +1255,7 @@
 "Read signs, menus and letters in your language" = "以你的語言閱讀招牌、菜單和信件";
 "Text from any page" = "從任何頁面擷取文字";
 "Copy and search the words in every scan" = "拷貝和搜尋每份掃描中的文字";
-"Cover ID, card and phone numbers in one tap" = "一點即可遮蓋身分證號、卡號和電話號碼";
+"Cover ID, card and phone numbers in one tap" = "點一下即可遮蓋身分證號、卡號和電話號碼";
 "Fill forms in seconds" = "幾秒鐘填好表單";
 "Your name, address and signature, placed for you" = "自動幫你放好姓名、地址和簽名";
 "Restore old photos" = "修復舊照片";
@@ -1442,7 +1442,7 @@
 "Folder" = "檔案夾";
 "Landscape" = "橫向";
 "Margins" = "邊界";
-"For no added white space, choose Original paper and None margins. A4 and US Letter keep their shape and may add white space." = "若不想加入額外空白，請選擇「原始紙張」和邊界「無」。A4 和 US Letter 會維持原有比例，可能加入空白。";
+"For no added white space, choose Original paper and None margins. A4 and US Letter keep their shape and may add white space." = "若不想加入額外空白，請將紙張設為「原始」、邊界設為「無」。A4 和 US Letter 會維持原有比例，可能加入空白。";
 "Changing PDF paper or margins keeps text and links but flattens interactive forms. The imported original is retained." = "更改 PDF 紙張或邊界會保留文字和連結，但會將互動式表單平面化。匯入的原始檔案會保留。";
 "Save changes" = "儲存變更";
 "Review" = "檢查";
@@ -1612,7 +1612,7 @@
 "Pro is active during Apple's billing grace period. Update your payment method." = "在 Apple 的帳單寬限期內，Pro 仍為啟用狀態。請更新你的付款方式。";
 "Pro remains active until the paid period ends. Renewal is off." = "Pro 會維持啟用至已付費期間結束。自動續訂已關閉。";
 "Payment needs attention. Manage your subscription to restore Pro." = "付款需要處理。請管理你的訂閱以恢復 Pro。";
-"Pro is active through the last verified paid period. Subscription status could not be refreshed." = "Pro 會維持啟用至最後一次驗證的付費期間。無法重新整理訂閱狀態。";
+"Pro is active through the last verified paid period. Subscription status could not be refreshed." = "Pro 會維持啟用至最近一次驗證的付費期間結束。無法重新整理訂閱狀態。";
 "Pro is unlocked for life" = "Pro 已永久解鎖";
 "Pro is unlocked in this development build" = "此開發版本已解鎖 Pro";
 "the plan price" = "方案價格";

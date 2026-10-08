@@ -6,7 +6,7 @@
 "Book pages" = "Buchseiten";
 "ID photo" = "Passfoto";
 "Smart erase" = "Smart-Radierer";
-"Remove colored marks" = "Stiftspuren entfernen";
+"Remove colored marks" = "Farbige Stiftspuren entfernen";
 "Restore photo" = "Foto restaurieren";
 "Mega scan" = "Mega-Scan";
 "Count objects" = "Objekte zählen";
@@ -152,7 +152,7 @@
 "Share" = "Teilen";
 "Scan another" = "Neuer Scan";
 "Check your expression" = "Ausdruck prüfen";
-"Arithmetic only: + − × ÷, powers, parentheses and functions like sqrt(81)." = "Nur Grundrechenarten: + − × ÷, Potenzen, Klammern und Funktionen wie sqrt(81).";
+"Arithmetic only: + − × ÷, powers, parentheses and functions like sqrt(81)." = "Nur arithmetische Ausdrücke: + − × ÷, Potenzen, Klammern und Funktionen wie sqrt(81).";
 "Correct anything the camera may have missed." = "Korrigiere, was die Kamera eventuell übersehen hat.";
 "Enlarge captured image" = "Aufgenommenes Bild vergrößern";
 "Canceled. Nothing was saved." = "Abgebrochen. Es wurde nichts gespeichert.";
@@ -203,7 +203,7 @@
 "Save" = "Speichern";
 "Saving annotations…" = "Anmerkungen werden gespeichert …";
 "Reading the form…" = "Formular wird gelesen …";
-"No form labels found. Add text boxes by hand." = "Keine Formularfelder gefunden. Füge Textfelder manuell hinzu.";
+"No form labels found. Add text boxes by hand." = "Keine Feldbeschriftungen im Formular gefunden. Füge Textfelder manuell hinzu.";
 "Page unavailable." = "Seite nicht verfügbar.";
 "Draw your signature" = "Zeichne deine Unterschrift";
 "A handwritten signature, not a certified digital one." = "Eine handschriftliche Unterschrift, keine zertifizierte digitale Signatur.";
@@ -251,7 +251,7 @@
 "Back of card" = "Rückseite der Karte";
 "Open Settings" = "Einstellungen öffnen";
 "Import photo instead" = "Stattdessen Foto importieren";
-"Try camera again" = "Kamera erneut versuchen";
+"Try camera again" = "Kamera erneut starten";
 "Hold steady — we'll take the photo when the page is found" = "Ruhig halten – die Aufnahme erfolgt, sobald die Seite erkannt ist";
 "Scan ID card" = "Ausweis scannen";
 "Retake page" = "Seite neu aufnehmen";
@@ -282,7 +282,7 @@
 "The camera is temporarily unavailable. Try again when it is free." = "Die Kamera ist vorübergehend nicht verfügbar. Versuch es erneut, sobald sie frei ist.";
 "Capture was interrupted. Try again when the camera is open." = "Die Aufnahme wurde unterbrochen. Versuch es erneut, wenn die Kamera geöffnet ist.";
 "The camera was interrupted. Try scanning this page again." = "Die Kamera wurde unterbrochen. Scanne diese Seite erneut.";
-"The camera was interrupted. Tap Try camera again when it is available." = "Die Kamera wurde unterbrochen. Tippe auf „Kamera erneut versuchen“, sobald sie verfügbar ist.";
+"The camera was interrupted. Tap Try camera again when it is available." = "Die Kamera wurde unterbrochen. Tippe auf „Kamera erneut starten“, sobald sie verfügbar ist.";
 "The camera isn't ready. Try again." = "Die Kamera ist nicht bereit. Versuch es erneut.";
 "The camera didn't return a photo. Try again." = "Die Kamera hat kein Foto geliefert. Versuch es erneut.";
 "Place the back of the card inside the frame" = "Platziere die Rückseite der Karte im Rahmen";
@@ -306,7 +306,7 @@
 "The PDF margin settings are invalid." = "Die PDF-Randeinstellungen sind ungültig.";
 "This PDF could not be trimmed." = "Dieses PDF konnte nicht beschnitten werden.";
 "PDF page layout failed." = "PDF-Seitenlayout fehlgeschlagen.";
-"Use 8–32 English letters, numbers, spaces or symbols for this PDF password." = "Verwende für dieses PDF-Passwort 8–32 lateinische Buchstaben, Ziffern, Leerzeichen oder Symbole.";
+"Use 8–32 English letters, numbers, spaces or symbols for this PDF password." = "Verwende für dieses PDF-Passwort 8–32 Zeichen: englische Buchstaben (A–Z, a–z), Ziffern, Leerzeichen oder Symbole.";
 "Password protection could not be verified. No file was shared." = "Der Passwortschutz konnte nicht überprüft werden. Es wurde keine Datei geteilt.";
 "Check the four crop corners before saving." = "Prüfe vor dem Speichern die vier Ecken des Zuschnitts.";
 "Perspective correction couldn't be applied. Adjust the crop and try again." = "Die Perspektivkorrektur konnte nicht angewendet werden. Passe den Zuschnitt an und versuch es erneut.";
@@ -359,7 +359,7 @@
 "Text could not be extracted. %@" = "Text konnte nicht extrahiert werden. %@";
 "Name" = "Name";
 "Type" = "Typ";
-"Sorted automatically on this iPhone. Your choice is kept." = "Automatisch auf diesem iPhone sortiert. Deine Auswahl bleibt erhalten.";
+"Sorted automatically on this iPhone. Your choice is kept." = "Der Dokumenttyp wurde automatisch auf diesem iPhone bestimmt. Deine Auswahl bleibt erhalten.";
 "Name & type" = "Name & Typ";
 "Scanned business card" = "Gescannte Visitenkarte";
 "Loading full detail…" = "Volle Auflösung wird geladen …";
@@ -380,7 +380,7 @@
 "%@ · %lld pages" = "%@ · %lld Seiten";
 "Imported pages are also available in Settings → Unfinished scans." = "Importierte Seiten findest du auch unter „Einstellungen“ → „Unfertige Scans“.";
 "Import files" = "Dateien importieren";
-"Retry remaining files" = "Übrige Dateien erneut versuchen";
+"Retry remaining files" = "Übrige Dateien erneut importieren";
 "Downloading or importing %@…" = "%@ wird geladen oder importiert …";
 "Image could not be read." = "Das Bild konnte nicht gelesen werden.";
 "Import canceled. Already imported pages are kept." = "Import abgebrochen. Bereits importierte Seiten bleiben erhalten.";
@@ -510,7 +510,7 @@
 "The person couldn't be separated from the background. Use a plain background." = "Die Person konnte nicht vom Hintergrund getrennt werden. Verwende einen einfarbigen Hintergrund.";
 "Head size" = "Kopfgröße";
 "%.1f mm, within %g–%g mm" = "%.1f mm, innerhalb von %g–%g mm";
-"%.1f mm. Needs %g–%g mm; adjust it on the guide" = "%.1f mm. Erforderlich sind %g–%g mm; passe es an der Hilfslinie an";
+"%.1f mm. Needs %g–%g mm; adjust it on the guide" = "%.1f mm. Erforderlich sind %g–%g mm; passe die Kopfgröße an der Hilfslinie an";
 "Centred" = "Zentriert";
 "The face is in the middle" = "Das Gesicht ist mittig";
 "Move the face to the centre line" = "Richte das Gesicht an der Mittellinie aus";
@@ -640,7 +640,7 @@
 "Save clean copy" = "Saubere Kopie speichern";
 "Cleaning the full page…" = "Ganze Seite wird bereinigt …";
 "Restore an old photo" = "Altes Foto restaurieren";
-"Fix faded colors, dust, small scratches and blur in one step." = "Behebt verblasste Farben, Staub, kleine Kratzer und Unschärfe in einem Schritt.";
+"Fix faded colors, dust, small scratches and blur in one step." = "Frischt verblasste Farben auf, entfernt Staub und kleine Kratzer und reduziert Unschärfe – in einem Schritt.";
 "Your restored photo is saved" = "Dein restauriertes Foto ist gespeichert";
 "Restored" = "Restauriert";
 "Drag to compare with the original." = "Zum Vergleichen mit dem Original ziehen.";
@@ -1042,7 +1042,7 @@
 "Color %@" = "Farbe %@";
 "Diagonal" = "Diagonal";
 "Straight" = "Waagerecht";
-"Steep" = "Steil";
+"Steep" = "Stark geneigt";
 "Repeat across the page" = "Über die ganze Seite wiederholen";
 "Add to %lld %@" = "Zu %lld %@ hinzufügen";
 "Adding the watermark…" = "Wasserzeichen wird hinzugefügt …";
@@ -1189,14 +1189,14 @@
 "Password" = "Passwort";
 "Enter it again" = "Erneut eingeben";
 "8 to 32 characters" = "8 bis 32 Zeichen";
-"English letters, numbers, spaces or symbols" = "Lateinische Buchstaben, Ziffern, Leerzeichen oder Symbole";
+"English letters, numbers, spaces or symbols" = "Englische Buchstaben (A–Z, a–z), Ziffern, Leerzeichen oder Symbole";
 "Both entries match" = "Beide Eingaben stimmen überein";
 "Also lock it in this app" = "Auch in dieser App sperren";
 "This document" = "Dieses Dokument";
 "Face ID or your passcode to open it here" = "Face ID oder Code zum Öffnen in der App";
 "Everything in “%@”" = "Alles in „%@“";
 "Locks the whole folder, including new scans" = "Sperrt den ganzen Ordner, auch neue Scans";
-"The password is only for the shared copy. Locking in the app works without it." = "Das Passwort gilt nur für die geteilte Kopie. Die Sperre in der App funktioniert auch ohne.";
+"The password is only for the shared copy. Locking in the app works without it." = "Das Passwort gilt nur für die geteilte Kopie. Die Sperre in der App funktioniert auch ohne dieses Passwort.";
 "Lock and share" = "Sperren und teilen";
 "Locking a copy…" = "Kopie wird gesperrt …";
 "Locked copy is ready" = "Gesperrte Kopie ist fertig";
@@ -1359,7 +1359,7 @@
 "Keep original look" = "Original-Aussehen behalten";
 "Each page as a full-resolution picture" = "Jede Seite als Bild in voller Auflösung";
 "Editable text only" = "Nur bearbeitbarer Text";
-"Check the text first; no pictures or layout" = "Erst den Text prüfen; keine Bilder oder Layout";
+"Check the text first; no pictures or layout" = "Erst den Text prüfen; ohne Bilder oder Layout";
 "Check your tables" = "Tabellen prüfen";
 "Check your slide text" = "Folientext prüfen";
 "Tap a cell to correct it. Merged cells, fills and fonts are kept." = "Tippe auf eine Zelle, um sie zu korrigieren. Verbundene Zellen, Füllungen und Schriften bleiben erhalten.";
@@ -1566,7 +1566,7 @@
 "Change" = "Ändern";
 "Turn off" = "Ausschalten";
 "Save new scans to a folder" = "Neue Scans in einem Ordner speichern";
-"The mesh is too large or invalid." = "Das Mesh ist zu groß oder ungültig.";
+"The mesh is too large or invalid." = "Das Oberflächennetz ist zu groß oder ungültig.";
 "Move your iPhone slowly to find a surface." = "Beweg dein iPhone langsam, um eine Oberfläche zu finden.";
 "Point the dot at a surface." = "Richte den Punkt auf eine Oberfläche.";
 "Aim at the start and tap +." = "Ziele auf den Startpunkt und tippe auf +.";

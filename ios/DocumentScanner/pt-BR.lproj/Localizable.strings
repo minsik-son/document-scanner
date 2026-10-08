@@ -203,7 +203,7 @@
 "Save" = "Salvar";
 "Saving annotations…" = "Salvando anotações…";
 "Reading the form…" = "Lendo o formulário…";
-"No form labels found. Add text boxes by hand." = "Nenhum campo de formulário encontrado. Adicione caixas de texto manualmente.";
+"No form labels found. Add text boxes by hand." = "Nenhum rótulo de campo encontrado no formulário. Adicione caixas de texto manualmente.";
 "Page unavailable." = "Página indisponível.";
 "Draw your signature" = "Desenhe sua assinatura";
 "A handwritten signature, not a certified digital one." = "Uma assinatura à mão, não uma assinatura digital certificada.";
@@ -306,7 +306,7 @@
 "The PDF margin settings are invalid." = "Os ajustes de margem do PDF são inválidos.";
 "This PDF could not be trimmed." = "Não foi possível cortar este PDF.";
 "PDF page layout failed." = "Falha no layout das páginas do PDF.";
-"Use 8–32 English letters, numbers, spaces or symbols for this PDF password." = "Use de 8 a 32 letras sem acento, números, espaços ou símbolos na senha do PDF.";
+"Use 8–32 English letters, numbers, spaces or symbols for this PDF password." = "Use de 8 a 32 caracteres na senha do PDF: letras A–Z, números, espaços ou símbolos.";
 "Password protection could not be verified. No file was shared." = "Não foi possível verificar a proteção por senha. Nenhum arquivo foi compartilhado.";
 "Check the four crop corners before saving." = "Confira os quatro cantos do recorte antes de salvar.";
 "Perspective correction couldn't be applied. Adjust the crop and try again." = "Não foi possível corrigir a perspectiva. Ajuste o recorte e tente de novo.";
@@ -359,7 +359,7 @@
 "Text could not be extracted. %@" = "Não foi possível extrair o texto. %@";
 "Name" = "Nome";
 "Type" = "Tipo";
-"Sorted automatically on this iPhone. Your choice is kept." = "Classificado automaticamente neste iPhone. Sua escolha é mantida.";
+"Sorted automatically on this iPhone. Your choice is kept." = "O tipo de documento foi identificado automaticamente neste iPhone. Sua escolha é mantida.";
 "Name & type" = "Nome e tipo";
 "Scanned business card" = "Cartão de visita escaneado";
 "Loading full detail…" = "Carregando em alta resolução…";
@@ -380,7 +380,7 @@
 "%@ · %lld pages" = "%1$@ · %2$lld páginas";
 "Imported pages are also available in Settings → Unfinished scans." = "As páginas importadas também ficam em Ajustes → Digitalizações inacabadas.";
 "Import files" = "Importar arquivos";
-"Retry remaining files" = "Repetir arquivos restantes";
+"Retry remaining files" = "Tentar importar os arquivos restantes";
 "Downloading or importing %@…" = "Baixando ou importando %@…";
 "Image could not be read." = "Não foi possível ler a imagem.";
 "Import canceled. Already imported pages are kept." = "Importação cancelada. As páginas já importadas foram mantidas.";
@@ -505,7 +505,7 @@
 "Blue" = "Azul";
 "Red" = "Vermelho";
 "This photo couldn't be analysed on this device. Try another photo." = "Não foi possível analisar esta foto neste dispositivo. Tente outra foto.";
-"No face found. Use a photo that faces the camera." = "Nenhum rosto encontrado. Use uma foto de frente para a câmera.";
+"No face found. Use a photo that faces the camera." = "Nenhum rosto encontrado. Use uma foto com o rosto voltado para a câmera.";
 "More than one face was found. Use a photo of one person." = "Foi encontrado mais de um rosto. Use uma foto de uma pessoa só.";
 "The person couldn't be separated from the background. Use a plain background." = "Não foi possível separar a pessoa do fundo. Use um fundo liso.";
 "Head size" = "Tamanho da cabeça";
@@ -640,7 +640,7 @@
 "Save clean copy" = "Salvar cópia limpa";
 "Cleaning the full page…" = "Limpando a página inteira…";
 "Restore an old photo" = "Restaurar uma foto antiga";
-"Fix faded colors, dust, small scratches and blur in one step." = "Corrija cores desbotadas, poeira, pequenos arranhões e desfoque em um só passo.";
+"Fix faded colors, dust, small scratches and blur in one step." = "Recupere cores desbotadas, remova poeira e pequenos arranhões e reduza o desfoque em um só passo.";
 "Your restored photo is saved" = "Sua foto restaurada foi salva";
 "Restored" = "Restaurada";
 "Drag to compare with the original." = "Arraste para comparar com o original.";
@@ -1042,7 +1042,7 @@
 "Color %@" = "Cor %@";
 "Diagonal" = "Diagonal";
 "Straight" = "Horizontal";
-"Steep" = "Inclinada";
+"Steep" = "Muito inclinada";
 "Repeat across the page" = "Repetir na página toda";
 "Add to %lld %@" = "Adicionar a %lld %@";
 "Adding the watermark…" = "Adicionando a marca-d’água…";
@@ -1085,7 +1085,7 @@
 "Splitting…" = "Dividindo…";
 "part %lld" = "parte %lld";
 "Each part is a new document. The original is unchanged." = "Cada parte é um novo documento. O original não foi alterado.";
-"%lld of %lld selected" = "%1$lld de %2$lld selecionados";
+"%lld of %lld selected" = "%1$lld de %2$lld selecionadas";
 "Deselect all" = "Desmarcar tudo";
 "Select all" = "Selecionar tudo";
 "Keep as PDF" = "Manter como PDF";
@@ -1109,7 +1109,7 @@
 "Extract %lld" = "Extrair %lld";
 "Extracting…" = "Extraindo…";
 "Extracted %lld %@" = "Extração concluída: %1$lld %2$@";
-"Saved as %@. The original is unchanged." = "Salvo como %@. O original não foi alterado.";
+"Saved as %@. The original is unchanged." = "Salvo como “%@”. O original não foi alterado.";
 "Creating the file…" = "Criando o arquivo…";
 "No text was found on these pages." = "Nenhum texto encontrado nestas páginas.";
 "Your image is ready" = "Sua imagem está pronta";
@@ -1189,7 +1189,7 @@
 "Password" = "Senha";
 "Enter it again" = "Digite de novo";
 "8 to 32 characters" = "De 8 a 32 caracteres";
-"English letters, numbers, spaces or symbols" = "Letras sem acento, números, espaços ou símbolos";
+"English letters, numbers, spaces or symbols" = "Letras A–Z, números, espaços ou símbolos";
 "Both entries match" = "As duas senhas coincidem";
 "Also lock it in this app" = "Bloquear também neste app";
 "This document" = "Este documento";
@@ -1212,7 +1212,7 @@
 ", hidden" = ", oculto";
 ", visible" = ", visível";
 "Added" = "Adicionado";
-"Draw boxes to hide" = "Desenhe caixas para ocultar";
+"Draw boxes to hide" = "Desenhe caixas sobre o que quer ocultar";
 "Hide %lld and save a copy" = "Ocultar %lld e salvar uma cópia";
 "Looking for personal info…" = "Procurando dados pessoais…";
 "Looking for personal info… page %lld of %lld" = "Procurando dados pessoais… página %1$lld de %2$lld";

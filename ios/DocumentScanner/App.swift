@@ -192,7 +192,7 @@ private func makeLibrary() async -> LibraryStore {
 /// The app's own language setting (Settings › Language). Defaults to the
 /// device language when it is one we ship, otherwise English.
 enum AppLanguage: String, CaseIterable, Identifiable {
-    case en, ko, ja, es, ptBR = "pt-BR", de, fr, zhHans = "zh-Hans", zhHant = "zh-Hant"
+    case en, ko, ja, es, ptBR = "pt-BR", de, fr, it, pl, tr, indonesian = "id", vi, th, zhHans = "zh-Hans", zhHant = "zh-Hant"
     var id: String { rawValue }
     /// Each language is named in itself, as in the iOS language list.
     var nativeName: String {
@@ -204,6 +204,12 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         case .ptBR: "Português (Brasil)"
         case .de: "Deutsch"
         case .fr: "Français"
+        case .it: "Italiano"
+        case .pl: "Polski"
+        case .tr: "Türkçe"
+        case .indonesian: "Bahasa Indonesia"
+        case .vi: "Tiếng Việt"
+        case .th: "ไทย"
         case .zhHans: "简体中文"
         case .zhHant: "繁體中文"
         }
@@ -222,6 +228,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
             let rest = Set(parts.dropFirst())
             return rest.contains("Hant") || rest.contains("TW") || rest.contains("HK") || rest.contains("MO") ? .zhHant : .zhHans
         case "pt": return .ptBR
+        case "in": return .indonesian   // legacy code for Indonesian
         default: return AppLanguage(rawValue: base) ?? .en
         }
     }

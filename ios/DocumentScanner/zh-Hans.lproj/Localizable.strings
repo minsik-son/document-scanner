@@ -152,7 +152,7 @@
 "Share" = "共享";
 "Scan another" = "再扫一页";
 "Check your expression" = "检查算式";
-"Arithmetic only: + − × ÷, powers, parentheses and functions like sqrt(81)." = "仅支持四则运算：+ − × ÷、乘方、括号以及 sqrt(81) 等函数。";
+"Arithmetic only: + − × ÷, powers, parentheses and functions like sqrt(81)." = "仅支持算术计算：+ − × ÷、乘方、括号以及 sqrt(81) 等函数。";
 "Correct anything the camera may have missed." = "请修正相机可能漏识别的内容。";
 "Enlarge captured image" = "放大拍摄的图像";
 "Canceled. Nothing was saved." = "已取消，未保存任何内容。";
@@ -203,7 +203,7 @@
 "Save" = "保存";
 "Saving annotations…" = "正在保存批注…";
 "Reading the form…" = "正在读取表单…";
-"No form labels found. Add text boxes by hand." = "未找到表单字段。请手动添加文本框。";
+"No form labels found. Add text boxes by hand." = "未找到表单字段标签。请手动添加文本框。";
 "Page unavailable." = "页面不可用。";
 "Draw your signature" = "请写下你的签名";
 "A handwritten signature, not a certified digital one." = "这是手写签名，并非经认证的数字签名。";
@@ -359,7 +359,7 @@
 "Text could not be extracted. %@" = "无法提取文字。%@";
 "Name" = "名称";
 "Type" = "类型";
-"Sorted automatically on this iPhone. Your choice is kept." = "已在此 iPhone 上自动分类，你的选择会被保留。";
+"Sorted automatically on this iPhone. Your choice is kept." = "已在此 iPhone 上自动识别文档类型，你的选择会被保留。";
 "Name & type" = "名称与类型";
 "Scanned business card" = "扫描的名片";
 "Loading full detail…" = "正在载入高清图…";
@@ -380,7 +380,7 @@
 "%@ · %lld pages" = "%1$@ · %2$lld 页";
 "Imported pages are also available in Settings → Unfinished scans." = "导入的页面也可在“设置”→“未完成的扫描”中找到。";
 "Import files" = "导入文件";
-"Retry remaining files" = "重试剩余文件";
+"Retry remaining files" = "重新导入剩余文件";
 "Downloading or importing %@…" = "正在下载或导入“%@”…";
 "Image could not be read." = "无法读取图片。";
 "Import canceled. Already imported pages are kept." = "已取消导入。已导入的页面会保留。";
@@ -472,7 +472,7 @@
 "Resident registration card and driver's licence" = "韩国身份证及驾照";
 "US passport · 2 × 2 in" = "美国护照 · 2 × 2 in";
 "United States passport and visa" = "美国护照及签证";
-"Online passport renewal · 1200 × 1200 px" = "护照在线续签 · 1200 × 1200 px";
+"Online passport renewal · 1200 × 1200 px" = "护照在线换发 · 1200 × 1200 px";
 "Diversity visa (DV) · 600 × 600 px, up to 240 KB" = "多元化签证（DV） · 600 × 600 px，最大 240 KB";
 "Canada passport · 50 × 70 mm" = "加拿大护照 · 50 × 70 mm";
 "Canadian passport photo" = "加拿大护照照片";
@@ -505,7 +505,7 @@
 "Blue" = "蓝色";
 "Red" = "红色";
 "This photo couldn't be analysed on this device. Try another photo." = "无法在此设备上分析这张照片。请换一张照片试试。";
-"No face found. Use a photo that faces the camera." = "未找到人脸。请使用正对相机的照片。";
+"No face found. Use a photo that faces the camera." = "未找到人脸。请使用人脸正对相机的照片。";
 "More than one face was found. Use a photo of one person." = "检测到多张人脸。请使用单人照片。";
 "The person couldn't be separated from the background. Use a plain background." = "无法将人物与背景分离。请使用纯色背景。";
 "Head size" = "头部大小";
@@ -640,7 +640,7 @@
 "Save clean copy" = "保存干净的副本";
 "Cleaning the full page…" = "正在清理整页…";
 "Restore an old photo" = "修复老照片";
-"Fix faded colors, dust, small scratches and blur in one step." = "一步修复褪色、灰尘、细小划痕和模糊。";
+"Fix faded colors, dust, small scratches and blur in one step." = "一步恢复褪色，去除灰尘和细小划痕，并减少模糊。";
 "Your restored photo is saved" = "修复后的照片已保存";
 "Restored" = "已修复";
 "Drag to compare with the original." = "拖动可与原图对比。";
@@ -702,7 +702,7 @@
 "The preview couldn't be resized. Try again." = "无法调整预览尺寸，请重试。";
 "This preview couldn't be opened." = "无法打开此预览。";
 "These adjustments couldn't be previewed. Try again." = "无法预览这些调整，请重试。";
-"This page couldn't be prepared for text recognition. Your scanned page is still saved." = "无法为文字识别准备此页面。扫描的页面仍已保存。";
+"This page couldn't be prepared for text recognition. Your scanned page is still saved." = "无法为文字识别准备此页面。扫描的页面仍保留在此处。";
 "Add at least one page before saving." = "保存前请至少添加一页。";
 "This PDF cannot be opened. Unlock it before importing." = "无法打开此 PDF。请先解锁再导入。";
 "Import up to 100 pages at a time." = "每次最多导入 100 页。";
@@ -1042,7 +1042,7 @@
 "Color %@" = "颜色 %@";
 "Diagonal" = "斜向";
 "Straight" = "水平";
-"Steep" = "陡斜";
+"Steep" = "大角度";
 "Repeat across the page" = "平铺整页";
 "Add to %lld %@" = "添加到 %1$lld %2$@";
 "Adding the watermark…" = "正在添加水印…";
@@ -1196,7 +1196,7 @@
 "Face ID or your passcode to open it here" = "在此打开时需使用面容 ID 或设备密码";
 "Everything in “%@”" = "“%@”中的所有内容";
 "Locks the whole folder, including new scans" = "锁定整个文件夹，包括新的扫描件";
-"The password is only for the shared copy. Locking in the app works without it." = "密码仅用于共享副本。App 内锁定无需密码即可使用。";
+"The password is only for the shared copy. Locking in the app works without it." = "此密码仅用于共享副本。App 内锁定无需设置此密码即可使用。";
 "Lock and share" = "加密并共享";
 "Locking a copy…" = "正在加密副本…";
 "Locked copy is ready" = "加密副本已就绪";
@@ -1212,7 +1212,7 @@
 ", hidden" = "，已隐藏";
 ", visible" = "，可见";
 "Added" = "已添加";
-"Draw boxes to hide" = "画框以隐藏";
+"Draw boxes to hide" = "框选要隐藏的内容";
 "Hide %lld and save a copy" = "隐藏 %lld 项并保存副本";
 "Looking for personal info…" = "正在查找个人信息…";
 "Looking for personal info… page %lld of %lld" = "正在查找个人信息… 第 %1$lld 页，共 %2$lld 页";
@@ -1612,7 +1612,7 @@
 "Pro is active during Apple's billing grace period. Update your payment method." = "Apple 账单宽限期内 Pro 仍有效。请更新你的付款方式。";
 "Pro remains active until the paid period ends. Renewal is off." = "Pro 将在已付费期限结束前保持有效。自动续订已关闭。";
 "Payment needs attention. Manage your subscription to restore Pro." = "付款出现问题。请管理订阅以恢复 Pro。";
-"Pro is active through the last verified paid period. Subscription status could not be refreshed." = "Pro 在最近一次经验证的付费期内有效。无法刷新订阅状态。";
+"Pro is active through the last verified paid period. Subscription status could not be refreshed." = "Pro 将保持有效，直至最近一次经验证的付费期结束。无法刷新订阅状态。";
 "Pro is unlocked for life" = "Pro 已永久解锁";
 "Pro is unlocked in this development build" = "此开发版本已解锁 Pro";
 "the plan price" = "方案价格";

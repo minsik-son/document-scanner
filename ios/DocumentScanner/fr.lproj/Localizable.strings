@@ -178,7 +178,7 @@
 "No text was found. Try a brighter, sharper photo of the card." = "Aucun texte trouvé. Essayez avec une photo de la carte plus lumineuse et plus nette.";
 "Name, email, phone, address and today's date go next to their labels. Add your signature, then save." = "Le nom, l’e-mail, le téléphone, l’adresse et la date du jour sont placés à côté des libellés correspondants. Ajoutez votre signature, puis enregistrez.";
 "My info" = "Mes infos";
-"Add the answers to fill in" = "Ajoutez les réponses à remplir";
+"Add the answers to fill in" = "Ajoutez les réponses à insérer dans le formulaire";
 "%lld answers saved on this iPhone" = "%lld réponses enregistrées sur cet iPhone";
 "Choose the form" = "Choisissez le formulaire";
 "No saved documents yet. Scan or import the form first." = "Aucun document enregistré pour l’instant. Scannez ou importez d’abord le formulaire.";
@@ -306,7 +306,7 @@
 "The PDF margin settings are invalid." = "Les réglages de marges du PDF ne sont pas valides.";
 "This PDF could not be trimmed." = "Impossible de rogner ce PDF.";
 "PDF page layout failed." = "Échec de la mise en page du PDF.";
-"Use 8–32 English letters, numbers, spaces or symbols for this PDF password." = "Utilisez 8 à 32 lettres latines non accentuées, chiffres, espaces ou symboles pour le mot de passe de ce PDF.";
+"Use 8–32 English letters, numbers, spaces or symbols for this PDF password." = "Utilisez 8 à 32 caractères pour le mot de passe de ce PDF : lettres A–Z, chiffres, espaces ou symboles.";
 "Password protection could not be verified. No file was shared." = "Impossible de vérifier la protection par mot de passe. Aucun fichier n’a été partagé.";
 "Check the four crop corners before saving." = "Vérifiez les quatre coins du recadrage avant d’enregistrer.";
 "Perspective correction couldn't be applied. Adjust the crop and try again." = "Impossible de corriger la perspective. Ajustez le recadrage et réessayez.";
@@ -359,7 +359,7 @@
 "Text could not be extracted. %@" = "Impossible d’extraire le texte. %@";
 "Name" = "Nom";
 "Type" = "Type";
-"Sorted automatically on this iPhone. Your choice is kept." = "Classé automatiquement sur cet iPhone. Votre choix est conservé.";
+"Sorted automatically on this iPhone. Your choice is kept." = "Type de document détecté automatiquement sur cet iPhone. Votre choix est conservé.";
 "Name & type" = "Nom et type";
 "Scanned business card" = "Carte de visite scannée";
 "Loading full detail…" = "Chargement en haute définition…";
@@ -380,7 +380,7 @@
 "%@ · %lld pages" = "%1$@ · %2$lld pages";
 "Imported pages are also available in Settings → Unfinished scans." = "Les pages importées sont aussi disponibles dans Réglages → Scans inachevés.";
 "Import files" = "Importer des fichiers";
-"Retry remaining files" = "Réessayer les fichiers restants";
+"Retry remaining files" = "Relancer l’importation des fichiers restants";
 "Downloading or importing %@…" = "Téléchargement ou importation de %@…";
 "Image could not be read." = "Impossible de lire l’image.";
 "Import canceled. Already imported pages are kept." = "Importation annulée. Les pages déjà importées sont conservées.";
@@ -640,7 +640,7 @@
 "Save clean copy" = "Enregistrer la copie nettoyée";
 "Cleaning the full page…" = "Nettoyage de la page entière…";
 "Restore an old photo" = "Restaurer une vieille photo";
-"Fix faded colors, dust, small scratches and blur in one step." = "Corrigez les couleurs passées, la poussière, les petites rayures et le flou en une seule étape.";
+"Fix faded colors, dust, small scratches and blur in one step." = "Ravivez les couleurs passées, supprimez la poussière et les petites rayures, et réduisez le flou en une seule étape.";
 "Your restored photo is saved" = "Votre photo restaurée est enregistrée";
 "Restored" = "Restaurée";
 "Drag to compare with the original." = "Faites glisser pour comparer avec l’original.";
@@ -1042,7 +1042,7 @@
 "Color %@" = "Couleur %@";
 "Diagonal" = "Diagonale";
 "Straight" = "Horizontal";
-"Steep" = "Accentué";
+"Steep" = "Très incliné";
 "Repeat across the page" = "Répéter sur toute la page";
 "Add to %lld %@" = "Ajouter à %1$lld %2$@";
 "Adding the watermark…" = "Ajout du filigrane…";
@@ -1109,7 +1109,7 @@
 "Extract %lld" = "Extraire %lld";
 "Extracting…" = "Extraction…";
 "Extracted %lld %@" = "Extraction : %1$lld %2$@";
-"Saved as %@. The original is unchanged." = "Enregistré au format %@. L’original n’a pas été modifié.";
+"Saved as %@. The original is unchanged." = "Enregistré sous « %@ ». L’original n’a pas été modifié.";
 "Creating the file…" = "Création du fichier…";
 "No text was found on these pages." = "Aucun texte trouvé sur ces pages.";
 "Your image is ready" = "Votre image est prête";
@@ -1189,7 +1189,7 @@
 "Password" = "Mot de passe";
 "Enter it again" = "Saisissez-le à nouveau";
 "8 to 32 characters" = "8 à 32 caractères";
-"English letters, numbers, spaces or symbols" = "Lettres latines non accentuées, chiffres, espaces ou symboles";
+"English letters, numbers, spaces or symbols" = "Lettres A–Z, chiffres, espaces ou symboles";
 "Both entries match" = "Les deux saisies correspondent";
 "Also lock it in this app" = "Le verrouiller aussi dans cette app";
 "This document" = "Ce document";
@@ -1212,7 +1212,7 @@
 ", hidden" = ", masqué";
 ", visible" = ", affiché";
 "Added" = "Ajouté";
-"Draw boxes to hide" = "Tracer des cadres pour masquer";
+"Draw boxes to hide" = "Encadrez ce que vous voulez masquer";
 "Hide %lld and save a copy" = "Masquer %lld éléments et enregistrer une copie";
 "Looking for personal info…" = "Recherche d’informations personnelles…";
 "Looking for personal info… page %lld of %lld" = "Recherche d’informations personnelles… page %1$lld sur %2$lld";
@@ -1390,9 +1390,9 @@
 "Creating PowerPoint…" = "Création du PowerPoint…";
 "No saved pages" = "Aucune page enregistrée";
 "Choose photos or files to get started." = "Choisissez des photos ou des fichiers pour commencer.";
-"Already added" = "Déjà ajouté";
-"Selected" = "Sélectionné";
-"Not selected" = "Non sélectionné";
+"Already added" = "Déjà ajoutée";
+"Selected" = "Sélectionnée";
+"Not selected" = "Non sélectionnée";
 "Choose pages" = "Choisir des pages";
 "Add %lld" = "Ajouter %lld";
 "Trial · 1 day left" = "Essai · 1 jour restant";

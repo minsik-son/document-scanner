@@ -203,7 +203,7 @@
 "Save" = "Guardar";
 "Saving annotations…" = "Guardando anotaciones…";
 "Reading the form…" = "Leyendo el formulario…";
-"No form labels found. Add text boxes by hand." = "No se encontraron campos del formulario. Añade cuadros de texto a mano.";
+"No form labels found. Add text boxes by hand." = "No se encontraron etiquetas de campos en el formulario. Añade cuadros de texto a mano.";
 "Page unavailable." = "Página no disponible.";
 "Draw your signature" = "Dibuja tu firma";
 "A handwritten signature, not a certified digital one." = "Una firma manuscrita, no una firma digital certificada.";
@@ -306,7 +306,7 @@
 "The PDF margin settings are invalid." = "Los ajustes de margen del PDF no son válidos.";
 "This PDF could not be trimmed." = "No se pudo recortar este PDF.";
 "PDF page layout failed." = "Error al maquetar las páginas del PDF.";
-"Use 8–32 English letters, numbers, spaces or symbols for this PDF password." = "Usa de 8 a 32 caracteres para la contraseña del PDF: letras sin acentos (A–Z), números, espacios o símbolos.";
+"Use 8–32 English letters, numbers, spaces or symbols for this PDF password." = "Usa de 8 a 32 caracteres para la contraseña del PDF: letras A–Z, números, espacios o símbolos.";
 "Password protection could not be verified. No file was shared." = "No se pudo verificar la protección con contraseña. No se compartió ningún archivo.";
 "Check the four crop corners before saving." = "Revisa las cuatro esquinas del recorte antes de guardar.";
 "Perspective correction couldn't be applied. Adjust the crop and try again." = "No se pudo corregir la perspectiva. Ajusta el recorte e inténtalo de nuevo.";
@@ -359,7 +359,7 @@
 "Text could not be extracted. %@" = "No se pudo extraer el texto. %@";
 "Name" = "Nombre";
 "Type" = "Tipo";
-"Sorted automatically on this iPhone. Your choice is kept." = "Clasificado automáticamente en este iPhone. Se respeta tu elección.";
+"Sorted automatically on this iPhone. Your choice is kept." = "El tipo de documento se detectó automáticamente en este iPhone. Se respeta tu elección.";
 "Name & type" = "Nombre y tipo";
 "Scanned business card" = "Tarjeta de presentación escaneada";
 "Loading full detail…" = "Cargando en alta resolución…";
@@ -380,7 +380,7 @@
 "%@ · %lld pages" = "%@ · %lld páginas";
 "Imported pages are also available in Settings → Unfinished scans." = "Las páginas importadas también están en Ajustes → Escaneos sin terminar.";
 "Import files" = "Importar archivos";
-"Retry remaining files" = "Reintentar archivos restantes";
+"Retry remaining files" = "Volver a importar los archivos restantes";
 "Downloading or importing %@…" = "Descargando o importando %@…";
 "Image could not be read." = "No se pudo leer la imagen.";
 "Import canceled. Already imported pages are kept." = "Importación cancelada. Se conservan las páginas ya importadas.";
@@ -505,7 +505,7 @@
 "Blue" = "Azul";
 "Red" = "Rojo";
 "This photo couldn't be analysed on this device. Try another photo." = "No se pudo analizar esta foto en este dispositivo. Prueba con otra.";
-"No face found. Use a photo that faces the camera." = "No se encontró ninguna cara. Usa una foto mirando a la cámara.";
+"No face found. Use a photo that faces the camera." = "No se encontró ninguna cara. Usa una foto con la cara mirando a la cámara.";
 "More than one face was found. Use a photo of one person." = "Se encontró más de una cara. Usa una foto de una sola persona.";
 "The person couldn't be separated from the background. Use a plain background." = "No se pudo separar a la persona del fondo. Usa un fondo liso.";
 "Head size" = "Tamaño de la cabeza";
@@ -640,7 +640,7 @@
 "Save clean copy" = "Guardar copia limpia";
 "Cleaning the full page…" = "Limpiando la página completa…";
 "Restore an old photo" = "Restaura una foto antigua";
-"Fix faded colors, dust, small scratches and blur in one step." = "Corrige colores descoloridos, polvo, pequeñas rayaduras y desenfoque en un solo paso.";
+"Fix faded colors, dust, small scratches and blur in one step." = "Recupera los colores apagados, elimina el polvo y las pequeñas rayaduras y corrige el desenfoque en un solo paso.";
 "Your restored photo is saved" = "Tu foto restaurada se guardó";
 "Restored" = "Restaurada";
 "Drag to compare with the original." = "Arrastra para comparar con el original.";
@@ -1109,7 +1109,7 @@
 "Extract %lld" = "Extraer %lld";
 "Extracting…" = "Extrayendo…";
 "Extracted %lld %@" = "Se extrajeron %lld %@";
-"Saved as %@. The original is unchanged." = "Guardado como %@. El original no cambia.";
+"Saved as %@. The original is unchanged." = "Guardado como “%@”. El original no cambia.";
 "Creating the file…" = "Creando el archivo…";
 "No text was found on these pages." = "No se encontró texto en estas páginas.";
 "Your image is ready" = "Tu imagen está lista";
@@ -1189,7 +1189,7 @@
 "Password" = "Contraseña";
 "Enter it again" = "Vuelve a escribirla";
 "8 to 32 characters" = "De 8 a 32 caracteres";
-"English letters, numbers, spaces or symbols" = "Letras sin acentos (A–Z), números, espacios o símbolos";
+"English letters, numbers, spaces or symbols" = "Letras A–Z, números, espacios o símbolos";
 "Both entries match" = "Las dos coinciden";
 "Also lock it in this app" = "Bloquearlo también en esta app";
 "This document" = "Este documento";
@@ -1212,7 +1212,7 @@
 ", hidden" = ", oculto";
 ", visible" = ", visible";
 "Added" = "Añadido";
-"Draw boxes to hide" = "Dibuja recuadros para ocultar";
+"Draw boxes to hide" = "Dibuja recuadros sobre lo que quieras ocultar";
 "Hide %lld and save a copy" = "Ocultar %lld y guardar una copia";
 "Looking for personal info…" = "Buscando datos personales…";
 "Looking for personal info… page %lld of %lld" = "Buscando datos personales… página %lld de %lld";
@@ -1612,7 +1612,7 @@
 "Pro is active during Apple's billing grace period. Update your payment method." = "Pro sigue activo durante el periodo de gracia de facturación de Apple. Actualiza tu método de pago.";
 "Pro remains active until the paid period ends. Renewal is off." = "Pro sigue activo hasta que termine el periodo pagado. La renovación está desactivada.";
 "Payment needs attention. Manage your subscription to restore Pro." = "Hay un problema con el pago. Gestiona tu suscripción para recuperar Pro.";
-"Pro is active through the last verified paid period. Subscription status could not be refreshed." = "Pro está activo hasta el último periodo pagado verificado. No se pudo actualizar el estado de la suscripción.";
+"Pro is active through the last verified paid period. Subscription status could not be refreshed." = "Pro está activo hasta que termine el último periodo pagado verificado. No se pudo actualizar el estado de la suscripción.";
 "Pro is unlocked for life" = "Pro está desbloqueado de por vida";
 "Pro is unlocked in this development build" = "Pro está desbloqueado en esta versión de desarrollo";
 "the plan price" = "el precio del plan";

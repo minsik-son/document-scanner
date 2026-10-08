@@ -203,7 +203,7 @@
 "Save" = "保存";
 "Saving annotations…" = "注釈を保存中…";
 "Reading the form…" = "フォームを読み取り中…";
-"No form labels found. Add text boxes by hand." = "フォームの項目が見つかりません。テキストボックスを手動で追加してください。";
+"No form labels found. Add text boxes by hand." = "フォームの項目名が見つかりません。テキストボックスを手動で追加してください。";
 "Page unavailable." = "ページを利用できません。";
 "Draw your signature" = "署名を書いてください";
 "A handwritten signature, not a certified digital one." = "認証済みの電子署名ではなく、手書きの署名です。";
@@ -380,7 +380,7 @@
 "%@ · %lld pages" = "%1$@ · %2$lldページ";
 "Imported pages are also available in Settings → Unfinished scans." = "読み込んだページは、設定 → 未完了のスキャンからも確認できます。";
 "Import files" = "ファイルを読み込む";
-"Retry remaining files" = "残りのファイルを再試行";
+"Retry remaining files" = "残りのファイルを再読み込み";
 "Downloading or importing %@…" = "%@をダウンロード・読み込み中…";
 "Image could not be read." = "画像を読み取れませんでした。";
 "Import canceled. Already imported pages are kept." = "読み込みをキャンセルしました。読み込み済みのページは保持されます。";
@@ -1196,7 +1196,7 @@
 "Face ID or your passcode to open it here" = "ここで開くときにFace IDまたはパスコードを使用";
 "Everything in “%@”" = "「%@」内のすべて";
 "Locks the whole folder, including new scans" = "新しいスキャンも含めてフォルダ全体をロックします";
-"The password is only for the shared copy. Locking in the app works without it." = "パスワードは共有用コピーにのみ適用されます。アプリ内のロックはパスワードなしで使えます。";
+"The password is only for the shared copy. Locking in the app works without it." = "このパスワードは共有用コピーにのみ適用されます。アプリ内のロックはこのパスワードなしで使えます。";
 "Lock and share" = "ロックして共有";
 "Locking a copy…" = "コピーをロック中…";
 "Locked copy is ready" = "ロックしたコピーの準備ができました";

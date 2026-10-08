@@ -47,7 +47,7 @@
 
 ## 2026-10-01 Office 변환 흐름 비교 및 개선
 
-CamScanner iPhone 미러링에서 Word/Excel/PPT의 스캔·사진·기기 파일·앱 내 문서 진입을 확인했다. 개인정보 문서 대신 Chrome 폴더의 일반 부동산 도면 PDF로 변환을 시험했다. Excel은 여러 시트, 셀 선택/편집 도구와 도면 이미지 배치를 표시했다. PPT는 변환 후 재생/미리보기/내보내기 화면으로 이동했으나 이번 파일의 미리보기 본문은 공백이었다. Word는 기기 PDF 선택 후 DOCX 준비 및 백그라운드 변환 UI를 거쳐 원본 도면/배치가 있는 미리보기와 텍스트 편집기를 표시했다. 이 샘플에서는 편집기의 세로 제목 줄바꿈이 흐트러지고 빈 페이지가 생겨 경쟁 앱도 원본 배치를 완벽하게 복원하지는 못했다. 화면 관찰만으로 네이티브 앱의 내부 엔진이나 서버 호출을 확인했다고 주장하지 않는다. CamScanner 공식 웹 Word/Excel 변환 안내는 클라우드 처리를 명시한다.
+경쟁 앱 A iPhone 미러링에서 Word/Excel/PPT의 스캔·사진·기기 파일·앱 내 문서 진입을 확인했다. 개인정보 문서 대신 Chrome 폴더의 일반 부동산 도면 PDF로 변환을 시험했다. Excel은 여러 시트, 셀 선택/편집 도구와 도면 이미지 배치를 표시했다. PPT는 변환 후 재생/미리보기/내보내기 화면으로 이동했으나 이번 파일의 미리보기 본문은 공백이었다. Word는 기기 PDF 선택 후 DOCX 준비 및 백그라운드 변환 UI를 거쳐 원본 도면/배치가 있는 미리보기와 텍스트 편집기를 표시했다. 이 샘플에서는 편집기의 세로 제목 줄바꿈이 흐트러지고 빈 페이지가 생겨 경쟁 앱도 원본 배치를 완벽하게 복원하지는 못했다. 화면 관찰만으로 네이티브 앱의 내부 엔진이나 서버 호출을 확인했다고 주장하지 않는다. 경쟁 앱 A 공식 웹 Word/Excel 변환 안내는 클라우드 처리를 명시한다.
 
 반영:
 - Word: 여러 사진을 순서대로 선택, 촬영/PDF 입력, 페이지별 텍스트 검토, DOCX 페이지 나눔 보존, 생성 후 미리보기/공유.
@@ -55,16 +55,16 @@ CamScanner iPhone 미러링에서 Word/Excel/PPT의 스캔·사진·기기 파�
 - PPT: 촬영/다중 선택/순서 변경 → 출력 방식 선택 → 원본 이미지 슬라이드 생성 또는 텍스트 추출·검토 → 생성 → 미리보기/공유. 원본 이미지 방식은 편집 가능한 텍스트로 오인하지 않도록 설명한다.
 - 단계마다 하단 주 행동 하나. 취소/뒤로 가기는 입력을 유지하며, 입력 선택만으로 라이브러리에 저장하지 않는다.
 
-한계: 로컬 Word는 텍스트와 페이지 구분을 보존하며 원본 그림·폰트·표 레이아웃을 복원하지 않는다. Excel은 셀 중심으로 복원하며 원본 도면 이미지/서식/수식을 재구성하지 않는다. PPT 편집 모드는 텍스트 슬라이드이며 원본 그림/배치 복원이 아니다. CamScanner와 동일한 레이아웃 복원 엔진 구현 완료를 의미하지 않는다. 입력은 최대 30페이지, 파일당 100MB, 표별 1,000행/100열/20,000셀 범위이며 실제 인식은 언어·촬영 품질·OS에 따라 달라진다.
+한계: 로컬 Word는 텍스트와 페이지 구분을 보존하며 원본 그림·폰트·표 레이아웃을 복원하지 않는다. Excel은 셀 중심으로 복원하며 원본 도면 이미지/서식/수식을 재구성하지 않는다. PPT 편집 모드는 텍스트 슬라이드이며 원본 그림/배치 복원이 아니다. 경쟁 앱 A와 동일한 레이아웃 복원 엔진 구현 완료를 의미하지 않는다. 입력은 최대 30페이지, 파일당 100MB, 표별 1,000행/100열/20,000셀 범위이며 실제 인식은 언어·촬영 품질·OS에 따라 달라진다.
 
-참고: https://www.camscanner.com/pdf-to-word · https://www.camscanner.com/pdf-to-excel · https://www.camscanner.com/pdf-to-ppt · https://developer.apple.com/documentation/vision/recognizedocumentsrequest
+참고: (경쟁 앱 웹 문서) · (경쟁 앱 웹 문서) · (경쟁 앱 웹 문서) · https://developer.apple.com/documentation/vision/recognizedocumentsrequest
 
 검증: AdvancedOfflineTests 23개와 Office UI 흐름 5개가 통과했다. 실제 표 이미지 인식, 병합 셀/다중 시트 OOXML, 텍스트 안전성, DOCX 페이지 나눔, PPT 순서·삭제·편집 모드, 생성 후 공유와 Quick Look을 확인했다. 최종 시각 검증 자료는 `Verification/office-flow-comparison-20261001/`에 저장했다. iPhone 대상 서명 없는 빌드도 성공했다. 실제 기기 카메라 촬영·외부 Microsoft Office 앱 호환성 전체를 검증했다는 의미는 아니다.
 
 ## 2026-10-01 번역·수식 진입 흐름 재검수
 
-- 이전 공용 도구 폼은 사진 선택/OCR/실행을 한 화면에 배치했으며, CamScanner와 같은 촬영 진입 흐름을 충족하지 못했다. 앞선 로직·버튼 검증을 전체 사용자 흐름 검증으로 해석하면 안 된다.
-- iPhone 미러링에서 CamScanner의 사진 번역과 수식 아이콘을 각각 눌러 카메라로 바로 진입하는 것을 확인했다. 번역은 상단 언어 선택, 수식은 수식/시험지/잘못된 질문 선택, 두 화면 모두 중앙 셔터와 보조 가져오기 구조였다. 미러링의 카메라 사용 제한 때문에 실제 촬영·인식 결과 비교는 하지 못했다.
+- 이전 공용 도구 폼은 사진 선택/OCR/실행을 한 화면에 배치했으며, 경쟁 앱 A와 같은 촬영 진입 흐름을 충족하지 못했다. 앞선 로직·버튼 검증을 전체 사용자 흐름 검증으로 해석하면 안 된다.
+- iPhone 미러링에서 경쟁 앱 A의 사진 번역과 수식 아이콘을 각각 눌러 카메라로 바로 진입하는 것을 확인했다. 번역은 상단 언어 선택, 수식은 수식/시험지/잘못된 질문 선택, 두 화면 모두 중앙 셔터와 보조 가져오기 구조였다. 미러링의 카메라 사용 제한 때문에 실제 촬영·인식 결과 비교는 하지 못했다.
 - 두 도구를 CameraTextToolView로 분리: 카메라 → 자동 OCR → 원본 이미지/인식 내용 검토 → 번역 또는 계산 → 결과. 사진은 보조 버튼, 파일/직접 입력/문서 페이지는 More 메뉴에 둔다. 촬영·인식·뒤로/취소는 라이브러리 저장을 하지 않는다.
 - 번역은 iOS 26 이상에 이미 설치된 Apple 언어 모델만 사용하며 자동 다운로드/외부 번역 서버는 사용하지 않는다. 모델 미설치 시 입력을 유지하고 안내한다.
 - 수식은 로컬 산술 계산기다. OCR 후 식을 수정하거나 여러 줄 중 하나를 선택한다. 분수 레이아웃 복원, 필기 수식 완전 인식, 대수방정식/문장제 풀이를 구현한 것으로 간주하지 않는다.
@@ -134,3 +134,23 @@ Selected-language + close-up OCR, word-gap column separation, mixed-script parag
 미반영/보류: StoreKit 설정의 평생 가격은 출시가 $39.99 유지(출시 한정가를 앱에서 미리 보여주기 위해; 정가 $59.99는 App Store Connect 가격 일정으로), CFBundleDisplayName(최종 이름 미정), String Catalog 전환(이미 15개 언어 .strings 운영), 분석 SDK(개인정보 라벨 영향으로 출시 전 결정), 위젯·App Intents.
 
 테스트: 단위 테스트 9개 중 8개 통과. 실패 1개 `testUSPricesVerifiedPurchaseAndExpiration`(108행, StoreKit 만료 전파 대기)는 이번 변경과 무관한 기존 StoreKit 테스트.
+
+## 심사 대비 (2026-10-08, 기준: `../마케팅 리포트/07_심사_위험_수정.md`)
+
+| 체크 id / 항목 | 반영 내용 | 검증 |
+|---|---|---|
+| A1 개발 문구 | 설정 "About this build" → "About": `AppInfo.name` + Bundle 버전(빌드). 개발 안내 문구·테스트 광고 문장은 `#if DEBUG` 안으로 | Release UI 테스트 `ReviewScreensUITests.testReviewScreens`가 설정 화면에 "development" 없음 확인, 스크린샷 `review-shots/4-settings-bottom.png` |
+| A2 링크 | `AppInfo.privacyPolicy`·`support`·`terms` 한 곳. 설정에 Privacy policy·Contact support·Terms of Use, 결제 화면 하단 Terms·Privacy(URL)·Restore purchases, PrivacyView 하단 전문 링크. 페이지 초안 `../docs/privacy.html`·`support.html`(GitHub Pages) | 단위 테스트 `testAppNameAndPublicLinksAreConfigured`(https·host 검사), 결제 화면 하단 스크린샷 |
+| A3 Privacy manifest | `PrivacyInfo.xcprivacy` 추가(앱 타깃 리소스). Tracking false, 수집 없음, UserDefaults CA92.1, 파일 타임스탬프 C617.1(앱 컨테이너 안), 부팅 시간 35F9.1. 디스크 공간 API 미사용. Google Mobile Ads 13.11.0은 자체 manifest 포함 | plist 형식 검사. Archive → Privacy Report는 미실행(수동) |
+| app-name | 표시 이름 FoldScan, 앱 내 이름은 Info.plist에서 읽음(`AppInfo.name`). Bundle ID `com.foldscan.app`, 상품 ID `com.foldscan.pro.monthly/yearly/lifetime`(StoreKit 설정·코드·UI 테스트) | `testAppNameAndPublicLinksAreConfigured`, Release 빌드 |
+| A5 결제 표시 | 창립가 리본·취소선·남은 일수는 `FoundingOffer.applies(to:)`: 평생 상품 + 기간 안 + StoreKit 실제 가격 < 해당 통화 정가일 때만. 출시일은 `FoundingOffer.launchDay` 한 곳(nil이면 Release에서 숨김). 체험·갱신 문구는 StoreKit 값 | Release 결제 화면 스크린샷(launchDay 미설정 → 리본 없음) |
+| tool-rename | Smart erase → Spot eraser (rawValue, 15개 언어, UI 테스트, 문서) | `testToolSectionsCoverEveryToolOnce`, UI 테스트 `testHubListsAllToolsAndHonestDeviceRequirements` 통과 |
+| tools-sections | Tools를 Before you send / Fix a page / Turn it into / Capture more / Camera utilities로 재구성(`ToolSection.all`). Fill a form은 Before you send에 둠. Count objects 숨김 유지. Auto-save는 Me(설정)의 자동 저장 항목 | `testToolSectionsCoverEveryToolOnce`, UI 테스트 통과, 스크린샷 1–3 |
+| ip-comments | 코드 주석 5곳 중립 표현 | `grep -ri camscanner ios/DocumentScanner` 0건 |
+| ip-docs | `CAMSCANNER-LOCAL-TOOLS.md` → `competitor-tool-survey.md`, 추적 문서·검증 기록의 이름을 "경쟁 앱 A"/"Competitor app A"로 | 추적 파일 중 마케팅 리포트 외 0건 |
+| C1 번역 | 언어 미설치 시 오류 대신 안내 화면(`TranslationLanguageGuide`, 단계별, 입력 유지). 다운로드 안 함 정책 유지. iOS 26 미만은 타일 탭 시 안내, 진입 시 체험 소모 전에 안내 | 스크린샷 `7-translation-guide.png`(DEBUG 실행 인자로 띄움, 뷰는 Release와 동일) |
+| C2 AR/LiDAR | Measure(AR)·3D scan(LiDAR) 타일은 지원 기기에서만 표시 | 시뮬레이터에서 두 타일 미표시 확인 |
+| C3·C4 | 보상형 광고는 로드됐을 때만 버튼 표시(유지), 체험 알림 권한은 체험 시작 후에만 요청·거절해도 영향 없음(현행 확인) | 코드 확인 |
+| D 심사 메모 | `AppReviewNotes.md` (연락처 빈칸) | — |
+
+남은 결정: 지원 이메일, GitHub Pages 게시(저장소 Settings › Pages › main /docs), AdMob 실제 ID(현재 Release는 광고 꺼짐), `FoundingOffer.launchDay`, 마케팅 버전(현재 0.1.0).

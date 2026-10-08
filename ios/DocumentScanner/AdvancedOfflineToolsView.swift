@@ -1179,6 +1179,7 @@ struct CameraTextToolView: View {
         Task { await camera.start() }
     }
     private func returnToCamera() {
+        if from.isEmpty { from = "en" }
         job?.cancel(); busy = false; editing = false; image = nil; documentScan = nil; mathScan = nil; text = ""; result = ""; lines = []; error = nil
         step = .camera; camera.beginNextPage(); startCamera()
     }
@@ -1203,8 +1204,18 @@ struct CameraTextToolView: View {
     private func recognize(_ source:UIImage) async throws {
         if !math {
             phase = "Correcting the scan and finding text…"
-            let prepared = try await OfflineWork.perform { try PhotoTranslation.scan(source) }
-            try Task.checkCancellation(); documentScan = prepared; step = .review; return
+            var prepared = try await OfflineWork.perform { try PhotoTranslation.scan(source) }
+            // Judge the language from every text area on the page, then read it
+            // again in that language. Not confident: the person chooses.
+            let guess = SourceLanguageGuess.detect(prepared.regions.map(\.source))
+            if let guess, guess != prepared.recognitionLanguage {
+                let target = guess == to ? "en" : to
+                if let again = try? await OfflineWork.perform({ try PhotoTranslation.scan(source, sourceLanguage: guess, targetLanguage: target) }) { prepared = again }
+            }
+            try Task.checkCancellation()
+            from = guess ?? ""
+            if let guess, guess == to { to = AppLanguage.current.rawValue != guess ? AppLanguage.current.rawValue : "en" }
+            documentScan = prepared; step = .review; return
         }
         phase = "Preparing the digital scan…"
         let prepared = try await OfflineWork.perform { try MathDocumentEngine.prepare(source) }

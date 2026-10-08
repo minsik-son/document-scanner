@@ -1,6 +1,7 @@
 import UIKit
 import CoreImage
 import CoreText
+import NaturalLanguage
 
 struct TranslationRegion: Identifiable {
     let id: Int
@@ -349,5 +350,20 @@ enum TranslationGlossary {
         let key = source.trimmingCharacters(in:CharacterSet.letters.inverted)
             .split(whereSeparator:\.isWhitespace).joined(separator:" ").lowercased()
         return englishKorean[key]
+    }
+}
+
+/// Guesses the language of a photographed page from all of its recognized text,
+/// not just the first line. Returns nil when the guess is not confident; the
+/// screen then asks the person to choose.
+enum SourceLanguageGuess {
+    nonisolated static func detect(_ texts: [String]) -> String? {
+        let joined = texts.joined(separator: "\n")
+        guard joined.filter(\.isLetter).count >= 20 else { return nil }
+        let recognizer = NLLanguageRecognizer()
+        recognizer.processString(joined)
+        guard let best = recognizer.languageHypotheses(withMaximum: 3).max(by: { $0.value < $1.value }), best.value >= 0.6,
+              best.key != .undetermined else { return nil }
+        return Locale.Language(identifier: best.key.rawValue).minimalIdentifier
     }
 }

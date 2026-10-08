@@ -1282,12 +1282,12 @@
 "A text area's position is invalid. Rescan the page." = "텍스트 영역의 위치가 올바르지 않아요. 페이지를 다시 스캔하세요.";
 "The translated page couldn't be rendered." = "번역된 페이지를 만들 수 없어요.";
 "Text recognition isn't available for this source language on this iPhone. Choose another language or edit the recognized text." = "이 iPhone에서는 이 원문 언어의 텍스트 인식을 지원하지 않아요. 다른 언어를 선택하거나 인식된 텍스트를 직접 수정하세요.";
-"Translated to %@" = "%@(으)로 번역됨";
+"Translated to %@" = "%@ 번역됨";
 "Share translated PDF" = "번역된 PDF 공유";
 "Which language?" = "어떤 언어로 할까요?";
 "We'll replace the text in place and keep the page as it is." = "페이지는 그대로 두고 글자만 그 자리에서 바꿔요.";
 "Preview translation" = "번역 미리보기";
-"Translate to %@" = "%@(으)로 번역";
+"Translate to %@" = "%@ 번역";
 "Translate from" = "원문 언어";
 "Translate to" = "번역할 언어";
 "1 text area replaced" = "텍스트 영역 1개 바뀜";
@@ -1760,3 +1760,4 @@
 "The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements." = "무료 버전은 홈 화면의 문서 목록 아래와 도구 화면에 Google AdMob 광고를 각각 하나씩 표시할 수 있어요. 짧은 동영상 광고는 Pro 도구를 한 번 더 무료로 쓰기 위해 직접 시청을 선택했을 때만 재생돼요. 광고가 저절로 전체 화면으로 열리는 일은 없으며, 광고 때문에 스캔이나 저장이 늦어지지 않아요. 설치 후 첫날에는 광고가 표시되지 않아요. Pro 사용자에게는 광고를 불러오거나 표시하지 않아요.";
 "Unlock\n%@ Pro" = "%@ Pro\n잠금 해제";
 "Ad privacy choices" = "광고 개인정보 선택";
+"Couldn't detect — choose the language" = "감지 못 함 — 언어를 골라 주세요";

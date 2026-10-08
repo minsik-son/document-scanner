@@ -1760,3 +1760,4 @@
 "The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements." = "無料版では、ホーム画面の書類一覧の下に1件、ツール画面に1件、Google AdMob広告が表示される場合があります。短い動画広告が再生されるのは、Proツールの無料お試しを1回追加するために、ご自身で視聴を選んだときだけです。広告が勝手に全画面で開くことはなく、広告によってスキャンや保存が遅れることもありません。インストール後1日間は広告は表示されません。Proユーザーには広告を読み込まず、表示もしません。";
 "Unlock\n%@ Pro" = "%@ Proを\nアンロック";
 "Ad privacy choices" = "広告のプライバシー設定";
+"Couldn't detect — choose the language" = "判別できませんでした — 言語を選んでください";

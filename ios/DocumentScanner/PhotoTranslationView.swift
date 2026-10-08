@@ -27,19 +27,27 @@ struct PhotoTranslationView: View {
     private var displayed:UIImage { original ? scan.image : composition?.image ?? scan.image }
     @State private var choosing: LanguageSide?
     private enum LanguageSide: String, Identifiable { case from, to; var id: String { rawValue } }
-    private func name(_ code: String) -> String { Locale.current.localizedString(forIdentifier: code) ?? code }
+    private func name(_ code: String) -> String { LanguageName.of(code) }
+    private func languageChanged() { if !from.isEmpty { rereadSourceLanguage() } }
+    private func loadLanguages() async {
+        let supported = await LanguageAvailability().supportedLanguages.map(\.minimalIdentifier)
+        let all = Set(supported + [from, to]).subtracting([""])
+        languages = all.sorted { name($0).compare(name($1), options: [.caseInsensitive], locale: AppLanguage.locale) == .orderedAscending }
+    }
+    private var canTranslate: Bool { !busy && !scan.regions.isEmpty && from != to && !from.isEmpty }
+    private var translateTitle: String { complete ? "Preview translation" : "Translate to \(LanguageName.direction(to))" }
     private var areaCount: Int { scan.regions.filter { !$0.isMarker }.count }
     var body: some View {
         StepStack(step: ready ? 1 : 0, forward: ready) {
             if ready {
-                ToolPage(title: "Translated to \(name(to))", subtitle: resultSummary) { resultContent } actions: {
+                ToolPage(title: "Translated to \(LanguageName.direction(to))", subtitle: resultSummary) { resultContent } actions: {
                     Button(composition?.issues.isEmpty == false ? "Share PDF" : "Share translated PDF") { export(save: false) }
                         .buttonStyle(CTAButtonStyle()).disabled(busy).accessibilityIdentifier("translation-share")
                 }
             } else {
                 ToolPage(title: "Which language?", subtitle: "We'll replace the text in place and keep the page as it is.") { languageContent } actions: {
-                    Button(complete ? "Preview translation" : "Translate to \(name(to))") { translate() }
-                        .buttonStyle(CTAButtonStyle()).disabled(busy || scan.regions.isEmpty || from == to)
+                    Button(L(translateTitle)) { translate() }
+                        .buttonStyle(CTAButtonStyle()).disabled(!canTranslate)
                         .accessibilityIdentifier("translation-run")
                 }
             }
@@ -73,13 +81,10 @@ struct PhotoTranslationView: View {
         }
         .fullScreenCover(isPresented: $zoom) { EnlargedScanPreview(initialImage: displayed) { displayed } }
         .sheet(isPresented: $sharing) { if let files { ShareSheet(items: files.urls) } }
-        .onChange(of: from) { _, _ in rereadSourceLanguage() }
-        .onChange(of: to) { _, _ in rereadSourceLanguage() }
+        .onChange(of: from) { _, _ in languageChanged() }
+        .onChange(of: to) { _, _ in languageChanged() }
         .onAppear { if !scan.clarityChecked { scan = TranslationQuality.checked(scan, language: scan.recognitionLanguage ?? from) } }
-        .task {
-            let supported = await LanguageAvailability().supportedLanguages.map(\.minimalIdentifier)
-            languages = Array(Set(supported + [from, to])).sorted { name($0) < name($1) }
-        }
+        .task { await loadLanguages() }
         .onDisappear { if !zoom && !sharing && !crop && !editAreas { job?.cancel(); if let files { ExportFiles.remove(files.directory) } } }
     }
 
@@ -107,7 +112,7 @@ struct PhotoTranslationView: View {
                 languageRow(label: "From", code: from, side: .from)
                 ZStack {
                     Rectangle().fill(TK.grey100).frame(height: 1)
-                    Button { let a = from; from = to; to = a } label: {
+                    Button { guard !from.isEmpty else { return }; let a = from; from = to; to = a } label: {
                         Image(systemName: "arrow.up.arrow.down").font(.system(size: 15, weight: .bold)).foregroundStyle(TK.blue)
                             .frame(width: 40, height: 40).background(Color.white, in: Circle())
                             .overlay(Circle().strokeBorder(TK.grey200, lineWidth: 1))
@@ -119,7 +124,7 @@ struct PhotoTranslationView: View {
             }
             .background(TK.grey50, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(TK.grey100, lineWidth: 1))
-            if from == to {
+            if from == to && !from.isEmpty {
                 Text("Pick two different languages.").font(.footnote).foregroundStyle(TK.orange)
             }
             HStack(alignment: .top, spacing: 14) {
@@ -161,7 +166,13 @@ struct PhotoTranslationView: View {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(L(label)).font(.system(size: 13, weight: .medium)).foregroundStyle(TK.grey500)
-                    Text(name(code)).font(.system(size: 22, weight: .bold)).foregroundStyle(TK.grey900)
+                    if code.isEmpty {
+                        Text("Couldn't detect — choose the language").font(.system(size: 17, weight: .semibold)).foregroundStyle(TK.orange)
+                            .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("translation-source-unknown")
+                    } else {
+                        Text(verbatim: name(code)).font(.system(size: 22, weight: .bold)).foregroundStyle(TK.grey900)
+                            .accessibilityIdentifier(side == .from ? "translation-source-name" : "translation-target-name")
+                    }
                 }
                 Spacer()
                 Image(systemName: "chevron.down").font(.system(size: 14, weight: .semibold)).foregroundStyle(TK.grey400)
@@ -385,7 +396,7 @@ private struct TranslationLanguageList: View {
     let selected: String
     let pick: (String) -> Void
     @State private var query = ""
-    private func name(_ code: String) -> String { Locale.current.localizedString(forIdentifier: code) ?? code }
+    private func name(_ code: String) -> String { LanguageName.of(code) }
     private var preferred: [String] {
         let mine = Locale.preferredLanguages.map { Locale.Language(identifier: $0).minimalIdentifier }
         return languages.filter { code in mine.contains { $0 == code || $0.hasPrefix(code + "-") || code.hasPrefix($0 + "-") } }
@@ -424,9 +435,7 @@ struct TranslationLanguageGuide: View {
     let source: String
     let target: String
     var close: () -> Void = {}
-    private func name(_ code: String) -> String {
-        Locale.current.localizedString(forIdentifier: code) ?? code
-    }
+    private func name(_ code: String) -> String { LanguageName.of(code) }
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -469,5 +478,20 @@ struct TranslationLanguageGuide: View {
         let controller = UIHostingController(rootView: guide.environment(\.locale, AppLanguage.locale))
         host = controller
         top.present(controller, animated: true)
+    }
+}
+
+/// Language names in the app's own language ("프랑스어", not "French").
+enum LanguageName {
+    static func of(_ code: String) -> String {
+        AppLanguage.locale.localizedString(forIdentifier: code) ?? Locale.current.localizedString(forIdentifier: code) ?? code
+    }
+    /// The name as the object of "translate to": Korean adds 로/으로 to the name
+    /// itself ("한국어로"), so the sentence reads naturally.
+    static func direction(_ code: String) -> String {
+        let n = of(code)
+        guard AppLanguage.current == .ko, let last = n.unicodeScalars.last(where: { (0xAC00...0xD7A3).contains($0.value) }) else { return n }
+        let final = (last.value - 0xAC00) % 28
+        return n + (final == 0 || final == 8 ? "로" : "으로")
     }
 }

@@ -93,4 +93,23 @@ final class ScreenshotFixesTests: XCTestCase {
             try? data.write(to: folder.appendingPathComponent("redacted-sample.pdf"))
         }
     }
+
+    // B1: the French letter is judged from all its text; too little text is not guessed.
+    func testFrenchLetterIsDetected() throws {
+        let scan = try PhotoTranslation.scan(try image("photo_letter_fr"))
+        XCTAssertEqual(SourceLanguageGuess.detect(scan.regions.map(\.source)), "fr")
+        XCTAssertNil(SourceLanguageGuess.detect(["OK", "12/10"]))
+    }
+    // B2: language names follow the app language, and Korean takes the right particle.
+    func testLanguageNamesFollowAppLanguage() {
+        let saved = UserDefaults.standard.string(forKey: AppLanguage.key)
+        defer { UserDefaults.standard.set(saved, forKey: AppLanguage.key) }
+        UserDefaults.standard.set("ko", forKey: AppLanguage.key)
+        XCTAssertEqual(LanguageName.of("fr"), "프랑스어")
+        XCTAssertEqual(LanguageName.direction("ko"), "한국어로")
+        XCTAssertEqual(LanguageName.direction("en"), "영어로")
+        UserDefaults.standard.set("en", forKey: AppLanguage.key)
+        XCTAssertEqual(LanguageName.of("fr"), "French")
+        XCTAssertEqual(LanguageName.direction("ko"), "Korean")
+    }
 }

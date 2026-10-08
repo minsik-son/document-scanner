@@ -128,16 +128,16 @@ struct AdvancedOfflineHub: View {
         switch entry {
         case .scan: Button { startScan(.document) } label: { ToolTile(title: entry.title, icon: "scan") }
         case .whiteboard: Button { startScan(.whiteboard) } label: { ToolTile(title: entry.title, icon: "whiteboard") }
-        case .qr: Button { quick = .qr } label: { ToolTile(title: entry.title, icon: "qr") }.accessibilityLabel("QR code")
-        case .stitch: Button { quick = .stitch } label: { ToolTile(title: entry.title, icon: "stitch") }.accessibilityLabel("Stitch screenshots")
+        case .qr: Button { quick = .qr } label: { ToolTile(title: entry.title, icon: "qr") }.accessibilityLabel(L("QR code"))
+        case .stitch: Button { quick = .stitch } label: { ToolTile(title: entry.title, icon: "stitch") }.accessibilityLabel(L("Stitch screenshots"))
         case .library(let tool):
             Button { quick = .library(tool) } label: { ToolTile(title: tool.rawValue, icon: tool.icon, pro: tool.pro, feature: tool.proFeature) }
-                .accessibilityLabel(tool.rawValue + (tool.pro ? ", Pro" : ""))
+                .accessibilityLabel(L(tool.rawValue) + (tool.pro ? ", Pro" : ""))
                 .accessibilityIdentifier(tool == .identity ? "id-scan-tool" : "library-tool-" + tool.icon)
         case .advanced(let tool):
             Button {
                 if tool == .translate && !PhotoTranslationSupport.available { unsupported = tool } else { advancedRoute = tool }
-            } label: { ToolTile(title: tool.rawValue, icon: tool.icon, pro: tool.pro, feature: tool.proFeature) }.accessibilityLabel(tool.rawValue)
+            } label: { ToolTile(title: tool.rawValue, icon: tool.icon, pro: tool.pro, feature: tool.proFeature) }.accessibilityLabel(L(tool.rawValue))
         case .smart(let tool):
             Button { if tool.proFeature == nil && locked(tool.pro) { paywall = true } else { smartRoute = tool } } label: { ToolTile(title: tool.title, icon: tool.icon, pro: tool.pro, feature: tool.proFeature) }
                 .accessibilityIdentifier("smart-tool-" + tool.rawValue)
@@ -1275,6 +1275,10 @@ struct CameraTextToolView: View {
         return false
     }
     private func testImage() -> UIImage {
+#if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        if let i = args.firstIndex(of: "--camera-sample"), args.indices.contains(i + 1), let photo = UIImage(contentsOfFile: args[i + 1]) { return photo }
+#endif
         let format = UIGraphicsImageRendererFormat(); format.scale = 1
         return UIGraphicsImageRenderer(size:CGSize(width:1000,height:700),format:format).image { context in
             UIColor.white.setFill(); context.fill(CGRect(x:0,y:0,width:1000,height:700))

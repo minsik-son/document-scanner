@@ -55,7 +55,7 @@ final class LibraryStore: ObservableObject {
             try commit(next)
             return existing.id
         }
-        var doc = ScanDocument(title: "Scan \(Date().formatted(date: .abbreviated, time: .shortened))")
+        var doc = ScanDocument(title: ScanDocument.defaultTitle())
         doc.autoTitled = true
         try update(doc)
         return doc.id

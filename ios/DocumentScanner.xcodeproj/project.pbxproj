@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8CDF939BA040FB40577C18EA /* ScreenshotFixesUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50CCE3F28EF405FAF90ABCE4 /* ScreenshotFixesUITests.swift */; };
 		652F6C4FE247A765600B21A1 /* photo_letter_fr.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 36D1899B17513F553A73932A /* photo_letter_fr.jpg */; };
 		6032002AE14A227E76D4FB80 /* photo_form.jpg in Resources */ = {isa = PBXBuildFile; fileRef = E7505CB00C5F8BBEE6DB5298 /* photo_form.jpg */; };
 		6193FF36C45D8D0EBF1472F8 /* ScreenshotFixesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF3D23D52036BD77F0640FAD /* ScreenshotFixesTests.swift */; };
@@ -139,6 +140,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		50CCE3F28EF405FAF90ABCE4 /* ScreenshotFixesUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotFixesUITests.swift; sourceTree = "<group>"; };
 		36D1899B17513F553A73932A /* photo_letter_fr.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = photo_letter_fr.jpg; sourceTree = "<group>"; };
 		E7505CB00C5F8BBEE6DB5298 /* photo_form.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = photo_form.jpg; sourceTree = "<group>"; };
 		CF3D23D52036BD77F0640FAD /* ScreenshotFixesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotFixesTests.swift; sourceTree = "<group>"; };
@@ -314,6 +316,7 @@
 				F9D443F9A450E2B27ED22180 /* ScannerFlowTests.swift */,
 				7360897253E6674BA271468C /* ToolDirectoryDesignTests.swift */,
 				FA11CE0000000000000000F2 /* ReviewScreensUITests.swift */,
+				50CCE3F28EF405FAF90ABCE4 /* ScreenshotFixesUITests.swift */,
 			);
 			path = DocumentScannerUITests;
 			sourceTree = "<group>";
@@ -728,6 +731,7 @@
 				FF87128E176720325C2A5AF7 /* ScannerFlowTests.swift in Sources */,
 				45D1F6B22E378F6DDB11BAFE /* ToolDirectoryDesignTests.swift in Sources */,
 				FA11CE0000000000000000B2 /* ReviewScreensUITests.swift in Sources */,
+				8CDF939BA040FB40577C18EA /* ScreenshotFixesUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

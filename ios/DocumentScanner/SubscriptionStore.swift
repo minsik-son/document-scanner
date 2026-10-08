@@ -207,7 +207,7 @@ final class SubscriptionStore: ObservableObject {
         let fire = end.addingTimeInterval(-2 * 86400)
         guard fire > Date().addingTimeInterval(60) else { center.removePendingNotificationRequests(withIdentifiers: [id]); return }
         let price = renewalPrice.map { "\($0)/\(renewalUnit)" } ?? "the plan price"
-        let day = end.formatted(date: .abbreviated, time: .omitted)
+        let day = end.appFormatted(date: .abbreviated, time: .omitted)
         Task {
             guard (try? await center.requestAuthorization(options: [.alert, .sound])) == true else { return }
             let content = UNMutableNotificationContent()

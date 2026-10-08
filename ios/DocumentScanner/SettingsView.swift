@@ -98,7 +98,7 @@ struct SettingsView: View {
                     Text("Signatures already placed in documents stay in document backups. Unused saved signatures are excluded unless selected.").font(.caption)
                     Button("Export library backup") { backupWarning = true }.disabled(backupBusy)
                     if backupBusy { ProgressView(backupProgress); Button("Cancel backup") { backupTask?.cancel() } }
-                    if let date = store.manifest.lastBackupCreated { LabeledContent("Last backup created", value: date.formatted(date: .abbreviated, time: .shortened)) }
+                    if let date = store.manifest.lastBackupCreated { LabeledContent("Last backup created", value: date.appFormatted(date: .abbreviated, time: .shortened)) }
                     Toggle("Keep both when restoring duplicates", isOn: $keepBoth).disabled(backupBusy)
                     Button("Restore library backup") { importing = true }.disabled(backupBusy)
                     Text("Existing documents are preserved. Choose whether duplicate documents are skipped or restored as copies. Backups are streamed to disk; enough free space for the exported archive is required.").font(.caption).foregroundStyle(.secondary)

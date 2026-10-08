@@ -134,7 +134,7 @@ struct ProHeaderBadge: View {
     var body: some View {
         if !subscription.isPro {
             pill(ProStyle.gradient, glow: ProStyle.violet) {
-                Text("Get ") + Text("PRO").fontWeight(.black)
+                if AppLanguage.current == .en { Text("Get ") + Text("PRO").fontWeight(.black) } else { Text(L("Get Pro")).fontWeight(.black) }
             } action: { openPaywall() }
                 .accessibilityLabel("Get Pro").accessibilityIdentifier("home-pro")
         } else if let days = subscription.trialDaysLeft {
@@ -264,7 +264,7 @@ struct MembershipBanner: View {
         }.buttonStyle(.plain).accessibilityIdentifier("manage-subscription")
     }
     private func trialDetail(_ end: Date) -> String {
-        let date = end.formatted(date: .abbreviated, time: .omitted)
+        let date = end.appFormatted(date: .abbreviated, time: .omitted)
         guard subscription.willRenew else { return "Ends \(date). Renewal is off." }
         if let price = subscription.renewalPrice { return "Ends \(date) · then \(price)/\(subscription.renewalUnit)" }
         return "Ends \(date)"
@@ -273,8 +273,8 @@ struct MembershipBanner: View {
         if subscription.lifetime { return "Unlocked for life" }
         if let date = subscription.expiresAt, subscription.planID != nil {
             let plan = subscription.planID == SubscriptionStore.yearlyID ? "Yearly plan" : "Monthly plan"
-            return subscription.willRenew ? "\(plan) · renews \(date.formatted(date: .abbreviated, time: .omitted))"
-                                          : "\(plan) · ends \(date.formatted(date: .abbreviated, time: .omitted))"
+            return subscription.willRenew ? "\(plan) · renews \(date.appFormatted(date: .abbreviated, time: .omitted))"
+                                          : "\(plan) · ends \(date.appFormatted(date: .abbreviated, time: .omitted))"
         }
         return subscription.statusText
     }

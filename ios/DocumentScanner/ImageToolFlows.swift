@@ -409,7 +409,7 @@ private struct PortraitTool: View {
                             }
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Reopen ID photo from \(entry.date.formatted(date: .abbreviated, time: .omitted))")
+                        .accessibilityLabel("Reopen ID photo from \(entry.date.appFormatted(date: .abbreviated, time: .omitted))")
                         .contextMenu {
                             Button(role: .destructive) { PortraitHistory.remove(entry.id); history = PortraitHistory.list() } label: { Label("Remove", systemImage: "trash") }
                         }

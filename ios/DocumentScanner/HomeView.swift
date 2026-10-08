@@ -92,7 +92,7 @@ struct HomeView: View {
                                 HStack(spacing: 8) {
                                     ForEach(kinds) { kind in
                                         Button { kindFilter = kindFilter == kind ? nil : kind } label: {
-                                            Label("\(kind.plural) \(kindCounts[kind] ?? 0)", systemImage: kind.symbol).font(.footnote.weight(.semibold))
+                                            Label { Text(verbatim: L(kind.plural) + " \(kindCounts[kind] ?? 0)") } icon: { Image(systemName: kind.symbol) }.font(.footnote.weight(.semibold))
                                                 .padding(.horizontal, 12).padding(.vertical, 7)
                                                 .background(kindFilter == kind ? Design.blue.opacity(0.1) : .white, in: Capsule())
                                         }.foregroundStyle(kindFilter == kind ? Design.blue : .secondary)
@@ -331,6 +331,7 @@ struct HomeView: View {
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Paper, meet\npeace of mind.").font(.system(.title2, weight: .bold))
+                        .lineLimit(3).minimumScaleFactor(0.8).fixedSize(horizontal: false, vertical: true)
                     Text("Clear scans. Everything in place.").font(.subheadline).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
@@ -399,7 +400,7 @@ struct HomeView: View {
                 Text(L(item.title)).font(.system(.caption, weight: .medium)).foregroundStyle(Design.ink)
                     .fixedSize(horizontal: false, vertical: true)
             }.frame(maxWidth: .infinity, minHeight: 88, alignment: .top).contentShape(Rectangle())
-        }.accessibilityLabel(item == .qr ? "Open QR code" : item.title).disabled(importing || !store.storageAvailable)
+        }.accessibilityLabel(L(item == .qr ? "Open QR code" : item.title)).disabled(importing || !store.storageAvailable)
     }
     private func matchingPage(_ doc: ScanDocument) -> Int { query.isEmpty ? 0 : (doc.pages.firstIndex { $0.plainText.localizedCaseInsensitiveContains(query) } ?? 0) }
     @ViewBuilder
@@ -461,9 +462,9 @@ struct DocumentRow: View {
             Group { if locked { LockedThumb() } else if let page = document.pages.first { PageThumbnail(page: page, pdfFile: document.pdfFile) } else { Image(systemName: "doc") } }.frame(width: 56, height: 72).background(Design.muted, in: RoundedRectangle(cornerRadius: 8))
             VStack(alignment: .leading, spacing: 6) {
                 Text(L(document.title)).font(.headline).lineLimit(2)
-                Text("\(document.pages.count) pages · \(document.kind.map { $0 == .other ? document.folder : $0.label } ?? document.folder)").font(.subheadline).foregroundStyle(.secondary)
+                Text(verbatim: pagesText(document.pages.count) + " · " + L(document.kind.map { $0 == .other ? document.folder : $0.label } ?? document.folder)).font(.subheadline).foregroundStyle(.secondary)
                 if !query.isEmpty, !locked, let index = document.pages.firstIndex(where: { $0.plainText.localizedCaseInsensitiveContains(query) }) { Text("Text match on page \(index+1)").font(.caption).foregroundStyle(Design.blue) }
-                Text(document.updatedAt, style: .date).font(.caption).foregroundStyle(.secondary)
+                Text(verbatim: document.updatedAt.appFormatted()).font(.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
             if document.favorite { Image(systemName: "star.fill").foregroundStyle(.orange) }

@@ -227,7 +227,7 @@ private struct ToolScanCamera: View {
     private func done(_ id: UUID?) { guard !finished else { return }; finished = true; completion(id) }
     @MainActor static func save(_ id: UUID, store: LibraryStore) async throws -> UUID {
         guard var doc = store.document(id), !doc.pages.isEmpty else { throw ScannerError.message("This scan is no longer available.") }
-        if doc.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { doc.title = "Scan \(Date().formatted(date: .abbreviated, time: .shortened))"; doc.autoTitled = true }
+        if doc.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { doc.title = ScanDocument.defaultTitle(); doc.autoTitled = true }
         let result = try await PDFExport.prepare(doc, root: store.root)
         try store.savePDF(result.data, document: result.document)
         return id
@@ -1338,7 +1338,7 @@ private struct CompressToolStep: View {
         }.animation(.easeInOut, value: output != nil)
     }
     private var choose: some View {
-        ToolPage(title: "How small?", subtitle: "Now \(PDFTools.size(original)). Pages are saved as pictures; text stays searchable.") {
+        ToolPage(title: "How small?", subtitle: String(format: L("Now %@. Pages are saved as pictures; text stays searchable."), PDFTools.size(original))) {
             VStack(spacing: 10) {
                 option(.smaller, "Smallest file", "Best for email and chat. Photos lose some detail.")
                 option(.balanced, "Balanced", "Smaller file with clear text. Recommended.")

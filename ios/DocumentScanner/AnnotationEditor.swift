@@ -210,9 +210,12 @@ struct AnnotationEditor: View {
               Spacer(minLength: 0)
             }.padding(16).background(TK.grey100, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
           }
-          Text("Marks don't securely redact text. PDF forms are flattened; the original is kept.").font(.system(size: 13)).foregroundStyle(TK.grey500)
         }
       } actions: {
+        // Above the button, never behind it.
+        Text("Marks don't securely redact text. PDF forms are flattened; the original is kept.").font(.system(size: 12)).foregroundStyle(TK.grey500)
+          .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity)
+          .accessibilityIdentifier("annotate-redact-note")
         Button("Save") { save() }.buttonStyle(CTAButtonStyle()).disabled(busy || preview == nil)
       }
         .toolbar {
@@ -465,7 +468,7 @@ struct FormProfile {
   static func place(blocks: [TextBlock], profile: [String: String], image: CGImage? = nil) -> [Spot] {
     var spots: [Spot] = []
     var used = Set<String>()
-    let today = Date().formatted(date: .numeric, time: .omitted)
+    let today = Date().appFormatted(date: .numeric, time: .omitted)
     let extra: [(String, [String])] = [("date", ["today's date", "date signed", "date", "날짜", "일자", "작성일", "신청일"]),
                                        ("signature", ["applicant's signature", "applicant signature", "your signature", "signature", "sign here", "서명"])]
     // Longest label first, so "email address" is an email and not an address.

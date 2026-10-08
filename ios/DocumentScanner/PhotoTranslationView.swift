@@ -146,8 +146,8 @@ struct PhotoTranslationView: View {
                     }
                     if let notice = scan.notice { Text(L(notice)).font(.system(size: 13)).foregroundStyle(TK.grey500) }
                     HStack(spacing: 8) {
-                        Button { crop = true } label: { Label("Crop", systemImage: "crop") }.buttonStyle(ChipStyle(selected: false))
-                        Button { reviewIssuesOnly = false; editAreas = true } label: { Label("Text", systemImage: "text.viewfinder") }
+                        Button { crop = true } label: { Label("Crop", systemImage: "crop").lineLimit(1).fixedSize() }.buttonStyle(ChipStyle(selected: false))
+                        Button { reviewIssuesOnly = false; editAreas = true } label: { Label("Text", systemImage: "text.viewfinder").lineLimit(1).fixedSize() }
                             .buttonStyle(ChipStyle(selected: false)).disabled(scan.regions.isEmpty)
                             .accessibilityLabel("Review \(areaCount) text areas").accessibilityIdentifier("translation-edit-areas")
                     }.padding(.top, 4)
@@ -182,7 +182,7 @@ struct PhotoTranslationView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(label) \(name(code))").accessibilityHint("Choose a language")
+        .accessibilityLabel(L(label) + " " + (code.isEmpty ? L("Couldn't detect — choose the language") : name(code))).accessibilityHint(L("Choose a language"))
         .accessibilityIdentifier("translation-" + side.rawValue)
     }
 

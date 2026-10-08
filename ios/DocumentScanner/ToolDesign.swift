@@ -90,7 +90,7 @@ struct ToolTile: View {
                 .foregroundStyle(Design.ink).fixedSize(horizontal: false, vertical: true)
         }.frame(maxWidth: .infinity, minHeight: 100, alignment: .top)
             .contentShape(Rectangle()).accessibilityElement(children: .ignore)
-            .accessibilityLabel(title + (pro ? ", Pro" : ""))
+            .accessibilityLabel(L(title) + (pro ? ", Pro" : ""))
     }
 }
 extension AdvancedTool {

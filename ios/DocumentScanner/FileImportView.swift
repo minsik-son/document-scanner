@@ -56,7 +56,7 @@ struct FileImportView: View {
           Section("Imported — tap to review") {
             ForEach(imported, id: \.self) { id in
               if let doc = store.document(id) {
-                Button("\(doc.title) · \(doc.pages.count) pages") {
+                Button(L(doc.title) + " · " + pagesText(doc.pages.count)) {
                   open(id)
                   dismiss()
                 }.disabled(busy)

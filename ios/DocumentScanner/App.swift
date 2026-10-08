@@ -276,6 +276,20 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 
 /// Translates a runtime string (tool names, messages built from literals) into the
 /// chosen app language. Strings without a translation come back unchanged.
+/// "1 page" / "3 pages" in English; other languages translate through L().
+func pagesText(_ n: Int) -> String { L(n == 1 ? "1 page" : "\(n) pages") }
+extension Date {
+    /// Dates follow the app's language, not the iPhone's ("2026년 10월 8일 오후 3:43").
+    func appFormatted(date: Date.FormatStyle.DateStyle = .abbreviated, time: Date.FormatStyle.TimeStyle = .omitted) -> String {
+        formatted(Date.FormatStyle(date: date, time: time, locale: AppLanguage.locale))
+    }
+}
+extension ScanDocument {
+    /// The name a new scan gets before it is renamed.
+    static func defaultTitle(_ date: Date = Date()) -> String {
+        String(format: L("Scan %@"), date.appFormatted(date: .abbreviated, time: .shortened))
+    }
+}
 func L(_ text: String) -> String {
     AppLanguage.current == .en ? text : Localizer.shared.translate(text)
 }

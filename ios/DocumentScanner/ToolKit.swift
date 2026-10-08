@@ -474,7 +474,7 @@ struct DocumentChoiceList: View {
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                         VStack(alignment: .leading, spacing: 4) {
                             Text(L(doc.title)).font(.system(size: 16, weight: .semibold)).foregroundStyle(TK.grey900).lineLimit(2)
-                            Text(LS(doc.pages.count == 1 ? "1 page · \(doc.updatedAt.formatted(date: .abbreviated, time: .omitted))" : "\(doc.pages.count) pages · \(doc.updatedAt.formatted(date: .abbreviated, time: .omitted))"))
+                            Text(LS(doc.pages.count == 1 ? "1 page · \(doc.updatedAt.appFormatted(date: .abbreviated, time: .omitted))" : "\(doc.pages.count) pages · \(doc.updatedAt.appFormatted(date: .abbreviated, time: .omitted))"))
                                 .font(.system(size: 13)).foregroundStyle(TK.grey500)
                         }
                         Spacer(minLength: 8)

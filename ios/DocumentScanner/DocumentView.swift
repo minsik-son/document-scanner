@@ -52,7 +52,7 @@ struct DocumentView: View {
                                     .frame(width: 36, height: 36).background(Design.blue.opacity(0.09), in: RoundedRectangle(cornerRadius: 10))
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(L(doc.title)).font(.headline).foregroundStyle(Design.ink).lineLimit(1)
-                                    Text("\((doc.kind ?? .other).label) · \(doc.pages.count) pages · \(doc.textStatus)").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                                    Text(verbatim: L((doc.kind ?? .other).label) + " · " + pagesText(doc.pages.count) + " · " + L(doc.textStatus)).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                                 }
                                 Spacer(minLength: 4)
                                 Image(systemName: "pencil").foregroundStyle(.secondary)

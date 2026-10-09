@@ -122,7 +122,7 @@ struct PaywallView: View {
                     Text(lifetime ? "Lifetime" : annual ? "Yearly" : "Monthly").font(.headline)
                     Group {
                         if lifetime, FoundingOffer.applies(to: plan), let end = FoundingOffer.endDate, let regular = FoundingOffer.regularPrice(for: plan) {
-                            Text("Launch price until \(end.formatted(.dateTime.month(.abbreviated).day())), then \(regular)")
+                            Text("Launch price until \(end.formatted(.dateTime.month(.abbreviated).day().locale(AppLanguage.locale))), then \(regular)")
                         }
                         else if lifetime { Text("One-time purchase. No subscription.") }
                         else if annual {
@@ -150,8 +150,8 @@ struct PaywallView: View {
                 }
             }
             .overlay(alignment: .topLeading) {
-                if lifetime, FoundingOffer.applies(to: plan), let days = FoundingOffer.daysLeft {
-                    Text(days == 1 ? "FOUNDING PRICE · 1 DAY LEFT" : "FOUNDING PRICE · \(days) DAYS LEFT")
+                if lifetime, FoundingOffer.applies(to: plan) {
+                    Text("FOUNDING PRICE · ENDS \(FoundingOffer.endText.uppercased(with: AppLanguage.locale))")
                         .font(.caption2.weight(.heavy)).foregroundStyle(.white).padding(.horizontal, 9).padding(.vertical, 3)
                         .background(FoundingOffer.ribbon, in: Capsule()).offset(x: 14, y: -10)
                         .accessibilityIdentifier("founding-price")
@@ -316,29 +316,22 @@ struct ProFeatureCarousel: View {
 /// the founding price (set in App Store Connect as a scheduled price change).
 /// The paywall shows the days left and the regular price it goes back to.
 enum FoundingOffer {
-    static let days = 30
-    /// Release day: the first day of the App Store Connect price schedule for the
-    /// lifetime plan (founding price for `days` days, then the regular price).
-    /// Release builds hide the offer until it is set.
-    static let launchDay: DateComponents? = nil
+    /// The founding lifetime price ends at the start of this day (App Store
+    /// Connect price change to the regular price, 08_가격_확정.md). If the launch
+    /// moves, change this one date and the App Store Connect schedule together.
+    static let endDay = DateComponents(year: 2026, month: 12, day: 17)
     static let ribbon = Color(red: 1, green: 0.541, blue: 0)                  // #FF8A00
     /// Regular lifetime price after the offer, per App Store currency.
     static let regularPrices: [String: Decimal] = ["USD": Decimal(string: "59.99")!, "KRW": 79000]
-    static var launchDate: Date? {
-        if let launchDay, let date = Calendar.current.date(from: launchDay) { return Calendar.current.startOfDay(for: date) }
-        #if DEBUG
-        // Preview in development builds: as if the app came out a week ago.
-        return Calendar.current.date(byAdding: .day, value: -7, to: Calendar.current.startOfDay(for: Date()))
-        #else
-        return nil
-        #endif
-    }
-    static var endDate: Date? { launchDate.flatMap { Calendar.current.date(byAdding: .day, value: days, to: $0) } }
-    static var daysLeft: Int? {
-        guard let end = endDate, end > Date() else { return nil }
-        let left = Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: Date()), to: end).day ?? 1
+    static var endDate: Date? { Calendar.current.date(from: endDay).map { Calendar.current.startOfDay(for: $0) } }
+    /// "Dec 17" in the app's language.
+    static var endText: String { endDate?.formatted(.dateTime.month(.abbreviated).day().locale(AppLanguage.locale)) ?? "" }
+    static func daysLeft(now: Date = Date()) -> Int? {
+        guard let end = endDate, end > now else { return nil }
+        let left = Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: now), to: end).day ?? 1
         return max(1, left)
     }
+    static var daysLeft: Int? { daysLeft() }
     static var active: Bool { daysLeft != nil }
     /// The founding ribbon, strikethrough and days left show only while the offer
     /// window is open AND the App Store still charges less than the regular price

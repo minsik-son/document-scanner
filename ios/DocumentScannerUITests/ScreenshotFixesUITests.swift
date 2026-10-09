@@ -96,6 +96,24 @@ final class ScreenshotFixesUITests: XCTestCase {
         } else { XCTFail("Compress options not shown") }
     }
 
+    /// E1: the lifetime plan shows the founding ribbon ending Dec 17.
+    @MainActor func testPaywallFoundingRibbon() {
+        for language in ["en", "ko"] {
+            let app = launch(language)
+            app.buttons["home-pro"].tap()
+            let ribbon = app.staticTexts["founding-price"]
+            if !ribbon.waitForExistence(timeout: 15) {
+                for _ in 0..<3 where !ribbon.exists { app.swipeUp() }
+            }
+            XCTAssertTrue(ribbon.exists, "No founding ribbon (\(language))")
+            if language == "en" { XCTAssertTrue(ribbon.label.contains("ENDS DEC 17"), ribbon.label) }
+            else { XCTAssertTrue(ribbon.label.contains("12월 17일"), ribbon.label) }
+            if !ribbon.isHittable { app.swipeUp() }
+            save(app, "\(language)-paywall-founding")
+            app.terminate()
+        }
+    }
+
     /// C: the same check on Home, Documents and Tools in the other 13 languages.
     @MainActor func testOtherLanguagesHaveNoEnglish() {
         for language in ["ja", "es", "pt-BR", "de", "fr", "it", "pl", "tr", "id", "vi", "th", "zh-Hans", "zh-Hant"] {

@@ -112,4 +112,40 @@ final class ScreenshotFixesTests: XCTestCase {
         XCTAssertEqual(LanguageName.of("fr"), "French")
         XCTAssertEqual(LanguageName.direction("ko"), "Korean")
     }
+
+    // D2: 10/05/2026 is October 5 in the US, May 10 in the UK, and left out when nothing decides.
+    func testNumericDateOrder() throws {
+        let cal = Calendar(identifier: .gregorian)
+        let us = try XCTUnwrap(DocumentInsight.paperDate("Date: 10/05/2026  Signature", region: "US").date)
+        XCTAssertEqual(cal.component(.month, from: us), 10); XCTAssertEqual(cal.component(.day, from: us), 5)
+        let gb = try XCTUnwrap(DocumentInsight.paperDate("Date: 10/05/2026  Signature", region: "GB").date)
+        XCTAssertEqual(cal.component(.month, from: gb), 5)
+        XCTAssertTrue(DocumentInsight.paperDate("Date: 10/05/2026  Signature", region: "CA").ambiguous)
+        let fr = try XCTUnwrap(DocumentInsight.paperDate("Fait à Paris le 10/05/2026. Nous vous remercions de votre confiance et restons à votre disposition.", region: "US").date)
+        XCTAssertEqual(cal.component(.month, from: fr), 5, "French documents are day-first")
+        let clear = try XCTUnwrap(DocumentInsight.paperDate("Date: 10/25/2026", region: "CA").date)
+        XCTAssertEqual(cal.component(.day, from: clear), 25)
+    }
+    // D1: one page is "1 page".
+    func testSinglePageWording() {
+        let saved = UserDefaults.standard.string(forKey: AppLanguage.key)
+        defer { UserDefaults.standard.set(saved, forKey: AppLanguage.key) }
+        UserDefaults.standard.set("en", forKey: AppLanguage.key)
+        XCTAssertEqual(pagesText(1), "1 page"); XCTAssertEqual(pagesText(3), "3 pages")
+    }
+
+    // E1: the founding price ends on Dec 17, 2026, from one constant.
+    func testFoundingOfferEndsDecember17() throws {
+        let cal = Calendar.current
+        let end = try XCTUnwrap(FoundingOffer.endDate)
+        XCTAssertEqual(cal.dateComponents([.year, .month, .day], from: end), DateComponents(year: 2026, month: 12, day: 17))
+        let oct8 = cal.date(from: DateComponents(year: 2026, month: 10, day: 8, hour: 15))!
+        XCTAssertEqual(FoundingOffer.daysLeft(now: oct8), 70)
+        let dec16 = cal.date(from: DateComponents(year: 2026, month: 12, day: 16, hour: 23))!
+        XCTAssertEqual(FoundingOffer.daysLeft(now: dec16), 1)
+        let dec17 = cal.date(from: DateComponents(year: 2026, month: 12, day: 17, hour: 0, minute: 1))!
+        XCTAssertNil(FoundingOffer.daysLeft(now: dec17), "Ribbon and days left hide after the end date")
+        XCTAssertEqual(FoundingOffer.regularPrices["USD"], Decimal(string: "59.99"))
+        XCTAssertEqual(FoundingOffer.regularPrices["KRW"], 79000)
+    }
 }

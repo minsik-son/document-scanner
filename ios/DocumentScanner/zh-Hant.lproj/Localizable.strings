@@ -1800,3 +1800,7 @@
 "Correct text" = "更正文字";
 "Correct cells" = "更正儲存格";
 "Opens the whole page full screen to zoom in" = "全螢幕開啟整頁以便放大";
+"Send as PDF" = "以 PDF 傳送";
+"Convert to %@" = "轉換為 %@";
+"Save as images" = "儲存為圖片";
+"Images" = "圖片";

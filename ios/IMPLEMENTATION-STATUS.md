@@ -219,3 +219,12 @@ Selected-language + close-up OCR, word-gap column separation, mixed-script parag
 2. 흰 글자 셀 안에서 단어 사이 간격으로 열을 쪼개는 문제(subway, canada 겹침) — 색이 같은 한 셀 안의 간격은 열 경계로 보지 않기.
 3. 가로 사진의 용지 종류: 캐나다 샘플이 레터 가로(11×8.5)인데 A4 가로로 잡힘(원근 보정 뒤 비율 0.707). `physicalSize`의 가로 판정 보강.
 4. 흰 글자 OCR: 진한 셀의 글자는 반전해서 한 번 더 읽기.
+
+## 스캔 직후 변환 바 (2026-10-09)
+
+스캔을 저장한 화면(그리고 문서 화면) 아래에 바를 추가: **PDF · Word · Excel · PPT · 이미지**.
+- Word·Excel은 이 문서의 모든 페이지(30쪽까지)를 바로 읽어 확인 화면으로 들어간다. PPT는 슬라이드 방식 선택 단계로, 이미지는 기존 "이미지로 내보내기"로 간다.
+- Word·Excel·PPT는 도구 탭과 같은 Office 무료 체험(3회, 파일을 만들 때 1회 차감)을 쓰고 이후 Pro. 무료 사용자에게는 왕관 표시. 이미지·PDF는 무료.
+- 도구 탭에서 들어가는 기존 경로는 그대로.
+- 확인 화면(Word·Excel)은 인쇄 모양 그대로의 페이지 전체를 먼저 보여주고, 탭하면 전체 화면 확대.
+- UI 테스트: `ScannerFlowTests.testSavedScanOffersConversionsAndWordReviewShowsWholePage`.

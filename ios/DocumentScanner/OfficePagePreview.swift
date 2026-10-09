@@ -92,16 +92,16 @@ enum OfficePagePreview {
 struct OfficePageOverview: View {
     let page: PageLayout
     var caption: String = "The whole page as it will print. Tap to zoom."
-    @State private var zoomImage: UIImage?
-    @State private var zooming = false
+    private struct Zoom: Identifiable { let id = UUID(); let image: UIImage }
+    @State private var zoom: Zoom?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             GeometryReader { geo in
                 let w = geo.size.width
                 Button {
-                    zoomImage = OfficePagePreview.image(page)
-                    zooming = zoomImage != nil
+                    // Item-driven so the cover always receives the rendered page.
+                    zoom = OfficePagePreview.image(page).map { Zoom(image: $0) }
                 } label: {
                     OfficePageCanvas(page: page, width: w)
                         .overlay(Rectangle().strokeBorder(TK.grey200, lineWidth: 1))
@@ -120,8 +120,8 @@ struct OfficePageOverview: View {
             .aspectRatio(CGFloat(max(1, page.width)) / CGFloat(max(1, page.height)), contentMode: .fit)
             Text(L(caption)).font(.system(size: 13)).foregroundStyle(TK.grey500)
         }
-        .fullScreenCover(isPresented: $zooming) {
-            if let zoomImage { EnlargedScanPreview(initialImage: zoomImage) { zoomImage } }
+        .fullScreenCover(item: $zoom) { zoom in
+            EnlargedScanPreview(initialImage: zoom.image) { zoom.image }
         }
     }
 }

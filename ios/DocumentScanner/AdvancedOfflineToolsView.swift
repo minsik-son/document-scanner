@@ -168,6 +168,8 @@ struct AdvancedOfflineHub: View {
 struct AdvancedOfflineToolView:View {
     let tool:AdvancedTool
     var documentID:UUID?
+    /// Opened from a finished scan: start reading the document's pages right away.
+    var autoStart = false
     var body:some View {
         if tool == .translate && !PhotoTranslationSupport.available {
             // Before any free try is used: this iPhone cannot run Apple's translation.
@@ -182,7 +184,7 @@ struct AdvancedOfflineToolView:View {
             if tool.imageTool {
                 ImageToolFlow(tool:tool, documentID:documentID)
             } else {
-                AdvancedOfflineToolContent(tool:tool, documentID:documentID)
+                AdvancedOfflineToolContent(tool:tool, documentID:documentID, autoStart:autoStart)
             }
         }
     }
@@ -341,8 +343,9 @@ struct AdvancedOfflineToolContent:View {
     @State private var editableSlides = false
     @State private var allPages = false
     @State private var offsets:[CGPoint] = []
-    init(tool:AdvancedTool,documentID:UUID? = nil) {
-        self.tool = tool;self.documentID = documentID
+    var autoStart = false
+    init(tool:AdvancedTool,documentID:UUID? = nil,autoStart:Bool = false) {
+        self.tool = tool;self.documentID = documentID;self.autoStart = autoStart
         _selectedDocument = State(initialValue:documentID)
     }
     private var doc:ScanDocument? { selectedDocument.flatMap { store.document($0) } }
@@ -367,7 +370,7 @@ struct AdvancedOfflineToolContent:View {
         message = error is CancellationError ? "Canceled. No result was saved." : error.localizedDescription
     }
     var body:some View {
-        if tool == .slides || tool == .excel { PowerPointExportView(documentID:documentID,excel:tool == .excel) }
+        if tool == .slides || tool == .excel { PowerPointExportView(documentID:documentID,excel:tool == .excel,autoStart:autoStart) }
         else if tool == .translate || tool == .math { CameraTextToolView(tool:tool, documentID:documentID) }
         else { standardBody }
     }
@@ -420,7 +423,13 @@ struct AdvancedOfflineToolContent:View {
         .onChange(of: options) { _, _ in clearOutput(clearMessage: false) }
         .onChange(of: allPages) { _, _ in text = "" }
         .onChange(of: text) { _, value in if value.isEmpty { wordLayouts = []; wordLayoutText = "" } }
-        .task { if inputs.isEmpty, doc != nil { loadPage() } }
+        .task {
+            // From a finished scan: read every page now and open the review step.
+            if autoStart, tool == .word, inputs.isEmpty, text.isEmpty, let doc, !doc.pages.isEmpty, doc.pages.count <= 30 {
+                allPages = true; readText(); return
+            }
+            if inputs.isEmpty, doc != nil { loadPage() }
+        }
         .onDisappear { if !zoom && !sharing && !quickLook && !wordCamera && !wordFilePicker { job?.cancel(); if let files { ExportFiles.remove(files.directory) }; clearWordPDF() } }
     }
 

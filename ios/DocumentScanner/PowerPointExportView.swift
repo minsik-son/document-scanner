@@ -37,6 +37,8 @@ struct PowerPointExportView: View {
     @EnvironmentObject private var store: LibraryStore
     let documentID: UUID?
     var excel = false
+    /// Opened from a finished scan: Excel reads the pages right away; slides go to the style choice.
+    var autoStart = false
     @State private var stage = 0
     @State private var camera = false
     /// How pages become slides: rebuilt editable layout, page pictures, or plain text.
@@ -117,6 +119,7 @@ struct PowerPointExportView: View {
                 if let documentID,let document = store.document(documentID) {
                     if document.pages.count <= 30 {
                         pages = document.pages.enumerated().map { PresentationPage(title:"\(document.title) · Page \($0.offset+1)",source:.library($0.element)) }
+                        if autoStart { forward = true; if excel { recognize() } else { stage = 1 } }
                     } else { libraryPicker = true; message = "Choose up to 30 pages for your presentation." }
                 }
             }

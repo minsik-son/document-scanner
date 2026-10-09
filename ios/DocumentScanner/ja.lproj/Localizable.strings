@@ -1800,3 +1800,7 @@
 "Correct text" = "テキストを修正";
 "Correct cells" = "セルを修正";
 "Opens the whole page full screen to zoom in" = "ページ全体を全画面で開いて拡大します";
+"Send as PDF" = "PDFで送る";
+"Convert to %@" = "%@に変換";
+"Save as images" = "画像として保存";
+"Images" = "画像";

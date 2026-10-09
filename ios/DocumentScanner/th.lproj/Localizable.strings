@@ -1800,3 +1800,7 @@
 "Correct text" = "แก้ข้อความ";
 "Correct cells" = "แก้ช่อง";
 "Opens the whole page full screen to zoom in" = "เปิดทั้งหน้าแบบเต็มจอเพื่อขยาย";
+"Send as PDF" = "ส่งเป็น PDF";
+"Convert to %@" = "แปลงเป็น %@";
+"Save as images" = "บันทึกเป็นรูปภาพ";
+"Images" = "รูปภาพ";

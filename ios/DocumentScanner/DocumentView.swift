@@ -77,7 +77,9 @@ struct DocumentView: View {
                         }.font(.headline)
                         if let file = doc.pdfFile { ShareLink(item: SharedPDF.url(for: store.url(file), title: doc.title)) { Label("Share PDF", systemImage: "square.and.arrow.up") }.buttonStyle(PrimaryButton()) }
                     }.padding(24)
-                }.navigationTitle(L(doc.title)).navigationBarTitleDisplayMode(.inline)
+                }
+                .safeAreaInset(edge: .bottom, spacing: 0) { if doc.pdfFile != nil { DocumentExportBar(documentID: documentID) } }
+                .navigationTitle(L(doc.title)).navigationBarTitleDisplayMode(.inline)
                 .toolbar(.visible, for: .navigationBar)
                 .onAppear { if openTextOnAppear && !didOpenInitialText { didOpenInitialText = true; text = true } }
                 .toolbar { ToolbarItem(placement: .topBarTrailing) { Button { trash = true } label: { Image(systemName: "trash") }.accessibilityLabel("Move to trash") } }

@@ -97,8 +97,10 @@ struct ReviewView: View {
                                 }.frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 20).padding(.bottom, 12)
                             }
                             if let file = store.document(documentID)?.pdfFile {
-                                PDFPreview(url: store.url(file)).ignoresSafeArea(edges: .bottom)
+                                PDFPreview(url: store.url(file))
                                     .accessibilityIdentifier("saved-pdf")
+                                // Next step in place: share the PDF or convert it.
+                                if !saving { DocumentExportBar(documentID: documentID) }
                             } else { Spacer() }
                         }
                         .background(TK.paper)

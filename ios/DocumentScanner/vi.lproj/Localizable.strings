@@ -1800,3 +1800,7 @@
 "Correct text" = "Sửa văn bản";
 "Correct cells" = "Sửa ô";
 "Opens the whole page full screen to zoom in" = "Mở toàn bộ trang ở chế độ toàn màn hình để phóng to";
+"Send as PDF" = "Gửi dưới dạng PDF";
+"Convert to %@" = "Chuyển sang %@";
+"Save as images" = "Lưu thành hình ảnh";
+"Images" = "Hình ảnh";

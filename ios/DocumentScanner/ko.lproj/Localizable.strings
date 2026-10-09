@@ -1800,3 +1800,7 @@
 "Correct text" = "글자 고치기";
 "Correct cells" = "칸 고치기";
 "Opens the whole page full screen to zoom in" = "페이지 전체를 전체 화면으로 열어 확대해요";
+"Send as PDF" = "PDF로 보내기";
+"Convert to %@" = "%@(으)로 변환";
+"Save as images" = "이미지로 저장";
+"Images" = "이미지";

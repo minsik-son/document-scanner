@@ -1800,3 +1800,7 @@
 "Correct text" = "Metni düzelt";
 "Correct cells" = "Hücreleri düzelt";
 "Opens the whole page full screen to zoom in" = "Yakınlaştırmak için sayfanın tamamını tam ekranda açar";
+"Send as PDF" = "PDF olarak gönder";
+"Convert to %@" = "%@ biçimine dönüştür";
+"Save as images" = "Görsel olarak kaydet";
+"Images" = "Görseller";

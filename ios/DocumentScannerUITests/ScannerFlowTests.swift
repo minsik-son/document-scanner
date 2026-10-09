@@ -658,6 +658,31 @@ final class ScannerFlowTests: HushUITestCase {
         XCTAssertEqual(app.staticTexts["adjustment-value"].label, editedValue)
     }
 
+    @MainActor
+    func testSavedScanOffersConversionsAndWordReviewShowsWholePage() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-test-session", UUID().uuidString, "-app-language", "en", "--seed-draft"]
+        app.launch()
+        resumeFirstUnfinishedScan(in: app)
+        app.buttons["Save PDF"].tap()
+        XCTAssertTrue(app.staticTexts["Saved on this iPhone"].waitForExistence(timeout: 30))
+        for id in ["export-pdf", "export-word", "export-excel", "export-slides", "export-images"] {
+            XCTAssertTrue(app.descendants(matching: .any)[id].waitForExistence(timeout: 5), id)
+        }
+        designShot(app, "export-1-saved-bar")
+        app.buttons["export-word"].tap()
+        // Free users see the free-try screen first; it opens the tool.
+        let start = app.buttons["pro-try-free"]
+        if start.waitForExistence(timeout: 5) { designShot(app, "export-2-trial"); start.tap() }
+        let preview = app.descendants(matching: .any)["office-page-preview"].firstMatch
+        XCTAssertTrue(preview.waitForExistence(timeout: 90), "Word review opens with the whole page")
+        designShot(app, "export-3-word-review")
+        preview.tap()
+        XCTAssertTrue(app.buttons["close-enlarged-preview"].waitForExistence(timeout: 10))
+        designShot(app, "export-4-zoom")
+        app.buttons["close-enlarged-preview"].tap()
+    }
+
     @MainActor private func designShot(_ app: XCUIApplication, _ name: String) {
         guard let home = ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] else { return }
         let folder = URL(fileURLWithPath: home).appendingPathComponent("Documents/ChatGPT/정치 중립/scanner-product/ios/Verification/private/design-shots")

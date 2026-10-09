@@ -1800,3 +1800,7 @@
 "Correct text" = "Popraw tekst";
 "Correct cells" = "Popraw komórki";
 "Opens the whole page full screen to zoom in" = "Otwiera całą stronę na pełnym ekranie, aby ją powiększyć";
+"Send as PDF" = "Wyślij jako PDF";
+"Convert to %@" = "Konwertuj do %@";
+"Save as images" = "Zapisz jako obrazy";
+"Images" = "Obrazy";

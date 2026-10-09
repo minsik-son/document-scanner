@@ -1794,3 +1794,9 @@
 "Discard this scan?" = "Bu tarama atılsın mı?";
 "Its pages will be deleted from this iPhone." = "Sayfaları bu iPhone'dan silinecek.";
 "FOUNDING PRICE · ENDS %@" = "KURUCU FİYATI · %@ BİTER";
+"Check the whole page first, then tap a cell to correct it." = "Önce sayfanın tamamını kontrol edin, sonra düzeltmek için bir hücreye dokunun.";
+"Check the whole page first, then tap a cell to correct it. Merged cells, fills and fonts are kept." = "Önce sayfanın tamamını kontrol edin, sonra düzeltmek için bir hücreye dokunun. Birleştirilmiş hücreler, dolgular ve yazı tipleri korunur.";
+"The whole page as it will print. Tap to zoom." = "Sayfanın tamamı, yazdırılacağı gibi. Yakınlaştırmak için dokunun.";
+"Correct text" = "Metni düzelt";
+"Correct cells" = "Hücreleri düzelt";
+"Opens the whole page full screen to zoom in" = "Yakınlaştırmak için sayfanın tamamını tam ekranda açar";

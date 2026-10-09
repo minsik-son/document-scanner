@@ -508,7 +508,7 @@ struct AdvancedOfflineToolContent:View {
     /// Step 2: check the text, as tables when the page has them.
     private var wordReviewStepPage: some View {
         let pageTexts = text.components(separatedBy: "\u{000c}")
-        return ToolPage(title: "Check your text", subtitle: showsWordLayout ? "Tap a cell to correct it. Tables stay tables in Word." : "Correct anything we misread before making the file.") {
+        return ToolPage(title: "Check your text", subtitle: showsWordLayout ? "Check the whole page first, then tap a cell to correct it." : "Correct anything we misread before making the file.") {
             if pageTexts.count > 1 {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -519,6 +519,9 @@ struct AdvancedOfflineToolContent:View {
                 }
             }
             if showsWordLayout {
+                // The whole page first, as it will print: is the layout right?
+                OfficePageOverview(page: wordLayoutPage(wordReviewPage).wrappedValue)
+                SectionLabel(text: "Correct text")
                 WordLayoutReview(page: wordLayoutPage(wordReviewPage))
             } else {
                 TextEditor(text: wordReviewText).focused($editingText)

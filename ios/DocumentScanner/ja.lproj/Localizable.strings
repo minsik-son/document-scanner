@@ -1794,3 +1794,9 @@
 "Discard this scan?" = "このスキャンを破棄しますか？";
 "Its pages will be deleted from this iPhone." = "ページはこのiPhoneから削除されます。";
 "FOUNDING PRICE · ENDS %@" = "創業記念価格 · %@まで";
+"Check the whole page first, then tap a cell to correct it." = "まずページ全体を確認してから、直したいセルをタップしてください。";
+"Check the whole page first, then tap a cell to correct it. Merged cells, fills and fonts are kept." = "まずページ全体を確認してから、直したいセルをタップしてください。結合セル、塗りつぶし、フォントはそのまま残ります。";
+"The whole page as it will print. Tap to zoom." = "印刷されるとおりのページ全体です。タップして拡大できます。";
+"Correct text" = "テキストを修正";
+"Correct cells" = "セルを修正";
+"Opens the whole page full screen to zoom in" = "ページ全体を全画面で開いて拡大します";

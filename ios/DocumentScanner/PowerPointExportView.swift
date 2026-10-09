@@ -199,10 +199,27 @@ struct PowerPointExportView: View {
         }
     }
 
+    /// The page of the table being checked, with every correction made so far.
+    private var excelPreviewPage: PageLayout? {
+        let index = tables.indices.contains(tableIndex) ? (tables[tableIndex].layoutPage ?? 0) : 0
+        guard layouts.indices.contains(index), !layouts[index].items.isEmpty else { return nil }
+        var page = layouts[index]
+        for table in tables where table.layoutPage == index {
+            guard let i = table.layoutItem, page.items.indices.contains(i), case .table(var layout) = page.items[i] else { continue }
+            layout.apply(table); page.items[i] = .table(layout)
+        }
+        return page
+    }
+
     /// Step 3: check cells (Excel) or slide text.
     private var reviewPage: some View {
-        ToolPage(title: excel ? "Check your tables" : "Check your slide text", subtitle: excel ? "Tap a cell to correct it. Merged cells, fills and fonts are kept." : "Pictures and page layout aren't included in text slides.") {
+        ToolPage(title: excel ? "Check your tables" : "Check your slide text", subtitle: excel ? "Check the whole page first, then tap a cell to correct it. Merged cells, fills and fonts are kept." : "Pictures and page layout aren't included in text slides.") {
             if excel {
+                // The whole page first, as it will print, with corrections applied.
+                if let preview = excelPreviewPage {
+                    OfficePageOverview(page: preview)
+                    SectionLabel(text: "Correct cells")
+                }
                 if tables.count > 1 {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) { ForEach(tables.indices, id: \.self) { i in Button(tables[i].name) { tableIndex = i }.buttonStyle(ChipStyle(selected: tableIndex == i)) } }

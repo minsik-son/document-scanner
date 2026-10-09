@@ -1794,3 +1794,9 @@
 "Discard this scan?" = "이 스캔을 버릴까요?";
 "Its pages will be deleted from this iPhone." = "페이지가 이 iPhone에서 삭제돼요.";
 "FOUNDING PRICE · ENDS %@" = "얼리버드 특가 · %@ 종료";
+"Check the whole page first, then tap a cell to correct it." = "먼저 페이지 전체를 확인한 뒤, 고칠 칸을 탭하세요.";
+"Check the whole page first, then tap a cell to correct it. Merged cells, fills and fonts are kept." = "먼저 페이지 전체를 확인한 뒤, 고칠 칸을 탭하세요. 병합된 칸, 채우기 색, 글꼴은 그대로 유지돼요.";
+"The whole page as it will print. Tap to zoom." = "인쇄될 모양 그대로의 페이지 전체예요. 탭해서 확대하세요.";
+"Correct text" = "글자 고치기";
+"Correct cells" = "칸 고치기";
+"Opens the whole page full screen to zoom in" = "페이지 전체를 전체 화면으로 열어 확대해요";

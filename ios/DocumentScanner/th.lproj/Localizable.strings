@@ -1794,3 +1794,9 @@
 "Discard this scan?" = "ทิ้งการสแกนนี้หรือไม่";
 "Its pages will be deleted from this iPhone." = "หน้าต่างๆ จะถูกลบออกจาก iPhone เครื่องนี้";
 "FOUNDING PRICE · ENDS %@" = "ราคาเปิดตัว · ถึง %@";
+"Check the whole page first, then tap a cell to correct it." = "ตรวจดูทั้งหน้าก่อน แล้วแตะช่องที่ต้องการแก้";
+"Check the whole page first, then tap a cell to correct it. Merged cells, fills and fonts are kept." = "ตรวจดูทั้งหน้าก่อน แล้วแตะช่องที่ต้องการแก้ ช่องที่ผสาน สีพื้น และแบบอักษรจะคงไว้เหมือนเดิม";
+"The whole page as it will print. Tap to zoom." = "ทั้งหน้าตามที่จะพิมพ์ออกมา แตะเพื่อขยาย";
+"Correct text" = "แก้ข้อความ";
+"Correct cells" = "แก้ช่อง";
+"Opens the whole page full screen to zoom in" = "เปิดทั้งหน้าแบบเต็มจอเพื่อขยาย";

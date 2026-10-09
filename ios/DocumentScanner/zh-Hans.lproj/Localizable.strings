@@ -1794,3 +1794,9 @@
 "Discard this scan?" = "丢弃此扫描？";
 "Its pages will be deleted from this iPhone." = "其页面将从此 iPhone 删除。";
 "FOUNDING PRICE · ENDS %@" = "首发价 · %@截止";
+"Check the whole page first, then tap a cell to correct it." = "先检查整页，再轻点单元格进行更正。";
+"Check the whole page first, then tap a cell to correct it. Merged cells, fills and fonts are kept." = "先检查整页，再轻点单元格进行更正。合并的单元格、填充色和字体都会保留。";
+"The whole page as it will print. Tap to zoom." = "整页的打印效果。轻点可放大。";
+"Correct text" = "更正文字";
+"Correct cells" = "更正单元格";
+"Opens the whole page full screen to zoom in" = "全屏打开整页以便放大";

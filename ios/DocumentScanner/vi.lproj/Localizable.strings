@@ -1794,3 +1794,9 @@
 "Discard this scan?" = "Bỏ bản quét này?";
 "Its pages will be deleted from this iPhone." = "Các trang sẽ bị xóa khỏi iPhone này.";
 "FOUNDING PRICE · ENDS %@" = "GIÁ RA MẮT · ĐẾN %@";
+"Check the whole page first, then tap a cell to correct it." = "Hãy xem toàn bộ trang trước, rồi chạm vào ô để sửa.";
+"Check the whole page first, then tap a cell to correct it. Merged cells, fills and fonts are kept." = "Hãy xem toàn bộ trang trước, rồi chạm vào ô để sửa. Ô đã gộp, màu nền và phông chữ được giữ nguyên.";
+"The whole page as it will print. Tap to zoom." = "Toàn bộ trang như khi in. Chạm để phóng to.";
+"Correct text" = "Sửa văn bản";
+"Correct cells" = "Sửa ô";
+"Opens the whole page full screen to zoom in" = "Mở toàn bộ trang ở chế độ toàn màn hình để phóng to";

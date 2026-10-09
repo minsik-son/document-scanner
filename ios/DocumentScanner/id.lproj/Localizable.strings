@@ -1794,3 +1794,9 @@
 "Discard this scan?" = "Buang pindaian ini?";
 "Its pages will be deleted from this iPhone." = "Halamannya akan dihapus dari iPhone ini.";
 "FOUNDING PRICE · ENDS %@" = "HARGA PERDANA · BERAKHIR %@";
+"Check the whole page first, then tap a cell to correct it." = "Periksa seluruh halaman dulu, lalu ketuk sel untuk memperbaikinya.";
+"Check the whole page first, then tap a cell to correct it. Merged cells, fills and fonts are kept." = "Periksa seluruh halaman dulu, lalu ketuk sel untuk memperbaikinya. Sel gabungan, warna isian, dan font tetap dipertahankan.";
+"The whole page as it will print. Tap to zoom." = "Seluruh halaman seperti saat dicetak. Ketuk untuk memperbesar.";
+"Correct text" = "Perbaiki teks";
+"Correct cells" = "Perbaiki sel";
+"Opens the whole page full screen to zoom in" = "Membuka seluruh halaman layar penuh untuk diperbesar";

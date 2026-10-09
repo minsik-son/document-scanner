@@ -1794,3 +1794,9 @@
 "Discard this scan?" = "Eliminare questa scansione?";
 "Its pages will be deleted from this iPhone." = "Le pagine verranno eliminate da questo iPhone.";
 "FOUNDING PRICE · ENDS %@" = "PREZZO FONDATORI · FINO AL %@";
+"Check the whole page first, then tap a cell to correct it." = "Controlla prima l’intera pagina, poi tocca una cella per correggerla.";
+"Check the whole page first, then tap a cell to correct it. Merged cells, fills and fonts are kept." = "Controlla prima l’intera pagina, poi tocca una cella per correggerla. Celle unite, riempimenti e caratteri restano invariati.";
+"The whole page as it will print. Tap to zoom." = "L’intera pagina come verrà stampata. Tocca per ingrandire.";
+"Correct text" = "Correggi il testo";
+"Correct cells" = "Correggi le celle";
+"Opens the whole page full screen to zoom in" = "Apre l’intera pagina a schermo intero per ingrandirla";

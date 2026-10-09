@@ -327,7 +327,7 @@ struct ReviewView: View {
                                     }
                                 }
                                 .foregroundStyle(outputFormat == format.key ? TK.grey900 : TK.grey500)
-                                Capsule().fill(outputFormat == format.key ? TK.blue : .clear).frame(height: 3).padding(.horizontal, 6)
+                                Capsule().fill(outputFormat == format.key ? format.tint : .clear).frame(height: 3).padding(.horizontal, 6)
                             }.frame(maxWidth: .infinity).contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -350,15 +350,26 @@ struct ReviewView: View {
                         }
                     }
                 }
-                .buttonStyle(PrimaryButton()).disabled(saving || doc.pages.isEmpty)
+                .buttonStyle(FormatSaveButton(fill: doc.isDraft ? currentFormat.fill : nil))
+                .disabled(saving || doc.pages.isEmpty)
+                .animation(.easeOut(duration: 0.2), value: outputFormat)
                 .accessibilityIdentifier("review-save")
             }
         }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8).background(.white)
     }
-    private struct OutputFormat { let key: String; let title: String; let office: Bool }
-    private static let formats = [OutputFormat(key: "pdf", title: "PDF", office: false), OutputFormat(key: "word", title: "Word", office: true),
-                                  OutputFormat(key: "excel", title: "Excel", office: true), OutputFormat(key: "slides", title: "PPT", office: true),
-                                  OutputFormat(key: "images", title: "Images", office: false)]
+    private struct OutputFormat {
+        let key: String; let title: String; let office: Bool
+        /// Save button colour for this format; nil keeps the app's own button.
+        let fill: Color?
+        var tint: Color { fill ?? TK.blue }
+    }
+    /// Word blue, Excel green, PowerPoint orange, images purple: the colours people know these files by.
+    private static let formats = [OutputFormat(key: "pdf", title: "PDF", office: false, fill: nil),
+                                  OutputFormat(key: "word", title: "Word", office: true, fill: Color(red: 0.169, green: 0.341, blue: 0.604)),
+                                  OutputFormat(key: "excel", title: "Excel", office: true, fill: Color(red: 0.129, green: 0.451, blue: 0.275)),
+                                  OutputFormat(key: "slides", title: "PPT", office: true, fill: Color(red: 0.824, green: 0.278, blue: 0.149)),
+                                  OutputFormat(key: "images", title: "Images", office: false, fill: Color(red: 0.486, green: 0.227, blue: 0.929))]
+    private var currentFormat: OutputFormat { Self.formats.first { $0.key == outputFormat } ?? Self.formats[0] }
     private var route: ConversionRoute? { ConversionRoute(rawValue: outputFormat) }
     private var officeLocked: Bool { !subscription.isPro && !trials.bypassed && trials.remaining(.office) == 0 }
     private func saveTitle(_ doc: ScanDocument) -> String {
@@ -382,11 +393,15 @@ struct ReviewView: View {
         save()
     }
     /// Stores the editor's areas on their pages. The first hide spends the free try.
-    private func applyHiding(_ result: [UUID: (hidden: [CGRect], visible: [CGRect])]) {
+    private func applyHiding(_ result: [UUID: (hidden: [CGRect], visible: [CGRect])], style: RedactionStyle) {
         let before = document?.pages.contains(where: \.hasRedaction) ?? false
         change { doc in
             for (id, value) in result {
-                if let i = doc.pages.firstIndex(where: { $0.id == id }) { doc.pages[i].setRedaction(hidden: value.hidden, visible: value.visible) }
+                if let i = doc.pages.firstIndex(where: { $0.id == id }) { doc.pages[i].setRedaction(hidden: value.hidden, visible: value.visible, style: style) }
+            }
+            // One look for the whole document: pages hidden earlier follow the new choice.
+            for i in doc.pages.indices where doc.pages[i].hasRedaction && doc.pages[i].redactionStyle != style && result[doc.pages[i].id] == nil {
+                doc.pages[i].redaction?.style = style == .black ? nil : style
             }
             doc.searchable = false
         }
@@ -1117,4 +1132,21 @@ struct HideRoute: Identifiable {
     let id = UUID()
     let page: Int
     var notice: String? = nil
+}
+
+/// The review's save button: the app's pastel blue for PDF, the format's own
+/// colour with white text for Word, Excel, PowerPoint and images.
+struct FormatSaveButton: ButtonStyle {
+    let fill: Color?
+    @Environment(\.isEnabled) private var isEnabled
+    func makeBody(configuration: Configuration) -> some View {
+        if let fill {
+            configuration.label.font(.system(.body, design: .default, weight: .semibold)).frame(maxWidth: .infinity).padding(.vertical, 18)
+                .foregroundStyle(.white)
+                .background(fill.opacity(configuration.isPressed ? 0.85 : 1), in: RoundedRectangle(cornerRadius: 18))
+                .opacity(isEnabled ? 1 : 0.5)
+        } else {
+            PrimaryButton().makeBody(configuration: configuration)
+        }
+    }
 }

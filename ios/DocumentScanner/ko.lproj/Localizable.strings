@@ -1837,3 +1837,17 @@
 "Page to hide" = "가릴 페이지";
 "This page couldn't be prepared. Try again." = "이 페이지를 준비하지 못했어요. 다시 시도해 주세요.";
 "This page changed after you hid parts of it. Check the boxes, then save." = "가린 뒤에 페이지가 바뀌었어요. 상자 위치를 확인한 뒤 저장하세요.";
+"Black box" = "검은 상자";
+"Mosaic" = "모자이크";
+"Hide with" = "가리는 방식";
+"Start at the top-left of the paper. Fill the screen with it." = "종이 왼쪽 위부터 시작하세요. 화면을 종이로 가득 채우세요.";
+"That's the most photos. Tap Combine." = "최대 장수예요. 합치기를 누르세요.";
+"Move right until the faded edge lines up, then shoot." = "흐린 가장자리가 겹치도록 오른쪽으로 옮긴 뒤 찍으세요.";
+"Move down until the faded edge lines up, then shoot." = "흐린 가장자리가 겹치도록 아래로 옮긴 뒤 찍으세요.";
+"Next: right" = "다음: 오른쪽";
+"Next: below" = "다음: 아래";
+"Combine %lld" = "%lld장 합치기";
+"Remove last photo" = "마지막 사진 빼기";
+"Allow camera access in Settings to take photos." = "사진을 찍으려면 설정에서 카메라 접근을 허용하세요.";
+"Take overlapping photos" = "겹치게 여러 장 찍기";
+"Shoot piece by piece; the last edge stays on screen to line up" = "한 부분씩 찍으세요. 직전 사진의 가장자리가 화면에 남아 맞추기 쉬워요";

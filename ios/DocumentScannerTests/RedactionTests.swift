@@ -130,6 +130,42 @@ final class RedactionTests: XCTestCase {
         XCTAssertEqual(again.count, 1)
     }
 
+    func testEraseUsesTheBackgroundAndMosaicHidesTheLetters() throws {
+        // Dark text on a light-blue cell.
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1
+        let cell = UIColor(red: 0.8, green: 0.9, blue: 1, alpha: 1)
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 400, height: 200), format: format).image { c in
+            cell.setFill(); c.fill(CGRect(x: 0, y: 0, width: 400, height: 200))
+            ("SECRET 4242" as NSString).draw(at: CGPoint(x: 60, y: 80), withAttributes: [.font: UIFont.boldSystemFont(ofSize: 36), .foregroundColor: UIColor.black])
+        }
+        let box = CGRect(x: 0.12, y: 0.38, width: 0.7, height: 0.3)
+        var page = ScanPage(imageFile: "x.jpg")
+        page.setRedaction(hidden: [box], visible: [], style: .erase)
+        let erased = Imaging.applyRedactions(image, page: page)
+        for x in [0.2, 0.4, 0.6] {
+            let rgb = color(erased, at: CGPoint(x: x, y: 0.53))
+            XCTAssertEqual(rgb.0, 0.8, accuracy: 0.05); XCTAssertEqual(rgb.2, 1, accuracy: 0.05)
+        }
+        XCTAssertFalse(try Imaging.recognize(erased).map(\.text).joined().contains("4242"))
+        page.setRedaction(hidden: [box], visible: [], style: .mosaic)
+        let mosaic = Imaging.applyRedactions(image, page: page)
+        XCTAssertFalse(try Imaging.recognize(mosaic).map(\.text).joined().contains("4242"))
+        // Large blocks: neighbouring pixels inside a block are the same colour.
+        let a = color(mosaic, at: CGPoint(x: 0.3, y: 0.5)), b = color(mosaic, at: CGPoint(x: 0.3025, y: 0.505))
+        XCTAssertEqual(a.0, b.0, accuracy: 0.01); XCTAssertEqual(a.1, b.1, accuracy: 0.01)
+        // Outside the box nothing changes.
+        XCTAssertEqual(color(mosaic, at: CGPoint(x: 0.05, y: 0.1)).0, 0.8, accuracy: 0.02)
+    }
+
+    private func color(_ image: UIImage, at unit: CGPoint) -> (CGFloat, CGFloat, CGFloat) {
+        guard let cg = image.cgImage else { return (-1, -1, -1) }
+        var pixel = [UInt8](repeating: 0, count: 4)
+        let ctx = CGContext(data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        let x = unit.x * CGFloat(cg.width), y = unit.y * CGFloat(cg.height)
+        ctx.draw(cg, in: CGRect(x: -x, y: -(CGFloat(cg.height) - y), width: CGFloat(cg.width), height: CGFloat(cg.height)))
+        return (CGFloat(pixel[0]) / 255, CGFloat(pixel[1]) / 255, CGFloat(pixel[2]) / 255)
+    }
+
     private func luminance(_ image: UIImage, at unit: CGPoint) -> CGFloat {
         guard let cg = image.cgImage else { return -1 }
         var pixel = [UInt8](repeating: 0, count: 4)

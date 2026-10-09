@@ -621,7 +621,7 @@
 "Fingers are marked in red. Paint more or tap Erase." = "Jari ditandai dengan warna merah. Sapukan lagi atau ketuk Hapus.";
 "Pinch to zoom in for small spots. Cover it fully with a little margin." = "Cubit untuk memperbesar bagian kecil. Tutupi seluruhnya dengan sedikit ruang lebih.";
 "Find fingers" = "Cari jari";
-"Erase" = "Hapus";
+"Erase" = "Hapus tulisan";
 "Drag to compare. Erase more if something is left." = "Seret untuk membandingkan. Hapus lagi jika masih ada yang tersisa.";
 "Erase more" = "Hapus lagi";
 "Fingers marked in red. Paint more or tap Erase." = "Jari ditandai dengan warna merah. Sapukan lagi atau ketuk Hapus.";
@@ -1837,3 +1837,17 @@
 "Page to hide" = "Halaman untuk disembunyikan";
 "This page couldn't be prepared. Try again." = "Halaman ini tidak dapat disiapkan. Coba lagi.";
 "This page changed after you hid parts of it. Check the boxes, then save." = "Halaman ini berubah setelah Anda menyembunyikan bagiannya. Periksa kotaknya, lalu simpan.";
+"Black box" = "Kotak hitam";
+"Mosaic" = "Mosaik";
+"Hide with" = "Sembunyikan dengan";
+"Start at the top-left of the paper. Fill the screen with it." = "Mulai dari kiri atas kertas. Penuhi layar dengannya.";
+"That's the most photos. Tap Combine." = "Itu jumlah foto maksimum. Ketuk Gabungkan.";
+"Move right until the faded edge lines up, then shoot." = "Geser ke kanan sampai tepi pudar sejajar, lalu potret.";
+"Move down until the faded edge lines up, then shoot." = "Geser ke bawah sampai tepi pudar sejajar, lalu potret.";
+"Next: right" = "Berikut: kanan";
+"Next: below" = "Berikut: bawah";
+"Combine %lld" = "Gabungkan %lld";
+"Remove last photo" = "Hapus foto terakhir";
+"Allow camera access in Settings to take photos." = "Izinkan akses kamera di Pengaturan untuk mengambil foto.";
+"Take overlapping photos" = "Ambil foto yang saling tumpang tindih";
+"Shoot piece by piece; the last edge stays on screen to line up" = "Potret bagian demi bagian; tepi terakhir tetap tampil untuk menyelaraskan";

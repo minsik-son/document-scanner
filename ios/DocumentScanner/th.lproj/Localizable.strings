@@ -621,7 +621,7 @@
 "Fingers are marked in red. Paint more or tap Erase." = "นิ้วมือถูกทำเครื่องหมายเป็นสีแดง ระบายเพิ่มหรือแตะ “ลบ”";
 "Pinch to zoom in for small spots. Cover it fully with a little margin." = "จีบนิ้วเพื่อซูมเข้าจุดเล็กๆ ระบายให้คลุมทั้งหมดโดยเผื่อขอบเล็กน้อย";
 "Find fingers" = "ค้นหานิ้วมือ";
-"Erase" = "ลบ";
+"Erase" = "ลบออก";
 "Drag to compare. Erase more if something is left." = "ลากเพื่อเปรียบเทียบ ลบเพิ่มหากยังมีบางอย่างเหลืออยู่";
 "Erase more" = "ลบเพิ่ม";
 "Fingers marked in red. Paint more or tap Erase." = "ทำเครื่องหมายนิ้วมือเป็นสีแดงแล้ว ระบายเพิ่มหรือแตะ “ลบ”";
@@ -1837,3 +1837,17 @@
 "Page to hide" = "หน้าที่จะซ่อน";
 "This page couldn't be prepared. Try again." = "เตรียมหน้านี้ไม่ได้ ลองอีกครั้ง";
 "This page changed after you hid parts of it. Check the boxes, then save." = "หน้านี้เปลี่ยนไปหลังจากซ่อน ตรวจสอบกรอบแล้วบันทึก";
+"Black box" = "กล่องดำ";
+"Mosaic" = "โมเสก";
+"Hide with" = "วิธีซ่อน";
+"Start at the top-left of the paper. Fill the screen with it." = "เริ่มจากมุมซ้ายบนของกระดาษ ให้กระดาษเต็มจอ";
+"That's the most photos. Tap Combine." = "ถ่ายครบจำนวนสูงสุดแล้ว แตะรวมภาพ";
+"Move right until the faded edge lines up, then shoot." = "เลื่อนไปทางขวาจนขอบจางตรงกัน แล้วถ่าย";
+"Move down until the faded edge lines up, then shoot." = "เลื่อนลงจนขอบจางตรงกัน แล้วถ่าย";
+"Next: right" = "ถัดไป: ขวา";
+"Next: below" = "ถัดไป: ล่าง";
+"Combine %lld" = "รวม %lld ภาพ";
+"Remove last photo" = "เอาภาพล่าสุดออก";
+"Allow camera access in Settings to take photos." = "อนุญาตการเข้าถึงกล้องในการตั้งค่าเพื่อถ่ายภาพ";
+"Take overlapping photos" = "ถ่ายภาพให้ซ้อนกัน";
+"Shoot piece by piece; the last edge stays on screen to line up" = "ถ่ายทีละส่วน ขอบของภาพก่อนหน้าจะค้างบนจอให้จัดแนว";

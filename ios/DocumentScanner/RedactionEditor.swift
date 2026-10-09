@@ -21,12 +21,15 @@ struct RedactionEditor: View {
     let root: URL
     /// Shown above the page when the editor opens for a check before saving.
     var notice: String? = nil
-    /// Hidden and kept-visible areas per page id, only for pages that were opened.
-    let save: ([UUID: (hidden: [CGRect], visible: [CGRect])]) -> Void
+    /// Hidden and kept-visible areas per page id (only pages that were opened), and the style.
+    let save: ([UUID: (hidden: [CGRect], visible: [CGRect])], RedactionStyle) -> Void
     @State var index: Int
     @State private var states: [UUID: PageState] = [:]
     @State private var selected: UUID?
     @State private var loading: Task<Void, Never>?
+    /// Black box, erase or mosaic; the last choice is remembered for the next document.
+    @AppStorage(RedactionStyle.key) private var styleChoice = RedactionStyle.black.rawValue
+    @State private var style = RedactionStyle.black
 
     struct PageState {
         var image: UIImage?
@@ -57,9 +60,15 @@ struct RedactionEditor: View {
                 }.padding(.vertical, 8)
             }
             status.padding(.horizontal, 16).padding(.bottom, 8)
+            Picker("Hide with", selection: $style) {
+                ForEach(RedactionStyle.allCases, id: \.self) { Text(L($0.title)).tag($0) }
+            }
+            .pickerStyle(.segmented).padding(.horizontal, 16).padding(.bottom, 8)
+            .accessibilityIdentifier("redact-style")
+            .onChange(of: style) { _, value in styleChoice = value.rawValue }
             ZStack {
                 if let image = state.image {
-                    RedactionCanvas(image: image, words: state.words, marks: marks, selected: $selected) { pushHistory() }
+                    RedactionCanvas(image: image, words: state.words, style: style, marks: marks, selected: $selected) { pushHistory() }
                         .id(page.id)
                         .accessibilityElement()
                         .accessibilityLabel("Page to hide")
@@ -82,7 +91,11 @@ struct RedactionEditor: View {
                     .disabled(states.isEmpty)
             }
         }
-        .onAppear { if loading == nil { load() } }
+        .onAppear {
+            // A document hidden before keeps its look; otherwise the last choice.
+            style = pages.first(where: \.hasRedaction)?.redactionStyle ?? RedactionStyle(rawValue: styleChoice) ?? .black
+            if loading == nil { load() }
+        }
         .onDisappear { loading?.cancel() }
     }
 
@@ -147,7 +160,7 @@ struct RedactionEditor: View {
         for (id, s) in states where s.image != nil {
             out[id] = (s.marks.filter(\.hidden).map(\.rect), s.marks.filter { !$0.hidden && $0.found }.map(\.rect))
         }
-        save(out); dismiss()
+        save(out, style); dismiss()
     }
     /// The shown page first, then the others, so every page's count is ready.
     private func load() {
@@ -193,6 +206,7 @@ struct RedactionEditor: View {
 struct RedactionCanvas: UIViewRepresentable {
     let image: UIImage
     let words: [CGRect]
+    let style: RedactionStyle
     @Binding var marks: [RedactionMark]
     @Binding var selected: UUID?
     let willChange: () -> Void
@@ -207,8 +221,9 @@ struct RedactionCanvas: UIViewRepresentable {
     }
     func updateUIView(_ view: RedactionScrollView, context: Context) {
         context.coordinator.parent = self
-        if view.image !== image { view.image = image }
+        if view.image !== image { view.image = image; view.overlay.source = image.cgImage }
         view.overlay.words = words
+        if view.overlay.style != style { view.overlay.style = style }
         if view.overlay.marks != marks { view.overlay.marks = marks }
         if view.overlay.selected != selected { view.overlay.selected = selected }
     }
@@ -258,6 +273,10 @@ final class RedactionOverlayView: UIView {
     var selected: UUID? { didSet { setNeedsDisplay() } }
     var words: [CGRect] = []
     var zoom: CGFloat = 1 { didSet { setNeedsDisplay() } }
+    /// The page picture under the boxes, for the erase and mosaic looks.
+    var source: CGImage? { didSet { patches = [:]; setNeedsDisplay() } }
+    var style = RedactionStyle.black { didSet { setNeedsDisplay() } }
+    private var patches: [String: UIImage] = [:]
     var willChange: () -> Void = {}
     var changed: ([RedactionMark], UUID?) -> Void = { _, _ in }
     private enum Mode { case draw(CGPoint), move(UUID, CGRect, CGPoint), resize(UUID, Int, CGRect) }
@@ -355,13 +374,32 @@ final class RedactionOverlayView: UIView {
         }
     }
 
+    /// The hidden area as it will be saved (same drawing as the export).
+    private func patch(_ box: CGRect) -> UIImage? {
+        guard let source else { return nil }
+        let size = CGSize(width: source.width, height: source.height)
+        let r = RedactionPatch.pixelRect(box, size: size)
+        guard r.width >= 1, r.height >= 1 else { return nil }
+        let key = "\(style.rawValue)|\(r)"
+        if let cached = patches[key] { return cached }
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
+        let image = UIGraphicsImageRenderer(size: r.size, format: format).image { context in
+            context.cgContext.translateBy(x: -r.minX, y: -r.minY)
+            RedactionPatch.draw(style, in: r, source: source, context: context.cgContext)
+        }
+        if patches.count > 200 { patches.removeAll() }
+        patches[key] = image
+        return image
+    }
+
     override func draw(_ rect: CGRect) {
         guard let ctx = UIGraphicsGetCurrentContext() else { return }
         let line = 1.5 / zoom
         for mark in marks {
             let r = view(mark.rect.insetBy(dx: -RedactionGeometry.pad, dy: -RedactionGeometry.pad))
             if mark.hidden {
-                ctx.setFillColor(UIColor.black.cgColor); ctx.fill(r)
+                if style != .black, let image = patch(mark.rect) { image.draw(in: r) }
+                else { ctx.setFillColor(UIColor.black.cgColor); ctx.fill(r) }
             } else {
                 ctx.setFillColor(UIColor.systemRed.withAlphaComponent(0.08).cgColor); ctx.fill(r)
                 ctx.setStrokeColor(UIColor.systemRed.cgColor); ctx.setLineWidth(line)

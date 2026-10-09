@@ -621,7 +621,7 @@
 "Fingers are marked in red. Paint more or tap Erase." = "Ngón tay được đánh dấu màu đỏ. Tô thêm hoặc chạm vào Tẩy.";
 "Pinch to zoom in for small spots. Cover it fully with a little margin." = "Chụm để phóng to các vết nhỏ. Tô phủ kín, chừa thêm một chút lề.";
 "Find fingers" = "Tìm ngón tay";
-"Erase" = "Tẩy";
+"Erase" = "Xóa chữ";
 "Drag to compare. Erase more if something is left." = "Kéo để so sánh. Tẩy thêm nếu vẫn còn sót.";
 "Erase more" = "Tẩy thêm";
 "Fingers marked in red. Paint more or tap Erase." = "Ngón tay được đánh dấu màu đỏ. Tô thêm hoặc chạm vào Tẩy.";
@@ -1837,3 +1837,17 @@
 "Page to hide" = "Trang cần che";
 "This page couldn't be prepared. Try again." = "Không thể chuẩn bị trang này. Hãy thử lại.";
 "This page changed after you hid parts of it. Check the boxes, then save." = "Trang đã thay đổi sau khi che. Hãy kiểm tra các ô rồi lưu.";
+"Black box" = "Ô đen";
+"Mosaic" = "Làm mờ ô";
+"Hide with" = "Cách che";
+"Start at the top-left of the paper. Fill the screen with it." = "Bắt đầu từ góc trên bên trái tờ giấy, để giấy lấp đầy màn hình.";
+"That's the most photos. Tap Combine." = "Đã đủ số ảnh tối đa. Chạm Ghép.";
+"Move right until the faded edge lines up, then shoot." = "Di chuyển sang phải đến khi mép mờ khớp rồi chụp.";
+"Move down until the faded edge lines up, then shoot." = "Di chuyển xuống đến khi mép mờ khớp rồi chụp.";
+"Next: right" = "Tiếp: bên phải";
+"Next: below" = "Tiếp: bên dưới";
+"Combine %lld" = "Ghép %lld ảnh";
+"Remove last photo" = "Bỏ ảnh cuối";
+"Allow camera access in Settings to take photos." = "Cho phép truy cập camera trong Cài đặt để chụp ảnh.";
+"Take overlapping photos" = "Chụp các ảnh chồng lên nhau";
+"Shoot piece by piece; the last edge stays on screen to line up" = "Chụp từng phần; mép ảnh trước vẫn hiện để căn";

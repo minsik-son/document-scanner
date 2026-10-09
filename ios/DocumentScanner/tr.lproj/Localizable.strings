@@ -1837,3 +1837,17 @@
 "Page to hide" = "Gizlenecek sayfa";
 "This page couldn't be prepared. Try again." = "Bu sayfa hazırlanamadı. Tekrar dene.";
 "This page changed after you hid parts of it. Check the boxes, then save." = "Gizledikten sonra sayfa değişti. Kutuları kontrol et, sonra kaydet.";
+"Black box" = "Siyah kutu";
+"Mosaic" = "Mozaik";
+"Hide with" = "Gizleme biçimi";
+"Start at the top-left of the paper. Fill the screen with it." = "Kâğıdın sol üstünden başla ve ekranı onunla doldur.";
+"That's the most photos. Tap Combine." = "En fazla fotoğrafa ulaştın. Birleştir'e dokun.";
+"Move right until the faded edge lines up, then shoot." = "Soluk kenar hizalanana kadar sağa kaydır, sonra çek.";
+"Move down until the faded edge lines up, then shoot." = "Soluk kenar hizalanana kadar aşağı kaydır, sonra çek.";
+"Next: right" = "Sonraki: sağ";
+"Next: below" = "Sonraki: aşağı";
+"Combine %lld" = "%lld fotoğrafı birleştir";
+"Remove last photo" = "Son fotoğrafı kaldır";
+"Allow camera access in Settings to take photos." = "Fotoğraf çekmek için Ayarlar'da kamera erişimine izin ver.";
+"Take overlapping photos" = "Örtüşen fotoğraflar çek";
+"Shoot piece by piece; the last edge stays on screen to line up" = "Parça parça çek; son kenar hizalamak için ekranda kalır";

@@ -1837,3 +1837,17 @@
 "Page to hide" = "Page à masquer";
 "This page couldn't be prepared. Try again." = "Cette page n'a pas pu être préparée. Réessayez.";
 "This page changed after you hid parts of it. Check the boxes, then save." = "Cette page a changé après le masquage. Vérifiez les cadres, puis enregistrez.";
+"Black box" = "Bloc noir";
+"Mosaic" = "Mosaïque";
+"Hide with" = "Masquer avec";
+"Start at the top-left of the paper. Fill the screen with it." = "Commencez en haut à gauche du papier et remplissez l'écran.";
+"That's the most photos. Tap Combine." = "Nombre maximal de photos atteint. Touchez Combiner.";
+"Move right until the faded edge lines up, then shoot." = "Déplacez-vous vers la droite jusqu'à aligner le bord estompé, puis déclenchez.";
+"Move down until the faded edge lines up, then shoot." = "Descendez jusqu'à aligner le bord estompé, puis déclenchez.";
+"Next: right" = "Suivante : à droite";
+"Next: below" = "Suivante : en dessous";
+"Combine %lld" = "Combiner %lld";
+"Remove last photo" = "Retirer la dernière photo";
+"Allow camera access in Settings to take photos." = "Autorisez l'accès à l'appareil photo dans Réglages pour prendre des photos.";
+"Take overlapping photos" = "Prendre des photos qui se chevauchent";
+"Shoot piece by piece; the last edge stays on screen to line up" = "Photographiez morceau par morceau ; le dernier bord reste affiché pour aligner";

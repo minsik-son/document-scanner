@@ -252,3 +252,9 @@ Selected-language + close-up OCR, word-gap column separation, mixed-script parag
 - 모든 결과물에 적용: 렌더(`Imaging.render`/썸네일)에서 검게 칠하고, 글자 인식 결과와 PDF 텍스트 층·Excel·검색 텍스트에서 가린 영역의 단어를 뺀다(`visibleTextBlocks`). 가져온 텍스트 PDF 페이지도 가리면 다시 그려서 원래 글자가 남지 않는다.
 - 보관함 안의 원본 사진은 다시 편집할 수 있도록 남는다(앱 밖으로 나가는 PDF·Office·이미지에는 없음).
 - 테스트: `RedactionTests`(좌표 왕복, 텍스트 제거, PDF 픽셀, 회전, 가져온 PDF, 재제안 방지), UI `testHideOnReviewCoversFoundNumbersAndDraggedArea`, `testFormatRowConvertsToWordAndReviewShowsWholePage`.
+
+## 가리기 방식 · 형식별 버튼 색 · 메가스캔 카메라
+- 가리기 방식(`RedactionStyle`): 검은 상자 / 지우기(상자 바깥 테두리에서 가장 많은 색 = 종이색으로 채움) / 모자이크(글자 한 줄 높이에 3칸 정도의 큰 블록). 편집기 위 세그먼트로 고르고 마지막 선택을 기억, 문서 안 모든 페이지에 같은 방식. 어떤 방식이든 픽셀은 바뀌고 글자는 텍스트 층에서 빠진다. 편집기 미리보기와 저장 결과가 같은 그리기 함수(`RedactionPatch`)를 쓴다.
+- 저장 버튼 색: PDF는 기존 파란 버튼, Word 파랑(#2B579A)·Excel 초록(#217346)·PPT 주황(#D24726)·이미지 보라(#7C3AED), 형식 줄 밑줄도 같은 색.
+- 메가스캔: 원인 — '사진 찍기'가 시스템 카메라(한 장)라 한 장만 돌아오고, 2장 미만이라 첫 화면에 머물렀다. 이제 전용 연속 촬영 카메라(`MegaCamera.swift`): 찍어도 카메라에 머물고, 직전 사진의 오른쪽(또는 아래) 1/3이 흐리게 남아 겹치게 맞춘다. 방향(오른쪽/아래) 선택, 마지막 사진 되돌리기, 2~8장, '합치기 N'으로 기존 자동 정렬·합성 화면으로.
+- UI 테스트 `testMegaScanCameraTakesSeveralShotsAndCombines`(시뮬레이터는 포스터 조각을 가짜 촬영).

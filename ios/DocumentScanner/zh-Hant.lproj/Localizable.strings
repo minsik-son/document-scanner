@@ -621,7 +621,7 @@
 "Fingers are marked in red. Paint more or tap Erase." = "手指已用紅色標示。可繼續塗抹，或點一下「消除」。";
 "Pinch to zoom in for small spots. Cover it fully with a little margin." = "小地方可用雙指放大。請完整覆蓋，並稍微多塗一些。";
 "Find fingers" = "尋找手指";
-"Erase" = "消除";
+"Erase" = "擦除";
 "Drag to compare. Erase more if something is left." = "拖移以比較。若還有殘留，請繼續消除。";
 "Erase more" = "繼續消除";
 "Fingers marked in red. Paint more or tap Erase." = "手指已用紅色標示。可繼續塗抹，或點一下「消除」。";
@@ -1837,3 +1837,17 @@
 "Page to hide" = "要遮蓋的頁面";
 "This page couldn't be prepared. Try again." = "無法準備此頁面，請再試一次。";
 "This page changed after you hid parts of it. Check the boxes, then save." = "遮蓋後頁面已更改。請檢查方框後再儲存。";
+"Black box" = "黑框";
+"Mosaic" = "馬賽克";
+"Hide with" = "遮蓋方式";
+"Start at the top-left of the paper. Fill the screen with it." = "從紙張左上角開始，讓紙張佔滿螢幕。";
+"That's the most photos. Tap Combine." = "已達照片上限。請輕點「合併」。";
+"Move right until the faded edge lines up, then shoot." = "向右移動，直到淡色邊緣對齊，然後拍攝。";
+"Move down until the faded edge lines up, then shoot." = "向下移動，直到淡色邊緣對齊，然後拍攝。";
+"Next: right" = "下一張：右邊";
+"Next: below" = "下一張：下面";
+"Combine %lld" = "合併 %lld 張";
+"Remove last photo" = "移除最後一張照片";
+"Allow camera access in Settings to take photos." = "請在「設定」中允許取用相機以拍照。";
+"Take overlapping photos" = "拍攝相互重疊的照片";
+"Shoot piece by piece; the last edge stays on screen to line up" = "逐塊拍攝；上一張的邊緣會留在螢幕上方便對齊";

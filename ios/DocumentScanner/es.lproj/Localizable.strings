@@ -1837,3 +1837,17 @@
 "Page to hide" = "Página para ocultar";
 "This page couldn't be prepared. Try again." = "No se pudo preparar esta página. Inténtalo de nuevo.";
 "This page changed after you hid parts of it. Check the boxes, then save." = "Esta página cambió después de ocultar partes. Revisa los recuadros y guarda.";
+"Black box" = "Recuadro negro";
+"Mosaic" = "Mosaico";
+"Hide with" = "Ocultar con";
+"Start at the top-left of the paper. Fill the screen with it." = "Empieza por la esquina superior izquierda del papel y llena la pantalla con él.";
+"That's the most photos. Tap Combine." = "Es el máximo de fotos. Toca Combinar.";
+"Move right until the faded edge lines up, then shoot." = "Muévete a la derecha hasta alinear el borde tenue y dispara.";
+"Move down until the faded edge lines up, then shoot." = "Muévete hacia abajo hasta alinear el borde tenue y dispara.";
+"Next: right" = "Siguiente: derecha";
+"Next: below" = "Siguiente: abajo";
+"Combine %lld" = "Combinar %lld";
+"Remove last photo" = "Quitar la última foto";
+"Allow camera access in Settings to take photos." = "Permite el acceso a la cámara en Ajustes para tomar fotos.";
+"Take overlapping photos" = "Tomar fotos superpuestas";
+"Shoot piece by piece; the last edge stays on screen to line up" = "Fotografía por partes; el último borde queda en pantalla para alinear";

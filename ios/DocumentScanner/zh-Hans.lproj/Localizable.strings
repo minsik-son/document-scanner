@@ -1837,3 +1837,17 @@
 "Page to hide" = "要遮盖的页面";
 "This page couldn't be prepared. Try again." = "无法准备此页面，请重试。";
 "This page changed after you hid parts of it. Check the boxes, then save." = "遮盖后页面已更改。请检查方框后再保存。";
+"Black box" = "黑框";
+"Mosaic" = "马赛克";
+"Hide with" = "遮盖方式";
+"Start at the top-left of the paper. Fill the screen with it." = "从纸张左上角开始，让纸张占满屏幕。";
+"That's the most photos. Tap Combine." = "已达到最多照片数。请轻点“合并”。";
+"Move right until the faded edge lines up, then shoot." = "向右移动，直到淡色边缘对齐，然后拍摄。";
+"Move down until the faded edge lines up, then shoot." = "向下移动，直到淡色边缘对齐，然后拍摄。";
+"Next: right" = "下一张：右边";
+"Next: below" = "下一张：下面";
+"Combine %lld" = "合并 %lld 张";
+"Remove last photo" = "移除最后一张照片";
+"Allow camera access in Settings to take photos." = "请在“设置”中允许访问相机以拍照。";
+"Take overlapping photos" = "拍摄相互重叠的照片";
+"Shoot piece by piece; the last edge stays on screen to line up" = "逐块拍摄；上一张的边缘会留在屏幕上便于对齐";

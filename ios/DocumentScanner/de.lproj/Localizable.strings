@@ -621,7 +621,7 @@
 "Fingers are marked in red. Paint more or tap Erase." = "Finger sind rot markiert. Übermale mehr oder tippe auf „Entfernen“.";
 "Pinch to zoom in for small spots. Cover it fully with a little margin." = "Für kleine Stellen zum Zoomen auseinanderziehen. Decke die Stelle mit etwas Rand vollständig ab.";
 "Find fingers" = "Finger finden";
-"Erase" = "Entfernen";
+"Erase" = "Löschen";
 "Drag to compare. Erase more if something is left." = "Zum Vergleichen ziehen. Entferne mehr, falls noch etwas übrig ist.";
 "Erase more" = "Mehr entfernen";
 "Fingers marked in red. Paint more or tap Erase." = "Finger rot markiert. Übermale mehr oder tippe auf „Entfernen“.";
@@ -1837,3 +1837,17 @@
 "Page to hide" = "Seite zum Verbergen";
 "This page couldn't be prepared. Try again." = "Diese Seite konnte nicht vorbereitet werden. Versuche es erneut.";
 "This page changed after you hid parts of it. Check the boxes, then save." = "Diese Seite wurde nach dem Verbergen geändert. Prüfe die Felder und speichere dann.";
+"Black box" = "Schwarzes Feld";
+"Mosaic" = "Mosaik";
+"Hide with" = "Verbergen mit";
+"Start at the top-left of the paper. Fill the screen with it." = "Beginne oben links auf dem Papier und fülle den Bildschirm damit.";
+"That's the most photos. Tap Combine." = "Mehr Fotos gehen nicht. Tippe auf Kombinieren.";
+"Move right until the faded edge lines up, then shoot." = "Nach rechts bewegen, bis der blasse Rand passt, dann auslösen.";
+"Move down until the faded edge lines up, then shoot." = "Nach unten bewegen, bis der blasse Rand passt, dann auslösen.";
+"Next: right" = "Weiter: rechts";
+"Next: below" = "Weiter: unten";
+"Combine %lld" = "%lld kombinieren";
+"Remove last photo" = "Letztes Foto entfernen";
+"Allow camera access in Settings to take photos." = "Erlaube den Kamerazugriff in den Einstellungen, um Fotos aufzunehmen.";
+"Take overlapping photos" = "Überlappende Fotos aufnehmen";
+"Shoot piece by piece; the last edge stays on screen to line up" = "Stück für Stück aufnehmen; der letzte Rand bleibt zum Ausrichten sichtbar";

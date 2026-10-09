@@ -1837,3 +1837,17 @@
 "Page to hide" = "隠すページ";
 "This page couldn't be prepared. Try again." = "このページを準備できませんでした。もう一度お試しください。";
 "This page changed after you hid parts of it. Check the boxes, then save." = "隠した後にページが変更されました。枠を確認してから保存してください。";
+"Black box" = "黒塗り";
+"Mosaic" = "モザイク";
+"Hide with" = "隠し方";
+"Start at the top-left of the paper. Fill the screen with it." = "紙の左上から始め、画面いっぱいに写してください。";
+"That's the most photos. Tap Combine." = "これ以上は撮れません。「合成」をタップしてください。";
+"Move right until the faded edge lines up, then shoot." = "薄い縁が重なるまで右へ動かして撮影してください。";
+"Move down until the faded edge lines up, then shoot." = "薄い縁が重なるまで下へ動かして撮影してください。";
+"Next: right" = "次：右";
+"Next: below" = "次：下";
+"Combine %lld" = "%lld枚を合成";
+"Remove last photo" = "最後の写真を削除";
+"Allow camera access in Settings to take photos." = "写真を撮るには設定でカメラへのアクセスを許可してください。";
+"Take overlapping photos" = "重なるように撮影";
+"Shoot piece by piece; the last edge stays on screen to line up" = "少しずつ撮影。前の写真の縁が表示されるので合わせられます";

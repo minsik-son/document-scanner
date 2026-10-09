@@ -93,7 +93,7 @@ struct PhotoSourcePage: View {
             if let recent { recent }
             VStack(alignment: .leading, spacing: 8) {
                 SectionLabel(text: multiple ? "Add your photos" : "Add a photo")
-                PhotoSourceChoices(multiple: multiple, frontCamera: frontCamera, portraitGuide: tool == .portrait, allowCamera: art != .removeFingers, documentScan: tool == .erase || tool == .marks, picked: picked,
+                PhotoSourceChoices(multiple: multiple, frontCamera: frontCamera, portraitGuide: tool == .portrait, allowCamera: art != .removeFingers, documentScan: tool == .erase || tool == .marks, multiShot: tool == .mega, picked: picked,
                                    failed: { work.message = $0 }, busy: { work.busy = $0 ? "Opening…" : nil })
             }
             if let message = work.message { ToastMessage(text: message) }

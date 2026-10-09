@@ -576,6 +576,8 @@ struct PhotoSourceChoices: View {
     var documentScan = false
     /// Mode the scan camera opens in (business cards use the card frame).
     var scanStyle: CaptureStyle = .document
+    /// Mega scan: the camera keeps taking overlapping photos until Combine.
+    var multiShot = false
     let picked: ([UIImage]) -> Void
     let failed: (String) -> Void
     var busy: (Bool) -> Void = { _ in }
@@ -596,7 +598,10 @@ struct PhotoSourceChoices: View {
                 Button { docCamera = true } label: { ChoiceRow(symbol: "camera.viewfinder", title: allowCamera ? "Scan a document" : "Scan with the camera", detail: "Finds the page edges and straightens it") }
                     .buttonStyle(.plain).accessibilityIdentifier("source-scan")
             }
-            if allowCamera && CameraPhotoPicker.available {
+            if multiShot && (CameraPhotoPicker.available || MegaCameraView.simulated) {
+                Button { camera = true } label: { ChoiceRow(symbol: "camera.fill", title: "Take overlapping photos", detail: "Shoot piece by piece; the last edge stays on screen to line up") }
+                    .buttonStyle(.plain).accessibilityIdentifier("source-camera")
+            } else if allowCamera && CameraPhotoPicker.available {
                 Button { camera = true } label: { ChoiceRow(symbol: "camera.fill", title: "Take a photo", detail: documentScan ? "For objects, walls and scenes" : "Use the camera now") }
                     .buttonStyle(.plain).accessibilityIdentifier("source-camera")
             }
@@ -613,7 +618,12 @@ struct PhotoSourceChoices: View {
             }
         }
         .fullScreenCover(isPresented: $camera) {
-            if portraitGuide {
+            if multiShot {
+                MegaCameraView { images in
+                    camera = false
+                    if !images.isEmpty { picked(images) }
+                }
+            } else if portraitGuide {
                 PortraitCameraView { image in
                     camera = false
                     if let image { picked([image]) }

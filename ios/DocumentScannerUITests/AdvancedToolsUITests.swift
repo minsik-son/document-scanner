@@ -12,11 +12,34 @@ final class AdvancedToolsUITests: HushUITestCase {
         let shot = XCTAttachment(screenshot:app.screenshot());shot.name = "Office full-size preview";shot.lifetime = .keepAlways;add(shot)
         done.tap()
     }
-    @MainActor private func launch(document:Bool = false,table:Bool = false) -> XCUIApplication {
-        let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"-app-language","en"]+(document ? ["--seed-saved"] : [])+(table ? ["--seed-office-table"] : []);app.launch()
+    @MainActor private func launch(document:Bool = false,table:Bool = false,extra:[String] = []) -> XCUIApplication {
+        let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"-app-language","en"]+(document ? ["--seed-saved"] : [])+(table ? ["--seed-office-table"] : [])+extra;app.launch()
+        // Taps on the startup cover do nothing; wait until it is gone.
+        _ = app.buttons["home-tools"].waitForExistence(timeout: 10)
+        _ = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.otherElements["startup-screen"])], timeout: 10)
         if document { app.buttons["nav-documents"].tap();app.staticTexts["Test document"].tap();XCTAssertTrue(app.buttons["Share PDF"].waitForExistence(timeout:5));app.buttons.matching(NSPredicate(format: "label == %@ AND NOT (identifier IN %@)", "Tools", ["nav-tools", "home-tools"])).firstMatch.tap();app.buttons["More offline tools"].tap();XCTAssertTrue(app.textFields["tool-search"].waitForExistence(timeout:5)) }
         else { XCTAssertTrue(app.buttons["home-tools"].isHittable);app.buttons["home-tools"].tap() }
         return app
+    }
+    /// Mega scan's camera keeps shooting: three overlapping shots (one taken back
+    /// and retaken) are combined into one picture.
+    @MainActor func testMegaScanCameraTakesSeveralShotsAndCombines() {
+        let app = launch(extra: ["--simulate-camera"])
+        app.tool("Mega scan").tap()
+        let camera = app.buttons["source-camera"]
+        XCTAssertTrue(camera.waitForExistence(timeout: 5)); camera.tap()
+        let shutter = app.buttons["mega-camera-shutter"]
+        XCTAssertTrue(shutter.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["mega-camera-done"].isEnabled, "Combine needs two photos")
+        shutter.tap(); shutter.tap(); shutter.tap()
+        XCTAssertEqual(app.staticTexts["mega-camera-count"].label, "3/8")
+        let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = "Mega camera with faded edge"; shot.lifetime = .keepAlways; add(shot)
+        app.buttons["mega-camera-undo"].tap()
+        XCTAssertEqual(app.staticTexts["mega-camera-count"].label, "2/8")
+        shutter.tap()
+        app.buttons["mega-camera-done"].tap()
+        XCTAssertTrue(app.images["mega-result"].waitForExistence(timeout: 60) || app.otherElements["mega-result"].waitForExistence(timeout: 5))
+        let result = XCTAttachment(screenshot: app.screenshot()); result.name = "Mega combined"; result.lifetime = .keepAlways; add(result)
     }
     @MainActor func testProToolFreeTriesThenUpgrade() {
         let session = UUID().uuidString

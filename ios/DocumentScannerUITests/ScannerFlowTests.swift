@@ -4,8 +4,8 @@ import StoreKitTest
 final class ScannerFlowTests: XCTestCase {
     @MainActor
     func testScreenshotSeamPreviewAndReturnToEditing() throws {
-        let app = XCUIApplication(); app.launchArguments = ["--ui-test-session", UUID().uuidString, "--seed-screenshots"]
-        app.launch(); app.buttons["home-tools"].tap(); app.buttons["Stitch screenshots"].tap()
+        let app = XCUIApplication(); app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-screenshots"]
+        app.launch(); app.buttons["home-tools"].tap(); app.tool("Stitch screenshots").tap()
         let picker = app.buttons["stitch-selected"]
         for _ in 0..<4 where !picker.isHittable { app.swipeUp() }
         picker.tap(); app.buttons["Screenshot 2"].tap()
@@ -27,14 +27,14 @@ final class ScannerFlowTests: XCTestCase {
 
     @MainActor
     func testOfflineQRCodeGenerationAndUtilityEntry() throws {
-        let app = XCUIApplication(); app.launchArguments = ["--ui-test-session", UUID().uuidString]
-        app.launch(); app.buttons["home-tools"].tap(); app.buttons["QR code"].tap()
+        let app = XCUIApplication(); app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en"]
+        app.launch(); app.buttons["home-tools"].tap(); app.tool("QR code").tap()
         let field = app.textFields["qr-text"]
         XCTAssertTrue(field.waitForExistence(timeout: 5)); field.tap(); field.typeText("https://example.com/offline")
         app.buttons["qr-generate"].tap()
         XCTAssertTrue(app.buttons["qr-share"].waitForExistence(timeout: 5))
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = "Offline QR code"; shot.lifetime = .keepAlways; add(shot)
-        app.navigationBars["QR code"].buttons["Close"].tap(); app.buttons["Stitch screenshots"].tap()
+        app.navigationBars["QR code"].buttons["Close"].tap(); app.tool("Stitch screenshots").tap()
         XCTAssertTrue(app.navigationBars["Stitch screenshots"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Choose screenshots"].exists)
     }
@@ -45,23 +45,23 @@ final class ScannerFlowTests: XCTestCase {
         let session = try SKTestSession(contentsOf: config); session.disableDialogs = true; session.clearTransactions()
         defer { session.clearTransactions() }
         try session.buyProduct(productIdentifier: "com.hushscan.pro.yearly")
-        let app = XCUIApplication(); app.launchArguments = ["--ui-test-session", UUID().uuidString, "--seed-saved"]
-        app.launch(); XCTAssertTrue(app.staticTexts["Test document"].waitForExistence(timeout: 10)); app.staticTexts["Test document"].tap()
+        let app = XCUIApplication(); app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-saved"]
+        app.launch(); openTestDocument(app)
         func finished(_ name: String) {
             XCTAssertTrue(app.staticTexts["tool-done-title"].waitForExistence(timeout: 30), name)
             let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = name; shot.lifetime = .keepAlways; add(shot)
         }
         // Watermark: preview and options on one page, applied to a new copy.
-        app.buttons.matching(NSPredicate(format: "label == %@ AND NOT (identifier IN %@)", "Tools", ["nav-tools", "home-tools"])).firstMatch.tap(); app.buttons["Watermark · PRO"].tap()
+        openDocumentTools(app); app.buttons["Watermark · PRO"].tap()
         waitEnabled(app.buttons["watermark-apply"]); XCTAssertTrue(app.descendants(matching: .any)["tool-preview"].exists)
         app.buttons["watermark-apply"].tap(); finished("Watermark"); app.buttons["tool-done-primary"].tap()
         // Timestamp: pick a style, then check the details.
-        app.buttons.matching(NSPredicate(format: "label == %@ AND NOT (identifier IN %@)", "Tools", ["nav-tools", "home-tools"])).firstMatch.tap(); app.buttons["Timestamp · PRO"].tap()
+        openDocumentTools(app); app.buttons["Timestamp · PRO"].tap()
         waitEnabled(app.buttons["timestamp-next"]); app.buttons["timestamp-next"].tap()
         waitEnabled(app.buttons["timestamp-apply"]); app.buttons["timestamp-apply"].tap()
         finished("Timestamp"); app.buttons["tool-done-primary"].tap()
         // ID card layout keeps its own screen.
-        app.buttons.matching(NSPredicate(format: "label == %@ AND NOT (identifier IN %@)", "Tools", ["nav-tools", "home-tools"])).firstMatch.tap(); app.buttons["ID card layout"].tap()
+        openDocumentTools(app); app.buttons["ID card layout"].tap()
         let prepare = app.buttons["local-tool-prepare"]
         for _ in 0..<4 where !prepare.isHittable { app.swipeUp() }
         waitEnabled(prepare); prepare.tap()
@@ -71,20 +71,21 @@ final class ScannerFlowTests: XCTestCase {
         wait(for: [done], timeout: 30)
         app.buttons["Close"].tap()
         // Long image: share-only result.
-        app.buttons.matching(NSPredicate(format: "label == %@ AND NOT (identifier IN %@)", "Tools", ["nav-tools", "home-tools"])).firstMatch.tap(); app.buttons["Long image · PRO"].tap()
+        openDocumentTools(app); app.buttons["Long image · PRO"].tap()
+        waitEnabled(app.buttons["long-image-next"]); app.buttons["long-image-next"].tap()
         waitEnabled(app.buttons["long-image-run"]); app.buttons["long-image-run"].tap()
         finished("Long image"); XCTAssertTrue(app.buttons["tool-done-secondary"].exists)
         app.buttons["tool-close"].tap()
         app.terminate(); app.launch()
-        XCTAssertTrue(app.staticTexts["Test document (watermark)"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Test document (timestamp)"].exists)
-        XCTAssertTrue(app.staticTexts["Test document (ID card layout)"].exists)
-        XCTAssertTrue(app.staticTexts["Test document"].exists)
+        // Newest first; the list builds rows lazily as it scrolls.
+        for title in ["Test document (ID card layout)", "Test document (timestamp)", "Test document (watermark)", "Test document"] {
+            XCTAssertTrue(reveal(app.staticTexts[title], in: app), title)
+        }
     }
 
     @MainActor
     func testIDCaptureStopsAfterTwoSidesAndOffersLayout() throws {
-        let app = XCUIApplication(); app.launchArguments = ["--ui-test-session", UUID().uuidString, "--simulate-camera"]
+        let app = XCUIApplication(); app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--simulate-camera"]
         app.launch(); app.buttons["Scan document"].tap()
         app.buttons["ID card"].tap()
         XCTAssertTrue(app.staticTexts["Front of card"].exists)
@@ -104,8 +105,8 @@ final class ScannerFlowTests: XCTestCase {
 
     @MainActor
     func testTrimMarginsCanCancelApplyResetAndReopen() throws {
-        let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"--seed-draft"]
-        app.launch();resumeFirstUnfinishedScan(in:app);app.buttons["Edit page 1"].tap()
+        let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"-app-language","en","--seed-draft"]
+        app.launch();resumeFirstUnfinishedScan(in:app);editPage(1, in: app)
         selectEditorTool("crop", in: app)
         let trim = app.buttons["trim-margins"]
         for _ in 0..<3 where !trim.isHittable { app.swipeUp() };trim.tap()
@@ -114,7 +115,7 @@ final class ScannerFlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["trim-value-top"].waitForExistence(timeout:15));XCTAssertEqual(app.staticTexts["trim-value-top"].label,"0.0%")
         app.buttons["trim-preset-5"].tap();app.buttons["trim-apply"].tap()
         waitEnabled(app.buttons["Apply"]);app.buttons["Apply"].tap()
-        app.terminate();app.launch();resumeFirstUnfinishedScan(in:app);app.buttons["Edit page 1"].tap()
+        app.terminate();app.launch();resumeFirstUnfinishedScan(in:app);editPage(1, in: app)
         selectEditorTool("crop", in: app)
         for _ in 0..<3 where !trim.isHittable { app.swipeUp() };trim.tap()
         XCTAssertTrue(app.staticTexts["trim-value-top"].waitForExistence(timeout:15));XCTAssertEqual(app.staticTexts["trim-value-top"].label,"5.0%")
@@ -134,23 +135,31 @@ final class ScannerFlowTests: XCTestCase {
         defer { session.clearTransactions() }
         try session.buyProduct(productIdentifier: "com.hushscan.pro.yearly")
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session", UUID().uuidString, "--seed-saved"]
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-saved"]
         app.launch()
-        XCTAssertTrue(app.staticTexts["Test document"].waitForExistence(timeout: 10)); app.staticTexts["Test document"].tap()
-        app.buttons.matching(NSPredicate(format: "label == %@ AND NOT (identifier IN %@)", "Tools", ["nav-tools", "home-tools"])).firstMatch.tap(); app.buttons["Extract pages · PRO"].tap()
+        openTestDocument(app)
+        openDocumentTools(app); app.buttons["Extract pages · PRO"].tap()
         XCTAssertTrue(app.buttons["page-cell-2"].waitForExistence(timeout: 10))
         app.buttons["page-cell-2"].tap()
         XCTAssertEqual(app.staticTexts["page-selection-count"].label, "1 of 2 selected")
+        waitEnabled(app.buttons["extract-next"]); app.buttons["extract-next"].tap()
         waitEnabled(app.buttons["extract-run"]); app.buttons["extract-run"].tap()
         XCTAssertTrue(app.staticTexts["tool-done-title"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.staticTexts["tool-done-title"].label.contains("Extracted"))
         app.buttons["tool-done-primary"].tap()
-        app.buttons.matching(NSPredicate(format: "label == %@ AND NOT (identifier IN %@)", "Tools", ["nav-tools", "home-tools"])).firstMatch.tap(); app.buttons["Sign & annotate"].tap()
-        XCTAssertTrue(app.buttons["Add text box"].waitForExistence(timeout: 10))
-        app.buttons["Add text box"].tap()
+        openDocumentTools(app); app.buttons["Sign & annotate"].tap()
+        let addText = app.buttons["Add text box"]
+        XCTAssertTrue(addText.waitForExistence(timeout: 10))
+        let note = app.staticTexts["annotate-redact-note"]
+        // The page canvas takes drags, so scroll from the strip above it.
+        let above = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.26)), top = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08))
+        for _ in 0..<4 where note.exists && addText.frame.maxY > note.frame.minY - 4 { above.press(forDuration: 0.05, thenDragTo: top) }
+        XCTAssertLessThan(addText.frame.maxY, note.frame.minY, "Add text box must be reachable above the note")
+        addText.tap()
         let field = app.descendants(matching: .any)["annotation-text"].firstMatch
-        for _ in 0..<3 where !field.isHittable { app.swipeUp() }
-        XCTAssertTrue(field.waitForExistence(timeout: 5)); field.tap(); field.typeText(" APPROVED")
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        for _ in 0..<3 where !field.isHittable || field.frame.maxY > note.frame.minY { above.press(forDuration: 0.05, thenDragTo: top) }
+        field.tap(); field.typeText(" APPROVED")
         designShot(app, "annotate-1-canvas")
         waitEnabled(app.buttons["Save"]); app.buttons["Save"].tap()
         let annotationDismissed = expectation(for:NSPredicate(format:"exists == false"),evaluatedWith:app.staticTexts["Sign & annotate"])
@@ -162,7 +171,7 @@ final class ScannerFlowTests: XCTestCase {
     @MainActor
     func testPageDuplicateUndoRedoAndOCRBodySearch() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session", UUID().uuidString, "--seed-draft"]
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-draft"]
         app.launch(); resumeFirstUnfinishedScan(in: app)
         app.buttons["page-actions-1"].tap()
         app.buttons["Duplicate page"].tap()
@@ -171,11 +180,11 @@ final class ScannerFlowTests: XCTestCase {
         app.buttons["Redo"].tap(); XCTAssertTrue(app.buttons["Edit page 3"].exists)
         app.buttons["Save PDF"].tap()
         XCTAssertTrue(app.staticTexts["Saved on this iPhone"].waitForExistence(timeout: 30))
-        app.buttons["Done"].tap()
+        app.buttons["saved-done"].tap()
         let search = app.textFields["Search documents"]
         XCTAssertTrue(search.waitForExistence(timeout: 5)); search.tap(); search.typeText("SCANNER")
         XCTAssertTrue(app.staticTexts["Text match on page 1"].waitForExistence(timeout: 5))
-        app.staticTexts["Test document"].tap()
+        savedDocumentRow(in: app).tap()
         XCTAssertTrue(app.buttons["Share PDF"].waitForExistence(timeout: 5))
         app.buttons["Text"].tap()
         XCTAssertTrue(app.buttons["Correct recognized text"].waitForExistence(timeout: 5))
@@ -192,29 +201,29 @@ final class ScannerFlowTests: XCTestCase {
     @MainActor
     func testSavedDocumentAddCancelAndRetakeCommit() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session",UUID().uuidString,"--seed-saved","--simulate-camera"]
-        app.launch(); XCTAssertTrue(app.staticTexts["Test document"].waitForExistence(timeout:10));app.staticTexts["Test document"].tap()
-        app.buttons["Edit"].tap();app.buttons["Add pages"].tap()
+        app.launchArguments = ["--ui-test-session",UUID().uuidString,"-app-language","en","--seed-saved","--simulate-camera"]
+        app.launch(); openTestDocument(app)
+        app.buttons["document-edit"].tap();app.buttons["Add pages"].tap()
         waitEnabled(app.buttons["Capture page"]);app.buttons["Capture page"].tap()
         waitEnabled(app.buttons["review-done"]);app.buttons["review-done"].tap()
         XCTAssertTrue(app.buttons["Edit page 3"].waitForExistence(timeout:5))
         app.buttons["Cancel"].tap()
         XCTAssertTrue(app.buttons["Share PDF"].waitForExistence(timeout:5))
-        app.buttons["Edit"].tap();XCTAssertFalse(app.buttons["Edit page 3"].exists)
+        app.buttons["document-edit"].tap();XCTAssertFalse(app.buttons["Edit page 3"].exists)
         app.buttons["page-actions-1"].tap();app.buttons["Retake page"].tap()
         waitEnabled(app.buttons["Capture page"]);app.buttons["Capture page"].tap()
         waitEnabled(app.buttons["review-done"]);app.buttons["review-done"].tap()
         XCTAssertTrue(app.buttons["Edit page 2"].waitForExistence(timeout:5));XCTAssertFalse(app.buttons["Edit page 3"].exists)
         app.buttons["Save changes"].tap()
         XCTAssertTrue(app.staticTexts["Saved on this iPhone"].waitForExistence(timeout:40))
-        app.buttons["Done"].tap();app.buttons["Edit"].tap()
+        app.buttons["saved-done"].tap();app.buttons["document-edit"].tap()
         XCTAssertTrue(app.buttons["Edit page 2"].waitForExistence(timeout:5));XCTAssertFalse(app.buttons["Edit page 3"].exists)
     }
 
     @MainActor
     func testMissingEdgesMustBeConfirmedBeforePDFSave() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session", UUID().uuidString, "--seed-draft", "--seed-unchecked"]
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-draft", "--seed-unchecked"]
         app.launch()
         resumeFirstUnfinishedScan(in: app)
         app.buttons["Save PDF"].tap()
@@ -226,16 +235,15 @@ final class ScannerFlowTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Crop"].waitForExistence(timeout: 5))
         app.buttons["Apply"].tap()
         XCTAssertTrue(app.staticTexts["Saved on this iPhone"].waitForExistence(timeout: 15))
-        XCTAssertTrue(app.staticTexts["Text can be selected and copied in your PDF."].exists)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "text can be copied")).firstMatch.exists)
     }
     @MainActor
     func testRecoverDraftEditSaveAndReopenPDF() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session", UUID().uuidString, "--seed-draft"]
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-draft"]
         app.launch()
         resumeFirstUnfinishedScan(in: app)
-        let page = app.buttons["Edit page 1"]
-        XCTAssertTrue(page.waitForExistence(timeout: 5)); page.tap()
+        editPage(1, in: app)
         selectEditorTool("crop", in: app)
         app.buttons["rotate-page"].tap()
         waitEnabled(app.buttons["Apply"])
@@ -243,11 +251,10 @@ final class ScannerFlowTests: XCTestCase {
         app.buttons["Save PDF"].tap()
         XCTAssertTrue(app.staticTexts["Saved on this iPhone"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.buttons["Share PDF"].exists)
-        app.buttons["Done"].tap()
-        XCTAssertTrue(app.staticTexts["Test document"].waitForExistence(timeout: 5))
+        app.buttons["saved-done"].tap()
+        XCTAssertTrue(reveal(savedDocumentRow(in: app), in: app))
         app.terminate(); app.launch()
-        let document = app.staticTexts["Test document"]
-        XCTAssertTrue(document.waitForExistence(timeout: 10)); document.tap()
+        openTestDocument(app)
         XCTAssertTrue(app.buttons["Share PDF"].waitForExistence(timeout: 5))
         let attachment = XCTAttachment(screenshot: app.screenshot()); attachment.name = "Saved document"; attachment.lifetime = .keepAlways; add(attachment)
     }
@@ -256,14 +263,62 @@ final class ScannerFlowTests: XCTestCase {
         let configuration = try XCTUnwrap(Bundle(for: Self.self).url(forResource:"Scanner",withExtension:"storekit"))
         try SKTestSession(contentsOf:configuration).clearTransactions()
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session", UUID().uuidString]
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en"]
         app.launch()
         XCTAssertTrue(app.buttons["Scan document"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Paperwork, simplified"].exists)
+        XCTAssertTrue(reveal(app.staticTexts["Paperwork, simplified"], in: app))
         app.buttons["nav-settings"].tap()
         XCTAssertTrue(app.buttons["Explore Pro"].waitForExistence(timeout: 5))
         for _ in 0..<5 where !app.buttons["Export library backup"].isHittable { app.swipeUp() }
         XCTAssertTrue(app.buttons["Export library backup"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    private func openTestDocument(_ app: XCUIApplication) {
+        let row = savedDocumentRow(in: app)
+        XCTAssertTrue(reveal(row, in: app))
+        row.tap()
+        XCTAssertTrue(app.buttons["document-edit"].waitForExistence(timeout: 10))
+    }
+
+    /// Scroll a lazily built list until the element exists and sits above the tab bar.
+    @MainActor @discardableResult
+    private func reveal(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
+        _ = element.waitForExistence(timeout: 5)
+        let tabBar = app.buttons["nav-home"]
+        for _ in 0..<8 {
+            if element.exists && element.isHittable && (!tabBar.isHittable || element.frame.maxY < tabBar.frame.minY - 10) { return true }
+            app.swipeUp(); _ = element.waitForExistence(timeout: 1)
+        }
+        return element.exists
+    }
+
+    /// Thumbnails select a page; the editor opens from the selected page.
+    @MainActor
+    private func editPage(_ number: Int, in app: XCUIApplication) {
+        let thumb = app.buttons["Edit page \(number)"]
+        XCTAssertTrue(thumb.waitForExistence(timeout: 5)); thumb.tap()
+        if !app.navigationBars["Edit page"].waitForExistence(timeout: 2) {
+            app.buttons["Edit current page"].tap()
+            XCTAssertTrue(app.navigationBars["Edit page"].waitForExistence(timeout: 5))
+        }
+    }
+
+    @MainActor
+    private func openDocumentTools(_ app: XCUIApplication) {
+        let tools = app.descendants(matching: .any)["document-tools"].firstMatch
+        XCTAssertTrue(tools.waitForExistence(timeout: 10)); tools.tap()
+    }
+
+    /// Attach the screen's element tree to every failure so stale selectors are easy to fix.
+    override func record(_ issue: XCTIssue) {
+        var issue = issue
+        let app = XCUIApplication()
+        if app.state == .runningForeground {
+            let tree = XCTAttachment(string: app.debugDescription); tree.name = "failure-tree"; issue.add(tree)
+            issue.add(XCTAttachment(screenshot: app.screenshot()))
+        }
+        super.record(issue)
     }
 
     @MainActor
@@ -286,9 +341,8 @@ final class ScannerFlowTests: XCTestCase {
         XCTAssertTrue(app.buttons["nav-settings"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.staticTexts["Continue your scan"].exists, "Unfinished scans must not accumulate as cards on Home")
         app.buttons["nav-settings"].tap()
-        let unfinished = app.buttons["unfinished-scans"]
-        XCTAssertTrue(unfinished.waitForExistence(timeout: 5))
-        for _ in 0..<2 where !unfinished.isHittable { app.swipeUp() }
+        let unfinished = app.descendants(matching: .any)["unfinished-scans"]
+        XCTAssertTrue(reveal(unfinished, in: app))
         unfinished.tap()
         let resume = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "resume-draft-")).firstMatch
         XCTAssertTrue(resume.waitForExistence(timeout: 5)); resume.tap()
@@ -308,26 +362,26 @@ final class ScannerFlowTests: XCTestCase {
 
     @MainActor
     private func restoreTestDocument(in app: XCUIApplication) {
-        XCTAssertTrue(app.staticTexts["Paperwork, simplified"].waitForExistence(timeout: 5))
+        XCTAssertTrue(reveal(app.staticTexts["Paperwork, simplified"], in: app))
         XCTAssertFalse(app.alerts["Move this document to Trash?"].exists, "Home gestures commit directly to recoverable Trash")
         app.buttons["nav-settings"].tap()
         let trashFolder = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Trash (")).firstMatch
-        XCTAssertTrue(trashFolder.waitForExistence(timeout: 5)); trashFolder.tap()
+        XCTAssertTrue(reveal(trashFolder, in: app)); trashFolder.tap()
         XCTAssertTrue(app.staticTexts["Test document"].waitForExistence(timeout: 5))
         app.buttons["Restore"].tap()
         XCTAssertTrue(app.staticTexts["Trash is empty"].waitForExistence(timeout: 5))
-        app.navigationBars["Trash"].buttons["Me"].tap()
+        app.navigationBars["Trash"].buttons.firstMatch.tap()
         app.buttons["Done"].tap()
-        XCTAssertTrue(savedDocumentRow(in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(reveal(savedDocumentRow(in: app), in: app))
     }
 
     @MainActor
     func testHomeTrashActionCanBeCancelledAndDocumentRestored() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session", UUID().uuidString, "--seed-saved"]
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-saved"]
         app.launch()
         let row = savedDocumentRow(in: app)
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        XCTAssertTrue(reveal(row, in: app))
         let trash = app.buttons["Move Test document to Trash"].firstMatch
         XCTAssertFalse(trash.isHittable, "Idle rows must not expose a trash icon")
         XCTAssertFalse(app.staticTexts["Continue your scan"].exists)
@@ -342,17 +396,17 @@ final class ScannerFlowTests: XCTestCase {
         dragRow(row, from: 0.65, to: 0.35)
         XCTAssertTrue(trash.waitForExistence(timeout: 5)); trash.tap()
         restoreTestDocument(in: app)
-        app.staticTexts["Test document"].tap()
+        openTestDocument(app)
         XCTAssertTrue(app.buttons["Share PDF"].waitForExistence(timeout: 5), "Restoring must retain the saved PDF and normal row navigation")
     }
 
     @MainActor
     func testHomeLeadingSwipeCanCancelAndBothFullSwipesMoveToTrash() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session", UUID().uuidString, "--seed-saved"]
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-saved"]
         app.launch()
         let row = savedDocumentRow(in: app)
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        XCTAssertTrue(reveal(row, in: app))
         let trash = app.buttons["Move Test document to Trash"].firstMatch
         dragRow(row, from: 0.35, to: 0.65)
         XCTAssertTrue(trash.waitForExistence(timeout: 5)); XCTAssertTrue(trash.isHittable)
@@ -370,13 +424,13 @@ final class ScannerFlowTests: XCTestCase {
     @MainActor
     func testUnfinishedScanCanBeTrashedRestoredAndResumed() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session", UUID().uuidString, "--seed-draft"]
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-draft"]
         app.launch()
         XCTAssertTrue(app.buttons["nav-settings"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.staticTexts["Continue your scan"].exists)
         app.buttons["nav-settings"].tap()
-        let unfinished = app.buttons["unfinished-scans"]
-        XCTAssertTrue(unfinished.waitForExistence(timeout: 5)); unfinished.tap()
+        let unfinished = app.descendants(matching: .any)["unfinished-scans"]
+        XCTAssertTrue(reveal(unfinished, in: app)); unfinished.tap()
         let trash = app.buttons["Move Test document to Trash"]
         XCTAssertTrue(trash.waitForExistence(timeout: 5)); trash.tap()
         let confirmation = app.alerts["Move this unfinished scan to Trash?"]
@@ -387,13 +441,13 @@ final class ScannerFlowTests: XCTestCase {
         XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
         confirmation.buttons["Move to Trash"].tap()
         XCTAssertTrue(app.staticTexts["No unfinished scans"].waitForExistence(timeout: 5))
-        app.navigationBars["Unfinished scans"].buttons["Me"].tap()
+        app.navigationBars["Unfinished scans"].buttons.firstMatch.tap()
         let trashFolder = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Trash (")).firstMatch
-        XCTAssertTrue(trashFolder.waitForExistence(timeout: 5)); trashFolder.tap()
+        XCTAssertTrue(reveal(trashFolder, in: app)); trashFolder.tap()
         XCTAssertTrue(app.staticTexts["Test document"].waitForExistence(timeout: 5))
         app.buttons["Restore"].tap()
         XCTAssertTrue(app.staticTexts["Trash is empty"].waitForExistence(timeout: 5))
-        app.navigationBars["Trash"].buttons["Me"].tap()
+        app.navigationBars["Trash"].buttons.firstMatch.tap()
         unfinished.tap()
         let resume = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "resume-draft-")).firstMatch
         XCTAssertTrue(resume.waitForExistence(timeout: 5)); resume.tap()
@@ -405,7 +459,7 @@ final class ScannerFlowTests: XCTestCase {
     @MainActor
     func testCapturePreviewOpensPinchesPansAndReturnsToUnchangedEdits() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session", UUID().uuidString, "--simulate-camera"]
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--simulate-camera"]
         app.launch()
         app.buttons["Scan document"].tap()
         waitEnabled(app.buttons["Capture page"]); app.buttons["Capture page"].tap()
@@ -447,7 +501,7 @@ final class ScannerFlowTests: XCTestCase {
     @MainActor
     func testCaptureShowsProcessedReviewAndPreservesAdjustmentsWhenAddingPage() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session", UUID().uuidString, "--simulate-camera"]
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--simulate-camera"]
         app.launch()
         app.buttons["Scan document"].tap()
         let shutter = app.buttons["Capture page"]
@@ -489,19 +543,19 @@ final class ScannerFlowTests: XCTestCase {
         app.buttons["review-done"].tap()
         XCTAssertTrue(app.buttons["Save PDF"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Edit page 2"].exists)
-        app.buttons["Edit page 1"].tap()
+        editPage(1, in: app)
         selectEditorTool("adjust", in: app)
         for _ in 0..<3 where !app.sliders["brightness-slider"].isHittable { app.swipeUp() }
         XCTAssertEqual(app.staticTexts["adjustment-value"].label, editedValue)
         app.buttons["Cancel"].tap()
-        app.buttons["Edit page 2"].tap()
+        editPage(2, in: app)
         selectEditorTool("adjust", in: app)
         for _ in 0..<3 where !app.sliders["brightness-slider"].isHittable { app.swipeUp() }
         XCTAssertEqual(app.staticTexts["adjustment-value"].label, "+0", "Each new page starts from automatic cleanup, not the previous page's sliders")
         app.buttons["Cancel"].tap()
         app.terminate(); app.launch()
         resumeFirstUnfinishedScan(in: app)
-        app.buttons["Edit page 1"].tap()
+        editPage(1, in: app)
         selectEditorTool("adjust", in: app)
         for _ in 0..<3 where !app.sliders["brightness-slider"].isHittable { app.swipeUp() }
         XCTAssertEqual(app.staticTexts["adjustment-value"].label, editedValue)
@@ -513,7 +567,7 @@ final class ScannerFlowTests: XCTestCase {
     @MainActor
     func testNativeSDKAdRetainsIdentityAcrossScrolling() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session", UUID().uuidString, "--seed-saved", "--test-native-ad-sdk"]
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-saved", "--test-native-ad-sdk"]
         let started = Date()
         app.launch()
         let ad = app.otherElements["home-native-ad"]
@@ -544,7 +598,7 @@ final class ScannerFlowTests: XCTestCase {
     @MainActor
     func testFirstSavedDocumentReturnsHomeWithoutAd() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session", UUID().uuidString, "--seed-draft"]
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-draft"]
         app.launch()
         resumeFirstUnfinishedScan(in: app)
         app.buttons["Save PDF"].tap()
@@ -559,7 +613,7 @@ final class ScannerFlowTests: XCTestCase {
     @MainActor
     func testCancelCaptureDiscardsOnlyRejectedPageAndAllowsRetake() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session", UUID().uuidString, "--simulate-camera"]
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--simulate-camera"]
         app.launch()
         app.buttons["Scan document"].tap()
         waitEnabled(app.buttons["Capture page"]); app.buttons["Capture page"].tap()
@@ -593,7 +647,7 @@ final class ScannerFlowTests: XCTestCase {
         app.terminate(); app.launch()
         resumeFirstUnfinishedScan(in: app)
         XCTAssertFalse(app.buttons["Edit page 2"].exists, "Rejected pages must stay removed after relaunch")
-        app.buttons["Edit page 1"].tap()
+        editPage(1, in: app)
         selectEditorTool("adjust", in: app)
         for _ in 0..<3 where !slider.isHittable { app.swipeUp() }
         XCTAssertEqual(app.staticTexts["adjustment-value"].label, editedValue)
@@ -606,4 +660,5 @@ final class ScannerFlowTests: XCTestCase {
         sleep(1)
         try? app.screenshot().pngRepresentation.write(to: folder.appendingPathComponent(name + ".png"))
     }
+
 }

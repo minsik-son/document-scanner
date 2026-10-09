@@ -215,6 +215,8 @@ struct AnnotationEditor: View {
         // Above the button, never behind it.
         Text("Marks don't securely redact text. PDF forms are flattened; the original is kept.").font(.system(size: 12)).foregroundStyle(TK.grey500)
           .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity)
+          // Solid backing so scrolled controls never show through the note.
+          .padding(.top, 10).background(TK.paper).padding(.top, -10)
           .accessibilityIdentifier("annotate-redact-note")
         Button("Save") { save() }.buttonStyle(CTAButtonStyle()).disabled(busy || preview == nil)
       }

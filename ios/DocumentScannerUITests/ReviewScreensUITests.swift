@@ -16,7 +16,7 @@ final class ReviewScreensUITests: XCTestCase {
     }
     @MainActor private func launch(_ extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session", UUID().uuidString] + extra
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en"] + extra
         app.launch()
         // A fresh install starts with the introduction.
         if app.buttons["onboarding-skip"].waitForExistence(timeout: 6) { app.buttons["onboarding-skip"].tap() }

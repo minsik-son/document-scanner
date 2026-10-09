@@ -3,7 +3,7 @@ import XCTest
 final class IdentityCaptureTests: XCTestCase {
     @MainActor private func launchID() -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session", UUID().uuidString, "--simulate-camera"]
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--simulate-camera"]
         app.launch()
         XCTAssertTrue(app.buttons["home-tools"].waitForExistence(timeout: 10))
         app.buttons["home-tools"].tap()

@@ -13,7 +13,7 @@ final class AdvancedToolsUITests:XCTestCase {
         done.tap()
     }
     @MainActor private func launch(document:Bool = false,table:Bool = false) -> XCUIApplication {
-        let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString]+(document ? ["--seed-saved"] : [])+(table ? ["--seed-office-table"] : []);app.launch()
+        let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"-app-language","en"]+(document ? ["--seed-saved"] : [])+(table ? ["--seed-office-table"] : []);app.launch()
         if document { app.buttons["nav-documents"].tap();app.staticTexts["Test document"].tap();XCTAssertTrue(app.buttons["Share PDF"].waitForExistence(timeout:5));app.buttons.matching(NSPredicate(format: "label == %@ AND NOT (identifier IN %@)", "Tools", ["nav-tools", "home-tools"])).firstMatch.tap();app.buttons["More offline tools"].tap();XCTAssertTrue(app.textFields["tool-search"].waitForExistence(timeout:5)) }
         else { XCTAssertTrue(app.buttons["home-tools"].isHittable);app.buttons["home-tools"].tap() }
         return app
@@ -21,7 +21,7 @@ final class AdvancedToolsUITests:XCTestCase {
     @MainActor func testProToolFreeTriesThenUpgrade() {
         let session = UUID().uuidString
         func open() -> XCUIApplication {
-            let app = XCUIApplication();app.launchArguments = ["--ui-test-session",session,"--test-pro-gate"];app.launch()
+            let app = XCUIApplication();app.launchArguments = ["--ui-test-session",session,"-app-language","en","--test-pro-gate"];app.launch()
             app.buttons["home-tools"].tap();XCTAssertTrue(app.tool("Word export").waitForExistence(timeout:5));app.tool("Word export").tap()
             return app
         }
@@ -45,7 +45,7 @@ final class AdvancedToolsUITests:XCTestCase {
         let pay = XCTAttachment(screenshot:app.screenshot());pay.name = "Paywall from tool";pay.lifetime = .keepAlways;add(pay)
     }
     @MainActor func testPDFProToolShowsFreeTryBeforeChoosingADocument() {
-        let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"--test-pro-gate","--seed-saved"];app.launch()
+        let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"-app-language","en","--test-pro-gate","--seed-saved"];app.launch()
         app.buttons["home-tools"].tap()
         let compress = app.buttons["Compress PDF, Pro"]
         for _ in 0..<8 where !compress.isHittable { app.swipeUp() }
@@ -60,7 +60,7 @@ final class AdvancedToolsUITests:XCTestCase {
     }
     @MainActor func testHubListsAllToolsAndHonestDeviceRequirements() {
         for populated in [false,true] {
-            let home = XCUIApplication();home.launchArguments = ["--ui-test-session",UUID().uuidString]+(populated ? ["--seed-saved"] : []);home.launch()
+            let home = XCUIApplication();home.launchArguments = ["--ui-test-session",UUID().uuidString,"-app-language","en"]+(populated ? ["--seed-saved"] : []);home.launch()
             let entry = home.buttons["home-tools"]
             XCTAssertTrue(entry.waitForExistence(timeout:5));XCTAssertTrue(entry.isHittable,"Tools must be visible without scrolling or opening a menu")
             let screenshot = XCTAttachment(screenshot:home.screenshot());screenshot.name = populated ? "Home tools with documents" : "Home tools empty library";screenshot.lifetime = .keepAlways;add(screenshot)
@@ -103,7 +103,7 @@ final class AdvancedToolsUITests:XCTestCase {
     }
     @MainActor func testCameraFirstMathRecognizesReviewsAndReturnsWithoutSaving() {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session",UUID().uuidString,"--simulate-camera"]
+        app.launchArguments = ["--ui-test-session",UUID().uuidString,"-app-language","en","--simulate-camera"]
         app.launch();app.buttons["home-tools"].tap();app.tool("Math scan").tap()
         XCTAssertTrue(app.buttons["text-tool-capture"].waitForExistence(timeout:5))
         XCTAssertFalse(app.textViews["offline-text"].exists)
@@ -148,7 +148,7 @@ final class AdvancedToolsUITests:XCTestCase {
     }
     @MainActor func testCameraFirstTranslationKeepsReviewAndLanguageSetupSeparate() {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session",UUID().uuidString,"--simulate-camera"]
+        app.launchArguments = ["--ui-test-session",UUID().uuidString,"-app-language","en","--simulate-camera"]
         app.launch();app.buttons["home-tools"].tap();app.tool("Photo translation").tap()
         XCTAssertTrue(app.buttons["text-tool-capture"].waitForExistence(timeout:5))
         XCTAssertFalse(app.textViews["offline-text"].exists)
@@ -169,7 +169,7 @@ final class AdvancedToolsUITests:XCTestCase {
         saveShot(app,"photo-translation-availability")
     }
     @MainActor func testPhotoTranslationManualCorrectionRebuildsPageAndSharesPDF() {
-        let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"--simulate-camera"]
+        let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"-app-language","en","--simulate-camera"]
         app.launch();app.buttons["home-tools"].tap();app.tool("Photo translation").tap()
         app.buttons["text-tool-capture"].tap()
         XCTAssertTrue(app.buttons["translation-edit-areas"].waitForExistence(timeout:45))
@@ -190,7 +190,7 @@ final class AdvancedToolsUITests:XCTestCase {
         saveShot(app,"photo-translation-pdf-share")
     }
     @MainActor func testPhotoTranslationUnplacedTextCanBeReviewedAndCopied() {
-        let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"--simulate-camera"]
+        let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"-app-language","en","--simulate-camera"]
         app.launch();app.buttons["home-tools"].tap();app.tool("Photo translation").tap()
         app.buttons["text-tool-capture"].tap()
         XCTAssertTrue(app.buttons["translation-edit-areas"].waitForExistence(timeout:45))
@@ -233,7 +233,7 @@ final class AdvancedToolsUITests:XCTestCase {
         app.buttons["offline-run"].tap();closePreview(app);ready(app.buttons["word-share"])
     }
     @MainActor func testWordCameraShowsEachPageBeforeContinuing() {
-        let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"--simulate-camera"];app.launch()
+        let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"-app-language","en","--simulate-camera"];app.launch()
         app.buttons["home-tools"].tap();ready(app.tool("Word export"));app.tool("Word export").tap()
         ready(app.buttons["word-camera"]);app.buttons["word-camera"].tap()
         // Each shot is shown for checking before scanning more or continuing.
@@ -440,7 +440,7 @@ final class AdvancedToolsUITests:XCTestCase {
         XCTAssertTrue(app.buttons["excel-cell-0-0"].waitForExistence(timeout:60));designShot(app,"excel-2-review")
         app.terminate()
         // Photo translation: camera, language, result.
-        app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"--simulate-camera"]
+        app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"-app-language","en","--simulate-camera"]
         app.launch();app.buttons["home-tools"].tap();app.tool("Photo translation").tap()
         XCTAssertTrue(app.buttons["text-tool-capture"].waitForExistence(timeout:5));designShot(app,"translate-0-camera")
         app.buttons["text-tool-capture"].tap()
@@ -452,7 +452,7 @@ final class AdvancedToolsUITests:XCTestCase {
         if app.buttons["translation-share"].waitForExistence(timeout:30) { designShot(app,"translate-2-result") }
         app.terminate()
         // Math: corrected scan and text.
-        app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"--simulate-camera"]
+        app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"-app-language","en","--simulate-camera"]
         app.launch();app.buttons["home-tools"].tap();app.tool("Math scan").tap()
         XCTAssertTrue(app.buttons["text-tool-capture"].waitForExistence(timeout:5));app.buttons["text-tool-capture"].tap()
         XCTAssertTrue(app.buttons["math-scan-preview"].waitForExistence(timeout:40));designShot(app,"math-1-scan")

@@ -3,7 +3,7 @@ import XCTest
 final class ToolDirectoryDesignTests: XCTestCase {
     @MainActor private func launch(saved: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session", UUID().uuidString] + (saved ? ["--seed-saved"] : [])
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en"] + (saved ? ["--seed-saved"] : [])
         app.launch()
         return app
     }
@@ -32,7 +32,7 @@ final class ToolDirectoryDesignTests: XCTestCase {
     }
     @MainActor func testBottomNavigationAndCenterCamera() {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session", UUID().uuidString, "--seed-saved", "--simulate-camera"]
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-saved", "--simulate-camera"]
         app.launch()
         XCTAssertTrue(app.buttons["nav-home"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["scan-document"].isHittable)
@@ -59,7 +59,7 @@ final class ToolDirectoryDesignTests: XCTestCase {
     }
     @MainActor func testBrandedStartupAndLocalLibraryOpening() {
         let preview = XCUIApplication()
-        preview.launchArguments = ["--ui-test-session", UUID().uuidString, "--hold-launch-screen"]
+        preview.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--hold-launch-screen"]
         preview.launch()
         XCTAssertTrue(preview.staticTexts["Paper, made digital."].waitForExistence(timeout: 5))
         XCTAssertFalse(preview.buttons["nav-home"].exists)
@@ -78,7 +78,7 @@ final class ToolDirectoryDesignTests: XCTestCase {
     }
     @MainActor func testOnboardingPagesCompletionAndReplay() {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session", UUID().uuidString, "--test-onboarding"]
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--test-onboarding"]
         app.launch()
         XCTAssertTrue(app.staticTexts["onboarding-title-0"].waitForExistence(timeout: 8))
         capture(app, "Onboarding 1 - scan")
@@ -110,7 +110,7 @@ final class ToolDirectoryDesignTests: XCTestCase {
     }
     @MainActor func testOnboardingLargeTextSkipPersists() {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session", UUID().uuidString, "--test-onboarding",
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--test-onboarding",
                                "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
         app.launch()
         XCTAssertTrue(app.buttons["onboarding-skip"].waitForExistence(timeout: 8))

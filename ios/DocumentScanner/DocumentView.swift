@@ -63,11 +63,11 @@ struct DocumentView: View {
                                 .buttonStyle(PrimaryButton()).accessibilityIdentifier("business-card-contact")
                         }
                         HStack {
-                            Button { editing = true } label: { Label("Edit", systemImage: "slider.horizontal.3") }
+                            Button { editing = true } label: { Label("Edit", systemImage: "slider.horizontal.3") }.accessibilityIdentifier("document-edit")
                             Spacer()
                             Button { text = true } label: { Label("Text", systemImage: "text.viewfinder") }
                             Menu { ForEach(DocumentTool.allCases) { tool in
-                                Button(tool.rawValue + (tool.pro ? " · PRO" : "")) {
+                                Button(L(tool.rawValue) + (tool.pro ? " · PRO" : "")) {
                                     // Pro tools show their free-try screen first, inside the tool.
                                     activeTool = tool
                                 }

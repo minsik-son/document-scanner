@@ -365,6 +365,7 @@ struct HomeAdvertisementSlot<Fallback: View>: View {
     @EnvironmentObject private var lock: AppLock
     @EnvironmentObject private var ads: HomeAdvertisementStore
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.startupCovered) private var startupCovered
     @State private var visible = false
     @State private var removeAds = false
     let homeUncovered: Bool
@@ -375,7 +376,7 @@ struct HomeAdvertisementSlot<Fallback: View>: View {
         HomeAdEligibility(subscriptionResolved: subscription.entitlementsResolved,
                           isPro: subscription.isPro, online: ads.online,
                           foreground: scenePhase == .active,
-                          homeVisible: homeUncovered && !ads.suppressedAfterCompletion,
+                          homeVisible: homeUncovered && !startupCovered && !ads.suppressedAfterCompletion,
                           unlocked: !lock.locked, configured: HomeAdConfiguration.adsEnabled)
     }
     private var keepsAd: Bool {

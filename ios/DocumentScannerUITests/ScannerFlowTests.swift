@@ -695,6 +695,39 @@ final class ScannerFlowTests: HushUITestCase {
         XCTAssertTrue(app.staticTexts["Saved on this iPhone"].waitForExistence(timeout: 10), "The PDF was saved too")
     }
 
+    /// Startup logo smoothness: main-thread hitches from launch until the cover is gone
+    /// (debug metric, see SplashMetrics). Runs with the ad SDK as a real launch does.
+    @MainActor
+    func testStartupLogoHasNoHitches() throws {
+        var results: [String] = []
+        for run in 0..<4 {
+            let app = XCUIApplication()
+            // Runs 0–1 are a returning user with documents (seeding adds test-only work), 2–3 a fresh library.
+            app.launchArguments = ["--ui-test-session", UUID().uuidString, "-app-language", "en", "--test-native-ad-sdk", "--measure-splash"] + (run < 2 ? ["--seed-saved"] : [])
+            app.launch()
+            let metrics = app.staticTexts["splash-metrics"]
+            XCTAssertTrue(metrics.waitForExistence(timeout: 20), "run \(run)")
+            results.append(metrics.label)
+            app.terminate()
+        }
+        let note = XCTAttachment(string: results.joined(separator: "\n")); note.name = "splash-metrics"; note.lifetime = .keepAlways; add(note)
+        print("SPLASH-RESULTS\n" + results.joined(separator: "\n"))
+    }
+
+    /// Frozen logo frames for comparing the Core Animation splash with the Blender render.
+    @MainActor
+    func testStartupLogoFrames() throws {
+        for t in ["0.1", "0.3", "0.6", "0.9", "1.05", "1.15", "1.25", "live"] {
+            let app = XCUIApplication()
+            app.launchArguments = ["--ui-test-session", UUID().uuidString, "-app-language", "en", "--hold-launch-screen"] + (t == "live" ? [] : ["--splash-time", t])
+            app.launch()
+            XCTAssertTrue(app.otherElements["startup-screen"].waitForExistence(timeout: 10) || app.staticTexts["HushScan"].waitForExistence(timeout: 5))
+            Thread.sleep(forTimeInterval: 1)
+            let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); shot.name = "splash-\(t)"; shot.lifetime = .keepAlways; add(shot)
+            app.terminate()
+        }
+    }
+
     @MainActor private func designShot(_ app: XCUIApplication, _ name: String) {
         guard let home = ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] else { return }
         let folder = URL(fileURLWithPath: home).appendingPathComponent("Documents/ChatGPT/정치 중립/scanner-product/ios/Verification/private/design-shots")

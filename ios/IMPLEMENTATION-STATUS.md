@@ -235,3 +235,11 @@ Selected-language + close-up OCR, word-gap column separation, mixed-script parag
 - "저장" → 형식 시트: 파일 이름, PDF로 저장(무료), Word·Excel·PowerPoint(무료 3회 → Pro, 다 쓰면 자물쇠와 Pro 안내), 이미지(무료), PDF 옵션. 어떤 형식이든 PDF를 먼저 보관함에 저장한 뒤 그 변환을 바로 연다(Word·Excel은 바로 읽기, 시트에서 이미 골랐으니 무료 체험 안내 화면은 건너뜀).
 - 저장 후 화면의 변환 바는 시트와 겹쳐서 제거, 문서 화면의 바는 유지. 저장된 문서를 편집할 때는 예전처럼 "변경 사항 저장" 한 번.
 - UI 테스트: `testSaveSheetConvertsToWordAndReviewShowsWholePage`; 기존 "Save PDF" 탭은 `savePDF(in:)`(저장 → PDF로 저장)로 바뀜.
+
+## 시작 로고 애니메이션 끊김 수정
+- 원인: 로고가 APNG 프레임을 메인 스레드 콜백으로 교체했는데, 같은 시간에 광고 SDK(UMP·MobileAds 시작·홈 광고 요청), 라이브러리 열기, 홈 첫 렌더가 메인 스레드를 막았다. 덮개가 로고가 끝나기 전에 사라질 수 있었고, 페이드 도중 앱 전체 다크→라이트 전환이 일어났다.
+- 로고: `SplashAnimation`(StartupView.swift)이 Blender 장면(splash.blend)의 키프레임(`SplashMotion.swift`, anim.json에서 생성)을 CALayer + CAKeyframeAnimation으로 재생한다. 렌더 서버가 돌리므로 메인 스레드가 바빠도 프레임이 빠지지 않고, 120Hz 기기에선 120Hz(`CADisableMinimumFrameDurationOnPhone`). 동작 줄이기에선 마지막 프레임.
+- 덮개: `StartupCover`가 UIKit 페이드(렌더 서버)로 사라진다. 로고가 끝까지 재생된 뒤(`SplashClock`, 최대 4초) 0.15초 쉬고 페이드.
+- 페이드가 끝난 뒤에만: 라이트 모드 전환, 접근성 트리 노출, `startupCovered` 해제(홈 광고 슬롯이 이때부터 요청), 0.6초 뒤 광고 SDK 시작.
+- 측정(디버그 전용): `--measure-splash`면 `SplashMetrics`가 메인 스레드 프레임 지연을 기록, `testStartupLogoHasNoHitches`가 읽는다. `testStartupLogoFrames`는 `--splash-time`으로 멈춘 프레임을 찍어 Blender 렌더와 비교(평균 픽셀 차 1.6–6/255).
+- 이전 APNG(`art-splash.dataset`)는 더 이상 쓰지 않는다.

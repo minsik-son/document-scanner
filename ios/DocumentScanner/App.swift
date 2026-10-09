@@ -7,12 +7,17 @@ struct DocumentScannerApp: App {
     /// The branded loading screen stays on top until first-run work is done and
     /// the first screen has been laid out and drawn underneath it.
     @State private var showStartup = true
+    /// True once the cover has finished fading out (not just started).
+    @State private var coverGone = false
     @StateObject private var lock = AppLock()
     @StateObject private var subscription = SubscriptionStore()
     @StateObject private var advertisements = HomeAdvertisementStore()
     @StateObject private var completionAdvertisements = CompletionAdvertisementStore()
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(AppLanguage.key) private var language = ""
+#if DEBUG
+    @StateObject private var splashMetrics = SplashMetrics.shared
+#endif
     var body: some Scene {
         WindowGroup {
             ZStack {
@@ -23,15 +28,22 @@ struct DocumentScannerApp: App {
                         .environment(\.locale, AppLanguage.locale)
                         .id(language)
                         .environment(\.colorScheme, .light)
-                        .environment(\.startupCovered, showStartup)
+                        .environment(\.startupCovered, !coverGone)
                         // Not reachable (VoiceOver, UI tests, touches) until it is revealed.
-                        .accessibilityHidden(showStartup)
+                        // The accessibility tree is rebuilt after the fade, not during it.
+                        .accessibilityHidden(!coverGone)
                         .allowsHitTesting(!showStartup)
                 }
-                if showStartup {
+#if DEBUG
+                if SplashMetrics.enabled && !splashMetrics.summary.isEmpty {
+                    Text(splashMetrics.summary).font(.caption2).opacity(0.01).accessibilityIdentifier("splash-metrics")
+                }
+#endif
+                if !coverGone {
                     // The cover has no controls. While it fades out it must not swallow
                     // the first tap or swipe meant for the screen underneath.
-                    StartupView().environment(\.locale, AppLanguage.locale).allowsHitTesting(false).transition(.opacity).zIndex(1)
+                    StartupCover(fading: !showStartup) { coverFaded() }
+                        .ignoresSafeArea().allowsHitTesting(false).zIndex(1)
                 }
             }
             .environmentObject(subscription).environmentObject(lock)
@@ -40,6 +52,9 @@ struct DocumentScannerApp: App {
             .task {
                 guard !startupStarted else { return }
                 startupStarted = true
+#if DEBUG
+                SplashMetrics.shared.start()
+#endif
                 lock.sceneChanged(scenePhase)
                 // Let the branded view render before any startup work.
                 await Task.yield()
@@ -66,7 +81,7 @@ struct DocumentScannerApp: App {
                 lock.sceneChanged(phase)
                 if phase == .active { Task { await subscription.refreshEntitlements() } }
             }
-            .tint(Design.blue).preferredColorScheme(showStartup ? .dark : .light)
+            .tint(Design.blue).preferredColorScheme(coverGone ? .light : .dark)
         }
     }
 
@@ -76,24 +91,35 @@ struct DocumentScannerApp: App {
     /// and the first layout/draw of onboarding or home. Each wait is bounded, so
     /// a slow network or StoreKit never holds the app on the loading screen.
     @MainActor private func prepareFirstScreen() async {
-        let adsWanted = HomeAdConfiguration.adsEnabled && !HomeAdvertisementStore.lastKnownPro
-        if adsWanted {
-            // Starts the SDK and requests the home ad in parallel with the library.
-            advertisements.preload(locked: lock.locked)
-        }
         async let library = makeLibrary()
         async let entitlements: Void = subscription.waitUntilResolved(timeout: .milliseconds(1000))
-        async let sdk: Void = Self.waitForAds(adsWanted)
         store = await library
-        _ = await (entitlements, sdk)
+        _ = await entitlements
         // The first screen now lays out and draws once underneath the cover,
         // so its first-frame cost is not visible.
         try? await Task.sleep(for: .milliseconds(200))
-        withAnimation(.easeOut(duration: 0.28)) { showStartup = false }
+        // The logo always finishes and rests a moment before the cover fades.
+        if !UIAccessibility.isReduceMotionEnabled {
+            await SplashClock.wait(timeout: .seconds(4))
+            try? await Task.sleep(for: .milliseconds(150))
+        }
+        // Starts the cover's fade (a Core Animation fade, see StartupCover).
+        showStartup = false
     }
-    @MainActor private static func waitForAds(_ wanted: Bool) async {
-        guard wanted else { return }
-        await AdvertisingSDK.waitForStart(timeout: .milliseconds(1200))
+    /// Only after the fade: the light appearance (a whole-window trait change), the
+    /// accessibility tree and the ad SDK (consent check, start-up, home ad request)
+    /// would otherwise compete with the logo and the fade for the main thread.
+    @MainActor private func coverFaded() {
+        coverGone = true
+#if DEBUG
+        SplashMetrics.shared.coverGone()
+#endif
+        if HomeAdConfiguration.adsEnabled && !HomeAdvertisementStore.lastKnownPro {
+            Task {
+                try? await Task.sleep(for: .milliseconds(600))
+                advertisements.preload(locked: lock.locked)
+            }
+        }
     }
 }
 /// Name, version and public links in one place. The name shown in the app is the

@@ -338,6 +338,19 @@ enum DocumentLayoutAnalyzer {
                 if n * 100 > total * 62 { solid[y * w + x] = true; any = true }
             } }
             guard any else { return self }
+            // White text on a strong fill punches holes in the solid area; its
+            // glyph outlines would stay as ink and, stacked down a column, line up
+            // into false rules. Close the holes (dilate, then erode by the same
+            // radius) so the whole cell is hollowed.
+            let closing = r * 3 / 2
+            let firstSum = integral(solid)
+            var dilated = [Bool](repeating: false, count: w * h)
+            for y in 0..<h { for x in 0..<w where count(firstSum, x, y, closing).0 > 0 { dilated[y * w + x] = true } }
+            let dilatedSum = integral(dilated)
+            for y in 0..<h { for x in 0..<w {
+                let (n, total) = count(dilatedSum, x, y, closing)
+                solid[y * w + x] = n == total
+            } }
             // Only large areas are bands and boxes; a few bold letters next to a
             // rule can be mostly ink too, and the rule there must stay.
             let minSide = Int(textHeight * 2.5)
@@ -358,13 +371,18 @@ enum DocumentLayoutAnalyzer {
                 }
                 if x1 - x0 >= minSide * 2 && y1 - y0 >= minSide / 2 && members.count >= minSide * minSide { for p in members { keep[p] = true } }
             }
-            solid = keep
-            // Keep a rim of a few pixels so the area's outline stays as rules.
+            // The solid test (62% of a window) ends about a quarter window short
+            // of the area's real edge; grow back out to it, then keep only a rim of
+            // a few pixels there: the outline stays as a rule, nothing thicker.
+            let keepSum = integral(keep)
+            let g = max(2, r / 4)
+            var grown = [Bool](repeating: false, count: w * h)
+            for y in 0..<h { for x in 0..<w where count(keepSum, x, y, g).0 > 0 { grown[y * w + x] = true } }
             let e = max(3, Int(Double(h) * 0.002))
-            let solidSum = integral(solid)
+            let grownSum = integral(grown)
             var out = self
-            for y in 0..<h { for x in 0..<w where solid[y * w + x] {
-                let (n, total) = count(solidSum, x, y, e)
+            for y in 0..<h { for x in 0..<w where grown[y * w + x] && dark[y * w + x] {
+                let (n, total) = count(grownSum, x, y, e)
                 if n == total { out.dark[y * w + x] = false }
             } }
             return out

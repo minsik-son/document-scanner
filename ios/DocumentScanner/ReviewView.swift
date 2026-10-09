@@ -59,6 +59,15 @@ struct ReviewView: View {
     @State private var current = 0
     /// Edit mode: the compact list for reordering and deleting pages.
     @State private var reordering = false
+    /// The save sheet of a new scan (PDF or another format).
+    @State private var choosingFormat = false
+    /// Chosen in the save sheet; opened once the PDF is saved.
+    @State private var pendingConversion: ConversionRoute?
+    @State private var conversion: ConversionRoute?
+    @State private var renaming = false
+    @State private var renameText = ""
+    @State private var editTool: String?
+    @State private var pdfOptions = false
 
     var body: some View {
         NavigationStack {
@@ -99,8 +108,6 @@ struct ReviewView: View {
                             if let file = store.document(documentID)?.pdfFile {
                                 PDFPreview(url: store.url(file))
                                     .accessibilityIdentifier("saved-pdf")
-                                // Next step in place: share the PDF or convert it.
-                                if !saving { DocumentExportBar(documentID: documentID) }
                             } else { Spacer() }
                         }
                         .background(TK.paper)
@@ -136,19 +143,13 @@ struct ReviewView: View {
                             } else {
                                 Section { Text("Add a page to get started.").foregroundStyle(.secondary) }
                             }
-                            Section {
+                            if !doc.isDraft { Section {
                                 TextField("Document name", text: Binding(get: { document?.title ?? "" }, set: { document?.title = $0; document?.autoTitled = false; persistDraft() }))
                                 if document?.autoTitled == true {
                                     Label("Named automatically from the text when you save", systemImage: "sparkles").font(.footnote).foregroundStyle(.secondary)
                                 }
-                                DisclosureGroup("Save options", isExpanded: $options) {
-                                    Picker("Folder", selection: Binding(get: { document?.folder ?? "Scans" }, set: { document?.folder = $0; persistDraft() })) { ForEach(store.manifest.folders, id: \.self) { Text($0).tag($0) } }
-                                    Picker("Paper", selection: Binding(get: { document?.paper ?? .letter }, set: { document?.paper = $0; persistDraft() })) { ForEach(PaperSize.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
-                                    Toggle("Landscape", isOn: Binding(get: { document?.landscape ?? false }, set: { value in change { $0.landscape = value } }))
-                                    Picker("Margins", selection: Binding(get: { document?.margin ?? .small }, set: { document?.margin = $0; persistDraft() })) { ForEach(PageMargin.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
-                                    if doc.pages.contains(where: { $0.trimming != .zero }) { Text("For no added white space, choose Original paper and None margins. A4 and US Letter keep their shape and may add white space.").font(.caption).foregroundStyle(.secondary) }
-                                    if doc.pages.contains(where: { $0.sourcePDF != nil }) { Text("Changing PDF paper or margins keeps text and links but flattens interactive forms. The imported original is retained.").font(.caption).foregroundStyle(.secondary) }
-                                }
+                                DisclosureGroup("Save options", isExpanded: $options) { pdfOptionFields(doc) }
+                            }
                             }
                             if let error { Section { Text(L(error)).foregroundStyle(.red) } }
                         }.listStyle(.insetGrouped).disabled(saving)
@@ -158,7 +159,8 @@ struct ReviewView: View {
                                 Button { openCamera(retaking: nil) } label: { Label("Add pages", systemImage: "camera") }
                                     .buttonStyle(SecondaryButton()).disabled(saving)
                                 if saving { Text(L(saveProgress)).font(.subheadline).foregroundStyle(.secondary).accessibilityIdentifier("save-progress") }
-                                Button { save() } label: { if saving { ProgressView().tint(Design.blueInk).frame(maxWidth: .infinity) } else { Text(doc.isDraft ? "Save PDF" : "Save changes") } }.buttonStyle(PrimaryButton()).disabled(saving || doc.pages.isEmpty)
+                                Button { if doc.isDraft { choosingFormat = true } else { save() } } label: { if saving { ProgressView().tint(Design.blueInk).frame(maxWidth: .infinity) } else { Text(doc.isDraft ? "Save" : "Save changes") } }.buttonStyle(PrimaryButton()).disabled(saving || doc.pages.isEmpty)
+                                    .accessibilityIdentifier("review-save")
                             }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8).background(.white)
                         }
                     }
@@ -179,6 +181,20 @@ struct ReviewView: View {
                         }.disabled(saving).accessibilityIdentifier("review-close")
                     }
                 }
+                ToolbarItem(placement: .principal) {
+                    // A new scan's name, tap to change it.
+                    if !saved, let doc = document, doc.isDraft, !(captureOnOpen && cameraFirst) {
+                        Button { renameText = doc.title; renaming = true } label: {
+                            HStack(spacing: 5) {
+                                Text(doc.title.isEmpty ? L("Review") : doc.title).font(.system(size: 16, weight: .semibold)).lineLimit(1)
+                                Image(systemName: "pencil").font(.system(size: 13, weight: .semibold)).foregroundStyle(TK.grey500)
+                            }.foregroundStyle(TK.grey900).frame(maxWidth: 200)
+                        }
+                        .disabled(saving)
+                        .accessibilityLabel(String(format: L("Name: %@"), doc.title)).accessibilityHint("Rename")
+                        .accessibilityIdentifier("review-name")
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     if !saved {
                         HStack(spacing: 2) {
@@ -186,13 +202,16 @@ struct ReviewView: View {
                                 .disabled(undoHistory.isEmpty || saving).accessibilityLabel("Undo")
                             Button { restoreHistory(undo: false) } label: { Image(systemName: "arrow.uturn.forward") }
                                 .disabled(redoHistory.isEmpty || saving).accessibilityLabel("Redo")
-                            Button(reordering ? "Done" : "Edit") { withAnimation { reordering.toggle() } }.disabled(saving)
-                                .accessibilityHint("Reorder or delete pages")
+                            if reordering || document?.isDraft == false {
+                                Button(reordering ? "Done" : "Edit") { withAnimation { reordering.toggle() } }.disabled(saving)
+                                    .accessibilityHint("Reorder or delete pages")
+                            }
                         }
                     }
                 }
             }
             .overlay(alignment: .top) { if saving { Button("Cancel export") { saveTask?.cancel() }.padding(10).background(.regularMaterial, in: Capsule()) } }
+            .background(saveFlow)
             .alert("Discard this scan?", isPresented: $confirmDiscard) {
                 Button("Discard", role: .destructive) { cancelEditing() }
                 Button("Keep editing", role: .cancel) {}
@@ -229,8 +248,8 @@ struct ReviewView: View {
                 }
             }) { CameraView(documentID: workingDraftID ?? documentID, retakingPageID: retakingPage) }
             .sheet(isPresented: $identityLayout) { LocalDocumentToolsView(documentID: documentID, tool: .identity) }
-            .sheet(item: $editPage) { page in
-                PageEditor(page: page) { updated in
+            .sheet(item: $editPage, onDismiss: { editTool = nil }) { page in
+                PageEditor(page: page, initialTool: editTool) { updated in
                     if let i = document?.pages.firstIndex(where: { $0.id == updated.id }) { change { $0.pages[i] = updated; $0.searchable = false } }
                 }
             }
@@ -254,6 +273,46 @@ struct ReviewView: View {
                 }
             }
         }
+    }
+    /// Rename, the save sheet, PDF options and the conversion that follows a save.
+    /// Kept apart from `body` so the compiler type-checks it separately.
+    private var saveFlow: some View {
+        Color.clear
+            .alert("Rename", isPresented: $renaming) {
+                TextField("Document name", text: $renameText)
+                Button("Cancel", role: .cancel) {}
+                Button("Save") {
+                    let name = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !name.isEmpty else { return }
+                    document?.title = name; document?.autoTitled = false; persistDraft()
+                }
+            }
+            .sheet(isPresented: $choosingFormat) {
+                if let doc = document {
+                    ReviewSaveSheet(title: Binding(get: { document?.title ?? "" }, set: { document?.title = $0; document?.autoTitled = false; persistDraft() }),
+                                    autoTitled: doc.autoTitled == true) {
+                        pdfOptionFields(doc, rows: true)
+                    } choose: { route in
+                        pendingConversion = route
+                        save()
+                    }
+                }
+            }
+            .sheet(isPresented: $pdfOptions) {
+                if let doc = document {
+                    NavigationStack {
+                        Form { pdfOptionFields(doc) }
+                            .navigationTitle("PDF options").navigationBarTitleDisplayMode(.inline)
+                            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { pdfOptions = false } } }
+                    }.presentationDetents([.medium, .large])
+                }
+            }
+            // The format chosen in the save sheet opens as soon as the PDF is saved.
+            .onChange(of: saved) { _, isSaved in
+                if isSaved, let route = pendingConversion { pendingConversion = nil; conversion = route }
+            }
+            .onChange(of: saving) { _, isSaving in if !isSaving && !saved { pendingConversion = nil } }
+            .sheet(item: $conversion) { route in ConversionDestination(route: route, documentID: documentID) { conversion = nil } }
     }
     /// The page to check, shown big, with its actions and every page in a strip below.
     @ViewBuilder private func pagePreview(_ doc: ScanDocument) -> some View {
@@ -292,10 +351,22 @@ struct ReviewView: View {
             })
             // One calm row of the page's actions, evenly spaced, icon above label.
             HStack(spacing: 0) {
-                pageAction("Adjust", icon: "slider.horizontal.3") { editPage = page }
-                    .accessibilityHint("Crop, rotate, and adjust")
+                // Each opens the page editor on its own tab; rotate turns the page in place.
+                pageAction("Crop", icon: "crop") { editTool = "Crop"; editPage = page }
+                    .accessibilityIdentifier("review-tool-crop")
+                pageAction("Filter", icon: "circle.lefthalf.filled") { editTool = "Tone"; editPage = page }
+                    .accessibilityIdentifier("review-tool-filter")
+                pageAction("Adjust", icon: "slider.horizontal.3") { editTool = "Adjust"; editPage = page }
+                    .accessibilityIdentifier("review-tool-adjust")
+                pageAction("Rotate", icon: "rotate.right") {
+                    change { $0.pages[index].turns = ($0.pages[index].turns + 1) % 4; $0.pages[index].trimming = $0.pages[index].trimming.rotatedClockwise(); $0.searchable = false }
+                }
+                .accessibilityIdentifier("review-tool-rotate")
                 pageAction("Retake", icon: "camera.rotate") { openCamera(retaking: page.id) }
+                    .accessibilityIdentifier("review-tool-retake")
                 Menu {
+                    Button("Reorder pages") { withAnimation { reordering = true } }.disabled(doc.pages.count < 2)
+                    if doc.isDraft { Button("PDF options") { pdfOptions = true } }
                     Button("Duplicate page") { change { value in var copy = page; copy.id = UUID(); value.pages.insert(copy, at: index+1) } }
                     Button("Apply tone and adjustments to all pages") { change { $0.applyAppearance(from: page) } }
                         .disabled(doc.pages.contains { $0.preservesPDF })
@@ -331,6 +402,18 @@ struct ReviewView: View {
                             }
                             .buttonStyle(.plain).id(item.id)
                             .accessibilityLabel("Edit page \(i+1)")
+                            // Long-press and drag a thumbnail onto another to move it there.
+                            .draggable(item.id.uuidString) {
+                                PageThumbnail(page: item).frame(width: 52, height: 68).padding(4)
+                                    .background(.white, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            }
+                            .dropDestination(for: String.self) { ids, _ in
+                                guard let id = ids.first, let from = doc.pages.firstIndex(where: { $0.id.uuidString == id }), from != i else { return false }
+                                let moving = doc.pages[from].id
+                                change { $0.pages.move(fromOffsets: IndexSet(integer: from), toOffset: i > from ? i + 1 : i) }
+                                if let at = document?.pages.firstIndex(where: { $0.id == moving }) { withAnimation { current = at } }
+                                return true
+                            }
                         }
                     }.padding(.horizontal, 2).padding(.vertical, 2)
                 }
@@ -340,6 +423,30 @@ struct ReviewView: View {
         }
         .padding(.horizontal, 4).padding(.top, 4)
         .onChange(of: doc.pages.count) { old, new in if new > old, new > 0 { current = new - 1 } }
+    }
+    /// Folder, paper, orientation and margins of the PDF. In the save sheet each
+    /// field is a labelled row (outside a List a Picker shows no label).
+    @ViewBuilder private func pdfOptionFields(_ doc: ScanDocument, rows: Bool = false) -> some View {
+        let folder = Binding(get: { document?.folder ?? "Scans" }, set: { document?.folder = $0; persistDraft() })
+        let paper = Binding(get: { document?.paper ?? .letter }, set: { document?.paper = $0; persistDraft() })
+        let landscape = Binding(get: { document?.landscape ?? false }, set: { value in change { $0.landscape = value } })
+        let margin = Binding(get: { document?.margin ?? .small }, set: { document?.margin = $0; persistDraft() })
+        if rows {
+            optionRow("Folder") { Picker("Folder", selection: folder) { ForEach(store.manifest.folders, id: \.self) { Text(L($0)).tag($0) } }.labelsHidden() }
+            optionRow("Paper") { Picker("Paper", selection: paper) { ForEach(PaperSize.allCases, id: \.self) { Text(L($0.rawValue)).tag($0) } }.labelsHidden() }
+            Toggle("Landscape", isOn: landscape).font(.system(size: 15))
+            optionRow("Margins") { Picker("Margins", selection: margin) { ForEach(PageMargin.allCases, id: \.self) { Text(L($0.rawValue)).tag($0) } }.labelsHidden() }
+        } else {
+            Picker("Folder", selection: folder) { ForEach(store.manifest.folders, id: \.self) { Text($0).tag($0) } }
+            Picker("Paper", selection: paper) { ForEach(PaperSize.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
+            Toggle("Landscape", isOn: landscape)
+            Picker("Margins", selection: margin) { ForEach(PageMargin.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
+        }
+        if doc.pages.contains(where: { $0.trimming != .zero }) { Text("For no added white space, choose Original paper and None margins. A4 and US Letter keep their shape and may add white space.").font(.caption).foregroundStyle(.secondary) }
+        if doc.pages.contains(where: { $0.sourcePDF != nil }) { Text("Changing PDF paper or margins keeps text and links but flattens interactive forms. The imported original is retained.").font(.caption).foregroundStyle(.secondary) }
+    }
+    private func optionRow<Content: View>(_ title: String, @ViewBuilder _ content: () -> Content) -> some View {
+        HStack { Text(L(title)).font(.system(size: 15)); Spacer(); content() }
     }
     private func pageAction(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) { pageActionLabel(title, icon: icon) }.buttonStyle(.plain)
@@ -431,6 +538,8 @@ struct PageEditor: View {
     var doneTitle = "Done"
     var dismissOnSave = true
     var scanStyle = CaptureStyle.document
+    /// Tab to open on ("Crop", "Tone", "Adjust" or "Retouch"); the review's tool row picks it.
+    var initialTool: String? = nil
     let onSave: (ScanPage) throws -> Void
     @State private var cropping = false
     @State private var trimming = false
@@ -521,6 +630,7 @@ struct PageEditor: View {
                     }.disabled(detecting || !previewReady).padding(.horizontal, 20).padding(.vertical, 12).background(.white)
                 }
             }
+            .onAppear { if let initialTool, let tool = EditorTool(rawValue: initialTool) { selectedTool = tool } }
             .navigationTitle(captureReview ? "Review scan" : "Edit page").navigationBarTitleDisplayMode(.inline)
             .alert("Convert this PDF page for image editing?", isPresented: $rasterConfirmation) {
                 Button("Apply image edits") { if let action = rasterAction { commitFinish(action) } }

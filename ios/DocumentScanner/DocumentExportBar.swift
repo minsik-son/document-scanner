@@ -7,15 +7,7 @@ struct DocumentExportBar: View {
     @EnvironmentObject private var store: LibraryStore
     @EnvironmentObject private var subscription: SubscriptionStore
     let documentID: UUID
-    @State private var route: Route?
-
-    enum Route: String, Identifiable {
-        case word, excel, slides, images
-        var id: String { rawValue }
-        var tool: AdvancedTool? {
-            switch self { case .word: return .word; case .excel: return .excel; case .slides: return .slides; case .images: return nil }
-        }
-    }
+    @State private var route: ConversionRoute?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -33,19 +25,10 @@ struct DocumentExportBar: View {
         .padding(.top, 8).padding(.bottom, 4)
         .background(.white)
         .overlay(alignment: .top) { Divider() }
-        .sheet(item: $route) { route in
-            if let tool = route.tool {
-                NavigationStack {
-                    AdvancedOfflineToolView(tool: tool, documentID: documentID, autoStart: true)
-                        .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Close") { self.route = nil }.accessibilityIdentifier("export-close") } }
-                }
-            } else {
-                PDFToolFlow(tool: .images, documentID: documentID)
-            }
-        }
+        .sheet(item: $route) { route in ConversionDestination(route: route, documentID: documentID) { self.route = nil } }
     }
 
-    private func button(_ r: Route, _ title: String, _ symbol: String) -> some View {
+    private func button(_ r: ConversionRoute, _ title: String, _ symbol: String) -> some View {
         Button { route = r } label: { item(title, systemImage: symbol, pro: r != .images && !subscription.isPro) }
             .buttonStyle(.plain)
             .accessibilityLabel(r == .images ? L("Save as images") : String(format: L("Convert to %@"), title))

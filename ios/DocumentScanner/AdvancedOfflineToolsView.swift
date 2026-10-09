@@ -180,7 +180,7 @@ struct AdvancedOfflineToolView:View {
         }
     }
     private var gate: some View {
-        ProTrialGate(feature: tool.proFeature, title: tool.rawValue, detail: tool.detail, art: tool.art) {
+        ProTrialGate(feature: tool.proFeature, title: tool.rawValue, detail: tool.detail, art: tool.art, autoTry: autoStart) {
             if tool.imageTool {
                 ImageToolFlow(tool:tool, documentID:documentID)
             } else {
@@ -204,17 +204,22 @@ struct ProTrialGate<Content: View>: View {
     let art: ToolArt
     /// Shown as Close on the free-try screen when the gate is a sheet's root.
     var close: (() -> Void)? = nil
+    /// The user already chose this from the save sheet, which shows the free tries:
+    /// with a try left, go straight in instead of showing the free-try screen.
+    var autoTry = false
     let content: () -> Content
     @State private var unlocked = false
     @State private var paywall = false
     @State private var trials = ProTrials()
     @State private var refresh = 0
-    init(feature: ProFeature?, title: String, detail: String, art: ToolArt, close: (() -> Void)? = nil, @ViewBuilder content: @escaping () -> Content) {
-        self.feature = feature; self.title = title; self.detail = detail; self.art = art; self.close = close; self.content = content
+    init(feature: ProFeature?, title: String, detail: String, art: ToolArt, close: (() -> Void)? = nil, autoTry: Bool = false, @ViewBuilder content: @escaping () -> Content) {
+        self.feature = feature; self.title = title; self.detail = detail; self.art = art; self.close = close; self.autoTry = autoTry; self.content = content
     }
+    private var autoUnlock: Bool { autoTry && !subscription.isPro && feature.map { trials.remaining($0) > 0 } == true }
     var body: some View {
-        if subscription.isPro || unlocked || trials.bypassed || feature == nil {
+        if subscription.isPro || unlocked || trials.bypassed || feature == nil || autoUnlock {
             content()
+                .onAppear { if autoUnlock && !unlocked, let feature { ProTrialSession.begin(feature); unlocked = true } }
         } else if let feature {
             let _ = refresh
             ProToolLockView(title: title, detail: detail, art: art, feature: feature,

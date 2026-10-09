@@ -228,3 +228,10 @@ Selected-language + close-up OCR, word-gap column separation, mixed-script parag
 - 도구 탭에서 들어가는 기존 경로는 그대로.
 - 확인 화면(Word·Excel)은 인쇄 모양 그대로의 페이지 전체를 먼저 보여주고, 탭하면 전체 화면 확대.
 - UI 테스트: `ScannerFlowTests.testSavedScanOffersConversionsAndWordReviewShowsWholePage`.
+
+## 검토 화면 리뉴얼 + 저장 시트 (2026-10-09, 목업 확정안)
+
+- 검토 화면: 위쪽 가운데 문서 이름(탭해서 이름 변경). 도구 한 줄: 자르기·필터·조정(각각 편집기의 해당 탭으로 열림)·회전(그 자리에서 90°)·다시 찍기·더 보기. 썸네일을 길게 눌러 끌면 순서 변경. "더 보기"에 순서 편집 목록(VoiceOver용)과 PDF 옵션. 아래는 "페이지 추가"(연속 촬영) + "저장".
+- "저장" → 형식 시트: 파일 이름, PDF로 저장(무료), Word·Excel·PowerPoint(무료 3회 → Pro, 다 쓰면 자물쇠와 Pro 안내), 이미지(무료), PDF 옵션. 어떤 형식이든 PDF를 먼저 보관함에 저장한 뒤 그 변환을 바로 연다(Word·Excel은 바로 읽기, 시트에서 이미 골랐으니 무료 체험 안내 화면은 건너뜀).
+- 저장 후 화면의 변환 바는 시트와 겹쳐서 제거, 문서 화면의 바는 유지. 저장된 문서를 편집할 때는 예전처럼 "변경 사항 저장" 한 번.
+- UI 테스트: `testSaveSheetConvertsToWordAndReviewShowsWholePage`; 기존 "Save PDF" 탭은 `savePDF(in:)`(저장 → PDF로 저장)로 바뀜.

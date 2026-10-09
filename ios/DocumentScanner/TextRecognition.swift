@@ -52,13 +52,23 @@ enum TextRecognition {
 
     /// Tests can limit the passes to the scripts in a sample set; the app always runs them all.
     nonisolated(unsafe) static var passFilter: (([String]) -> Bool)?
+    /// Tests set this to see every pass's raw readings; nil in the app.
+    nonisolated(unsafe) static var log: ((String) -> Void)?
+    /// Keep words only a losing reading made out (tests turn it off to compare).
+    nonisolated(unsafe) static var keepsUncoveredWords = true
     static func recognize(_ image: CGImage, languageCorrection: Bool = true) throws -> [TextBlock] {
+        try recognize([image], languageCorrection: languageCorrection)
+    }
+    /// Reads several renderings of the same page (same geometry) and merges
+    /// them: each line comes from the reading that scores best, and words only
+    /// one rendering made out are kept as well.
+    static func recognize(_ images: [CGImage], languageCorrection: Bool = true) throws -> [TextBlock] {
         var passes = languagePasses(supported: try supportedLanguages())
         if let passFilter { passes = passes.filter(passFilter) }
         var readings: [Reading] = []
         var lastError: Error?
         var successfulPasses = 0
-        for (pass, languages) in passes.enumerated() {
+        for (pass, languages, image) in images.enumerated().flatMap({ k, image in passes.enumerated().map { (k * passes.count + $0.offset, $0.element, image) } }) {
             let request = VNRecognizeTextRequest()
             request.recognitionLevel = .accurate
             request.minimumTextHeight = 0
@@ -68,6 +78,7 @@ enum TextRecognition {
             do {
                 try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
                 successfulPasses += 1
+                log?("pass \(languages.first ?? "") \(image.width)x\(image.height): " + (request.results ?? []).map { "[\($0.topCandidates(1).first?.string ?? "")|\(String(format: "%.2f", $0.topCandidates(1).first?.confidence ?? 0))]" }.joined(separator: " "))
                 readings += (request.results ?? []).compactMap { observation in
                     guard let candidate = observation.topCandidates(1).first,
                           !candidate.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
@@ -102,43 +113,79 @@ enum TextRecognition {
                 value += 0.46 * support
             }
             // When models agree on a Latin/code line, prefer the Latin model.
-            if native.isEmpty && reading.pass == 0 { value += 0.025 }
+            if native.isEmpty && reading.pass % max(1, passes.count) == 0 { value += 0.025 }
             return value
         }
         let ordered = readings.sorted {
             let a = score($0), b = score($1)
             return a == b ? $0.pass < $1.pass : a > b
         }
-        var chosen: [Reading] = []
-        for reading in ordered {
-            let box = reading.observation.boundingBox
-            let conflicts = chosen.contains { other in
-                let otherBox = other.observation.boundingBox
+        // Boxes already taken, in Vision's normalized coordinates.
+        var taken: [CGRect] = []
+        func conflicts(_ box: CGRect) -> Bool {
+            taken.contains { otherBox in
                 let overlap = box.intersection(otherBox)
                 guard !overlap.isNull else { return false }
                 let vertical = overlap.height / max(0.00001, min(box.height, otherBox.height))
                 let area = overlap.width * overlap.height
                 return vertical > 0.65 && area / max(0.00001, min(box.width * box.height, otherBox.width * otherBox.height)) > 0.65
             }
-            if !conflicts { chosen.append(reading) }
         }
-        chosen.sort {
-            let a = $0.observation.boundingBox, b = $1.observation.boundingBox
+        func wordBox(_ candidate: VNRecognizedText, _ range: Range<String.Index>) -> CGRect? {
+            guard let geometry = try? candidate.boundingBox(for: range), geometry.boundingBox.width > 0 else { return nil }
+            return geometry.boundingBox
+        }
+        var blocks: [(CGRect, TextBlock)] = []
+        for reading in ordered {
+            let candidate = reading.candidate, bounds = reading.observation.boundingBox
+            let ranges = selectionRanges(in: candidate.string)
+            if !conflicts(bounds) {
+                taken.append(bounds)
+                let words = ranges.compactMap { range -> TextWord? in
+                    guard let box = wordBox(candidate, range) else { return nil }
+                    return TextWord(text: String(candidate.string[range]), x: box.minX, y: 1 - box.maxY, width: box.width, height: box.height)
+                }
+                blocks.append((bounds, TextBlock(text: candidate.string, x: bounds.minX, y: 1 - bounds.maxY, width: bounds.width, height: bounds.height,
+                                                 words: !words.isEmpty && words.count == ranges.count ? words : nil)))
+                continue
+            }
+            // A reading that lost to another one may still hold words nobody else
+            // read: one pass reads a whole table row ("종로구 Jongno 165,344 23.91"),
+            // another only "23.91". Keep the row's other words.
+            guard keepsUncoveredWords, candidate.confidence >= 0.3 else { continue }
+            var run: [(Range<String.Index>, CGRect)] = []
+            func flush() {
+                guard let first = run.first, let last = run.last else { return }
+                let text = String(candidate.string[first.0.lowerBound..<last.0.upperBound])
+                let box = run.map(\.1).reduce(first.1) { $0.union($1) }
+                let words = run.map { item -> TextWord in
+                    let (r, b) = item
+                    return TextWord(text: String(candidate.string[r]), x: b.minX, y: 1 - b.maxY, width: b.width, height: b.height)
+                }
+                blocks.append((box, TextBlock(text: text, x: box.minX, y: 1 - box.maxY, width: box.width, height: box.height, words: words)))
+                taken.append(box)
+                run = []
+            }
+            for range in ranges {
+                guard let box = wordBox(candidate, range) else { flush(); continue }
+                // Covered: mostly read already, or holding something already read
+                // (a long run of CJK text with no spaces is one "word").
+                let covered = taken.contains { other in
+                    let overlap = box.intersection(other)
+                    guard !overlap.isNull else { return false }
+                    let area = overlap.width * overlap.height
+                    return area > box.width * box.height * 0.3 || area > other.width * other.height * 0.5
+                }
+                if covered { flush() } else { run.append((range, box)) }
+            }
+            flush()
+        }
+        blocks.sort {
+            let a = $0.0, b = $1.0
             if abs(a.midY - b.midY) < min(a.height, b.height) * 0.45 { return a.minX < b.minX }
             return a.midY > b.midY
         }
-        return chosen.map { reading in
-            let candidate = reading.candidate, bounds = reading.observation.boundingBox
-            let ranges = selectionRanges(in: candidate.string)
-            let words = ranges.compactMap { range -> TextWord? in
-                guard let geometry = try? candidate.boundingBox(for: range), geometry.boundingBox.width > 0 else { return nil }
-                let box = geometry.boundingBox
-                return TextWord(text: String(candidate.string[range]), x: box.minX, y: 1 - box.maxY, width: box.width, height: box.height)
-            }
-            return TextBlock(text: candidate.string, x: bounds.minX, y: 1 - bounds.maxY,
-                             width: bounds.width, height: bounds.height,
-                             words: !words.isEmpty && words.count == ranges.count ? words : nil)
-        }
+        return blocks.map(\.1)
     }
 
     private static func script(_ scalar: Unicode.Scalar) -> Script {

@@ -52,6 +52,181 @@ enum DocumentProcessing {
     /// beyond an edge, move that edge outward until the paper ends. An edge is moved only
     /// when the end of the paper is found inside the photo, so a sheet on a white desk
     /// (no visible boundary) keeps its detected edge.
+    /// When no sheet outline is found (a stack of pages, a cluttered desk), a printed
+    /// rectangle on the page, such as a table's frame, still runs parallel to the
+    /// sheet's edges. Grow it outward across the paper margin to where the paper ends.
+    /// Tests only: traces the sheet-edge search.
+    nonisolated(unsafe) static var debugLog: ((String) -> Void)?
+    static func detectSheetFromContent(_ image: CGImage) -> ScanQuad? {
+        guard let raster = Raster(image, maximumDimension: 900) else { return nil }
+        let inner = candidates(image).filter { $0.kind == .rectangle && $0.interior > 0.75 && area($0.quad) >= 0.04 }
+            .max { area($0.quad) < area($1.quad) }
+        guard let inner else { return nil }
+        guard let grown = growToSheet(inner.quad, raster: raster), grown.valid, area(grown) > area(inner.quad) * 1.3 else { return nil }
+        // The paper reaches this far, but it may be several sheets lying on each
+        // other. Within that area, the top sheet is the largest rectangle that
+        // holds the content.
+        return topSheet(in: grown, containing: inner.quad, image: image) ?? grown
+    }
+
+    private static func topSheet(in outer: ScanQuad, containing inner: ScanQuad, image: CGImage) -> ScanQuad? {
+        let xs = outer.points.map(\.x), ys = outer.points.map(\.y)
+        let x0 = max(0, xs.min()! - 0.03), x1 = min(1, xs.max()! + 0.03), y0 = max(0, ys.min()! - 0.03), y1 = min(1, ys.max()! + 0.03)
+        let request = VNDetectRectanglesRequest()
+        request.maximumObservations = 16; request.minimumConfidence = 0.5; request.minimumAspectRatio = 0.3
+        request.minimumSize = 0.5; request.quadratureTolerance = 25
+        // Vision's region of interest is in lower-left-origin normalized coordinates.
+        request.regionOfInterest = CGRect(x: x0, y: 1 - y1, width: x1 - x0, height: y1 - y0)
+        try? VNImageRequestHandler(cgImage: image).perform([request])
+        func inside(_ p: ScanPoint, _ q: ScanQuad) -> Bool {
+            var sign = 0
+            for i in 0..<4 {
+                let a = q.points[i], b = q.points[(i + 1) % 4]
+                let c = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x)
+                let s = c >= 0 ? 1 : -1
+                if sign == 0 { sign = s } else if s != sign { return false }
+            }
+            return true
+        }
+        let found = (request.results ?? []).map { o -> ScanQuad in
+            // Results are relative to the region of interest.
+            let pts = [o.topLeft, o.topRight, o.bottomRight, o.bottomLeft].map { p in
+                ScanPoint(x: x0 + Double(p.x) * (x1 - x0), y: y1 - Double(p.y) * (y1 - y0))
+            }
+            return ScanQuad(points: pts)
+        }.filter { q in
+            q.valid && inner.points.allSatisfy { p in inside(ScanPoint(x: p.x, y: p.y), q) }
+                && area(q) > area(inner) * 1.3 && area(q) <= area(outer) * 1.02
+        }
+        return found.max { area($0) < area($1) }
+    }
+
+    /// Maps the unit square onto a quad (TL, TR, BR, BL): a projective map, so
+    /// lines parallel on the page stay parallel in (u, v) whatever the camera angle.
+    struct SquareToQuad {
+        let h: [Double]
+        init?(_ q: ScanQuad) {
+            let p = q.points
+            let x0 = p[0].x, y0 = p[0].y, x1 = p[1].x, y1 = p[1].y, x2 = p[2].x, y2 = p[2].y, x3 = p[3].x, y3 = p[3].y
+            let dx1 = x1 - x2, dx2 = x3 - x2, dx3 = x0 - x1 + x2 - x3
+            let dy1 = y1 - y2, dy2 = y3 - y2, dy3 = y0 - y1 + y2 - y3
+            let det = dx1 * dy2 - dx2 * dy1
+            guard abs(det) > 1e-12 else { return nil }
+            let g = (dx3 * dy2 - dx2 * dy3) / det, hh = (dx1 * dy3 - dx3 * dy1) / det
+            h = [x1 - x0 + g * x1, x3 - x0 + hh * x3, x0, y1 - y0 + g * y1, y3 - y0 + hh * y3, y0, g, hh, 1]
+        }
+        func callAsFunction(_ u: Double, _ v: Double) -> ScanPoint {
+            let w = h[6] * u + h[7] * v + h[8]
+            return ScanPoint(x: (h[0] * u + h[1] * v + h[2]) / w, y: (h[3] * u + h[4] * v + h[5]) / w)
+        }
+    }
+
+    /// Grows printed content (a table's frame) to the sheet it is printed on. The
+    /// search runs in the content's own rectified coordinates, where the sheet is
+    /// an upright rectangle around it, so a steep camera angle does not tilt the
+    /// sheet's edges. Each side moves out across the paper margin until the paper ends.
+    private static func growToSheet(_ quad: ScanQuad, raster: Raster) -> ScanQuad? {
+        guard let map = SquareToQuad(quad) else { return nil }
+        func rgb(_ u: Double, _ v: Double) -> [Double]? {
+            let p = map(u, v)
+            guard (0...1).contains(p.x), (0...1).contains(p.y) else { return nil }
+            return raster.pixel(p.x, p.y)
+        }
+        func lum(_ c: [Double]) -> Double { c[0] * 0.299 + c[1] * 0.587 + c[2] * 0.114 }
+        // Step of about one raster pixel in content units.
+        let corner = map(0, 0), across = map(1, 0)
+        let widthPx = hypot((across.x - corner.x) * Double(raster.width), (across.y - corner.y) * Double(raster.height))
+        let step = 1 / max(50, widthPx)
+        var bounds = [0.0, 0.0, 1.0, 1.0]   // u0, v0, u1, v1
+        var framed = 0
+        // side: (moves u or v, direction)
+        for (side, along) in [(0, true), (1, false), (2, true), (3, false)].map({ ($0.0, $0.1) }) {
+            let outward = side >= 2 ? 1.0 : -1.0
+            let base = bounds[side]
+            func point(_ t: Double, _ d: Double) -> (Double, Double) {
+                let s = 0.1 + 0.8 * t
+                let edge = base + outward * d
+                return along ? (edge, s) : (s, edge)
+            }
+            // The paper margin just outside the content is the reference.
+            var reference = [0.0, 0.0, 0.0], n = 0.0
+            for j in 0..<9 {
+                let (u, v) = point(Double(j) / 8, step * 6)
+                guard let c = rgb(u, v), paperLikelihood(c) > 0.5 else { continue }
+                for k in 0..<3 { reference[k] += c[k] }; n += 1
+            }
+            guard n >= 5 else { return nil }
+            reference = reference.map { $0 / n }
+            func samePaper(_ c: [Double]) -> Bool {
+                guard paperLikelihood(c) > 0.5 else { return false }
+                let shift = (0..<3).map { c[$0] - reference[$0] }
+                let mean = shift.reduce(0, +) / 3
+                return (shift.map { abs($0 - mean) }.max() ?? 0) < 0.06 && mean > -0.25
+            }
+            func paperFraction(_ d: Double) -> Double? {
+                var paper = 0.0, total = 0.0
+                for j in 0..<9 { let (u, v) = point(Double(j) / 8, d); guard let c = rgb(u, v) else { continue }; total += 1; if samePaper(c) { paper += 1 } }
+                return total >= 6 ? paper / total : nil
+            }
+            /// A second sheet under this one shows as a band of paper slightly darker
+            /// than the top sheet, between the top sheet's edge and the desk. Walking
+            /// in from the paper's end, the top sheet starts where the brightness
+            /// steps up sharply and stays up, at the same place along both halves of the side.
+            func topSheetStep(_ end: Double) -> Double? {
+                func lums(_ d: Double, _ js: ClosedRange<Int>) -> Double? {
+                    var v: [Double] = []
+                    for j in js { let (u, vv) = point(Double(j) / 8, d); if let c = rgb(u, vv), paperLikelihood(c) > 0.3 { v.append(lum(c)) } }
+                    return v.count * 2 > js.count ? v.sorted()[v.count / 2] : nil
+                }
+                func profile(_ js: ClosedRange<Int>) -> [(Double, Double)] {
+                    stride(from: step * 6, to: end - step * 2, by: step).compactMap { d in lums(d, js).map { (d, $0) } }
+                }
+                /// The steepest fall in brightness going outward that stays down: the
+                /// top sheet's edge (often a thin shadow line, then the slightly darker
+                /// sheet underneath). Returns the position and the fall.
+                func stepAt(_ prof: [(Double, Double)]) -> (Double, Double)? {
+                    guard prof.count >= 16 else { return nil }
+                    func mean(_ x: ArraySlice<(Double, Double)>) -> Double { x.map(\.1).reduce(0, +) / Double(x.count) }
+                    var best: (Double, Double)?
+                    for i in 4..<(prof.count - 8) {
+                        let fall = mean(prof[(i - 2)...(i - 1)]) - mean(prof[(i + 1)...(i + 2)])
+                        let stays = mean(prof[(i - 4)...(i - 1)]) - mean(prof[(i + 1)...min(prof.count - 1, i + 6)])
+                        guard fall >= 0.012, stays >= 0.01 else { continue }
+                        if best == nil || fall > best!.1 { best = (prof[i].0, fall) }
+                    }
+                    return best
+                }
+                if let log = debugLog {
+                    for js in [0...4, 4...8] {
+                        let p = profile(js)
+                        log("side \(side) end \(String(format: "%.3f", end)) half \(js.lowerBound) step \(stepAt(p).map { String(format: "%.3f/%.3f", $0.0, $0.1) } ?? "-") " + stride(from: 0, to: p.count, by: max(1, p.count / 40)).map { String(format: "%.0f", p[$0].1 * 1000) }.joined(separator: " "))
+                    }
+                }
+                guard let a = stepAt(profile(0...4)), let b = stepAt(profile(4...8)), abs(a.0 - b.0) <= step * 6 else { return nil }
+                return (a.0 + b.0) / 2
+            }
+            var d = step * 6, edge: Double?
+            while d < 3 {
+                d += step
+                guard let here = paperFraction(d) else { edge = d; framed += 1; break }   // left the photo: the sheet reaches the frame
+                if here <= 0.3, let next = paperFraction(d + step * 3), next <= 0.3 {
+                    // A desk goes on; a dark table or bar on the page ends and the
+                    // paper comes back. Only the first is the edge of the sheet.
+                    let beyond = stride(from: 8.0, through: 40.0, by: 8.0).compactMap { paperFraction(d + step * $0) }
+                    guard beyond.allSatisfy({ $0 <= 0.3 }) else { return nil }
+                    edge = d; break
+                }
+            }
+            guard let edge else { return nil }
+            bounds[side] = base + outward * (topSheetStep(edge) ?? edge)
+        }
+        // A sheet lying on a desk shows the desk on at least three sides.
+        guard framed <= 1 else { return nil }
+        let q = ScanQuad(points: [map(bounds[0], bounds[1]), map(bounds[2], bounds[1]), map(bounds[2], bounds[3]), map(bounds[0], bounds[3])]
+            .map { ScanPoint(x: min(1, max(0, $0.x)), y: min(1, max(0, $0.y))) })
+        return q.valid ? q : nil
+    }
+
     private static func extendToPaperEdges(_ quad: ScanQuad, raster: Raster) -> ScanQuad {
         var p = quad.points
         let span = Double(max(raster.width, raster.height))
@@ -206,13 +381,15 @@ enum DocumentProcessing {
         var enhancement: Enhancement
     }
 
-    static func render(_ source: CIImage, crop: ScanQuad, turns: Int, enhancement: Enhancement, strength: Double = 1, identityCleanup: Bool = false) throws -> CIImage {
-        try finish(prepare(source, crop: crop, turns: turns, enhancement: enhancement, identityCleanup: identityCleanup), strength: strength)
+    static func render(_ source: CIImage, crop: ScanQuad, turns: Int, enhancement: Enhancement, strength: Double = 1, identityCleanup: Bool = false, alignedOriginal: Bool = false) throws -> CIImage {
+        try finish(prepare(source, crop: crop, turns: turns, enhancement: enhancement, identityCleanup: identityCleanup, alignedOriginal: alignedOriginal), strength: strength)
     }
 
     // Geometry and illumination estimation do not depend on the cleanup slider.
     // Interactive previews can cache this stage without repeatedly running Vision.
-    static func prepare(_ source: CIImage, crop: ScanQuad, turns: Int, enhancement: Enhancement, identityCleanup: Bool = false) throws -> PreparedDocument {
+    /// `alignedOriginal`: the Original tone with the same grid/line alignment the
+    /// cleaned tones get, so the two renderings share their geometry exactly.
+    static func prepare(_ source: CIImage, crop: ScanQuad, turns: Int, enhancement: Enhancement, identityCleanup: Bool = false, alignedOriginal: Bool = false) throws -> PreparedDocument {
         guard crop.valid else { throw ScannerError.message("Check the four crop corners before saving.") }
         var image = source
         if crop != .full {
@@ -228,7 +405,7 @@ enum DocumentProcessing {
         if crop != .full && !identityCleanup { image = removeResidualEdges(image) }
         if identityCleanup { image = IdentityBackground.clean(image) }
         if turns % 4 != 0 { image = image.oriented([.up, .right, .down, .left][((turns%4)+4)%4]) }
-        guard enhancement != .original else { return .init(image: image, enhancement: enhancement) }
+        guard enhancement != .original || alignedOriginal else { return .init(image: image, enhancement: enhancement) }
 
         // A correctly cropped sheet can still contain a slanted printed grid,
         // especially when the page was bent or the paper-edge detector was off by
@@ -237,6 +414,7 @@ enum DocumentProcessing {
         // grid stay in the image; this is not a crop to the printed table.
         let alignment = alignPrintedGrid(image)
         image = alignment.grid == nil ? alignTextLines(alignment.image) : alignment.image
+        if enhancement == .original { return .init(image: image, enhancement: enhancement) }
         let extent = image.extent
         // Estimate illumination from paper-like pixels. Colored cells and logos do
         // not become the local white reference, even when they fill a large area.

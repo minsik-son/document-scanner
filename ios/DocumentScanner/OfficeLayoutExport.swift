@@ -361,6 +361,9 @@ enum OfficeLayoutExport {
             for k in 1..<xs.count { let d = abs(xs[k] - x); if d < distance { distance = d; best = k - 1 } }
             return max(0, best)
         }
+        /// The grid line nearest a table boundary, the bottom/right edge included.
+        func rowLine(at y: Double) -> Int { ys.indices.min { abs(ys[$0] - y) < abs(ys[$1] - y) } ?? 0 }
+        func columnLine(at x: Double) -> Int { xs.indices.min { abs(xs[$0] - x) < abs(xs[$1] - x) } ?? 0 }
         func row(at y: Double) -> Int {
             var best = 0, distance = Double.infinity
             for (k, v) in ys.enumerated() where k < ys.count - 1 { let d = abs(v - y); if d < distance { distance = d; best = k } }
@@ -392,6 +395,15 @@ enum OfficeLayoutExport {
                     }
                 }
             }
+        }
+        // Text outside a table that starts inside the table's width (a note or
+        // signature below it) must not split the table's columns: it starts at
+        // the nearest table column instead.
+        let tableSpans: [[Double]] = page.items.compactMap { if case .table(let t) = $0 { return t.columns }; return nil }
+        let tableXs = Set(tableSpans.flatMap { $0 })
+        xs = xs.map { v in
+            guard !tableXs.contains(v), let cols = tableSpans.first(where: { v > $0.first! && v < $0.last! }) else { return v }
+            return cols.min { abs($0 - v) < abs($1 - v) }!
         }
         let tolerance = Double(page.width) * 0.006
         var merged: [Double] = []
@@ -441,8 +453,9 @@ enum OfficeLayoutExport {
             for item in ordered {
                 switch item {
                 case .table(let t):
-                    let colIndex = t.columns.map { grid.column(at: $0) }
-                    let rowIndex = t.rows.map { grid.row(at: $0) }
+                    // Boundaries map to grid lines; the last one is the table's far edge.
+                    let colIndex = t.columns.map { grid.columnLine(at: $0) }
+                    let rowIndex = t.rows.map { grid.rowLine(at: $0) }
                     for cell in t.cells {
                         let r0 = rowIndex[cell.row], c0 = colIndex[cell.column]
                         var r1 = max(r0, (cell.row + cell.rowSpan < rowIndex.count ? rowIndex[cell.row + cell.rowSpan] : grid.ys.count - 1) - 1)

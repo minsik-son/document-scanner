@@ -184,6 +184,8 @@ struct LayoutRaster {
 enum DocumentLayoutAnalyzer {
     /// Switches for corpus before/after comparisons; always on in the app.
     nonisolated(unsafe) static var detectsColumns = true
+    nonisolated(unsafe) static var hollowsSolidAreas = true
+    nonisolated(unsafe) static var readsDarkFills = true
     nonisolated(unsafe) static var keepsRecognizedLines = true
     nonisolated(unsafe) static var splitsAlignedColumns = true
     // MARK: Words
@@ -279,15 +281,93 @@ enum DocumentLayoutAnalyzer {
             let b = box.inset(min(box.width, box.height) * 0.12)
             guard b.width > 2, b.height > 2 else { return nil }
             var r = 0.0, g = 0.0, bl = 0.0, n = 0.0
+            var dr = 0.0, dg = 0.0, db = 0.0, dn = 0.0
             let sx = max(1, Int(b.width / 40)), sy = max(1, Int(b.height / 20))
             for y in stride(from: Int(b.y0), to: Int(b.y1), by: sy) {
-                for x in stride(from: Int(b.x0), to: Int(b.x1), by: sx) where !isDark(x, y) {
-                    let c = raster.color(x, y); r += Double(c.0); g += Double(c.1); bl += Double(c.2); n += 1
+                for x in stride(from: Int(b.x0), to: Int(b.x1), by: sx) {
+                    let c = raster.color(x, y)
+                    if isDark(x, y) { dr += Double(c.0); dg += Double(c.1); db += Double(c.2); dn += 1 }
+                    else { r += Double(c.0); g += Double(c.1); bl += Double(c.2); n += 1 }
                 }
             }
+            // A cell filled with a dark color (a header band with white text):
+            // the dark pixels are the fill, the light ones the letters.
+            if DocumentLayoutAnalyzer.readsDarkFills, dn > 8, dn > (n + dn) * 0.6 { return normalized((dr / dn, dg / dn, db / dn)) }
             guard n > 8 else { return nil }
             let c = normalized((r / n, g / n, bl / n))
             return c
+        }
+        func darkFraction(_ box: LBox) -> Double {
+            var dark = 0, total = 0
+            let sx = max(1, Int(box.width / 40)), sy = max(1, Int(box.height / 40))
+            for y in stride(from: max(0, Int(box.y0)), to: min(raster.height, Int(box.y1)), by: sy) {
+                for x in stride(from: max(0, Int(box.x0)), to: min(raster.width, Int(box.x1)), by: sx) { total += 1; if isDark(x, y) { dark += 1 } }
+            }
+            return total == 0 ? 0 : Double(dark) / Double(total)
+        }
+        /// The same ink with the inside of solid dark areas (filled header bands,
+        /// solid boxes) cleared, leaving their outline. Rules are found on this:
+        /// a band would otherwise swallow every rule that touches it, and the
+        /// light letters inside it would outline themselves as short rules.
+        /// An area is solid where most of a text-sized window is dark (letters on
+        /// white are mostly paper; a band with white letters is mostly ink).
+        func hollowed(textHeight: Double) -> Ink {
+            let w = raster.width, h = raster.height
+            func integral(_ mask: [Bool]) -> [Int32] {
+                var sum = [Int32](repeating: 0, count: (w + 1) * (h + 1))
+                for y in 0..<h {
+                    var row: Int32 = 0
+                    for x in 0..<w {
+                        if mask[y * w + x] { row += 1 }
+                        sum[(y + 1) * (w + 1) + x + 1] = sum[y * (w + 1) + x + 1] + row
+                    }
+                }
+                return sum
+            }
+            func count(_ sum: [Int32], _ x: Int, _ y: Int, _ r: Int) -> (Int32, Int32) {
+                let x0 = max(0, x - r), y0 = max(0, y - r), x1 = min(w, x + r + 1), y1 = min(h, y + r + 1)
+                let n = sum[y1 * (w + 1) + x1] - sum[y0 * (w + 1) + x1] - sum[y1 * (w + 1) + x0] + sum[y0 * (w + 1) + x0]
+                return (n, Int32((x1 - x0) * (y1 - y0)))
+            }
+            let r = max(5, Int(textHeight * 1.0))
+            let darkSum = integral(dark)
+            var solid = [Bool](repeating: false, count: w * h)
+            var any = false
+            for y in 0..<h { for x in 0..<w {
+                let (n, total) = count(darkSum, x, y, r)
+                if n * 100 > total * 62 { solid[y * w + x] = true; any = true }
+            } }
+            guard any else { return self }
+            // Only large areas are bands and boxes; a few bold letters next to a
+            // rule can be mostly ink too, and the rule there must stay.
+            let minSide = Int(textHeight * 2.5)
+            var seen = [Bool](repeating: false, count: w * h)
+            var keep = [Bool](repeating: false, count: w * h)
+            for start in 0..<(w * h) where solid[start] && !seen[start] {
+                var stack = [start], members: [Int] = []
+                seen[start] = true
+                var x0 = w, x1 = 0, y0 = h, y1 = 0
+                while let p = stack.popLast() {
+                    members.append(p)
+                    let x = p % w, y = p / w
+                    x0 = min(x0, x); x1 = max(x1, x); y0 = min(y0, y); y1 = max(y1, y)
+                    if x > 0, solid[p - 1], !seen[p - 1] { seen[p - 1] = true; stack.append(p - 1) }
+                    if x < w - 1, solid[p + 1], !seen[p + 1] { seen[p + 1] = true; stack.append(p + 1) }
+                    if y > 0, solid[p - w], !seen[p - w] { seen[p - w] = true; stack.append(p - w) }
+                    if y < h - 1, solid[p + w], !seen[p + w] { seen[p + w] = true; stack.append(p + w) }
+                }
+                if x1 - x0 >= minSide * 2 && y1 - y0 >= minSide / 2 && members.count >= minSide * minSide { for p in members { keep[p] = true } }
+            }
+            solid = keep
+            // Keep a rim of a few pixels so the area's outline stays as rules.
+            let e = max(3, Int(Double(h) * 0.002))
+            let solidSum = integral(solid)
+            var out = self
+            for y in 0..<h { for x in 0..<w where solid[y * w + x] {
+                let (n, total) = count(solidSum, x, y, e)
+                if n == total { out.dark[y * w + x] = false }
+            } }
+            return out
         }
         /// Decides whether a measured cell color is a real fill and restores the
         /// saturation that scanning removes from light tints.
@@ -301,7 +381,14 @@ enum DocumentLayoutAnalyzer {
             let lightness = Double(maxC + minC) / 510
             let factor = tinted ? 1 + 0.8 * max(0, min(1, (lightness - 0.7) / 0.25)) : 1
             func boost(_ v: UInt8) -> UInt8 { UInt8(max(0, min(255, (255 - (255 - Double(v)) * factor).rounded()))) }
-            return LayoutColor(r: boost(c.r), g: boost(c.g), b: boost(c.b))
+            let boosted = LayoutColor(r: boost(c.r), g: boost(c.g), b: boost(c.b))
+            // A palette tint that matches the measured color as it is beats one
+            // that only matches after restoring saturation.
+            switch (OfficePalette.match(c), OfficePalette.match(boosted)) {
+            case let (a?, b?): return a.1 <= b.1 ? a.0 : b.0
+            case let (a?, nil): return a.0
+            default: return boosted
+            }
         }
         /// Fraction of a horizontal or vertical path that has ink within ±tolerance.
         func coverage(horizontal y: Double, from x0: Double, to x1: Double, tolerance: Int) -> Double {
@@ -702,6 +789,12 @@ enum DocumentLayoutAnalyzer {
             }
         }
         spreadRowFills(&cells, ink: ink)
+        spreadGroupFills(&cells, ink: ink)
+        for i in cells.indices { cells[i].fill = cells[i].fill.map(OfficePalette.snapped) }
+        unifyRowShades(&cells)
+        if let log = debugLog {
+            for c in cells { log("\(c.row),\(c.column) span \(c.rowSpan)x\(c.columnSpan) raw \(ink.fill(c.box)?.hex ?? "-") fill \(c.fill?.hex ?? "-")") }
+        }
         return LayoutTable(columns: columns, rows: rows, cells: cells, ruled: true)
     }
 
@@ -755,7 +848,9 @@ enum DocumentLayoutAnalyzer {
     static func analyze(_ raster: LayoutRaster, blocks: [TextBlock], pageSize: (Double, Double)? = nil) -> PageLayout {
         let W = raster.width, H = raster.height
         var ink = Ink(raster)
+        debugLog?("blocks: " + blocks.map { "[\($0.text)]" }.joined(separator: " "))
         var wordLines = words(blocks, width: W, height: H)
+        debugLog?("wordlines: " + wordLines.map { $0.map(\.text).joined(separator: " ") }.joined(separator: " | "))
         let allHeights = wordLines.flatMap { $0.map(\.box.height) }.sorted()
         let textHeight = allHeights.isEmpty ? Double(H) * 0.015 : allHeights[allHeights.count / 2]
         let size = pageSize ?? physicalSize(width: W, height: H)
@@ -764,9 +859,18 @@ enum DocumentLayoutAnalyzer {
 
         for li in wordLines.indices { for wi in wordLines[li].indices { wordLines[li][wi].color = ink.inkColor(wordLines[li][wi].box) } }
 
-        let hSegments = horizontalSegments(ink, minLength: max(40, Int(Double(W) * 0.035)))
-        let vSegments = verticalSegments(ink, minLength: max(30, Int(textHeight * 1.4)))
+        debugLog?("textHeight \(textHeight) words \(allHeights.count) vmin \(max(30, Int(textHeight * 1.4)))")
+        let lineInk = hollowsSolidAreas ? ink.hollowed(textHeight: textHeight) : ink
+        let hSegments = horizontalSegments(lineInk, minLength: max(40, Int(Double(W) * 0.035)))
+        let vSegments = verticalSegments(lineInk, minLength: max(30, Int(textHeight * 1.4)))
         var tables = ruledTables(ink, horizontal: hSegments, vertical: vSegments, textHeight: textHeight)
+        // A solid shape (a logo, a black box) leaves its outline after hollowing;
+        // a single empty "cell" that is mostly ink is that shape, not a table.
+        tables.removeAll { t in
+            guard t.cells.count == 1, let c = t.cells.first else { return false }
+            let words = wordLines.joined().contains { c.box.contains(x: $0.box.midX, y: $0.box.midY) }
+            return !words && ink.darkFraction(c.box) > 0.5
+        }
         // Text is measured without ruling lines so borders never inflate sizes.
         var textInk = ink
         for s in hSegments {
@@ -778,7 +882,16 @@ enum DocumentLayoutAnalyzer {
             for x in max(0, Int(s.c) - r)...min(W - 1, Int(s.c) + r) { for y in max(0, Int(s.a0))..<min(H, Int(s.a1)) { textInk.dark[y * W + x] = false } }
         }
         // Recognized word boxes are padded; snap their sides to the ink.
-        for li in wordLines.indices { for wi in wordLines[li].indices {
+        // Not on a dark fill, where everything is ink and the box would spread.
+        func onDarkFill(_ box: LBox) -> Bool {
+            var dark = 0, total = 0
+            let sx = max(1, Int(box.width / 30)), sy = max(1, Int(box.height / 8))
+            for y in stride(from: max(0, Int(box.y0)), to: min(H, Int(box.y1)), by: sy) {
+                for x in stride(from: max(0, Int(box.x0)), to: min(W, Int(box.x1)), by: sx) { total += 1; if ink.dark[y * W + x] { dark += 1 } }
+            }
+            return total > 0 && dark * 10 > total * 6
+        }
+        for li in wordLines.indices { for wi in wordLines[li].indices where !onDarkFill(wordLines[li][wi].box) {
             if let tight = textInk.inkColumns(wordLines[li][wi].box) { wordLines[li][wi].box.x0 = tight.0; wordLines[li][wi].box.x1 = tight.1 }
         } }
         // Body text sets the regular stroke weight of this page.
@@ -1332,6 +1445,36 @@ enum DocumentLayoutAnalyzer {
                 table.cells[i].lines[l][r].text = text + ")"
             }
         }
+        harmonizeColumnCase(&table)
+    }
+    /// A word printed the same way in most cells of a column ("xx" in
+    /// "10.41.23.xx") is that word wherever recognition changed only its case
+    /// ("10.41.22.XX", "10.81.1.Xx").
+    static func harmonizeColumnCase(_ table: inout LayoutTable) {
+        let letters = try! NSRegularExpression(pattern: "[A-Za-z]+")
+        for c in 0..<table.columnCount {
+            let cells = table.cells.indices.filter { table.cells[$0].column == c && table.cells[$0].columnSpan == 1 && !table.cells[$0].lines.isEmpty }
+            guard cells.count >= 4 else { continue }
+            var variants: [String: [String: Int]] = [:]
+            for i in cells {
+                let text = table.cells[i].text, ns = text as NSString
+                for word in Set(letters.matches(in: text, range: NSRange(location: 0, length: ns.length)).map { ns.substring(with: $0.range) }) where word.count >= 2 {
+                    variants[word.lowercased(), default: [:]][word, default: 0] += 1
+                }
+            }
+            for (_, forms) in variants where forms.count >= 2 {
+                let total = forms.values.reduce(0, +)
+                guard let (major, n) = forms.max(by: { $0.value < $1.value }), n >= 3, Double(n) >= Double(total) * 0.75 else { continue }
+                let pattern = try! NSRegularExpression(pattern: "(?<![A-Za-z])(" + forms.keys.filter { $0 != major }.map(NSRegularExpression.escapedPattern).joined(separator: "|") + ")(?![A-Za-z])")
+                for i in cells {
+                    table.cells[i].lines = table.cells[i].lines.map { line in line.map { run in
+                        var run = run
+                        run.text = pattern.stringByReplacingMatches(in: run.text, range: NSRange(location: 0, length: (run.text as NSString).length), withTemplate: major)
+                        return run
+                    } }
+                }
+            }
+        }
     }
     /// Ranges in one column ("518 - 689", "476-479") share the spacing most
     /// of them use, so recognition noise does not show as uneven dashes.
@@ -1352,8 +1495,201 @@ enum DocumentLayoutAnalyzer {
             for (i, p) in ranges { table.cells[i].lines[0][0].text = spaced ? "\(p.0) - \(p.1)" : "\(p.0)-\(p.1)" }
         }
     }
+    /// Recognition sometimes reads across a thin cell rule as one word
+    /// ("CoquitlamHCQ", or "UW/HUW" with the rule read as a slash). Where a word
+    /// clearly straddles the border between two cells of a ruled table, cut it at
+    /// the border, by character widths, and drop a rule read as "/" or "|".
+    static func splitAcrossCells(_ words: [Word], table: LayoutTable) -> [Word] {
+        guard table.ruled else { return words }
+        var out: [Word] = []
+        for w in words {
+            let chars = Array(w.text)
+            guard chars.count >= 2,
+                  let left = table.cells.first(where: { $0.box.contains(x: w.box.x0 + 1, y: w.box.midY) }),
+                  let right = table.cells.first(where: { $0.box.contains(x: w.box.x1 - 1, y: w.box.midY) }),
+                  left.row == right.row || (left.box.y0 < w.box.midY && right.box.y0 < w.box.midY),
+                  left.column != right.column, left.box.x1 <= right.box.x0 + 1 else { out.append(w); continue }
+            let border = left.box.x1
+            let fraction = (border - w.box.x0) / max(1, w.box.width)
+            // Both parts must be real text, not a letter clipped by a slanted rule.
+            let charWidth = w.box.width / Double(chars.count)
+            guard border - w.box.x0 >= charWidth * 1.5, w.box.x1 - border >= charWidth * 1.5 else { out.append(w); continue }
+            let total = naturalWidth(w.text, size: 1)
+            var best = 1, bestError = Double.infinity
+            for k in 1..<chars.count {
+                let e = abs(naturalWidth(String(chars[..<k]), size: 1) / max(0.001, total) - fraction)
+                if e < bestError { bestError = e; best = k }
+            }
+            var head = String(chars[..<best]), tail = String(chars[best...])
+            for rule in ["/", "|", "\\"] {
+                if head.hasSuffix(rule) { head.removeLast() } else if tail.hasPrefix(rule) { tail.removeFirst() }
+            }
+            head = head.trimmingCharacters(in: .whitespaces); tail = tail.trimmingCharacters(in: .whitespaces)
+            guard !head.isEmpty, !tail.isEmpty else { out.append(w); continue }
+            var a = w, b = w
+            a.text = head; a.box = LBox(w.box.x0, w.box.y0, min(w.box.x1, border - 1), w.box.y1)
+            b.text = tail; b.box = LBox(max(w.box.x0, border + 1), w.box.y0, w.box.x1, w.box.y1); b.spaceBefore = true
+            out.append(a); out.append(b)
+        }
+        return out
+    }
+
+    /// A rule too faint to find merges two cells of a column ("10.41.22.xx" over
+    /// "10.41.23.xx" in one cell). When a merged cell holds one line of text per
+    /// row it spans, each line sitting in its own row, and the neighbouring cells
+    /// on those rows are separate, the rule is there: split the cell by row.
+    /// Text never crosses a rule. A word sitting across the boundary between two
+    /// cells of a column ("Rank" centred in a header two rows tall, where the
+    /// rule between the rows was carried across a column it does not reach)
+    /// means the two are one cell.
+    static func mergeAcrossText(_ table: inout LayoutTable, words: [Word]) {
+        guard table.ruled else { return }
+        var changed = true
+        while changed {
+            changed = false
+            outer: for i in table.cells.indices {
+                let a = table.cells[i]
+                guard let j = table.cells.indices.first(where: { table.cells[$0].row == a.row + a.rowSpan && table.cells[$0].column == a.column && table.cells[$0].columnSpan == a.columnSpan }) else { continue }
+                let b = table.cells[j]
+                let boundary = a.box.y1
+                let crossing = words.contains { w in
+                    w.box.midX > a.box.x0 && w.box.midX < a.box.x1
+                        && boundary - w.box.y0 >= w.box.height * 0.3 && w.box.y1 - boundary >= w.box.height * 0.3
+                }
+                guard crossing else { continue }
+                var merged = a
+                merged.rowSpan = a.rowSpan + b.rowSpan
+                merged.box = LBox(a.box.x0, a.box.y0, a.box.x1, b.box.y1)
+                merged.bottom = b.bottom
+                table.cells[i] = merged
+                table.cells.remove(at: j)
+                changed = true
+                break outer
+            }
+        }
+    }
+
+    static func splitMissedRows(_ table: inout LayoutTable, words: [Word]) {
+        guard table.ruled else { return }
+        var result: [LayoutCell] = []
+        for cell in table.cells {
+            guard cell.rowSpan > 1, cell.columnSpan == 1 else { result.append(cell); continue }
+            let inside = words.filter { cell.box.contains(x: $0.box.midX, y: $0.box.midY) }
+            let lines = visualLines(inside)
+            let rowsOf = lines.map { line in (cell.row..<(cell.row + cell.rowSpan)).first { table.rows[$0] <= line.box.midY && line.box.midY < table.rows[$0 + 1] } }
+            let separateNeighbours = (cell.row..<(cell.row + cell.rowSpan)).allSatisfy { r in
+                table.cells.contains { $0.row == r && $0.rowSpan == 1 && $0.column != cell.column && abs($0.column - cell.column) == 1 }
+            }
+            guard lines.count == cell.rowSpan, separateNeighbours,
+                  Set(rowsOf.compactMap { $0 }).count == cell.rowSpan else { result.append(cell); continue }
+            for r in cell.row..<(cell.row + cell.rowSpan) {
+                var part = cell
+                part.row = r; part.rowSpan = 1
+                part.box = LBox(cell.box.x0, table.rows[r], cell.box.x1, table.rows[r + 1])
+                part.top = r == cell.row ? cell.top : true
+                part.bottom = r == cell.row + cell.rowSpan - 1 ? cell.bottom : true
+                result.append(part)
+            }
+        }
+        table.cells = result.sorted { $0.row == $1.row ? $0.column < $1.column : $0.row < $1.row }
+    }
+
+    /// A cell over several columns that holds one group of words per column,
+    /// each inside its own column ("Rank Name Height Floors" in a dark header
+    /// band whose dividers do not show), is one cell per column.
+    static func splitMissedColumns(_ table: inout LayoutTable, words: inout [Word], ink: Ink? = nil) {
+        guard table.ruled else { return }
+        var result: [LayoutCell] = []
+        for cell in table.cells {
+            guard cell.columnSpan > 1, cell.rowSpan == 1 else { result.append(cell); continue }
+            let bounds = table.columns
+            let columnOf: (Double) -> Int? = { x in (cell.column..<(cell.column + cell.columnSpan)).first { bounds[$0] <= x && x < bounds[$0 + 1] } }
+            let inside = words.indices.filter { cell.box.contains(x: words[$0].box.midX, y: words[$0].box.midY) }.sorted { words[$0].box.x0 < words[$1].box.x0 }
+            // Words of one column stay together; a word starting in another column starts a group.
+            var groups: [[Int]] = []
+            for i in inside {
+                if let last = groups.last?.last, columnOf(words[last].box.midX) == columnOf(words[i].box.midX) { groups[groups.count - 1].append(i) } else { groups.append([i]) }
+            }
+            var columns: [Int] = []
+            for g in groups {
+                let cs = Set(g.compactMap { columnOf(words[$0].box.midX) })
+                if cs.count == 1, let c = cs.first { columns.append(c) }
+            }
+            let byWords = groups.count == cell.columnSpan && columns.count == groups.count && Set(columns).count == groups.count
+            var placed = false
+            // Light letters on a dark band: recognition places words poorly there,
+            // so find the groups of letters in the pixels and hand out the words
+            // to them in reading order, by width.
+            debugLog?("splitcols? \(cell.row),\(cell.column)x\(cell.columnSpan) fill \(cell.fill?.hex ?? "-") words \(inside.count) byWords \(byWords)")
+            if let ink, !inside.isEmpty, let fill = cell.fill, Int(fill.r) + Int(fill.g) + Int(fill.b) < 390 {
+                let w = ink.raster.width
+                let y0 = Int(cell.box.y0 + cell.box.height * 0.2), y1 = Int(cell.box.y1 - cell.box.height * 0.2)
+                let left = Int(cell.box.x0) + 3, right = max(left, Int(cell.box.x1) - 3)
+                // Letters are clearly lighter than the band: halfway to white.
+                let bandLum = Double(fill.r) * 0.299 + Double(fill.g) * 0.587 + Double(fill.b) * 0.114
+                let threshold = Int((bandLum + 255) / 2)
+                var clusters: [(Int, Int)] = []
+                let gapLimit = max(6, Int(cell.box.height * 0.5))
+                var start = -1, lastLight = -1000
+                for x in left..<right {
+                    var light = false
+                    for y in y0..<max(y0, y1) where ink.raster.lum(x, y) > threshold { light = true; break }
+                    guard light else { continue }
+                    if start < 0 || x - lastLight > gapLimit { if start >= 0 { clusters.append((start, lastLight)) }; start = x }
+                    lastLight = x
+                }
+                if start >= 0 { clusters.append((start, lastLight)) }
+                // A divider showing light against the band is not letters.
+                clusters = clusters.filter { Double($0.1 - $0.0 + 1) >= max(4, cell.box.height * 0.15) }
+                let clusterColumns = clusters.compactMap { c -> Int? in columnOf(Double(c.0)) == columnOf(Double(c.1)) ? columnOf(Double(c.0)) : nil }
+                debugLog?("splitcols \(cell.row),\(cell.column)x\(cell.columnSpan) clusters \(clusters) cols \(clusterColumns) bounds \(bounds.map { Int($0) }) words \(inside.map { words[$0].text })")
+                if clusters.count == cell.columnSpan, clusterColumns.count == clusters.count, Set(clusterColumns).count == clusters.count {
+                    let widths = inside.map { max(0.1, naturalWidth(words[$0].text, size: 1)) }
+                    let total = widths.reduce(0, +)
+                    let spans = clusters.map { Double($0.1 - $0.0 + 1) }, spanTotal = spans.reduce(0, +)
+                    var acc = 0.0
+                    var perCluster: [Int: [Int]] = [:]
+                    for (k, i) in inside.enumerated() {
+                        let centre = (acc + widths[k] / 2) / total * spanTotal
+                        acc += widths[k]
+                        var run = 0.0, index = clusters.count - 1
+                        for (j, s) in spans.enumerated() { if centre <= run + s { index = j; break }; run += s }
+                        perCluster[index, default: []].append(i)
+                    }
+                    if perCluster.count == clusters.count {
+                        // Place each cluster's words across the cluster's letters.
+                        for (j, members) in perCluster {
+                            let ws = members.map { max(0.1, naturalWidth(words[$0].text, size: 1)) }, sum = ws.reduce(0, +)
+                            let c0 = Double(clusters[j].0), span = Double(clusters[j].1 - clusters[j].0 + 1)
+                            var x = c0
+                            for (m, i) in members.enumerated() {
+                                let width = span * ws[m] / sum
+                                words[i].box = LBox(x, words[i].box.y0, x + width, words[i].box.y1); x += width
+                            }
+                        }
+                        placed = true
+                    }
+                }
+            }
+            guard placed || byWords else { result.append(cell); continue }
+            for c in cell.column..<(cell.column + cell.columnSpan) {
+                var part = cell
+                part.column = c; part.columnSpan = 1
+                part.box = LBox(table.columns[c], cell.box.y0, table.columns[c + 1], cell.box.y1)
+                part.left = c == cell.column ? cell.left : true
+                part.right = c == cell.column + cell.columnSpan - 1 ? cell.right : true
+                result.append(part)
+            }
+        }
+        table.cells = result.sorted { $0.row == $1.row ? $0.column < $1.column : $0.row < $1.row }
+    }
+
     static func fillCells(_ table: inout LayoutTable, words: [Word], ink: Ink, ptPerPx: Double) {
         var byCell: [Int: [Word]] = [:]
+        var words = splitAcrossCells(words, table: table)
+        mergeAcrossText(&table, words: words)
+        splitMissedRows(&table, words: words)
+        splitMissedColumns(&table, words: &words, ink: ink)
         for w in words {
             if let i = table.cells.firstIndex(where: { $0.box.contains(x: w.box.midX, y: w.box.midY) }) { byCell[i, default: []].append(w) }
         }
@@ -1392,6 +1728,21 @@ enum DocumentLayoutAnalyzer {
         harmonizeSizes(&table)
         harmonizeWeight(&table, scores: scores, threshold: ink.boldThreshold)
         fitCells(&table, words: byCell, ptPerPx: ptPerPx)
+        // Letters on a dark fill are light (white text on a header band).
+        func luma(_ c: LayoutColor) -> Double {
+            let r = Double(c.r) * 0.299, g = Double(c.g) * 0.587, b = Double(c.b) * 0.114
+            return r + g + b
+        }
+        let white = LayoutColor(r: 255, g: 255, b: 255)
+        for i in table.cells.indices {
+            guard let fill = table.cells[i].fill, luma(fill) < 110 else { continue }
+            for l in table.cells[i].lines.indices {
+                for k in table.cells[i].lines[l].indices {
+                    if let c = table.cells[i].lines[l][k].color, luma(c) > 150 { continue }
+                    table.cells[i].lines[l][k].color = white
+                }
+            }
+        }
     }
     static func fitCells(_ table: inout LayoutTable, words: [Int: [Word]], ptPerPx: Double) {
         for (i, ws) in words {
@@ -1860,6 +2211,125 @@ enum DocumentLayoutAnalyzer {
 
     /// Cells in a row with a colored header cell share its color when they
     /// measure the same tint (single cells are judged more strictly alone).
+    /// Tests set this to follow table analysis (recognized lines, cell fills,
+    /// group colors, column splits); nil in the app, where nothing is built.
+    nonisolated(unsafe) static var debugLog: ((String) -> Void)?
+    /// Rows grouped under one merged label cell ("TOT / Toronto" over seven
+    /// rows) usually share one color. A photo washes pale tints out of small
+    /// cells and shades parts of the page, so each group is measured against
+    /// the paper just beside the table on the same rows. When most of the
+    /// group's cells are tinted alike, they take the group's color (the median,
+    /// matched to an Office palette tint); a label printed in the same color
+    /// takes it too, a label in a different color keeps its own.
+    /// One band of one color: a row whose cells are all tinted with the same hue
+    /// but snapped to neighbouring shades (light and glare vary across a photo)
+    /// takes the shade most of its cells have.
+    static func unifyRowShades(_ cells: inout [LayoutCell]) {
+        for r in Set(cells.map(\.row)) {
+            let row = cells.indices.filter { cells[$0].row == r && cells[$0].rowSpan == 1 }
+            guard row.count >= 3, row.count == cells.indices.filter({ cells[$0].row == r }).count else { continue }
+            let fills = row.compactMap { cells[$0].fill }
+            guard fills.count == row.count, Set(fills.map(\.hex)).count > 1 else { continue }
+            let hcl = fills.map(OfficePalette.hcl)
+            guard hcl.allSatisfy({ $0.c >= 20 }) else { continue }
+            let hues = hcl.map(\.h)
+            func gap(_ a: Double, _ b: Double) -> Double { let d = abs(a - b); return min(d, 360 - d) }
+            guard hues.allSatisfy({ h in hues.allSatisfy { gap(h, $0) <= 12 } }), (hcl.map(\.l).max()! - hcl.map(\.l).min()!) <= 0.15 else { continue }
+            var count: [String: Int] = [:]
+            for f in fills { count[f.hex, default: 0] += 1 }
+            guard let top = count.max(by: { $0.value < $1.value }), top.value * 2 > fills.count,
+                  let color = fills.first(where: { $0.hex == top.key }) else { continue }
+            for i in row { cells[i].fill = color }
+        }
+    }
+    static func spreadGroupFills(_ cells: inout [LayoutCell], ink: Ink) {
+        guard let table = LBox.around(cells.map(\.box)) else { return }
+        let w = ink.raster.width
+        /// Average non-ink color in a box, without paper normalization.
+        func rawColor(_ box: LBox) -> (Double, Double, Double)? {
+            let b = box.inset(min(box.width, box.height) * 0.12)
+            guard b.width > 2, b.height > 2 else { return nil }
+            var r = 0.0, g = 0.0, bl = 0.0, n = 0.0
+            let sx = max(1, Int(b.width / 40)), sy = max(1, Int(b.height / 12))
+            for y in stride(from: max(0, Int(b.y0)), to: min(ink.raster.height, Int(b.y1)), by: sy) {
+                for x in stride(from: max(0, Int(b.x0)), to: min(w, Int(b.x1)), by: sx) where !ink.isDark(x, y) {
+                    let c = ink.raster.color(x, y); r += Double(c.0); g += Double(c.1); bl += Double(c.2); n += 1
+                }
+            }
+            return n > 8 ? (r / n, g / n, bl / n) : nil
+        }
+        /// Paper beside the table (both sides) on the given rows.
+        func paperBeside(_ y0: Double, _ y1: Double) -> (Double, Double, Double)? {
+            let gap = 10.0, width = max(12, min(40, table.width * 0.03))
+            let sides = [LBox(table.x0 - gap - width, y0, table.x0 - gap, y1), LBox(table.x1 + gap, y0, table.x1 + gap + width, y1)]
+                .filter { $0.x0 >= 0 && $0.x1 <= Double(w) }
+            let colors = sides.compactMap(rawColor)
+            guard !colors.isEmpty else { return nil }
+            // The brighter side is the paper; the other may be in shadow or off the page.
+            return colors.max { $0.0 + $0.1 + $0.2 < $1.0 + $1.1 + $1.2 }
+        }
+        func distance(_ a: LayoutColor, _ b: LayoutColor) -> Int { abs(Int(a.r) - Int(b.r)) + abs(Int(a.g) - Int(b.g)) + abs(Int(a.b) - Int(b.b)) }
+        func median(_ v: [UInt8]) -> UInt8 { v.sorted()[v.count / 2] }
+        let groups = Set(cells.filter { $0.rowSpan > 1 }.map { [$0.row, $0.row + $0.rowSpan] }).sorted { $0[0] < $1[0] }
+        for g in groups {
+            let members = cells.indices.filter { cells[$0].row >= g[0] && cells[$0].row + cells[$0].rowSpan <= g[1] }
+            let labels = members.filter { cells[$0].rowSpan > 1 }, data = members.filter { cells[$0].rowSpan == 1 && cells[$0].columnSpan == 1 }
+            guard data.count >= 2, let y0 = members.map({ cells[$0].box.y0 }).min(), let y1 = members.map({ cells[$0].box.y1 }).max(),
+                  let paper = paperBeside(y0, y1), paper.0 + paper.1 + paper.2 > 300 else { continue }
+            func relative(_ c: (Double, Double, Double)) -> LayoutColor {
+                func f(_ v: Double, _ p: Double) -> UInt8 { UInt8(max(0, min(255, (v * 255 / max(60, p)).rounded()))) }
+                return LayoutColor(r: f(c.0, paper.0), g: f(c.1, paper.1), b: f(c.2, paper.2))
+            }
+            let colors = data.compactMap { i in rawColor(cells[i].box).map { (i, relative($0)) } }
+            guard colors.count >= 2 else { continue }
+            let mid = LayoutColor(r: median(colors.map(\.1.r)), g: median(colors.map(\.1.g)), b: median(colors.map(\.1.b)))
+            let m = OfficePalette.hcl(mid)
+            let darkness = 255 - Int(max(mid.r, mid.g, mid.b))
+            debugLog?("group \(g[0])-\(g[1]) paper \(Int(paper.0)),\(Int(paper.1)),\(Int(paper.2)) mid \(mid.hex) chroma \(Int(m.c)) dark \(darkness)")
+            // One band color, not a median of different ones (a header with gold,
+            // silver and bronze cells).
+            let alike = colors.filter { distance($0.1, mid) <= 24 }
+            guard alike.count * 10 >= colors.count * 7, Set(alike.map { cells[$0.0].row }).count >= 2 else { continue }
+            var fill: LayoutColor
+            // Tinted (faintly is enough, a photo washes pale bands nearly to
+            // white) or a clearly gray band; paper noise is a few levels.
+            if (m.c >= 4 && darkness >= 5) || darkness >= 12 {
+                let snapped = OfficePalette.snapped(mid)
+                fill = snapped != mid ? snapped : (Ink.printedFill(mid, merged: true) ?? mid)
+            } else {
+                // Barely tinted cells under a label that is clearly tinted the same
+                // way: the label (a bigger area) shows the band's color.
+                let labelColors = labels.compactMap { rawColor(cells[$0].box).map(relative) }.filter { OfficePalette.hcl($0).c >= 4 }
+                guard m.c >= 2, darkness >= 6, let label = labelColors.first else { continue }
+                var dh = abs(OfficePalette.hcl(label).h - m.h); dh = min(dh, 360 - dh)
+                guard dh <= 35 else { continue }
+                // A label this faint (a few levels from white) is a pale tint the
+                // camera washed out: restore it to pale-tint strength along its own hue.
+                let deviation = 255 - Int(min(label.r, label.g, label.b))
+                let restored: LayoutColor
+                if let printed = Ink.printedFill(label, merged: true) { restored = printed }
+                else {
+                    guard deviation >= 3 else { continue }
+                    let k = 41 / Double(deviation)
+                    func scale(_ v: UInt8) -> UInt8 { UInt8(max(0, min(255, (255 - (255 - Double(v)) * k).rounded()))) }
+                    restored = LayoutColor(r: scale(label.r), g: scale(label.g), b: scale(label.b))
+                }
+                let snapped = OfficePalette.snapped(restored)
+                guard snapped != restored else { continue }
+                var sh = abs(OfficePalette.hcl(snapped).h - OfficePalette.hcl(label).h); sh = min(sh, 360 - sh)
+                guard sh <= 30 else { continue }
+                fill = snapped
+            }
+            debugLog?("group \(g[0])-\(g[1]) fill \(fill.hex)")
+            // Decided on the cells clearly alike; applied to every cell of the band
+            // that is near its color (one cell can sit in a shadow or glare).
+            for (i, c) in colors where distance(c, mid) <= 40 { cells[i].fill = fill }
+            for i in labels {
+                guard let raw = rawColor(cells[i].box) else { continue }
+                if distance(relative(raw), mid) <= 40 { cells[i].fill = fill }
+            }
+        }
+    }
     static func spreadRowFills(_ cells: inout [LayoutCell], ink: Ink) {
         for i in cells.indices where cells[i].fill == nil {
             guard let raw = ink.fill(cells[i].box) else { continue }
@@ -1931,5 +2401,71 @@ extension DocumentLayoutAnalyzer.Ink {
         self.paper = other.paper
         self.ptPerPx = other.ptPerPx
         self.boldThreshold = other.boldThreshold
+    }
+}
+
+
+/// Office's built-in theme colors and their tints. Printed tables are nearly
+/// always colored from this palette, and a photo shifts pale tints a little;
+/// a measured fill close to a palette tint (same hue, similar lightness) is
+/// written as that tint, so the rebuilt file uses the document's own colors.
+enum OfficePalette {
+    static let colors: [LayoutColor] = [
+        // Office 2013-2022 theme: Text 2, Background 2, Accent 1-6 (lighter 80/60/40%, base), Background 1 darker, standard colors.
+        "D6DCE4", "ADB9CA", "8497B0", "44546A", "E7E6E6", "D0CECE", "AEAAAA",
+        "D9E1F2", "B4C6E7", "8EA9DB", "4472C4", "FCE4D6", "F8CBAD", "F4B084", "ED7D31",
+        "EDEDED", "DBDBDB", "C9C9C9", "A5A5A5", "FFF2CC", "FFE699", "FFD966", "FFC000",
+        "DDEBF7", "BDD7EE", "9BC2E6", "5B9BD5", "E2EFDA", "C6E0B4", "A9D08E", "70AD47",
+        "F2F2F2", "D9D9D9", "BFBFBF", "A6A6A6", "808080",
+        // Darker 25% / 50% of Text 2 and Accent 1-6, and Text 1 lighter.
+        "333F4F", "222B35", "2F5597", "203864", "C55A11", "843C0C", "7B7B7B", "525252",
+        "BF9000", "7F6000", "2E75B6", "1F4E78", "548235", "375623", "595959", "404040", "262626",
+        "C00000", "FF0000", "FFFF00", "92D050", "00B050", "00B0F0", "0070C0", "002060", "7030A0",
+    ].map { LayoutColor(r: UInt8($0.prefix(2), radix: 16)!, g: UInt8($0.dropFirst(2).prefix(2), radix: 16)!, b: UInt8($0.suffix(2), radix: 16)!) }
+    /// Hue (degrees), saturation-free chroma (0-255) and lightness (0-1).
+    static func hcl(_ c: LayoutColor) -> (h: Double, c: Double, l: Double) {
+        let r = Double(c.r), g = Double(c.g), b = Double(c.b)
+        let mx = max(r, g, b), mn = min(r, g, b), d = mx - mn
+        var h = 0.0
+        if d > 0 {
+            if mx == r { h = 60 * ((g - b) / d).truncatingRemainder(dividingBy: 6) }
+            else if mx == g { h = 60 * ((b - r) / d + 2) } else { h = 60 * ((r - g) / d + 4) }
+        }
+        if h < 0 { h += 360 }
+        return (h, d, (mx + mn) / 510)
+    }
+    static func snapped(_ c: LayoutColor) -> LayoutColor { match(c)?.0 ?? c }
+    /// The palette color a measured one most likely is, with a score (lower is closer).
+    static func match(_ c: LayoutColor) -> (LayoutColor, Double)? {
+        var m = hcl(c)
+        // Below pale-tint lightness a color this faint is a gray (a photo washes
+        // out pale tints, not mid tones).
+        if m.c < 8 && m.l <= 0.9 { m.c = 0 }
+        var best: (LayoutColor, Double)?
+        for p in colors {
+            let q = hcl(p)
+            let dl = abs(q.l - m.l)
+            let score: Double
+            if m.c < 4 {
+                // Gray as measured: only grays, by lightness.
+                guard q.c < 4, dl <= 0.04 else { continue }
+                score = dl
+            } else {
+                guard q.c >= 6 else { continue }
+                var dh = abs(q.h - m.h); dh = min(dh, 360 - dh)
+                // Pale tints lose saturation in a photo, so hue and lightness decide
+                // (the hue of a faint tint is less certain); strong colors must
+                // also be close in chroma.
+                let hueRoom = m.c < 12 ? 30.0 : 22.0
+                // Cleanup darkens strong colors a little (its black point), so they
+                // get more room in lightness than pale tints.
+                guard dh <= hueRoom, dl <= (m.c >= 30 ? 0.1 : 0.06), m.l > 0.8 || abs(q.c - m.c) <= 60 else { continue }
+                // A strong color keeps its hue and saturation in a photo better than
+                // its lightness (glare lightens it), so those decide.
+                score = m.c >= 30 ? dh / 10 + dl / 0.06 + abs(q.c - m.c) / 60 : dh / hueRoom + dl / 0.06
+            }
+            if best == nil || score < best!.1 { best = (p, score) }
+        }
+        return best
     }
 }

@@ -39,6 +39,8 @@ enum OfficeLayoutPages {
         return Prepared(raster: LayoutRaster(width: w, height: h, rgba: bytes), image: cg)
     }
 
+    /// Tone of the flattened photo the layout (rules, fills) is read from.
+    nonisolated(unsafe) static var flattenTone: Enhancement = .document
     /// Standard paper shapes (height / width) that flattened photos snap to.
     static let paperAspects: [Double] = [11 / 8.5, 297 / 210, 14 / 8.5]
 
@@ -46,23 +48,33 @@ enum OfficeLayoutPages {
     /// first: page found, perspective corrected, paper evened out, and the
     /// result given the proportions of the nearest paper size. Pages that are
     /// already scans (no different background around the page) are returned as is.
-    static func flattenedIfPhoto(_ image: UIImage) throws -> UIImage {
+    static func flattenedIfPhoto(_ image: UIImage) throws -> UIImage { try flattenedPair(image).layout }
+
+    /// The flattened page twice, in the same geometry: cleaned up for the layout
+    /// (rules, fills, ink), and with perspective corrected only for reading the
+    /// text, since the cleanup's sharpening and levels can make text in a soft
+    /// or compressed photo unreadable. A page that is not a photo is both.
+    static func flattenedPair(_ image: UIImage) throws -> (layout: UIImage, reading: UIImage) {
         let upright = Imaging.normalized(image)
         guard let cg = upright.cgImage,
-              let quad = CaptureStyle.document.detect(upright, capturedPhoto: true), quad.valid,
-              DocumentProcessing.area(quad) < 0.9, hasBackground(around: quad, in: cg) else { return upright }
-        let output = try DocumentProcessing.render(CIImage(cgImage: cg), crop: quad, turns: 0, enhancement: .document)
-        guard let flat = DocumentProcessing.context.createCGImage(output, from: output.extent) else {
-            throw ScannerError.message("This photo couldn't be flattened. Try scanning the page instead.")
-        }
-        let flatImage = UIImage(cgImage: flat)
+              let quad = CaptureStyle.document.detect(upright, capturedPhoto: true) ?? DocumentProcessing.detectSheetFromContent(cg), quad.valid,
+              DocumentProcessing.area(quad) < 0.9, hasBackground(around: quad, in: cg) else { return (upright, upright) }
         // Perspective correction keeps the photographed proportions; recover the
         // sheet's real shape from the camera geometry before snapping to paper.
-        if let aspect = trueAspect(quad, width: Double(cg.width), height: Double(cg.height)) {
-            return snappedToPaper(resized(flatImage, aspect: aspect))
+        let aspect = trueAspect(quad, width: Double(cg.width), height: Double(cg.height))
+        func flat(_ tone: Enhancement) throws -> UIImage {
+            let output = try DocumentProcessing.render(CIImage(cgImage: cg), crop: quad, turns: 0, enhancement: tone, alignedOriginal: true)
+            guard let flat = DocumentProcessing.context.createCGImage(output, from: output.extent) else {
+                throw ScannerError.message("This photo couldn't be flattened. Try scanning the page instead.")
+            }
+            let image = UIImage(cgImage: flat)
+            return snappedToPaper(aspect.map { resized(image, aspect: $0) } ?? image)
         }
-        return snappedToPaper(flatImage)
+        let layout = try flat(flattenTone)
+        return (layout, readsOriginalTone ? try flat(.original) : layout)
     }
+    /// Also read the text from the uncleaned page (tests turn it off to compare).
+    nonisolated(unsafe) static var readsOriginalTone = true
     /// Height/width of the photographed rectangle in reality (Zhang & He,
     /// whiteboard rectification), with the focal length estimated from the
     /// quad or, when that is unstable, a typical phone wide camera (26 mm).
@@ -137,20 +149,26 @@ enum OfficeLayoutPages {
     /// immediately so the page image does not need to stay in memory.
     static func analyze(_ image: UIImage, pageSize: (Double, Double)? = nil) throws -> PageLayout {
         try autoreleasepool {
-            var flat = try flattenedIfPhoto(image)
+            var (flat, readFlat) = try flattenedPair(image)
+            let separateReading = readFlat !== flat
             var prepared = try prepare(flat)
             // A page photographed or scanned slightly crooked bends every table
             // rule across rows; straighten it first.
             let skew = DocumentLayoutAnalyzer.skewAngle(prepared.raster)
             if abs(skew) >= 0.25 {
                 flat = straightened(flat, degrees: skew)
+                if separateReading { readFlat = straightened(readFlat, degrees: skew) }
                 prepared = try prepare(flat)
             }
             try Task.checkCancellation()
             // Small print reads better from more pixels; layout needs fewer.
             let large = max(flat.size.width, flat.size.height) * flat.scale > analysisSide * 1.1
-            var reading = try large ? prepare(flat, maxSide: readingSide).image : prepared.image
-            var blocks = try TextRecognition.recognize(reading)
+            var reading = try large ? prepare(separateReading ? readFlat : flat, maxSide: readingSide).image
+                : (separateReading ? prepare(readFlat).image : prepared.image)
+            // Read both renderings when there are two: the cleaned page reads crisp
+            // print best, the uncleaned one soft or compressed photos.
+            var cleaned = separateReading ? (large ? try prepare(flat, maxSide: readingSide).image : prepared.image) : reading
+            var blocks = try separateReading ? TextRecognition.recognize([cleaned, reading]) : TextRecognition.recognize(reading)
             try Task.checkCancellation()
             // A page scanned on its side: its text reads sideways and would only
             // survive as a picture. Turn it the way that reads best.
@@ -160,16 +178,23 @@ enum OfficeLayoutPages {
                     guard let cg = flat.cgImage else { break }
                     let turned = UIImage(cgImage: cg, scale: flat.scale, orientation: orientation)
                     let p = try prepare(turned)
-                    let r = try large ? prepare(turned, maxSide: readingSide).image : p.image
+                    var readTurned = turned
+                    if separateReading, let rc = readFlat.cgImage { readTurned = UIImage(cgImage: rc, scale: readFlat.scale, orientation: orientation) }
+                    let r = try large ? prepare(readTurned, maxSide: readingSide).image : (separateReading ? prepare(readTurned).image : p.image)
                     let b = try TextRecognition.recognize(r)
                     let n = uprightCharacters(b, r)
                     if n > best.count { best = (n, UIImage(cgImage: p.image), p, r, b) }
                     try Task.checkCancellation()
                 }
-                flat = best.flat; prepared = best.prepared; reading = best.reading; blocks = best.blocks
+                flat = best.flat; prepared = best.prepared; reading = best.reading; blocks = best.blocks; cleaned = best.reading
             }
             var page = DocumentLayoutAnalyzer.analyze(prepared.raster, blocks: blocks, pageSize: pageSize)
-            if refineCells { refineTableText(&page, image: reading, scale: CGFloat(reading.width) / CGFloat(prepared.raster.width)) }
+            // Cells are read again from the cleaned page (crisp, one cell at a time).
+            if refineCells {
+                refineTableText(&page, image: cleaned, scale: CGFloat(cleaned.width) / CGFloat(prepared.raster.width))
+                // Spelling checks run on the main thread, like the refinement's own.
+                fixIllReadings(&page)
+            }
             DocumentLayoutAnalyzer.tidyParagraphs(&page)
             for i in page.graphics.indices {
                 page.graphics[i].png = png(prepared.raster, page.graphics[i])
@@ -203,6 +228,39 @@ enum OfficeLayoutPages {
             c.translateBy(x: size.width / 2, y: size.height / 2)
             c.rotate(by: -CGFloat(degrees) * .pi / 180)
             image.draw(in: CGRect(x: -size.width / 2, y: -size.height / 2, width: size.width, height: size.height))
+        }
+    }
+
+    /// "ll" read as "II" or "Il" ("Richmond HII"): a capitalised word that is
+    /// not English, but is once those capitals become "ill"/"ll", is that word.
+    static func fixIllReadings(_ page: inout PageLayout) {
+        let token = try! NSRegularExpression(pattern: "\\b[A-Z][A-Za-z]*I[A-Za-z]*\\b")
+        func fixed(_ text: String) -> String {
+            let ns = text as NSString
+            var out = text
+            for m in token.matches(in: text, range: NSRange(location: 0, length: ns.length)).reversed() {
+                let word = ns.substring(with: m.range)
+                // Capitals alone are a code ("HII" in a code column); next to a
+                // mixed-case word ("Richmond HII") they are a misread name.
+                let mixedNearby = text.split(separator: " ").contains { $0.count >= 3 && $0 != $0.uppercased() && $0 != $0.lowercased() }
+                guard word.count >= 3, word != word.uppercased() || (word.count <= 4 && mixedNearby),
+                      correctlySpelled(String(word.prefix(1)) + word.dropFirst().lowercased()).isEmpty else { continue }
+                let head = String(word.prefix(1)), rest = String(word.dropFirst())
+                let options = [rest.replacingOccurrences(of: "II", with: "ill"), rest.replacingOccurrences(of: "II", with: "ll"),
+                               rest.replacingOccurrences(of: "Il", with: "ll"), rest.replacingOccurrences(of: "lI", with: "ll"),
+                               rest.replacingOccurrences(of: "iI", with: "ill"), rest.replacingOccurrences(of: "I", with: "l"),
+                               rest.replacingOccurrences(of: "I", with: "ll")].map { head + $0 }.filter { $0 != word }
+                guard let good = options.first(where: { !correctlySpelled($0).isEmpty && $0.dropFirst() == $0.dropFirst().lowercased() }) else { continue }
+                out = (out as NSString).replacingCharacters(in: m.range, with: good)
+            }
+            return out
+        }
+        for index in page.items.indices {
+            guard case .table(var table) = page.items[index] else { continue }
+            for i in table.cells.indices {
+                table.cells[i].lines = table.cells[i].lines.map { line in line.map { run in var run = run; run.text = fixed(run.text); return run } }
+            }
+            page.items[index] = .table(table)
         }
     }
 

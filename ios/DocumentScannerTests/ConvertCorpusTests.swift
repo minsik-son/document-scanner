@@ -239,6 +239,13 @@ final class ConvertCorpusTests: XCTestCase {
         let baseline = ["1", "true"].contains(env["CONVERT_BASELINE"] ?? "")
         DocumentLayoutAnalyzer.detectsColumns = !baseline; DocumentLayoutAnalyzer.keepsRecognizedLines = !baseline; DocumentLayoutAnalyzer.splitsAlignedColumns = !baseline
         defer { DocumentLayoutAnalyzer.detectsColumns = true; DocumentLayoutAnalyzer.keepsRecognizedLines = true; DocumentLayoutAnalyzer.splitsAlignedColumns = true }
+        // Switches for the photo-to-Office fidelity work (all on in the app): CONVERT_OFF=hollow,uncovered,darkfill,original
+        let off = Set((env["CONVERT_OFF"] ?? "").split(separator: ",").map(String.init))
+        DocumentLayoutAnalyzer.hollowsSolidAreas = !off.contains("hollow")
+        TextRecognition.keepsUncoveredWords = !off.contains("uncovered")
+        DocumentLayoutAnalyzer.readsDarkFills = !off.contains("darkfill")
+        OfficeLayoutPages.readsOriginalTone = !off.contains("original")
+        defer { DocumentLayoutAnalyzer.hollowsSolidAreas = true; TextRecognition.keepsUncoveredWords = true; DocumentLayoutAnalyzer.readsDarkFills = true; OfficeLayoutPages.readsOriginalTone = true }
         var total = 0
         for set in sets {
             var todo = items(set).filter { kinds?.contains($0["kind"] as? String ?? "") ?? true }

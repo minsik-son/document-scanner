@@ -273,6 +273,39 @@ final class PageAdjustmentsTests: XCTestCase {
         XCTAssertNil(model.problem)
     }
 
+    /// Slider frames during a drag come from the fast cached tone; the value the
+    /// drag ends on is rendered once more exactly like the export, and only that
+    /// frame marks the preview ready.
+    func testDragEndsWithAnExactFrame() async throws {
+        actor Log { var items: [(Double, Bool)] = []; func add(_ v: Double, _ i: Bool) { items.append((v, i)) } }
+        let log = Log()
+        let ready = expectation(description: "Settled")
+        let model = ScanPreviewModel(renderInteractive: { page, _, interactive in
+            await log.add(page.appearance.brightness, interactive)
+            try await Task.sleep(for: .milliseconds(40))
+            return UIImage()
+        })
+        var readyCount = 0
+        let token = model.$isReady.dropFirst().filter { $0 }.sink { _ in readyCount += 1; if readyCount == 2 { ready.fulfill() } }
+        defer { token.cancel(); model.cancel() }
+        let root = FileManager.default.temporaryDirectory
+        var page = ScanPage(imageFile: "page.jpg")
+        model.request(page, root: root)
+        try await Task.sleep(for: .milliseconds(200))
+        // Now drag: requests keep arriving while frames render.
+        for value in stride(from: 0.02, through: 0.2, by: 0.02) {
+            page.appearance = .init(brightness: value)
+            model.request(page, root: root)
+            try await Task.sleep(for: .milliseconds(15))
+        }
+        await fulfillment(of: [ready], timeout: 5)
+        let items = await log.items
+        XCTAssertEqual(items.first?.1, false, "The first frame of a page is exact")
+        XCTAssertTrue(items.dropFirst().dropLast().contains { $0.1 }, "Drag frames use the fast path: \(items)")
+        XCTAssertEqual(items.last?.0 ?? 0, 0.2, accuracy: 1e-9)
+        XCTAssertEqual(items.last?.1, false, "The drag ends on an exact frame: \(items)")
+    }
+
     func testCancelledPreviewCannotReplaceNewPage() async throws {
         let firstStarted = expectation(description: "Old frame started")
         let nextStarted = expectation(description: "New frame started")

@@ -26,7 +26,10 @@ actor ScanPreviewRenderer {
     private var toneImage: CIImage?
     private var toneCap: Int?
 
-    func render(_ page: ScanPage, root: URL, maxDimension: Int? = ScanPreviewRenderer.maximumDimension) throws -> UIImage {
+    /// `interactive`: a slider frame, from a cached reduced tone (fast, close).
+    /// Otherwise the preview is the export's own pixels resized the export's way,
+    /// so a settled preview never looks lighter or softer than the saved PDF.
+    func render(_ page: ScanPage, root: URL, maxDimension: Int? = ScanPreviewRenderer.maximumDimension, interactive: Bool = false) throws -> UIImage {
         try Task.checkCancellation()
         return try autoreleasepool {
             let key = PreviewGeometry(page, root: root)
@@ -41,6 +44,18 @@ actor ScanPreviewRenderer {
                 prepared = result; geometry = key; toneStrength = nil; toneImage = nil
             }
             guard let prepared else { throw ScannerError.message("The preview couldn't be prepared.") }
+            if let maxDimension, !interactive {
+                // Exactly Imaging.render (same decode, same prepared geometry, full
+                // resolution tone and adjustments), then the same resize as export.
+                let finished = try DocumentProcessing.finish(prepared, strength: page.enhancementStrength)
+                let adjusted = try Imaging.trim(DocumentProcessing.adjust(finished, settings: page.appearance), edges: page.trimming)
+                guard let raster = DocumentProcessing.context.createCGImage(adjusted, from: adjusted.extent) else {
+                    throw ScannerError.message("These adjustments couldn't be previewed. Try again.")
+                }
+                try Task.checkCancellation()
+                let full = Imaging.applyRedactions(try Imaging.applyErasures(UIImage(cgImage: raster), page: page), page: page)
+                return try Imaging.previewThumbnail(full, maxDimension: maxDimension)
+            }
             guard let maxDimension else {
                 // Full resolution is requested rarely (zoomed inspection); don't keep
                 // a 24 MP floating-point copy around for it.
@@ -49,7 +64,7 @@ actor ScanPreviewRenderer {
                 guard let raster = DocumentProcessing.context.createCGImage(adjusted, from: adjusted.extent) else {
                     throw ScannerError.message("These adjustments couldn't be previewed. Try again.")
                 }
-                return try Imaging.applyErasures(UIImage(cgImage: raster), page: page)
+                return Imaging.applyRedactions(try Imaging.applyErasures(UIImage(cgImage: raster), page: page), page: page)
             }
             if toneImage == nil || toneStrength != page.enhancementStrength || toneCap != maxDimension {
                 // Cache only the finished full-resolution tone, at floating-point
@@ -61,8 +76,11 @@ actor ScanPreviewRenderer {
                 // above the preview size. A full 24 MP RGBAh cache costs ~190 MB.
                 let side = max(result.extent.width, result.extent.height), cap = CGFloat(maxDimension) * 1.5
                 if side > cap {
-                    let f = CIFilter.lanczosScaleTransform(); f.inputImage = result; f.scale = Float(cap / side); f.aspectRatio = 1
-                    if let scaled = f.outputImage { result = scaled.cropped(to: scaled.extent.integral) }
+                    // Average in sRGB-encoded values, as the export's thumbnail does.
+                    // Averaging thin dark strokes in linear light whitens them.
+                    let encoded = result.applyingFilter("CILinearToSRGBToneCurve")
+                    let f = CIFilter.lanczosScaleTransform(); f.inputImage = encoded; f.scale = Float(cap / side); f.aspectRatio = 1
+                    if let scaled = f.outputImage { result = scaled.cropped(to: scaled.extent.integral).applyingFilter("CISRGBToneCurveToLinear") }
                 }
                 guard let linear = CGColorSpace(name: CGColorSpace.extendedLinearSRGB),
                       let raster = DocumentProcessing.context.createCGImage(result, from: result.extent, format: .RGBAh, colorSpace: linear) else {
@@ -82,7 +100,7 @@ actor ScanPreviewRenderer {
             try Task.checkCancellation()
             let fullImage = UIImage(cgImage: raster)
             let sized = try Imaging.previewThumbnail(fullImage, maxDimension: maxDimension)
-            let result = try Imaging.applyErasures(sized, page: page)
+            let result = Imaging.applyRedactions(try Imaging.applyErasures(sized, page: page), page: page)
             try Task.checkCancellation()
             return result
         }
@@ -101,16 +119,28 @@ final class ScanPreviewModel: ObservableObject {
     private var pending: Request?
     private var worker: Task<Void, Never>?
     private var workerID = 0
-    private let render: (ScanPage, URL) async throws -> UIImage
+    /// Third argument: an interactive (slider) frame.
+    private let render: (ScanPage, URL, Bool) async throws -> UIImage
     private let renderFullResolution: (ScanPage, URL) async throws -> UIImage
+    /// After a run of slider frames, render the settled value exactly once more.
+    private let settles: Bool
+    /// Requests are arriving while a frame renders: the user is dragging.
+    private var dragging = false
 
     init(renderer: ScanPreviewRenderer = ScanPreviewRenderer()) {
-        render = { page, root in try await renderer.render(page, root: root) }
+        render = { page, root, interactive in try await renderer.render(page, root: root, interactive: interactive) }
         renderFullResolution = { page, root in try await renderer.render(page, root: root, maxDimension: nil) }
+        settles = true
     }
     // A controllable renderer also lets tests verify coalescing and cancellation
     // without timing-sensitive sleeps or a GPU performance assumption.
-    init(render: @escaping (ScanPage, URL) async throws -> UIImage) { self.render = render; renderFullResolution = render }
+    init(render: @escaping (ScanPage, URL) async throws -> UIImage) {
+        self.render = { page, root, _ in try await render(page, root) }; renderFullResolution = render; settles = false
+    }
+    /// Tests: a renderer told which frames are interactive, with the settle pass on.
+    init(renderInteractive: @escaping (ScanPage, URL, Bool) async throws -> UIImage) {
+        render = renderInteractive; renderFullResolution = { page, root in try await renderInteractive(page, root, false) }; settles = true
+    }
 
     func fullResolution(_ page: ScanPage, root: URL) async throws -> UIImage {
         try await renderFullResolution(page, root)
@@ -119,7 +149,7 @@ final class ScanPreviewModel: ObservableObject {
     func request(_ page: ScanPage, root: URL) {
         pending = Request(page: page, root: root)
         problem = nil; isReady = false
-        guard worker == nil else { return }
+        guard worker == nil else { dragging = true; return }
         workerID += 1
         let id = workerID
         worker = Task { [weak self] in await self?.renderPending(workerID: id) }
@@ -130,23 +160,35 @@ final class ScanPreviewModel: ObservableObject {
     }
 
     private func renderPending(workerID id: Int) async {
-        while let request = pending {
+        var settle: Request?
+        while true {
+            if pending == nil, let last = settle {
+                // The drag ended on a fast frame: show the exact one.
+                pending = last
+            }
+            guard let request = pending else { break }
             pending = nil
+            let interactive = settles && dragging && settle == nil
             do {
-                let result = try await render(request.page, request.root)
+                let result = try await render(request.page, request.root, interactive)
                 guard id == workerID, !Task.isCancelled else { return }
                 // Slider frames may be one render behind, but never briefly show
                 // another page, crop, orientation or tone after those inputs change.
                 if pending.map({ PreviewGeometry($0.page, root: $0.root) == PreviewGeometry(request.page, root: request.root) && $0.page.trimming == request.page.trimming }) ?? true {
                     image = result
                 }
-                if pending == nil { isReady = true }
+                if interactive { settle = request }
+                else { if settle?.page == request.page { settle = nil }; if pending == nil { dragging = false } }
+                if pending == nil && !interactive { isReady = true }
             } catch {
                 guard id == workerID, !Task.isCancelled else { return }
+                settle = nil
                 if pending == nil { problem = error.localizedDescription; isReady = false }
             }
+            // A newer request replaces the frame still to settle.
+            if pending != nil { settle = nil }
         }
-        if id == workerID { worker = nil }
+        if id == workerID { worker = nil; dragging = false }
     }
 }
 

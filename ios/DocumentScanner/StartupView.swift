@@ -14,7 +14,7 @@ struct StartupView: View {
                 VStack(spacing: 8) {
                     Text(verbatim: AppInfo.name).font(.system(.title2, weight: .bold))
                         .foregroundStyle(.white)
-                    Text("Paper, made digital.").font(.body)
+                    Text("Fast, easy scanning.").font(.body)
                         .foregroundStyle(Color(red: 0.55, green: 0.80, blue: 0.95))
                 }
             }.padding(.horizontal, 24).offset(y: -20)

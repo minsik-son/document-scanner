@@ -258,3 +258,7 @@ Selected-language + close-up OCR, word-gap column separation, mixed-script parag
 - 저장 버튼 색: PDF는 기존 파란 버튼, Word 파랑(#2B579A)·Excel 초록(#217346)·PPT 주황(#D24726)·이미지 보라(#7C3AED), 형식 줄 밑줄도 같은 색.
 - 메가스캔: 원인 — '사진 찍기'가 시스템 카메라(한 장)라 한 장만 돌아오고, 2장 미만이라 첫 화면에 머물렀다. 이제 전용 연속 촬영 카메라(`MegaCamera.swift`): 찍어도 카메라에 머물고, 직전 사진의 오른쪽(또는 아래) 1/3이 흐리게 남아 겹치게 맞춘다. 방향(오른쪽/아래) 선택, 마지막 사진 되돌리기, 2~8장, '합치기 N'으로 기존 자동 정렬·합성 화면으로.
 - UI 테스트 `testMegaScanCameraTakesSeveralShotsAndCombines`(시뮬레이터는 포스터 조각을 가짜 촬영).
+
+## 미리보기 = 저장 결과, 로딩 문구
+- 페이지 편집 미리보기: 슬라이더를 움직이는 동안은 축소 캐시로 빠르게 그리고, 손을 떼면 저장(PDF)과 똑같은 전체 해상도 처리 → 같은 방식의 축소로 한 번 더 그린다(`ScanPreviewRenderer.render(interactive:)`, `ScanPreviewModel` settle). 축소 캐시도 sRGB 값으로 평균해 가는 선이 옅어지지 않게 했다. `testHighResolutionPreviewPreservesExportInkAndColoredCells` 통과, `testDragEndsWithAnExactFrame` 추가.
+- 로딩 화면 문구 "Paper, made digital." → "Fast, easy scanning."(한국어 "쉽고 빠른 스캔", 14개 언어). 런치 스크린의 남아 있던 "Document Scanner" 제목도 HushScan으로.

@@ -18,12 +18,12 @@
                             <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" alignment="center" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="brand-text">
                                 <rect key="frame" x="0.0" y="192" width="223" height="55"/>
                                 <subviews>
-                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" text="Document Scanner" textAlignment="center" translatesAutoresizingMaskIntoConstraints="NO" id="brand-title">
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" text="HushScan" textAlignment="center" translatesAutoresizingMaskIntoConstraints="NO" id="brand-title">
                                         <rect key="frame" x="0.0" y="0.0" width="223" height="27"/>
                                         <fontDescription key="fontDescription" type="boldSystem" pointSize="22"/>
                                         <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                     </label>
-                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" text="Paper, made digital." textAlignment="center" translatesAutoresizingMaskIntoConstraints="NO" id="brand-subtitle">
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" text="Fast, easy scanning." textAlignment="center" translatesAutoresizingMaskIntoConstraints="NO" id="brand-subtitle">
                                         <rect key="frame" x="38" y="35" width="147" height="20"/>
                                         <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                         <color key="textColor" red="0.55" green="0.8" blue="0.95" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>

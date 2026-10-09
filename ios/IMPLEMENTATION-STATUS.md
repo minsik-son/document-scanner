@@ -180,3 +180,19 @@ Selected-language + close-up OCR, word-gap column separation, mixed-script parag
 추가: 결제 화면 하단 갱신 안내문이 번역되지 않던 것(`Text(String)`) 수정, 한국어 결제 화면도 영어 잔존 검사에 포함.
 
 전면 광고(completionAdEnabled)는 계속 꺼 둠. Release 아카이브 성공.
+
+## UI 테스트 정비 (2026-10-08)
+
+오래된 UI 테스트를 현재 화면에 맞게 고쳤다. 단위 테스트와 UI 테스트 7개 묶음(56개)이 시뮬레이터(iPhone 17 Pro, iOS 26.2)에서 통과한다. 건너뛰는 테스트는 2개: 네트워크 광고 테스트, 그리고 Release 빌드 전용인 심사 화면 캡처.
+
+- 모든 UI 테스트는 `-app-language en`으로 실행한다. 시뮬레이터에 저장된 앱 언어와 무관해진다.
+- 공통 베이스 `HushUITestCase`: 실패할 때마다 화면 요소 트리와 스크린샷을 첨부한다.
+- 지연 로딩 목록(설정, 홈 문서 목록)은 스크롤해서 찾는다. 공유 시트는 시스템 언어와 무관한 `activityCollectionView`로 확인한다.
+- 테스트로 찾은 앱 수정:
+  - Sign & annotate: 마킹 안내 문구가 스크롤된 버튼 위에 겹치던 문제(배경 추가).
+  - 큰 글씨 페이월: "Unlimited access" 고정 폭 때문에 화면 전체가 옆으로 넘치던 문제.
+  - 시작 화면 문구가 앱 언어가 아닌 기기 언어로 나오던 문제.
+  - Debug 빌드 설정의 "Development preview" 문구 삭제.
+  - 문서 Tools 메뉴 항목 현지화.
+  - 식별자 추가: `document-edit`, `tools-close`.
+- 남은 실패 1건(이번 변경과 무관): `PageAdjustmentsTests.testHighResolutionPreviewPreservesExportInkAndColoredCells`. 문서 톤에서 미리보기의 글자/색이 최종 PDF보다 옅다(잉크 누락 약 26%, 허용치 초과).

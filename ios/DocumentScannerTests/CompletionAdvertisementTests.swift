@@ -8,7 +8,7 @@ final class CompletionAdvertisementTests: XCTestCase {
     private let frequencyKey = "scanner-completion-ad-frequency-v1"
     private var allowed: HomeAdEligibility {
         HomeAdEligibility(subscriptionResolved: true, isPro: false, online: true,
-                          foreground: true, homeVisible: true, unlocked: true, configured: true)
+                          foreground: true, homeVisible: true, unlocked: true, configured: true, settled: true)
     }
     override func setUp() { suite = "CompletionAds-" + UUID().uuidString; defaults = UserDefaults(suiteName: suite) }
     override func tearDown() { defaults.removePersistentDomain(forName: suite) }

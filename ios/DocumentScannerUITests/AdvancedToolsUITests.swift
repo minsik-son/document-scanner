@@ -1,6 +1,6 @@
 import XCTest
 
-final class AdvancedToolsUITests:XCTestCase {
+final class AdvancedToolsUITests: HushUITestCase {
     @MainActor private func ready(_ button:XCUIElement,file:StaticString = #filePath,line:UInt = #line) {
         let expectation = XCTNSPredicateExpectation(predicate:NSPredicate(format:"exists == true AND enabled == true"),object:button)
         XCTAssertEqual(XCTWaiter.wait(for:[expectation],timeout:30),.completed,file:file,line:line)
@@ -65,7 +65,7 @@ final class AdvancedToolsUITests:XCTestCase {
             XCTAssertTrue(entry.waitForExistence(timeout:5));XCTAssertTrue(entry.isHittable,"Tools must be visible without scrolling or opening a menu")
             let screenshot = XCTAttachment(screenshot:home.screenshot());screenshot.name = populated ? "Home tools with documents" : "Home tools empty library";screenshot.lifetime = .keepAlways;add(screenshot)
             entry.tap();XCTAssertTrue(home.textFields["tool-search"].waitForExistence(timeout:5));XCTAssertTrue(home.tool("Word export").exists);XCTAssertTrue(home.tool("QR code").exists)
-            home.buttons["Close"].tap();XCTAssertTrue(home.buttons["home-tools"].isHittable);home.terminate()
+            home.buttons["tools-close"].tap();XCTAssertTrue(home.buttons["home-tools"].isHittable);home.terminate()
         }
         let app = launch()
         // In page order: Fix a page, Turn it into, Capture more.
@@ -86,7 +86,8 @@ final class AdvancedToolsUITests:XCTestCase {
         editor.tap();editor.typeText("sqrt(81)+2^3")
         app.buttons["offline-run"].tap()
         XCTAssertTrue(app.staticTexts["17"].waitForExistence(timeout:5))
-        app.buttons["Close"].tap()
+        // The math sheet's own Close, not the tools hub behind it.
+        app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", "Close", "tools-close")).firstMatch.tap()
         for _ in 0..<6 where !app.buttons["Word export"].isHittable { app.swipeDown() }
         app.tool("Word export").tap()
         XCTAssertFalse(app.buttons["offline-run"].exists)
@@ -132,7 +133,7 @@ final class AdvancedToolsUITests:XCTestCase {
         saveShot(app,"math-pdf-preview")
         app.navigationBars.buttons["Done"].tap()
         app.buttons["math-primary"].tap()
-        XCTAssertTrue(app.cells["Copy"].waitForExistence(timeout:15))
+        XCTAssertTrue(app.collectionViews["activityCollectionView"].waitForExistence(timeout:15))
         saveShot(app,"math-share-document")
         app.buttons["header.closeButton"].tap()
         ready(app.buttons["math-another"])
@@ -142,7 +143,7 @@ final class AdvancedToolsUITests:XCTestCase {
         XCTAssertTrue(app.buttons["math-scan-preview"].waitForExistence(timeout:40))
         app.buttons["math-back"].tap()
         XCTAssertTrue(app.buttons["text-tool-capture"].waitForExistence(timeout:5))
-        app.buttons["text-tool-close"].tap();app.buttons["Close"].tap()
+        app.buttons["text-tool-close"].tap();app.buttons["tools-close"].tap()
         app.buttons["nav-documents"].tap()
         XCTAssertTrue(app.staticTexts["Paperwork, simplified"].waitForExistence(timeout:5))
     }
@@ -159,10 +160,12 @@ final class AdvancedToolsUITests:XCTestCase {
         saveShot(app,"photo-translation-corrected-scan")
         app.buttons["translation-run"].tap()
         let settled = XCTNSPredicateExpectation(predicate:NSPredicate { _,_ in
-            app.buttons["translation-share"].exists || app.staticTexts["text-tool-error"].exists
+            app.buttons["translation-share"].exists || app.staticTexts["text-tool-error"].exists || app.buttons["translation-guide-ok"].exists
         },object:nil)
         XCTAssertEqual(XCTWaiter.wait(for:[settled],timeout:30),.completed)
-        if app.staticTexts["text-tool-error"].exists {
+        // Without Apple's languages downloaded, the guide explains how and returns to the same scan.
+        if app.buttons["translation-guide-ok"].exists { app.buttons["translation-guide-ok"].tap() }
+        if app.staticTexts["text-tool-error"].exists || !app.buttons["translation-share"].exists {
             XCTAssertTrue(app.buttons["translation-document-preview"].exists)
             XCTAssertTrue(app.buttons["translation-run"].exists)
         }
@@ -186,7 +189,7 @@ final class AdvancedToolsUITests:XCTestCase {
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format:"label BEGINSWITH '1 text area replaced'")).firstMatch.exists)
         saveShot(app,"photo-translation-layout-preview")
         app.buttons["translation-share"].tap()
-        XCTAssertTrue(app.cells["Copy"].waitForExistence(timeout:15))
+        XCTAssertTrue(app.collectionViews["activityCollectionView"].waitForExistence(timeout:15))
         saveShot(app,"photo-translation-pdf-share")
     }
     @MainActor func testPhotoTranslationUnplacedTextCanBeReviewedAndCopied() {
@@ -279,7 +282,7 @@ final class AdvancedToolsUITests:XCTestCase {
         XCTAssertFalse(app.textViews["offline-text"].exists)
         shot("Word 3 ready to share")
         app.buttons["word-share"].tap()
-        XCTAssertTrue(app.cells["Copy"].waitForExistence(timeout:10))
+        XCTAssertTrue(app.collectionViews["activityCollectionView"].waitForExistence(timeout:10))
         XCTAssertTrue(app.cells["Save to Files"].exists)
     }
     @MainActor func testWordReviewShowsTablesWithEditableCells() {
@@ -327,7 +330,7 @@ final class AdvancedToolsUITests:XCTestCase {
         app.buttons["office-continue"].tap();app.buttons["ppt-create"].tap();closePreview(app);ready(app.buttons["ppt-share"])
         let result = XCTAttachment(screenshot:app.screenshot());result.name = "PowerPoint ready";result.lifetime = .keepAlways;add(result)
         app.buttons["ppt-share"].tap()
-        XCTAssertTrue(app.cells["Copy"].waitForExistence(timeout:10))
+        XCTAssertTrue(app.collectionViews["activityCollectionView"].waitForExistence(timeout:10))
         XCTAssertTrue(app.cells["Save to Files"].exists)
     }
     @MainActor func testPowerPointEmptySelectionAndMultiPagePicker() {
@@ -408,7 +411,7 @@ final class AdvancedToolsUITests:XCTestCase {
         app.buttons["tool-done-primary"].tap()
         // Back in the tools hub; the pages are saved as a new document.
         XCTAssertTrue(app.textFields["tool-search"].waitForExistence(timeout:10))
-        app.buttons["Close"].firstMatch.tap()
+        app.buttons["tools-close"].tap()
         XCTAssertTrue(app.staticTexts["Book pages"].waitForExistence(timeout:10) || app.buttons["Share PDF"].exists)
     }
 

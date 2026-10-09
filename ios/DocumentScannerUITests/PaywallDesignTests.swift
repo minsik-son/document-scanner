@@ -1,17 +1,17 @@
 import XCTest
 import StoreKitTest
 
-final class PaywallDesignTests: XCTestCase {
+final class PaywallDesignTests: HushUITestCase {
     @MainActor func testPlansShowRealPricesAndPurchaseUnlocksPro() throws {
         let configuration = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "Scanner", withExtension: "storekit"))
         let session = try SKTestSession(contentsOf: configuration)
         session.disableDialogs = true;session.clearTransactions()
         let app = XCUIApplication();app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en"];app.launch()
         app.buttons["nav-settings"].tap();app.buttons["Explore Pro"].tap()
-        XCTAssertTrue(app.staticTexts["Every page.\nMore possibilities."].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["subscribe-button"].waitForExistence(timeout: 10))
         capture(app, "Pro spotlight")
         let monthly = app.buttons["plan-monthly"], yearly = app.buttons["plan-yearly"]
-        for _ in 0..<6 where !monthly.isHittable { app.swipeUp() }
+        aboveFooter(monthly, in: app)
         XCTAssertTrue(yearly.exists);XCTAssertTrue(monthly.isHittable)
         XCTAssertTrue(yearly.label.contains("SAVE 49%"))
         let subscribe = app.buttons["subscribe-button"]
@@ -19,7 +19,7 @@ final class PaywallDesignTests: XCTestCase {
         monthly.tap();XCTAssertTrue(subscribe.label.contains("4.99"));XCTAssertTrue(subscribe.label.contains("month"))
         capture(app, "Pro monthly plan")
         let lifetime = app.buttons["plan-lifetime"]
-        for _ in 0..<6 where !lifetime.isHittable { app.swipeUp() }
+        aboveFooter(lifetime, in: app)
         lifetime.tap();XCTAssertTrue(subscribe.label.contains("39.99"));XCTAssertTrue(subscribe.label.contains("Buy once"))
         capture(app, "Pro lifetime plan")
         yearly.tap();XCTAssertTrue(subscribe.label.contains("29.99"))
@@ -29,6 +29,15 @@ final class PaywallDesignTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Pro is active"].waitForExistence(timeout: 20))
         XCTAssertFalse(subscribe.exists)
         session.clearTransactions()
+    }
+    /// Plan cards scroll under the pinned purchase footer; drag until the card sits clear above it.
+    @MainActor private func aboveFooter(_ card: XCUIElement, in app: XCUIApplication) {
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        let cta = app.buttons["subscribe-button"]
+        for _ in 0..<8 where card.frame.maxY > cta.frame.minY - 60 {
+            let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
+            start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -150)))
+        }
     }
     @MainActor func testLargeTextPaywallCanCloseWithoutBuying() throws {
         let configuration = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "Scanner", withExtension: "storekit"))
@@ -40,7 +49,7 @@ final class PaywallDesignTests: XCTestCase {
         for _ in 0..<6 where !explore.isHittable { app.swipeUp() }
         explore.tap()
         let subscribe = app.buttons["subscribe-button"]
-        XCTAssertTrue(app.staticTexts["Every page.\nMore possibilities."].waitForExistence(timeout:10))
+        XCTAssertTrue(app.buttons["subscribe-button"].waitForExistence(timeout:10))
         capture(app,"Pro large text overview")
         for _ in 0..<20 where !subscribe.isHittable { app.swipeUp() }
         XCTAssertTrue(subscribe.isHittable)

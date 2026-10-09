@@ -1,6 +1,6 @@
 import XCTest
 
-final class ToolDirectoryDesignTests: XCTestCase {
+final class ToolDirectoryDesignTests: HushUITestCase {
     @MainActor private func launch(saved: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en"] + (saved ? ["--seed-saved"] : [])
@@ -24,7 +24,7 @@ final class ToolDirectoryDesignTests: XCTestCase {
         XCTAssertTrue(app.buttons["Excel export"].isHittable)
         XCTAssertFalse(app.buttons["Word export"].exists)
         app.buttons["Excel export"].tap()
-        XCTAssertTrue(app.navigationBars["Excel export"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Turn tables into Excel"].waitForExistence(timeout: 5))
         app.navigationBars.buttons.element(boundBy: 0).tap()
         app.buttons["Clear search"].tap()
         search.tap(); search.typeText("not-a-tool")
@@ -32,7 +32,7 @@ final class ToolDirectoryDesignTests: XCTestCase {
     }
     @MainActor func testBottomNavigationAndCenterCamera() {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-saved", "--simulate-camera"]
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-saved", "--simulate-camera", "-AppleLanguages", "(en)"]
         app.launch()
         XCTAssertTrue(app.buttons["nav-home"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["scan-document"].isHittable)
@@ -48,7 +48,7 @@ final class ToolDirectoryDesignTests: XCTestCase {
         app.buttons["Cancel"].tap()
         app.buttons["nav-tools"].tap()
         XCTAssertTrue(app.textFields["tool-search"].waitForExistence(timeout: 5))
-        app.buttons["Close"].firstMatch.tap()
+        app.buttons["tools-close"].tap()
         app.buttons["nav-settings"].tap()
         XCTAssertTrue(app.navigationBars.buttons["Done"].waitForExistence(timeout: 5))
         app.navigationBars.buttons["Done"].tap()
@@ -103,7 +103,11 @@ final class ToolDirectoryDesignTests: XCTestCase {
         XCTAssertTrue(app.buttons["nav-home"].waitForExistence(timeout: 8))
         XCTAssertFalse(app.buttons["onboarding-skip"].exists)
         app.buttons["nav-settings"].tap()
-        app.buttons["Take a quick tour"].tap()
+        // Settings is a lazy list; for free users the row starts below the fold.
+        let tour = app.buttons["Take a quick tour"]
+        _ = tour.waitForExistence(timeout: 3)
+        for _ in 0..<5 where !(tour.exists && tour.isHittable) { app.swipeUp() }
+        tour.tap()
         XCTAssertTrue(app.staticTexts["onboarding-title-0"].waitForExistence(timeout: 5))
         app.buttons["onboarding-skip"].tap()
         XCTAssertTrue(app.navigationBars.buttons["Done"].waitForExistence(timeout: 5))
@@ -131,8 +135,9 @@ final class ToolDirectoryDesignTests: XCTestCase {
         XCTAssertTrue(app.buttons["pdf-import"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["tool-page-title"].exists)
         app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "tool-document-")).firstMatch.tap()
+        XCTAssertTrue(app.buttons["images-next"].waitForExistence(timeout: 5)); app.buttons["images-next"].tap()
         XCTAssertTrue(app.buttons["images-run"].waitForExistence(timeout: 5))
-        app.buttons["tool-back"].tap()
+        for _ in 0..<3 where !app.buttons["pdf-import"].exists { app.buttons["tool-back"].tap() }
         XCTAssertTrue(app.buttons["pdf-import"].waitForExistence(timeout: 5))
         app.terminate()
         let empty = launch()

@@ -1,7 +1,22 @@
 import XCTest
 import StoreKitTest
 
-final class ScannerFlowTests: XCTestCase {
+/// Base for UI tests: every failure carries the screen's element tree and a screenshot,
+/// so a stale selector shows what the screen offers now.
+class HushUITestCase: XCTestCase {
+    /// Attach the screen's element tree to every failure so stale selectors are easy to fix.
+    override func record(_ issue: XCTIssue) {
+        var issue = issue
+        let app = XCUIApplication()
+        if app.state == .runningForeground {
+            let tree = XCTAttachment(string: app.debugDescription); tree.name = "failure-tree"; issue.add(tree)
+            issue.add(XCTAttachment(screenshot: app.screenshot()))
+        }
+        super.record(issue)
+    }
+}
+
+final class ScannerFlowTests: HushUITestCase {
     @MainActor
     func testScreenshotSeamPreviewAndReturnToEditing() throws {
         let app = XCUIApplication(); app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-screenshots"]
@@ -310,16 +325,6 @@ final class ScannerFlowTests: XCTestCase {
         XCTAssertTrue(tools.waitForExistence(timeout: 10)); tools.tap()
     }
 
-    /// Attach the screen's element tree to every failure so stale selectors are easy to fix.
-    override func record(_ issue: XCTIssue) {
-        var issue = issue
-        let app = XCUIApplication()
-        if app.state == .runningForeground {
-            let tree = XCTAttachment(string: app.debugDescription); tree.name = "failure-tree"; issue.add(tree)
-            issue.add(XCTAttachment(screenshot: app.screenshot()))
-        }
-        super.record(issue)
-    }
 
     @MainActor
     private func selectEditorTool(_ tool: String, in app: XCUIApplication) {

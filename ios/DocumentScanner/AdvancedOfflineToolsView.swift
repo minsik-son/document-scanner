@@ -63,7 +63,7 @@ struct AdvancedOfflineHub: View {
                         Button { dismiss() } label: {
                             Image(systemName: "xmark").font(.system(size: 17, weight: .semibold)).foregroundStyle(Design.ink)
                                 .frame(width: 44, height: 44).background(.white, in: Circle())
-                        }.accessibilityLabel("Close")
+                        }.accessibilityLabel("Close").accessibilityIdentifier("tools-close")
                         HStack {
                             Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                             TextField("Search all tools", text: $query).autocorrectionDisabled()

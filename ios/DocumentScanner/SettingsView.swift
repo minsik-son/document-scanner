@@ -128,9 +128,6 @@ struct SettingsView: View {
                     LabeledContent(AppInfo.name, value: "\(AppInfo.version) (\(AppInfo.build))").accessibilityIdentifier("settings-version")
                     Link("Contact support", destination: AppInfo.supportURL).accessibilityIdentifier("settings-support")
                     Link("Terms of Use", destination: AppInfo.termsURL)
-                    #if DEBUG
-                    Text("Development preview. Subscription purchases launched through the Xcode StoreKit configuration are test purchases.").font(.subheadline).foregroundStyle(.secondary)
-                    #endif
                 }
                 if let feedback { Section { Text(L(feedback)) } }
             }

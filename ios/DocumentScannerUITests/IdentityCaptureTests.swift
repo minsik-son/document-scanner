@@ -1,6 +1,6 @@
 import XCTest
 
-final class IdentityCaptureTests: XCTestCase {
+final class IdentityCaptureTests: HushUITestCase {
     @MainActor private func launchID() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--simulate-camera"]
@@ -63,7 +63,7 @@ final class IdentityCaptureTests: XCTestCase {
         designShot(app, "id-2-saved")
         app.buttons["id-saved-done"].tap()
         XCTAssertTrue(app.textFields["tool-search"].waitForExistence(timeout: 10))
-        app.navigationBars.buttons["Close"].tap()
+        app.buttons["tools-close"].tap()
         app.buttons["nav-documents"].tap()
         XCTAssertTrue(app.staticTexts["ID card"].waitForExistence(timeout: 10))
     }
@@ -82,7 +82,7 @@ final class IdentityCaptureTests: XCTestCase {
         app.buttons["id-cancel"].tap()
         app.buttons["Discard scan"].tap()
         XCTAssertTrue(app.textFields["tool-search"].waitForExistence(timeout: 10))
-        app.navigationBars.buttons["Close"].tap()
+        app.buttons["tools-close"].tap()
         app.buttons["nav-documents"].tap()
         XCTAssertFalse(app.staticTexts["ID card"].exists)
         XCTAssertFalse(app.staticTexts["Saved on this iPhone"].exists)

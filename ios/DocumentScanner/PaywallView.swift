@@ -36,7 +36,8 @@ struct PaywallView: View {
                     ProFeatureCarousel(start: start)
                     HStack(spacing: 12) {
                         Capsule().fill(TossPay.line).frame(height: 1)
-                        Text("Unlimited access").font(.subheadline.weight(.semibold)).fixedSize()
+                        // Never wider than the screen: a fixed size here pushed the whole page sideways at large text sizes.
+                        Text("Unlimited access").font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.5).layoutPriority(1)
                         Capsule().fill(TossPay.line).frame(height: 1)
                     }.padding(.horizontal, 40).padding(.top, 22)
                     VStack(spacing: 10) {

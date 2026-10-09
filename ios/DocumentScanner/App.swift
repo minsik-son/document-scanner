@@ -31,7 +31,7 @@ struct DocumentScannerApp: App {
                 if showStartup {
                     // The cover has no controls. While it fades out it must not swallow
                     // the first tap or swipe meant for the screen underneath.
-                    StartupView().allowsHitTesting(false).transition(.opacity).zIndex(1)
+                    StartupView().environment(\.locale, AppLanguage.locale).allowsHitTesting(false).transition(.opacity).zIndex(1)
                 }
             }
             .environmentObject(subscription).environmentObject(lock)

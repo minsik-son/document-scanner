@@ -3,7 +3,7 @@ import XCTest
 /// Screens App Review will look at, captured for the submission checklist.
 /// testReviewScreens runs against a Release build (no DEBUG-only text may show);
 /// the PNGs land in Verification/private/review-shots (git-ignored).
-final class ReviewScreensUITests: XCTestCase {
+final class ReviewScreensUITests: HushUITestCase {
     private static let folder = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         .appendingPathComponent("Verification/private/review-shots")
     override func setUp() { continueAfterFailure = true }
@@ -24,7 +24,10 @@ final class ReviewScreensUITests: XCTestCase {
         return app
     }
 
-    @MainActor func testReviewScreens() {
+    @MainActor func testReviewScreens() throws {
+        #if DEBUG
+        throw XCTSkip("Release build only: Debug builds show the Developer section in Settings.")
+        #endif
         let app = launch()
         XCTAssertTrue(app.buttons["nav-tools"].waitForExistence(timeout: 10))
         // Tools: new sections and Spot eraser.
@@ -33,7 +36,7 @@ final class ReviewScreensUITests: XCTestCase {
         save(app, "1-tools-top")
         app.swipeUp(); save(app, "2-tools-middle")
         app.swipeUp(); app.swipeUp(); save(app, "3-tools-bottom")
-        app.buttons["Close"].firstMatch.tap()
+        app.buttons["tools-close"].tap()
         // Settings bottom: name, version, support, terms — no development text.
         app.buttons["nav-settings"].tap()
         XCTAssertTrue(app.navigationBars.buttons["Done"].waitForExistence(timeout: 5))

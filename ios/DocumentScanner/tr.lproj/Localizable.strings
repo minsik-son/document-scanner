@@ -1851,3 +1851,12 @@
 "Allow camera access in Settings to take photos." = "Fotoğraf çekmek için Ayarlar'da kamera erişimine izin ver.";
 "Take overlapping photos" = "Örtüşen fotoğraflar çek";
 "Shoot piece by piece; the last edge stays on screen to line up" = "Parça parça çek; son kenar hizalamak için ekranda kalır";
+"Turn pages into JPG, PNG, HEIC or TIFF pictures." = "Sayfaları JPG, PNG, HEIC veya TIFF resimlere dönüştür.";
+"iPhone's photo format. About half the size of JPG at the same quality." = "iPhone'un fotoğraf biçimi. Aynı kalitede JPG'nin yaklaşık yarısı kadar.";
+"Lossless, for printing and archives. All pages can go in one file." = "Kayıpsız, baskı ve arşiv için. Tüm sayfalar tek dosyada olabilir.";
+"256 colours. Only for older systems that need it." = "256 renk. Yalnızca bunu isteyen eski sistemler için.";
+"Uncompressed, for older Windows programs. Very large files." = "Sıkıştırmasız, eski Windows programları için. Çok büyük dosyalar.";
+"One TIFF file with all pages" = "Tüm sayfalar tek TIFF dosyasında";
+"Your TIFF file is ready" = "TIFF dosyan hazır";
+"%lld pages in one file." = "Tek dosyada %lld sayfa.";
+"Export one TIFF file" = "Tek TIFF dosyası olarak dışa aktar";

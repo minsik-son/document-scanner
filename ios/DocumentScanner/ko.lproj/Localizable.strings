@@ -1851,3 +1851,12 @@
 "Allow camera access in Settings to take photos." = "사진을 찍으려면 설정에서 카메라 접근을 허용하세요.";
 "Take overlapping photos" = "겹치게 여러 장 찍기";
 "Shoot piece by piece; the last edge stays on screen to line up" = "한 부분씩 찍으세요. 직전 사진의 가장자리가 화면에 남아 맞추기 쉬워요";
+"Turn pages into JPG, PNG, HEIC or TIFF pictures." = "페이지를 JPG, PNG, HEIC, TIFF 이미지로 바꿔요.";
+"iPhone's photo format. About half the size of JPG at the same quality." = "iPhone 기본 사진 형식. 같은 화질에 JPG의 절반 정도 용량이에요.";
+"Lossless, for printing and archives. All pages can go in one file." = "화질 손실 없음. 인쇄·보관용이고 모든 페이지를 한 파일에 담을 수 있어요.";
+"256 colours. Only for older systems that need it." = "256색. 꼭 필요한 오래된 시스템용이에요.";
+"Uncompressed, for older Windows programs. Very large files." = "압축 없음. 오래된 Windows 프로그램용이고 용량이 매우 커요.";
+"One TIFF file with all pages" = "모든 페이지를 TIFF 파일 하나로";
+"Your TIFF file is ready" = "TIFF 파일이 준비됐어요";
+"%lld pages in one file." = "%lld페이지를 한 파일에 담았어요.";
+"Export one TIFF file" = "TIFF 파일 하나로 내보내기";

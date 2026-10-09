@@ -137,8 +137,15 @@ final class ToolDirectoryDesignTests: HushUITestCase {
         app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "tool-document-")).firstMatch.tap()
         XCTAssertTrue(app.buttons["images-next"].waitForExistence(timeout: 5)); app.buttons["images-next"].tap()
         XCTAssertTrue(app.buttons["images-run"].waitForExistence(timeout: 5))
-        for _ in 0..<3 where !app.buttons["pdf-import"].exists { app.buttons["tool-back"].tap() }
-        XCTAssertTrue(app.buttons["pdf-import"].waitForExistence(timeout: 5))
+        // Every format iOS can write; TIFF can put both pages in one file.
+        for id in ["images-jpg", "images-png", "images-heic", "images-tiff", "images-gif", "images-bmp"] {
+            XCTAssertTrue(app.buttons[id].exists, id)
+        }
+        app.buttons["images-tiff"].tap()
+        XCTAssertTrue(app.switches["images-tiff-combined"].waitForExistence(timeout: 3))
+        capture(app, "Image formats")
+        app.buttons["images-run"].tap()
+        XCTAssertTrue(app.staticTexts["Your TIFF file is ready"].waitForExistence(timeout: 20))
         app.terminate()
         let empty = launch()
         empty.buttons["Text"].tap()

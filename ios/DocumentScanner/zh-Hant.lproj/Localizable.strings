@@ -1851,3 +1851,12 @@
 "Allow camera access in Settings to take photos." = "請在「設定」中允許取用相機以拍照。";
 "Take overlapping photos" = "拍攝相互重疊的照片";
 "Shoot piece by piece; the last edge stays on screen to line up" = "逐塊拍攝；上一張的邊緣會留在螢幕上方便對齊";
+"Turn pages into JPG, PNG, HEIC or TIFF pictures." = "將頁面轉為 JPG、PNG、HEIC 或 TIFF 圖片。";
+"iPhone's photo format. About half the size of JPG at the same quality." = "iPhone 照片格式。同等畫質下約為 JPG 的一半大小。";
+"Lossless, for printing and archives. All pages can go in one file." = "無損，適合列印與歸檔。所有頁面可合成一個檔案。";
+"256 colours. Only for older systems that need it." = "256 色。僅用於需要它的舊系統。";
+"Uncompressed, for older Windows programs. Very large files." = "未壓縮，適用於舊版 Windows 程式。檔案很大。";
+"One TIFF file with all pages" = "所有頁面合成一個 TIFF 檔案";
+"Your TIFF file is ready" = "TIFF 檔案已就緒";
+"%lld pages in one file." = "%lld 頁在一個檔案中。";
+"Export one TIFF file" = "匯出為一個 TIFF 檔案";

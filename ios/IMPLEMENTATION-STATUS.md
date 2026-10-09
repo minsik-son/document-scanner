@@ -262,3 +262,9 @@ Selected-language + close-up OCR, word-gap column separation, mixed-script parag
 ## 미리보기 = 저장 결과, 로딩 문구
 - 페이지 편집 미리보기: 슬라이더를 움직이는 동안은 축소 캐시로 빠르게 그리고, 손을 떼면 저장(PDF)과 똑같은 전체 해상도 처리 → 같은 방식의 축소로 한 번 더 그린다(`ScanPreviewRenderer.render(interactive:)`, `ScanPreviewModel` settle). 축소 캐시도 sRGB 값으로 평균해 가는 선이 옅어지지 않게 했다. `testHighResolutionPreviewPreservesExportInkAndColoredCells` 통과, `testDragEndsWithAnExactFrame` 추가.
 - 로딩 화면 문구 "Paper, made digital." → "Fast, easy scanning."(한국어 "쉽고 빠른 스캔", 14개 언어). 런치 스크린의 남아 있던 "Document Scanner" 제목도 HushScan으로.
+
+## 이미지 형식 추가 · 카메라/첫 사용 최적화
+- 페이지를 이미지로: JPG·PNG에 HEIC·TIFF·GIF·BMP 추가(`ImageExportFormat`, iOS ImageIO로 직접 기록). TIFF는 모든 페이지를 파일 하나로(기본 켬). HEIC는 인코더가 없는 기기에서는 숨김. WebP는 iOS가 쓰기를 지원하지 않아 제외. 마지막 형식 기억. `ImageExportTests`.
+- 카메라: 실시간 가장자리 찾기를 세션 큐에서 별도 분석 큐로 옮김. 세션 상태는 잠금으로 보호한 사본(`Gate`)으로 읽어 분석이 카메라 시작·정지·셔터를 막지 않는다. (시뮬레이터엔 카메라가 없어 실기기 확인 필요)
+- 예열(`Warmup`): 로고 화면이 사라진 1.5초 뒤 백그라운드(낮은 우선순위)에서 작은 가짜 페이지로 가장자리 찾기·문서 톤(Core Image 커널)을 한 번 돌림. 글자 인식 모델은 스캔 카메라를 열 때 미리 로드(스캔하는 사람만). 업데이트 직후 첫 카메라·첫 보정·첫 저장이 느리던 일회성 비용을 미리 치른다.
+- 디버그 빌드(-Onone)는 이미지 계산이 정식 빌드보다 몇 배 느리다. 체감 속도는 Release 실행이나 TestFlight로 확인.

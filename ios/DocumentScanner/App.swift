@@ -121,6 +121,8 @@ struct DocumentScannerApp: App {
 #if DEBUG
         SplashMetrics.shared.coverGone()
 #endif
+        // One-time GPU and Vision set-up, in the background, before the first scan.
+        Warmup.start()
         if HomeAdConfiguration.adsEnabled && !HomeAdvertisementStore.lastKnownPro {
             Task {
                 try? await Task.sleep(for: .milliseconds(600))

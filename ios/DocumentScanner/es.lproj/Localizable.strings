@@ -1851,3 +1851,12 @@
 "Allow camera access in Settings to take photos." = "Permite el acceso a la cámara en Ajustes para tomar fotos.";
 "Take overlapping photos" = "Tomar fotos superpuestas";
 "Shoot piece by piece; the last edge stays on screen to line up" = "Fotografía por partes; el último borde queda en pantalla para alinear";
+"Turn pages into JPG, PNG, HEIC or TIFF pictures." = "Convierte páginas en imágenes JPG, PNG, HEIC o TIFF.";
+"iPhone's photo format. About half the size of JPG at the same quality." = "El formato de fotos del iPhone. Ocupa la mitad que un JPG con la misma calidad.";
+"Lossless, for printing and archives. All pages can go in one file." = "Sin pérdida, para imprimir y archivar. Todas las páginas pueden ir en un archivo.";
+"256 colours. Only for older systems that need it." = "256 colores. Solo para sistemas antiguos que lo requieran.";
+"Uncompressed, for older Windows programs. Very large files." = "Sin compresión, para programas antiguos de Windows. Archivos muy grandes.";
+"One TIFF file with all pages" = "Un archivo TIFF con todas las páginas";
+"Your TIFF file is ready" = "Tu archivo TIFF está listo";
+"%lld pages in one file." = "%lld páginas en un archivo.";
+"Export one TIFF file" = "Exportar un archivo TIFF";

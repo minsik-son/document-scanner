@@ -71,24 +71,30 @@ enum ExportFiles {
       throw error
     }
   }
-  static func images(_ pdf: PDFDocument, indices: [Int], pixels: Int, png: Bool) throws
+  /// One picture per page, or one multi-page TIFF (`combined`).
+  static func images(_ pdf: PDFDocument, indices: [Int], pixels: Int, format: ImageExportFormat, combined: Bool = false) throws
     -> ExportedFiles
   {
     let directory = root.appendingPathComponent(UUID().uuidString, isDirectory: true)
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     do {
+      func picture(_ index: Int) throws -> CGImage {
+        guard let page = pdf.page(at: index) else { throw ScannerError.message("Page unavailable.") }
+        guard let cg = page.thumbnail(of: CGSize(width: pixels, height: pixels), for: .mediaBox).cgImage else {
+          throw ScannerError.message("Image export failed.")
+        }
+        return cg
+      }
+      if combined && format == .tiff {
+        let url = directory.appendingPathComponent("Pages.tiff")
+        try ImageExportFormat.write(try indices.map { i in try autoreleasepool { try picture(i) } }, format: .tiff, to: url)
+        return ExportedFiles(directory: directory, urls: [url])
+      }
       var urls: [URL] = []
       for index in indices {
         let url = try autoreleasepool { () throws -> URL in
-          guard let page = pdf.page(at: index) else {
-            throw ScannerError.message("Page unavailable.")
-          }
-          let image = page.thumbnail(of: CGSize(width: pixels, height: pixels), for: .mediaBox)
-          guard let bytes = png ? image.pngData() : image.jpegData(compressionQuality: 0.94) else {
-            throw ScannerError.message("Image export failed.")
-          }
-          let url = directory.appendingPathComponent("Page-\(index+1)." + (png ? "png" : "jpg"))
-          try bytes.write(to: url, options: [.atomic, .completeFileProtectionUnlessOpen])
+          let url = directory.appendingPathComponent("Page-\(index+1)." + format.fileExtension)
+          try ImageExportFormat.write([try picture(index)], format: format, to: url)
           return url
         }
         urls.append(url)

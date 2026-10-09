@@ -1851,3 +1851,12 @@
 "Allow camera access in Settings to take photos." = "อนุญาตการเข้าถึงกล้องในการตั้งค่าเพื่อถ่ายภาพ";
 "Take overlapping photos" = "ถ่ายภาพให้ซ้อนกัน";
 "Shoot piece by piece; the last edge stays on screen to line up" = "ถ่ายทีละส่วน ขอบของภาพก่อนหน้าจะค้างบนจอให้จัดแนว";
+"Turn pages into JPG, PNG, HEIC or TIFF pictures." = "เปลี่ยนหน้าเป็นภาพ JPG, PNG, HEIC หรือ TIFF";
+"iPhone's photo format. About half the size of JPG at the same quality." = "รูปแบบภาพของ iPhone ขนาดราวครึ่งหนึ่งของ JPG ที่คุณภาพเท่ากัน";
+"Lossless, for printing and archives. All pages can go in one file." = "ไม่สูญเสียคุณภาพ สำหรับพิมพ์และเก็บถาวร รวมทุกหน้าในไฟล์เดียวได้";
+"256 colours. Only for older systems that need it." = "256 สี สำหรับระบบเก่าที่จำเป็นเท่านั้น";
+"Uncompressed, for older Windows programs. Very large files." = "ไม่บีบอัด สำหรับโปรแกรม Windows รุ่นเก่า ไฟล์ใหญ่มาก";
+"One TIFF file with all pages" = "ไฟล์ TIFF เดียวรวมทุกหน้า";
+"Your TIFF file is ready" = "ไฟล์ TIFF พร้อมแล้ว";
+"%lld pages in one file." = "%lld หน้าในไฟล์เดียว";
+"Export one TIFF file" = "ส่งออกเป็นไฟล์ TIFF เดียว";

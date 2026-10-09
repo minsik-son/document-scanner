@@ -278,6 +278,7 @@ struct CameraView: View {
         guard visible, scenePhase == .active, capturedPage == nil, !testCamera, !Task.isCancelled else { return }
         camera.setAutoScan(autoScan)
         await camera.start()
+        Warmup.prepareText()
     }
     private var testCamera: Bool {
 #if DEBUG
@@ -348,18 +349,22 @@ struct CameraView: View {
 final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
     let session = AVCaptureSession()
     private let queue = DispatchQueue(label: "scanner.camera", qos: .userInitiated)
+    /// Edge finding runs here, so it never holds up starting, stopping or the
+    /// shutter on the session queue. Its own state: `analyzing`, `imageContext`.
+    private let analysisQueue = DispatchQueue(label: "scanner.camera.analysis", qos: .userInitiated)
+    private var analyzing = false
     private let photoOutput = AVCapturePhotoOutput()
     private let videoOutput = AVCaptureVideoDataOutput()
     private let imageContext = CIContext(options: [.cacheIntermediates: false])
     private var tracker = LiveDocumentTracker()
     private var completion: ((Result<UIImage, Error>) -> Void)?
     private var captureID: Int64?
-    private var active = false
+    private var active = false { didSet { let v = active; withGate { $0.active = v } } }
     private var configured = false
-    private var busy = false
+    private var busy = false { didSet { let v = busy; withGate { $0.busy = v } } }
     private var autoEnabled = false
     private var autoPending = false
-    private var captureStyle = CaptureStyle.document
+    private var captureStyle = CaptureStyle.document { didSet { let v = captureStyle; withGate { $0.style = v } } }
     private var visibleCardArea: ScanQuad?
     private var device: AVCaptureDevice? // Session queue only.
     // Steadier shots: the gyro tells when the phone is still, and in dim light a short
@@ -371,8 +376,18 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
     private var burst: [UIImage] = []
     private var burstTarget = 1
     private var pendingFlash = false
-    private var lastAnalysis: TimeInterval = -Double.infinity
-    private var generation = 0 // Session queue only.
+    /// What the analysis queue needs from the session state, copied under a lock
+    /// as it changes, so analysis never waits on the session queue (which may be
+    /// starting or stopping the camera).
+    private struct Gate { var active = false, busy = false, style = CaptureStyle.document, generation = 0, lastAnalysis = -Double.infinity }
+    private let gateLock = NSLock()
+    private var gate = Gate()
+    private func withGate<T>(_ body: (inout Gate) -> T) -> T { gateLock.lock(); defer { gateLock.unlock() }; return body(&gate) }
+    private var lastAnalysis: TimeInterval {
+        get { withGate { $0.lastAnalysis } }
+        set { withGate { $0.lastAnalysis = newValue } }
+    }
+    private var generation = 0 { didSet { let v = generation; withGate { $0.generation = v } } } // Session queue only.
     private var sessionRequestToken = 0 // Session queue only.
     private var requestToken = 0 // Main actor only.
     private var notificationObservers: [NSObjectProtocol] = []
@@ -456,7 +471,7 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
                     self.videoOutput.alwaysDiscardsLateVideoFrames = true
                     self.videoOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange]
                     self.session.addOutput(self.videoOutput)
-                    self.videoOutput.setSampleBufferDelegate(self, queue: self.queue)
+                    self.videoOutput.setSampleBufferDelegate(self, queue: self.analysisQueue)
                     for output in [self.photoOutput as AVCaptureOutput, self.videoOutput] {
                         guard let connection = output.connection(with: .video), connection.isVideoRotationAngleSupported(90) else {
                             throw ScannerError.message("This camera couldn't provide a portrait scan preview. Try importing a photo instead.")
@@ -646,33 +661,45 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
     }
 
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        guard active, !busy else { return }
+        // Analysis queue: read the gate, find the edges here, then hand the result
+        // to the session queue, which owns the tracker and auto-capture.
+        guard !analyzing, let buffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let now = ProcessInfo.processInfo.systemUptime
-        guard now - lastAnalysis >= (captureStyle == .card ? 0.15 : 0.22), let buffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        lastAnalysis = now
+        let plan: (style: CaptureStyle, generation: Int)? = withGate { g in
+            guard g.active, !g.busy, now - g.lastAnalysis >= (g.style == .card ? 0.15 : 0.22) else { return nil }
+            g.lastAnalysis = now
+            return (g.style, g.generation)
+        }
+        guard let plan else { return }
+        analyzing = true
         let found: ScanQuad? = autoreleasepool {
             let image = CIImage(cvPixelBuffer: buffer)
             // Bound segmentation work independently of camera recording resolution.
-            let limit: CGFloat = self.captureStyle == .card ? 1280 : 1024
+            let limit: CGFloat = plan.style == .card ? 1280 : 1024
             let scale = min(1, limit / max(image.extent.width, image.extent.height))
             let small = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
             guard let cg = imageContext.createCGImage(small, from: small.extent) else { return nil }
-            return self.captureStyle == .card ? CaptureStyle.card.detect(UIImage(cgImage: cg)) : DocumentProcessing.detect(cg)
+            return plan.style == .card ? CaptureStyle.card.detect(UIImage(cgImage: cg)) : DocumentProcessing.detect(cg)
         }
-        let card = captureStyle == .card
-        let eligible = !card || CaptureStyle.fullyVisible(found, in: visibleCardArea)
-        // Two consistent analysis frames qualify an ID. No green-state timer:
-        // the same qualifying frame publishes green and requests the shutter.
-        let state = tracker.update(found, at: now, eligible: eligible,
-                                   requiredSteadyDuration: card ? 0.12 : 0.8,
-                                   missingReleaseDuration: card ? 0.2 : 0.8)
-        let generation = self.generation
-        let shouldCapture = autoEnabled && !autoPending && state.canAutoCapture
-        if shouldCapture { autoPending = true }
-        DispatchQueue.main.async {
-            self.publishIfCurrent(generation) {
-                self.tracking = state
-                if shouldCapture { self.autoCaptureRequest += 1 }
+        analyzing = false
+        queue.async {
+            // A capture started, the page changed or the camera stopped meanwhile.
+            guard self.active, !self.busy, self.generation == plan.generation, self.captureStyle == plan.style else { return }
+            let card = plan.style == .card
+            let eligible = !card || CaptureStyle.fullyVisible(found, in: self.visibleCardArea)
+            // Two consistent analysis frames qualify an ID. No green-state timer:
+            // the same qualifying frame publishes green and requests the shutter.
+            let state = self.tracker.update(found, at: now, eligible: eligible,
+                                            requiredSteadyDuration: card ? 0.12 : 0.8,
+                                            missingReleaseDuration: card ? 0.2 : 0.8)
+            let shouldCapture = self.autoEnabled && !self.autoPending && state.canAutoCapture
+            if shouldCapture { self.autoPending = true }
+            let generation = self.generation
+            DispatchQueue.main.async {
+                self.publishIfCurrent(generation) {
+                    self.tracking = state
+                    if shouldCapture { self.autoCaptureRequest += 1 }
+                }
             }
         }
     }

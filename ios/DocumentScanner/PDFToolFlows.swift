@@ -53,7 +53,7 @@ extension LibraryTool {
         case .reorder: return "Drag pages into the right order."
         case .compress: return "Shrink the file to send it by email or chat."
         case .protect: return "Share a copy that opens only with your password."
-        case .images: return "Turn pages into JPG or PNG pictures."
+        case .images: return "Turn pages into JPG, PNG, HEIC or TIFF pictures."
         case .longImage: return "Join pages top to bottom for messaging apps."
         case .print: return "Choose pages and print from this iPhone."
         case .identity: return ""
@@ -879,7 +879,7 @@ private enum ExtractFormat: String, CaseIterable, Identifiable {
         case .word: return "Word document"
         case .powerpoint: return "PowerPoint slides"
         case .excel: return "Excel spreadsheet"
-        case .images: return "Images (JPG)"
+        case .images: return "Images"
         case .text: return "Plain text"
         }
     }
@@ -1030,8 +1030,11 @@ private struct ExportImagesToolStep: View {
     let finish: (PDFToolResult) -> Void
     @State private var selected: [Int] = []
     @State private var choosing = false
-    @State private var png = false
+    /// Remembered between exports.
+    @AppStorage("export-image-format") private var formatChoice = ImageExportFormat.jpg.rawValue
+    @State private var combined = true
     @State private var pixels = 2400
+    private var format: ImageExportFormat { ImageExportFormat(rawValue: formatChoice).flatMap { $0.available ? $0 : nil } ?? .jpg }
     private var count: String { selected.count == 1 ? "1 page" : "\(selected.count) pages" }
     var body: some View {
         ZStack {
@@ -1053,10 +1056,25 @@ private struct ExportImagesToolStep: View {
         ToolPage(title: "Choose the image type", subtitle: selected.count == 1 ? "\(count) will become a picture." : "\(count) will become pictures.") {
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(text: "Format")
-                Button { png = false } label: { OptionCard(title: "JPG", detail: "Smaller files. Best for sharing and chat.", selected: !png) }
-                    .buttonStyle(.plain).accessibilityIdentifier("images-jpg")
-                Button { png = true } label: { OptionCard(title: "PNG", detail: "No compression. Sharpest text, larger files.", selected: png) }
-                    .buttonStyle(.plain).accessibilityIdentifier("images-png")
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
+                    ForEach(ImageExportFormat.allCases.filter(\.available)) { item in
+                        Button { formatChoice = item.rawValue } label: {
+                            Text(item.title).font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(format == item ? TK.blueDeep : TK.grey900)
+                                .frame(maxWidth: .infinity).frame(height: 48)
+                                .background(format == item ? TK.blueSoft : TK.grey50, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(format == item ? TK.blue.opacity(0.5) : TK.grey200, lineWidth: format == item ? 1.5 : 1))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(format == item ? .isSelected : [])
+                        .accessibilityIdentifier("images-\(item.rawValue)")
+                    }
+                }
+                Text(L(format.detail)).font(.system(size: 14)).foregroundStyle(TK.grey600).fixedSize(horizontal: false, vertical: true)
+                if format == .tiff && selected.count > 1 {
+                    Toggle(L("One TIFF file with all pages"), isOn: $combined).font(.system(size: 15, weight: .medium))
+                        .accessibilityIdentifier("images-tiff-combined")
+                }
             }
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(text: "Size")
@@ -1067,7 +1085,7 @@ private struct ExportImagesToolStep: View {
             if let message = work.message { ToastMessage(text: message) }
         } actions: {
             Button("Change pages") { choosing = false }.buttonStyle(SecondaryCTAStyle())
-            Button(LS(selected.count == 1 ? "Export 1 image" : "Export \(selected.count) images")) { export() }
+            Button(format == .tiff && combined && selected.count > 1 ? L("Export one TIFF file") : LS(selected.count == 1 ? "Export 1 image" : "Export \(selected.count) images")) { export() }
                 .buttonStyle(CTAButtonStyle()).accessibilityIdentifier("images-run")
         }
     }
@@ -1076,14 +1094,16 @@ private struct ExportImagesToolStep: View {
             .buttonStyle(.plain).accessibilityIdentifier("images-size-\(value)")
     }
     private func export() {
-        let doc = document, picks = selected.sorted(), format = png, size = pixels
+        let doc = document, picks = selected.sorted(), format = self.format, size = pixels, combined = self.combined && self.format == .tiff && selected.count > 1
         work.run("Making images…") {
             let url = store.url(doc.pdfFile ?? "")
             let files = try await OfflineWork.perform { () throws -> ExportedFiles in
                 guard let pdf = PDFDocument(url: url) else { throw ScannerError.message("This PDF can't be opened.") }
-                return try ExportFiles.images(pdf, indices: picks, pixels: size, png: format)
+                return try ExportFiles.images(pdf, indices: picks, pixels: size, format: format, combined: combined)
             }
-            finish(PDFToolResult(title: picks.count == 1 ? "1 image is ready" : "\(picks.count) images are ready", detail: "Share them or save them to Photos.", files: files, shareTitle: "Share images"))
+            finish(PDFToolResult(title: combined ? "Your TIFF file is ready" : picks.count == 1 ? "1 image is ready" : "\(picks.count) images are ready",
+                                 detail: combined ? String(format: L("%lld pages in one file."), picks.count) : "Share them or save them to Photos.",
+                                 files: files, shareTitle: combined ? "Share file" : "Share images"))
         }
     }
 }

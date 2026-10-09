@@ -1851,3 +1851,12 @@
 "Allow camera access in Settings to take photos." = "Izinkan akses kamera di Pengaturan untuk mengambil foto.";
 "Take overlapping photos" = "Ambil foto yang saling tumpang tindih";
 "Shoot piece by piece; the last edge stays on screen to line up" = "Potret bagian demi bagian; tepi terakhir tetap tampil untuk menyelaraskan";
+"Turn pages into JPG, PNG, HEIC or TIFF pictures." = "Ubah halaman menjadi gambar JPG, PNG, HEIC, atau TIFF.";
+"iPhone's photo format. About half the size of JPG at the same quality." = "Format foto iPhone. Sekitar setengah ukuran JPG dengan kualitas sama.";
+"Lossless, for printing and archives. All pages can go in one file." = "Tanpa kehilangan kualitas, untuk cetak dan arsip. Semua halaman bisa dalam satu file.";
+"256 colours. Only for older systems that need it." = "256 warna. Hanya untuk sistem lama yang memerlukannya.";
+"Uncompressed, for older Windows programs. Very large files." = "Tanpa kompresi, untuk program Windows lama. File sangat besar.";
+"One TIFF file with all pages" = "Satu file TIFF berisi semua halaman";
+"Your TIFF file is ready" = "File TIFF Anda sudah siap";
+"%lld pages in one file." = "%lld halaman dalam satu file.";
+"Export one TIFF file" = "Ekspor satu file TIFF";

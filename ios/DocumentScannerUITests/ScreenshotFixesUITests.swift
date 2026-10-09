@@ -108,7 +108,13 @@ final class ScreenshotFixesUITests: XCTestCase {
             XCTAssertTrue(ribbon.exists, "No founding ribbon (\(language))")
             if language == "en" { XCTAssertTrue(ribbon.label.contains("ENDS DEC 17"), ribbon.label) }
             else { XCTAssertTrue(ribbon.label.contains("12월 17일"), ribbon.label) }
-            if !ribbon.isHittable { app.swipeUp() }
+            // Scroll the plans (below the carousel) until the lifetime card shows.
+            let window = app.windows.firstMatch
+            let cta = app.buttons["subscribe-button"]
+            for _ in 0..<5 where !cta.exists || ribbon.frame.maxY > cta.frame.minY - 160 {
+                window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.72)).press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.35)))
+            }
+            if language != "en" { assertNoEnglish(app, "\(language) paywall") }
             save(app, "\(language)-paywall-founding")
             app.terminate()
         }

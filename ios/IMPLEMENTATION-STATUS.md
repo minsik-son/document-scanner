@@ -177,4 +177,6 @@ Selected-language + close-up OCR, word-gap column separation, mixed-script parag
 | E1 창립가 | `FoundingOffer.endDay` = 2026-12-17 한 곳. 남은 일수·리본은 이 날짜로 계산, 지나면 숨김. 리본 "FOUNDING PRICE · ENDS DEC 17"(15개 언어). 정가 USD 59.99 / KRW 79000, `applies(to:)` 유지 | `testFoundingOfferEndsDecember17`, UI `testPaywallFoundingRibbon`(en·ko) |
 | E2 StoreKit | 구독 그룹 "HushScan Pro", 참조 이름 Pro Monthly/Yearly/Lifetime, 표시 이름·설명 영어·한국어(08 문서 3절), 가족 공유 끔. 가격 $4.99 / $29.99(1주 무료) / $39.99 확인 | storekit JSON 검사, SubscriptionTests |
 
+추가: 결제 화면 하단 갱신 안내문이 번역되지 않던 것(`Text(String)`) 수정, 한국어 결제 화면도 영어 잔존 검사에 포함.
+
 전면 광고(completionAdEnabled)는 계속 꺼 둠. Release 아카이브 성공.

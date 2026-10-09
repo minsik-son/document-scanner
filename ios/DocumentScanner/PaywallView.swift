@@ -180,7 +180,7 @@ struct PaywallView: View {
                     .background(TossPay.blue, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     
                 }.buttonStyle(.plain).disabled(subscription.busy).accessibilityIdentifier("subscribe-button")
-                Text(legal(product))
+                Text(L(legal(product)))
                     .font(.caption2).foregroundStyle(TossPay.sub).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             }
             HStack(spacing: 18) {

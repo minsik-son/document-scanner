@@ -27,6 +27,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         # Custom keys must be in the source plist; Xcode only generates known INFOPLIST_KEY entries.
+        ITSAppUsesNonExemptEncryption: false
         GADApplicationIdentifier: ca-app-pub-9921649727270589~5824656756
         GADDelayAppMeasurementInit: true
     dependencies:

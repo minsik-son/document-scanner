@@ -158,3 +158,23 @@ Selected-language + close-up OCR, word-gap column separation, mixed-script parag
 이름 변경(2026-10-08): FoldScan → **HushScan**. 표시 이름, Bundle ID `com.hushscan.app`(테스트 `.tests`/`.uitests`), 상품 ID `com.hushscan.pro.monthly/yearly/lifetime`, 문서·개인정보 페이지 반영. 마케팅 버전 1.0. 위 표의 FoldScan 표기는 당시 기록.
 
 광고 켜기(2026-10-08): AdMob 앱 HushScan(`ca-app-pub-9921649727270589~5824656756`), 광고 단위 Home native·Tools native·Extra free use rewarded. Release는 실제 단위, Debug는 Google 데모 단위. Google 동의 메시지(UMP)가 끝나기 전에는 광고를 요청하지 않음, EEA 등에서는 설정에 "Ad privacy choices"(15개 언어). SKAdNetwork(Google) 추가. 개인정보 페이지 광고 문단 갱신. HomeAdvertisementTests를 첫 24시간 규칙에 맞게 수정(통과). CompletionAdvertisementTests 실패 2건은 전면 광고를 끈 마케팅 반영 이전부터의 것(전면 광고는 사용 안 함).
+
+## 스크린샷 캡처 중 발견 수정 (2026-10-08, 기준: `../마케팅 리포트/09_버그수정_가격적용_프롬프트.md`)
+
+| 항목 | 반영 내용 | 검증 |
+|---|---|---|
+| A1 미리보기 위치 | 원인: `ExtractRender.page`가 `getDrawingTransform`(확대 안 함)을 써서 작은 PDF 페이지가 큰 그림의 한쪽 구석에 작게 그려짐. 탐지(2000px)와 미리보기(1400px) 그림의 비율이 달라 상자가 왼쪽·위로 밀림. 명시적 배율로 수정, 미리보기·저장 모두 `Redaction.place` 한 함수 사용 | `ScreenshotFixesTests.testRenderedPageFillsThePicture`, `testSampleFormRedaction`(SSN·카드·이메일·보험번호·전화 줄 위에 상자) |
+| A2 저장 크기 | 같은 원인. 이제 그림이 페이지 전체를 채우고 mediaBox는 원본과 같음. 결과는 텍스트 층 없는 이미지 PDF(가린 글자 재인식도 안 됨) | `testSampleFormRedaction`(페이지 크기 동일, PDF 텍스트·OCR에 6789/7731 없음), `review-shots/redacted-sample.pdf` |
+| A3 탐지 누락 | 라벨(ID·member·policy·account·customer·subscriber·patient·계좌·회원번호·보험·고객번호·가입자·증권번호·환자번호) 뒤 숫자 4자리 이상을 "ID number" 후보로 추가(기본 켜짐, 탭해서 끔). 날짜·연도는 제외 | `testLabelledMemberNumberIsFound` |
+| A4 테스트 | 단위 테스트 + UI 테스트 `ScreenshotFixesUITests.testRedactSampleForm`(DEBUG `--seed-image`로 샘플 사진을 저장 문서로 추가) | 통과 |
+| B1 언어 감지 | 인식된 모든 텍스트 영역을 합쳐 `NLLanguageRecognizer`로 판정(확률 ≥ 0.6), 감지 언어로 다시 인식. 낮으면 "감지 못 함 — 언어를 골라 주세요", 번역 버튼 비활성 | `testFrenchLetterIsDetected`, UI `testTranslationDetectsFrench`(French) |
+| B2 언어 이름 | `LanguageName`이 앱 언어 기준으로 표시·정렬. 한국어는 "한국어로 번역"처럼 조사 처리 | `testLanguageNamesFollowAppLanguage`, 한국어 화면 캡처 |
+| C 번역 누락 | 하단 탭 "Documents", "Folders" 등 30여 개 문자열 15개 언어 추가. 칩·문서 종류·폴더 이름을 런타임에 번역. 압축 문구 키를 `%@`로. 날짜·기본 스캔 이름을 앱 언어 형식으로(`Date.appFormatted`, `ScanDocument.defaultTitle`). 홈 제목 줄바꿈, "텍스트"·"자르기" 칩 한 줄. 도구 타일 VoiceOver 라벨 번역 | `Tools/missing_strings.py`(14개 언어 모두 남은 것은 형식명·기호뿐), UI `testKoreanScreens`, `testOtherLanguagesHaveNoEnglish`(13개 언어 홈·문서·도구에 번역되지 않은 영어 원문 없음) |
+| D1 단수형 | `pagesText(n)` → "1 page" / "n pages", 다른 언어는 기존 키 | `testSinglePageWording` |
+| D2 날짜 순서 | 숫자 날짜가 모호하면 문서 언어(유럽어는 일/월) → 기기 지역(US 등은 월/일) 순으로 판단, 안 되면 이름에 날짜를 넣지 않음 | `testNumericDateOrder` |
+| D3 서명 안내문 | 안내문을 저장 버튼 위(actions 영역)로 옮김 | 코드 확인 |
+| D4 스캔 버리기 | 페이지가 있는 새 스캔에서 닫기 → "이 스캔을 버릴까요?" 확인 | 코드 확인 |
+| E1 창립가 | `FoundingOffer.endDay` = 2026-12-17 한 곳. 남은 일수·리본은 이 날짜로 계산, 지나면 숨김. 리본 "FOUNDING PRICE · ENDS DEC 17"(15개 언어). 정가 USD 59.99 / KRW 79000, `applies(to:)` 유지 | `testFoundingOfferEndsDecember17`, UI `testPaywallFoundingRibbon`(en·ko) |
+| E2 StoreKit | 구독 그룹 "HushScan Pro", 참조 이름 Pro Monthly/Yearly/Lifetime, 표시 이름·설명 영어·한국어(08 문서 3절), 가족 공유 끔. 가격 $4.99 / $29.99(1주 무료) / $39.99 확인 | storekit JSON 검사, SubscriptionTests |
+
+전면 광고(completionAdEnabled)는 계속 꺼 둠. Release 아카이브 성공.

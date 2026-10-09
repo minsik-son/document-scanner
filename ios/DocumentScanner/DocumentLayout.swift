@@ -1633,7 +1633,17 @@ enum DocumentLayoutAnalyzer {
                 let cs = Set(g.compactMap { columnOf(words[$0].box.midX) })
                 if cs.count == 1, let c = cs.first { columns.append(c) }
             }
-            let byWords = groups.count == cell.columnSpan && columns.count == groups.count && Set(columns).count == groups.count
+            // Each pair of neighbouring groups must be apart by more than a word space,
+            // with the column line inside that gap. A sentence that simply runs on
+            // across the line ("[별지 제13호서식] 인감증명서 발급 위임장") stays one cell.
+            let heights = inside.map { words[$0].box.height }.sorted()
+            let lineHeight = heights.isEmpty ? 0 : heights[heights.count / 2]
+            let apart = zip(groups, groups.dropFirst()).allSatisfy { a, b in
+                guard let last = a.last, let first = b.first, let c = columnOf(words[first].box.midX) else { return false }
+                let line = bounds[c], left = words[last].box.x1, right = words[first].box.x0
+                return right - left >= lineHeight && left <= line + lineHeight * 0.3 && right >= line - lineHeight * 0.3
+            }
+            let byWords = groups.count == cell.columnSpan && columns.count == groups.count && Set(columns).count == groups.count && apart
             var placed = false
             // Light letters on a dark band: recognition places words poorly there,
             // so find the groups of letters in the pixels and hand out the words

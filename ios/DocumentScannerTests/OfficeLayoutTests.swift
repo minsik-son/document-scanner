@@ -69,12 +69,14 @@ final class OfficeLayoutTests: XCTestCase {
         XCTAssertEqual(cell("Toronto")?.rowSpan, 7)
         XCTAssertEqual(cell("Vanouver")?.rowSpan, 8)
         XCTAssertEqual(cell("Seattle")?.rowSpan, 7)
-        // Colored bands: Utah yellow, Vancouver blue, Toronto pale yellow; plain rows stay white.
+        // Colored bands: Utah yellow, Vancouver blue, Toronto pale yellow, Seattle pale peach
+        // (FCE4D6 in the original sheet, faint in the photo).
         let utah = try XCTUnwrap(cell("Utah")?.fill), van = try XCTUnwrap(cell("Vanouver")?.fill)
         XCTAssertGreaterThan(Int(utah.r), Int(utah.b) + 60)
         XCTAssertGreaterThan(Int(van.b), Int(van.r) + 60)
         XCTAssertNotNil(cell("Toronto")?.fill)
-        XCTAssertNil(cell("Bellevue")?.fill)
+        let bellevue = try XCTUnwrap(cell("Bellevue")?.fill)
+        XCTAssertGreaterThan(Int(bellevue.r), Int(bellevue.b) + 20)
         XCTAssertTrue(table.cells.allSatisfy { $0.top && $0.left && $0.bottom && $0.right })
         XCTAssertEqual(cell("Decarie")?.alignment, .right)
         // One body size for the whole table.

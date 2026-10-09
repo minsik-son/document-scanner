@@ -25,13 +25,18 @@ actor PageThumbnailCache {
         if page.identityBackgroundCleanup == true { data.append(Data("identity-edges-v2".utf8)) }
         let source = root.appendingPathComponent(pdfFile ?? page.imageFile)
         let attributes = try source.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
-        data.append(Data("thumbnail-v4|\(root.path)|\(pdfFile ?? page.imageFile)|\(attributes.contentModificationDate?.timeIntervalSince1970 ?? 0)|\(attributes.fileSize ?? 0)".utf8))
+        // Not the library's absolute path: iOS moves the app's container on every
+        // update or reinstall, which made every saved thumbnail miss and re-render
+        // from the full-size scan at the next launch.
+        data.append(Data("thumbnail-v5|\(pdfFile ?? page.imageFile)|\(attributes.contentModificationDate?.timeIntervalSince1970 ?? 0)|\(attributes.fileSize ?? 0)".utf8))
         let key = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
-        if let cached = memory.object(forKey: key as NSString) { return cached }
+        // In memory, the library folder keeps two libraries (UI-test sessions) apart.
+        let memoryKey = root.path + "|" + key
+        if let cached = memory.object(forKey: memoryKey as NSString) { return cached }
         let directory = root.appendingPathComponent("Thumbnails", isDirectory: true)
         let file = directory.appendingPathComponent(key + ".jpg")
         if let cached = UIImage(contentsOfFile: file.path)?.preparingForDisplay() {
-            remember(cached, key: key); return cached
+            remember(cached, key: memoryKey); return cached
         }
         let thumbnail: UIImage = try autoreleasepool {
             try Task.checkCancellation()
@@ -42,7 +47,7 @@ actor PageThumbnailCache {
             return try Imaging.previewThumbnail(rendered, maxDimension: 700)
         }
         try Task.checkCancellation()
-        remember(thumbnail, key: key)
+        remember(thumbnail, key: memoryKey)
         // Cache failure must never fail document access.
         if let bytes = thumbnail.jpegData(compressionQuality: 0.94) {
             try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

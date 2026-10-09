@@ -28,6 +28,16 @@ enum LibraryOpening {
             return result
         }
         guard maintenance else { return result }
+        // Thumbnails saved before cache v5 were keyed by the container path, which
+        // iOS changes on every update, so each update left a whole unused set behind.
+        // Clear them once; current thumbnails are rebuilt on demand.
+        let thumbnails = root.appendingPathComponent("Thumbnails", isDirectory: true)
+        let marker = thumbnails.appendingPathComponent(".cache-v5")
+        if !fm.fileExists(atPath: marker.path) {
+            try? fm.removeItem(at: thumbnails)
+            try? fm.createDirectory(at: thumbnails, withIntermediateDirectories: true)
+            fm.createFile(atPath: marker.path, contents: Data())
+        }
         do {
             let now = Date()
             let expired = result.manifest.documents.filter { $0.deletedAt.map { now.timeIntervalSince($0) >= 30 * 86400 } ?? false }

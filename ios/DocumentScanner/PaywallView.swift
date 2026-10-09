@@ -121,9 +121,10 @@ struct PaywallView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(lifetime ? "Lifetime" : annual ? "Yearly" : "Monthly").font(.headline)
                     Group {
-                        if lifetime, FoundingOffer.applies(to: plan), let end = FoundingOffer.endDate, let regular = FoundingOffer.regularPrice(for: plan) {
-                            Text("Launch price until \(end.formatted(.dateTime.month(.abbreviated).day().locale(AppLanguage.locale))), then \(regular)")
+                        if lifetime, FoundingOffer.applies(to: plan), let regular = FoundingOffer.regularPrice(for: plan) {
+                            Text("Launch price until \(FoundingOffer.endText), then \(regular)")
                         }
+                        else if lifetime, FoundingOffer.applies(to: plan) { Text("Launch price until \(FoundingOffer.endText)") }
                         else if lifetime { Text("One-time purchase. No subscription.") }
                         else if annual {
                             if subscription.trialEligible, let days = subscription.trialDays { Text("\(days) days free · \((plan.price / 12).formatted(plan.priceFormatStyle))/month, billed yearly") }
@@ -333,13 +334,17 @@ enum FoundingOffer {
     }
     static var daysLeft: Int? { daysLeft() }
     static var active: Bool { daysLeft != nil }
-    /// The founding ribbon, strikethrough and days left show only while the offer
-    /// window is open AND the App Store still charges less than the regular price
-    /// for this storefront. Once App Store Connect switches to the regular price the
-    /// offer disappears even if the window date is wrong; storefronts without a
-    /// known regular price never show it.
+    /// The founding ribbon shows while the offer window is open, in every
+    /// storefront. Where the regular price is known (USD, KRW) it also needs the
+    /// App Store to still charge less than it, and the regular price is shown
+    /// struck through; elsewhere only the ribbon and end date show.
     static func applies(to product: Product) -> Bool {
-        product.id == SubscriptionStore.lifetimeID && daysLeft != nil && regularPrice(for: product) != nil
+        guard product.id == SubscriptionStore.lifetimeID, daysLeft != nil else { return false }
+        return applies(price: product.price, regular: regularPrices[product.priceFormatStyle.currencyCode])
+    }
+    static func applies(price: Decimal, regular: Decimal?) -> Bool {
+        guard let regular else { return true }
+        return price < regular
     }
     static func regularPrice(for product: Product) -> String? {
         guard let value = regularPrices[product.priceFormatStyle.currencyCode], value > product.price else { return nil }

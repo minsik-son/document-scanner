@@ -148,4 +148,11 @@ final class ScreenshotFixesTests: XCTestCase {
         XCTAssertEqual(FoundingOffer.regularPrices["USD"], Decimal(string: "59.99"))
         XCTAssertEqual(FoundingOffer.regularPrices["KRW"], 79000)
     }
+
+    // E1 follow-up: other currencies show the ribbon too; known currencies only while cheaper than the regular price.
+    func testFoundingRibbonInEveryCurrency() {
+        XCTAssertTrue(FoundingOffer.applies(price: 39.99, regular: Decimal(string: "59.99")), "USD founding price")
+        XCTAssertFalse(FoundingOffer.applies(price: Decimal(string: "59.99")!, regular: Decimal(string: "59.99")), "USD already at the regular price")
+        XCTAssertTrue(FoundingOffer.applies(price: 54.99, regular: nil), "CAD and other currencies: ribbon without strikethrough")
+    }
 }

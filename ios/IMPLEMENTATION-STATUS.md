@@ -174,7 +174,7 @@ Selected-language + close-up OCR, word-gap column separation, mixed-script parag
 | D2 날짜 순서 | 숫자 날짜가 모호하면 문서 언어(유럽어는 일/월) → 기기 지역(US 등은 월/일) 순으로 판단, 안 되면 이름에 날짜를 넣지 않음 | `testNumericDateOrder` |
 | D3 서명 안내문 | 안내문을 저장 버튼 위(actions 영역)로 옮김 | 코드 확인 |
 | D4 스캔 버리기 | 페이지가 있는 새 스캔에서 닫기 → "이 스캔을 버릴까요?" 확인 | 코드 확인 |
-| E1 창립가 | `FoundingOffer.endDay` = 2026-12-17 한 곳. 남은 일수·리본은 이 날짜로 계산, 지나면 숨김. 리본 "FOUNDING PRICE · ENDS DEC 17"(15개 언어). 정가 USD 59.99 / KRW 79000, `applies(to:)` 유지 | `testFoundingOfferEndsDecember17`, UI `testPaywallFoundingRibbon`(en·ko) |
+| E1 창립가 | `FoundingOffer.endDay` = 2026-12-17 한 곳. 남은 일수·리본은 이 날짜로 계산, 지나면 숨김. 리본 "FOUNDING PRICE · ENDS DEC 17"(15개 언어). 정가 USD 59.99 / KRW 79000. 정가를 아는 통화는 StoreKit 가격이 정가보다 낮을 때만 리본+취소선, 그 밖의 통화는 기간 안이면 리본과 "Launch price until Dec 17"만(취소선 없음, 08 문서 방식) | `testFoundingOfferEndsDecember17`, `testFoundingRibbonInEveryCurrency`, UI `testPaywallFoundingRibbon`(en·ko) |
 | E2 StoreKit | 구독 그룹 "HushScan Pro", 참조 이름 Pro Monthly/Yearly/Lifetime, 표시 이름·설명 영어·한국어(08 문서 3절), 가족 공유 끔. 가격 $4.99 / $29.99(1주 무료) / $39.99 확인 | storekit JSON 검사, SubscriptionTests |
 
 추가: 결제 화면 하단 갱신 안내문이 번역되지 않던 것(`Text(String)`) 수정, 한국어 결제 화면도 영어 잔존 검사에 포함.

@@ -65,7 +65,7 @@ enum PDFExport {
             try Task.checkCancellation()
             let validExistingText = page.ocrComplete && page.ocrProcessingVersion == textProcessingVersion
             if blocks != nil || !validExistingText {
-                output.pages[index].textBlocks = blocks ?? []
+                output.pages[index].textBlocks = RedactionGeometry.scrub(blocks ?? [], boxes: page.redactionBoxes)
                 output.pages[index].ocrComplete = blocks != nil
                 output.pages[index].ocrProcessingVersion = blocks == nil ? nil : textProcessingVersion
             }

@@ -686,7 +686,7 @@ struct AdvancedOfflineToolContent:View {
         busy = true;clearOutput();phase = "Opening page…";let page = doc.pages[pageIndex],root = store.root
         job?.cancel();job = Task { defer { finishWork() };do {
             let image = try await OfflineWork.perform { try Imaging.render(page,root:root) };try Task.checkCancellation()
-            inputs = [image];current = 0;countPoints = [];selection = .zero;offsets = [.zero];text = tool == .excel ? OfficeExport.tableText(page.textBlocks) : page.plainText
+            inputs = [image];current = 0;countPoints = [];selection = .zero;offsets = [.zero];text = tool == .excel ? OfficeExport.tableText(page.visibleTextBlocks) : page.plainText
         } catch { report(error) } }
     }
     private func readText() {

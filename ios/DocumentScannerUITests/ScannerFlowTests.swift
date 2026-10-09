@@ -101,7 +101,7 @@ final class ScannerFlowTests: HushUITestCase {
     @MainActor
     func testIDCaptureStopsAfterTwoSidesAndOffersLayout() throws {
         let app = XCUIApplication(); app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--simulate-camera"]
-        app.launch(); app.buttons["Scan document"].tap()
+        app.launch(); startScan(app)
         app.buttons["ID card"].tap()
         XCTAssertTrue(app.staticTexts["Front of card"].exists)
         waitEnabled(app.buttons["Capture page"]); app.buttons["Capture page"].tap()
@@ -288,13 +288,14 @@ final class ScannerFlowTests: HushUITestCase {
         XCTAssertTrue(app.buttons["Export library backup"].waitForExistence(timeout: 5))
     }
 
-    /// A new scan saves through the save sheet: Save, then Save as PDF.
+    /// A new scan saves as PDF: PDF in the format row, then Save.
     @MainActor
     private func savePDF(in app: XCUIApplication) {
         let save = app.buttons["review-save"]
-        XCTAssertTrue(save.waitForExistence(timeout: 10)); save.tap()
-        let pdf = app.buttons["save-format-pdf"]
-        if pdf.waitForExistence(timeout: 5) { pdf.tap() }
+        XCTAssertTrue(save.waitForExistence(timeout: 10))
+        let pdf = app.buttons["review-format-pdf"]
+        if pdf.exists { pdf.tap() }
+        save.tap()
     }
 
     @MainActor
@@ -341,6 +342,16 @@ final class ScannerFlowTests: HushUITestCase {
         XCTAssertTrue(button.waitForExistence(timeout: 10))
         for _ in 0..<3 where !button.isHittable { app.swipeUp() }
         button.tap()
+    }
+
+    /// The camera button, once the startup cover is gone (taps on the cover do nothing).
+    @MainActor
+    private func startScan(_ app: XCUIApplication) {
+        let scan = app.buttons["scan-document"]
+        XCTAssertTrue(scan.waitForExistence(timeout: 10))
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.otherElements["startup-screen"])
+        _ = XCTWaiter.wait(for: [gone], timeout: 10)
+        scan.tap()
     }
 
     @MainActor
@@ -475,7 +486,7 @@ final class ScannerFlowTests: HushUITestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--simulate-camera"]
         app.launch()
-        app.buttons["Scan document"].tap()
+        startScan(app)
         waitEnabled(app.buttons["Capture page"]); app.buttons["Capture page"].tap()
         waitEnabled(app.buttons["review-done"])
         selectEditorTool("adjust", in: app)
@@ -517,7 +528,7 @@ final class ScannerFlowTests: HushUITestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--simulate-camera"]
         app.launch()
-        app.buttons["Scan document"].tap()
+        startScan(app)
         let shutter = app.buttons["Capture page"]
         waitEnabled(shutter); shutter.tap()
         XCTAssertTrue(app.navigationBars["Review scan"].waitForExistence(timeout: 10))
@@ -629,7 +640,7 @@ final class ScannerFlowTests: HushUITestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--simulate-camera"]
         app.launch()
-        app.buttons["Scan document"].tap()
+        startScan(app)
         waitEnabled(app.buttons["Capture page"]); app.buttons["Capture page"].tap()
         XCTAssertTrue(app.navigationBars["Review scan"].waitForExistence(timeout: 10))
         // Reject even before the first preview finishes.
@@ -668,22 +679,21 @@ final class ScannerFlowTests: HushUITestCase {
     }
 
     @MainActor
-    func testSaveSheetConvertsToWordAndReviewShowsWholePage() throws {
+    func testFormatRowConvertsToWordAndReviewShowsWholePage() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-session", UUID().uuidString, "-app-language", "en", "--seed-draft"]
         app.launch()
         resumeFirstUnfinishedScan(in: app)
-        for id in ["review-tool-crop", "review-tool-filter", "review-tool-adjust", "review-tool-rotate", "review-tool-retake", "review-name"] {
+        for id in ["review-tool-crop", "review-tool-filter", "review-tool-adjust", "review-tool-rotate", "review-tool-hide", "review-name",
+                   "review-format-pdf", "review-format-word", "review-format-excel", "review-format-slides", "review-format-images", "review-add-pages"] {
             XCTAssertTrue(app.descendants(matching: .any)[id].waitForExistence(timeout: 5), id)
         }
-        XCTAssertTrue(app.buttons["Add pages"].exists, "Add pages stays above Save")
+        XCTAssertEqual(app.buttons["review-save"].label, "Save as PDF", "PDF is the default")
         designShot(app, "save-1-review")
+        app.buttons["review-format-word"].tap()
+        XCTAssertTrue(app.buttons["review-save"].label.hasPrefix("Convert to Word"), app.buttons["review-save"].label)
+        designShot(app, "save-2-word-chosen")
         app.buttons["review-save"].tap()
-        for id in ["save-format-pdf", "save-format-word", "save-format-excel", "save-format-slides", "save-format-images", "save-name"] {
-            XCTAssertTrue(app.descendants(matching: .any)[id].waitForExistence(timeout: 5), id)
-        }
-        designShot(app, "save-2-sheet")
-        app.buttons["save-format-word"].tap()
         // The PDF is saved first, then Word reads the pages and opens its review.
         let preview = app.descendants(matching: .any)["office-page-preview"].firstMatch
         XCTAssertTrue(preview.waitForExistence(timeout: 90), "Word review opens with the whole page")
@@ -693,6 +703,38 @@ final class ScannerFlowTests: HushUITestCase {
         app.buttons["close-enlarged-preview"].tap()
         app.buttons["export-close"].tap()
         XCTAssertTrue(app.staticTexts["Saved on this iPhone"].waitForExistence(timeout: 10), "The PDF was saved too")
+    }
+
+    /// Hide on the review page: found numbers are covered, a dragged box is added,
+    /// and the saved PDF has neither in its text.
+    @MainActor
+    func testHideOnReviewCoversFoundNumbersAndDraggedArea() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-test-session", UUID().uuidString, "-app-language", "en", "--seed-draft", "--seed-redact-page"]
+        app.launch()
+        resumeFirstUnfinishedScan(in: app)
+        let hide = app.buttons["review-tool-hide"]
+        XCTAssertTrue(hide.waitForExistence(timeout: 10)); hide.tap()
+        let canvas = app.descendants(matching: .any)["redact-canvas"].firstMatch
+        XCTAssertTrue(canvas.waitForExistence(timeout: 30))
+        // The phone number and the card number on the seeded page are found.
+        let found = NSPredicate(format: "value BEGINSWITH '2 hidden'")
+        expectation(for: found, evaluatedWith: canvas); waitForExpectations(timeout: 30)
+        designShot(app, "hide-1-found")
+        // Drag over the name line to hide it too.
+        let from = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.17))
+        let to = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.21))
+        from.press(forDuration: 0.05, thenDragTo: to)
+        XCTAssertTrue(canvas.value as? String == "3 hidden, 0 visible", String(describing: canvas.value))
+        app.buttons["redact-undo"].tap()
+        XCTAssertTrue(canvas.value as? String == "2 hidden, 0 visible", String(describing: canvas.value))
+        from.press(forDuration: 0.05, thenDragTo: to)
+        designShot(app, "hide-2-added")
+        app.buttons["redact-save"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["review-hidden-badge"].firstMatch.waitForExistence(timeout: 10))
+        designShot(app, "hide-3-review")
+        savePDF(in: app)
+        XCTAssertTrue(app.staticTexts["Saved on this iPhone"].waitForExistence(timeout: 60))
     }
 
     /// Startup logo smoothness: main-thread hitches from launch until the cover is gone

@@ -9,6 +9,8 @@ struct DocumentScannerApp: App {
     @State private var showStartup = true
     /// True once the cover has finished fading out (not just started).
     @State private var coverGone = false
+    /// Light appearance for the app; switched while the cover still hides everything.
+    @State private var lightAppearance = false
     @StateObject private var lock = AppLock()
     @StateObject private var subscription = SubscriptionStore()
     @StateObject private var advertisements = HomeAdvertisementStore()
@@ -81,7 +83,7 @@ struct DocumentScannerApp: App {
                 lock.sceneChanged(phase)
                 if phase == .active { Task { await subscription.refreshEntitlements() } }
             }
-            .tint(Design.blue).preferredColorScheme(coverGone ? .light : .dark)
+            .tint(Design.blue).preferredColorScheme(lightAppearance ? .light : .dark)
         }
     }
 
@@ -103,12 +105,17 @@ struct DocumentScannerApp: App {
             await SplashClock.wait(timeout: .seconds(4))
             try? await Task.sleep(for: .milliseconds(150))
         }
+        // The light appearance is a whole-window trait change. It happens while the
+        // opaque cover still hides the app, never during the fade or at its end,
+        // where it would cancel a first tap on the revealed screen.
+        lightAppearance = true
+        try? await Task.sleep(for: .milliseconds(60))
         // Starts the cover's fade (a Core Animation fade, see StartupCover).
         showStartup = false
     }
-    /// Only after the fade: the light appearance (a whole-window trait change), the
-    /// accessibility tree and the ad SDK (consent check, start-up, home ad request)
-    /// would otherwise compete with the logo and the fade for the main thread.
+    /// Only after the fade: the accessibility tree and the ad SDK (consent check,
+    /// start-up, home ad request) would otherwise compete with the logo and the
+    /// fade for the main thread.
     @MainActor private func coverFaded() {
         coverGone = true
 #if DEBUG
@@ -215,6 +222,13 @@ private func makeLibrary() async -> LibraryStore {
                     let image = UIGraphicsImageRenderer(size: CGSize(width: 600, height: 800)).image { context in
                         UIColor.white.setFill(); context.fill(CGRect(x: 0, y: 0, width: 600, height: 800))
                         ("SCANNER TEST PAGE \(i)" as NSString).draw(at: CGPoint(x: 45, y: 100), withAttributes: [.font: UIFont.boldSystemFont(ofSize: 32), .foregroundColor: UIColor.black])
+                        if args.contains("--seed-redact-page"), i == 1 {
+                            // Hide personal info: a phone and a card number to find, a name to hide by hand.
+                            let font: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 26), .foregroundColor: UIColor.black]
+                            ("Name: Hong Gildong" as NSString).draw(at: CGPoint(x: 45, y: 200), withAttributes: font)
+                            ("Phone 010-1234-5678" as NSString).draw(at: CGPoint(x: 45, y: 330), withAttributes: font)
+                            ("Card 4111 1111 1111 1111" as NSString).draw(at: CGPoint(x: 45, y: 460), withAttributes: font)
+                        }
                         if args.contains("--seed-office-table") {
                             let rows = [["Product","Quantity","Price"],["Paper","12","24.50"],["Pens","8","16.00"],["Folders","5","10.00"]]
                             UIColor.black.setStroke()

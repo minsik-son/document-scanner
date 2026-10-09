@@ -113,7 +113,7 @@ enum DocumentPDF {
                 y: (size.height - image.size.height * scale) / 2, width: image.size.width * scale,
                 height: image.size.height * scale)
               PDFJPEG.draw(image, quality: compression.quality, in: rect, context: context.cgContext)
-              PDFTextLayer.draw(blocks: scan.textBlocks, in: context.cgContext, imageRect: rect)
+              PDFTextLayer.draw(blocks: scan.visibleTextBlocks, in: context.cgContext, imageRect: rect)
             }
           } else {
             bytes = try Imaging.pdf(single, root: root)
@@ -142,7 +142,7 @@ enum DocumentPDF {
           drawPage(base, in: cg, size: size, margin: 0)
           if addOCR {
             PDFTextLayer.draw(
-              blocks: page.textBlocks, in: cg, imageRect: CGRect(origin: .zero, size: size))
+              blocks: page.visibleTextBlocks, in: cg, imageRect: CGRect(origin: .zero, size: size))
           }
           draw(marks, size: size, context: cg)
         }

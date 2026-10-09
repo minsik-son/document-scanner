@@ -59,9 +59,13 @@ struct ReviewView: View {
     @State private var current = 0
     /// Edit mode: the compact list for reordering and deleting pages.
     @State private var reordering = false
-    /// The save sheet of a new scan (PDF or another format).
-    @State private var choosingFormat = false
-    /// Chosen in the save sheet; opened once the PDF is saved.
+    /// What Save makes, chosen in the row above the button; remembered.
+    @AppStorage(ConversionRoute.formatKey) private var outputFormat = "pdf"
+    @State private var trials = ProTrials()
+    @State private var officePaywall = false
+    /// Hide personal info on a page of this review.
+    @State private var hiding: HideRoute?
+    /// Chosen in the format row; opened once the PDF is saved.
     @State private var pendingConversion: ConversionRoute?
     @State private var conversion: ConversionRoute?
     @State private var renaming = false
@@ -154,15 +158,7 @@ struct ReviewView: View {
                             if let error { Section { Text(L(error)).foregroundStyle(.red) } }
                         }.listStyle(.insetGrouped).disabled(saving)
                         .environment(\.editMode, .constant(reordering ? .active : .inactive))
-                        .safeAreaInset(edge: .bottom) {
-                            VStack(spacing: 12) {
-                                Button { openCamera(retaking: nil) } label: { Label("Add pages", systemImage: "camera") }
-                                    .buttonStyle(SecondaryButton()).disabled(saving)
-                                if saving { Text(L(saveProgress)).font(.subheadline).foregroundStyle(.secondary).accessibilityIdentifier("save-progress") }
-                                Button { if doc.isDraft { choosingFormat = true } else { save() } } label: { if saving { ProgressView().tint(Design.blueInk).frame(maxWidth: .infinity) } else { Text(doc.isDraft ? "Save" : "Save changes") } }.buttonStyle(PrimaryButton()).disabled(saving || doc.pages.isEmpty)
-                                    .accessibilityIdentifier("review-save")
-                            }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8).background(.white)
-                        }
+                        .safeAreaInset(edge: .bottom) { saveBar(doc) }
                     }
                 } else { ProgressView() }
             }
@@ -287,14 +283,16 @@ struct ReviewView: View {
                     document?.title = name; document?.autoTitled = false; persistDraft()
                 }
             }
-            .sheet(isPresented: $choosingFormat) {
+            .sheet(isPresented: $officePaywall) { PaywallView(start: .feature(.office)) }
+            .onReceive(NotificationCenter.default.publisher(for: .proTrialsChanged)) { _ in trials = ProTrials() }
+            .fullScreenCover(item: $hiding) { route in
                 if let doc = document {
-                    ReviewSaveSheet(title: Binding(get: { document?.title ?? "" }, set: { document?.title = $0; document?.autoTitled = false; persistDraft() }),
-                                    autoTitled: doc.autoTitled == true) {
-                        pdfOptionFields(doc, rows: true)
-                    } choose: { route in
-                        pendingConversion = route
-                        save()
+                    NavigationStack {
+                        ProTrialGate(feature: .redact, title: L("Hide personal info"),
+                                     detail: "ID, card and account numbers, phone numbers and emails are found and blacked out in a new copy.",
+                                     art: .redact, close: { hiding = nil }, autoTry: true) {
+                            RedactionEditor(pages: doc.pages, root: store.root, notice: route.notice, save: applyHiding, index: route.page)
+                        }
                     }
                 }
             }
@@ -314,6 +312,86 @@ struct ReviewView: View {
             .onChange(of: saving) { _, isSaving in if !isSaving && !saved { pendingConversion = nil } }
             .sheet(item: $conversion) { route in ConversionDestination(route: route, documentID: documentID) { conversion = nil } }
     }
+    /// Format row (new scans), Add pages and the save button.
+    @ViewBuilder private func saveBar(_ doc: ScanDocument) -> some View {
+        VStack(spacing: 10) {
+            if doc.isDraft {
+                HStack(spacing: 0) {
+                    ForEach(Self.formats, id: \.key) { format in
+                        Button { outputFormat = format.key } label: {
+                            VStack(spacing: 5) {
+                                HStack(spacing: 2) {
+                                    Text(L(format.title)).font(.system(size: 15, weight: outputFormat == format.key ? .bold : .semibold))
+                                    if format.office && !subscription.isPro {
+                                        Image(systemName: officeLocked ? "lock.fill" : "crown.fill").font(.system(size: 8, weight: .bold)).foregroundStyle(TK.orange)
+                                    }
+                                }
+                                .foregroundStyle(outputFormat == format.key ? TK.grey900 : TK.grey500)
+                                Capsule().fill(outputFormat == format.key ? TK.blue : .clear).frame(height: 3).padding(.horizontal, 6)
+                            }.frame(maxWidth: .infinity).contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("review-format-\(format.key)")
+                        .accessibilityAddTraits(outputFormat == format.key ? .isSelected : [])
+                    }
+                }.disabled(saving)
+            }
+            if saving { Text(L(saveProgress)).font(.subheadline).foregroundStyle(.secondary).accessibilityIdentifier("save-progress") }
+            HStack(spacing: 10) {
+                Button { openCamera(retaking: nil) } label: { Label("Add pages", systemImage: "camera").lineLimit(1).minimumScaleFactor(0.8) }
+                    .buttonStyle(SecondaryButton()).frame(width: 132).disabled(saving)
+                    .accessibilityIdentifier("review-add-pages")
+                Button { saveTapped(doc) } label: {
+                    if saving { ProgressView().tint(Design.blueInk).frame(maxWidth: .infinity) }
+                    else {
+                        VStack(spacing: 1) {
+                            Text(saveTitle(doc)).lineLimit(1).minimumScaleFactor(0.8)
+                            if let note = trialNote(doc) { Text(note).font(.system(size: 11, weight: .semibold)).opacity(0.8) }
+                        }
+                    }
+                }
+                .buttonStyle(PrimaryButton()).disabled(saving || doc.pages.isEmpty)
+                .accessibilityIdentifier("review-save")
+            }
+        }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8).background(.white)
+    }
+    private struct OutputFormat { let key: String; let title: String; let office: Bool }
+    private static let formats = [OutputFormat(key: "pdf", title: "PDF", office: false), OutputFormat(key: "word", title: "Word", office: true),
+                                  OutputFormat(key: "excel", title: "Excel", office: true), OutputFormat(key: "slides", title: "PPT", office: true),
+                                  OutputFormat(key: "images", title: "Images", office: false)]
+    private var route: ConversionRoute? { ConversionRoute(rawValue: outputFormat) }
+    private var officeLocked: Bool { !subscription.isPro && !trials.bypassed && trials.remaining(.office) == 0 }
+    private func saveTitle(_ doc: ScanDocument) -> String {
+        guard doc.isDraft else { return L("Save changes") }
+        switch route {
+        case .word: return L("Convert to Word")
+        case .excel: return L("Convert to Excel")
+        case .slides: return L("Convert to PowerPoint")
+        case .images: return L("Save as images")
+        case nil: return L("Save as PDF")
+        }
+    }
+    private func trialNote(_ doc: ScanDocument) -> String? {
+        guard doc.isDraft, let route, route.tool != nil, !subscription.isPro, !trials.bypassed else { return nil }
+        return officeLocked ? L("Pro") : String(format: L("%lld free left"), trials.remaining(.office))
+    }
+    private func saveTapped(_ doc: ScanDocument) {
+        guard doc.isDraft else { save(); return }
+        if route?.tool != nil && officeLocked { officePaywall = true; return }
+        pendingConversion = route
+        save()
+    }
+    /// Stores the editor's areas on their pages. The first hide spends the free try.
+    private func applyHiding(_ result: [UUID: (hidden: [CGRect], visible: [CGRect])]) {
+        let before = document?.pages.contains(where: \.hasRedaction) ?? false
+        change { doc in
+            for (id, value) in result {
+                if let i = doc.pages.firstIndex(where: { $0.id == id }) { doc.pages[i].setRedaction(hidden: value.hidden, visible: value.visible) }
+            }
+            doc.searchable = false
+        }
+        if !before && (document?.pages.contains(where: \.hasRedaction) ?? false) { ProTrialSession.commit() }
+    }
     /// The page to check, shown big, with its actions and every page in a strip below.
     @ViewBuilder private func pagePreview(_ doc: ScanDocument) -> some View {
         let index = min(current, doc.pages.count - 1)
@@ -330,6 +408,15 @@ struct ReviewView: View {
                             Text("\(index + 1) / \(doc.pages.count)").font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
                                 .padding(.horizontal, 10).padding(.vertical, 5).background(.black.opacity(0.55), in: Capsule()).padding(10)
                                 .accessibilityLabel("Page \(index + 1) of \(doc.pages.count)")
+                        }
+                    }
+                    .overlay(alignment: .bottomTrailing) {
+                        if page.hasRedaction {
+                            Label(String(format: L("%lld hidden"), page.redactionBoxes.count), systemImage: page.redactionNeedsCheck ? "exclamationmark.triangle.fill" : "eye.slash.fill")
+                                .font(.system(size: 12, weight: .semibold)).foregroundStyle(.white)
+                                .padding(.horizontal, 10).padding(.vertical, 5)
+                                .background(page.redactionNeedsCheck ? Color.orange : Color.black.opacity(0.8), in: Capsule()).padding(10)
+                                .accessibilityIdentifier("review-hidden-badge")
                         }
                     }
                     .overlay(alignment: .topLeading) {
@@ -362,8 +449,8 @@ struct ReviewView: View {
                     change { $0.pages[index].turns = ($0.pages[index].turns + 1) % 4; $0.pages[index].trimming = $0.pages[index].trimming.rotatedClockwise(); $0.searchable = false }
                 }
                 .accessibilityIdentifier("review-tool-rotate")
-                pageAction("Retake", icon: "camera.rotate") { openCamera(retaking: page.id) }
-                    .accessibilityIdentifier("review-tool-retake")
+                pageAction("Hide", icon: "eye.slash") { hiding = HideRoute(page: index) }
+                    .accessibilityIdentifier("review-tool-hide")
                 Menu {
                     Button("Reorder pages") { withAnimation { reordering = true } }.disabled(doc.pages.count < 2)
                     if doc.isDraft { Button("PDF options") { pdfOptions = true } }
@@ -502,6 +589,11 @@ struct ReviewView: View {
         doc.title = doc.title.trimmingCharacters(in: .whitespacesAndNewlines)
         if doc.title.isEmpty { doc.title = ScanDocument.defaultTitle(); doc.autoTitled = true }
         document = doc
+        // A page cropped or retoned after hiding: check its hidden areas first.
+        if let stale = doc.pages.firstIndex(where: \.redactionNeedsCheck) {
+            hiding = HideRoute(page: stale, notice: "This page changed after you hid parts of it. Check the boxes, then save.")
+            return
+        }
         if let unchecked = doc.pages.first(where: { $0.cropReviewNeeded == true }) {
             resumeSaveAfterCrop = true; cropWasConfirmed = false
             cropReviewPage = unchecked
@@ -1018,4 +1110,11 @@ private struct ToneThumbnails: View {
             if !rendered.isEmpty { images = rendered }
         }
     }
+}
+
+/// Opens the hide editor on a page of the review.
+struct HideRoute: Identifiable {
+    let id = UUID()
+    let page: Int
+    var notice: String? = nil
 }

@@ -119,10 +119,12 @@ struct ScanPage: Codable, Identifiable, Equatable {
     var annotations: [PageAnnotation]?
     var correctedText: Bool?
     var erasures: [PageErasure]?
+    /// Hide personal info in the review; applied to every output (PageRedaction.swift).
+    var redaction: PageRedaction?
     /// Erasures painted on the current crop, rotation and margins.
     var activeErasures: [PageErasure] { (erasures ?? []).filter { $0.crop == crop && $0.turns == turns && ($0.trim ?? .zero) == trimming } }
-    var preservesPDF: Bool { sourcePDF != nil && correctedText != true && crop == .full && enhancement == .original && appearance == PageAdjustments() && activeErasures.isEmpty }
-    var plainText: String { textBlocks.map(\.text).joined(separator: "\n") }
+    var preservesPDF: Bool { sourcePDF != nil && correctedText != true && crop == .full && enhancement == .original && appearance == PageAdjustments() && activeErasures.isEmpty && !hasRedaction }
+    var plainText: String { visibleTextBlocks.map(\.text).joined(separator: "\n") }
 }
 struct ScanDocument: Codable, Identifiable, Equatable {
     var id = UUID()

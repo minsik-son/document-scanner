@@ -243,3 +243,12 @@ Selected-language + close-up OCR, word-gap column separation, mixed-script parag
 - 페이드가 끝난 뒤에만: 라이트 모드 전환, 접근성 트리 노출, `startupCovered` 해제(홈 광고 슬롯이 이때부터 요청), 0.6초 뒤 광고 SDK 시작.
 - 측정(디버그 전용): `--measure-splash`면 `SplashMetrics`가 메인 스레드 프레임 지연을 기록, `testStartupLogoHasNoHitches`가 읽는다. `testStartupLogoFrames`는 `--splash-time`으로 멈춘 프레임을 찍어 Blender 렌더와 비교(평균 픽셀 차 1.6–6/255).
 - 이전 APNG(`art-splash.dataset`)는 더 이상 쓰지 않는다.
+
+## 검토 화면: 저장 전에 형식 고르기 + 개인정보 가리기
+- 저장 시트(형식 고르기)를 없애고, 저장 버튼 위에 형식 한 줄(PDF·Word·Excel·PPT·이미지)을 둔다. 기본 PDF, 마지막 선택을 기억(UI 테스트 세션별로 따로). 버튼 문구가 형식을 따른다("Save as PDF", "Convert to Word"…). Office 무료 횟수 표시, 다 쓰면 결제 화면. '페이지 추가'는 저장 왼쪽.
+- 도구 줄: 자르기·필터·조정·회전·**가리기**·더 보기('다시 찍기'는 더 보기 안).
+- 가리기(`RedactionEditor.swift`): 열면 이 문서의 모든 페이지에서 개인정보(주민·면허·여권·카드·계좌·전화·이메일 등)를 찾아 검은 상자로 표시. 상자 탭 = 보이게/가리기, 글자 탭 = 그 단어 가리기, 드래그 = 영역 가리기, 상자 안을 끌면 이동, 모서리를 끌면 크기 조절, 두 손가락으로 확대·이동, 실행 취소. 처음 가릴 때 무료 1회 소모(Pro 무제한).
+- 저장(`PageRedaction.swift`): 페이지 편집 값(`ScanPage.redaction`)으로 저장. 회전·여백 변경은 정확히 따라감. 자르기나 톤을 바꾸면 상자는 그대로 덮은 채 저장 전에 확인 화면을 다시 연다.
+- 모든 결과물에 적용: 렌더(`Imaging.render`/썸네일)에서 검게 칠하고, 글자 인식 결과와 PDF 텍스트 층·Excel·검색 텍스트에서 가린 영역의 단어를 뺀다(`visibleTextBlocks`). 가져온 텍스트 PDF 페이지도 가리면 다시 그려서 원래 글자가 남지 않는다.
+- 보관함 안의 원본 사진은 다시 편집할 수 있도록 남는다(앱 밖으로 나가는 PDF·Office·이미지에는 없음).
+- 테스트: `RedactionTests`(좌표 왕복, 텍스트 제거, PDF 픽셀, 회전, 가져온 PDF, 재제안 방지), UI `testHideOnReviewCoversFoundNumbersAndDraggedArea`, `testFormatRowConvertsToWordAndReviewShowsWholePage`.

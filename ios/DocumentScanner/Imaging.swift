@@ -64,7 +64,7 @@ enum Imaging {
             let output = try trim(DocumentProcessing.adjust(base, settings: page.appearance), edges: page.trimming)
             guard let cg = DocumentProcessing.context.createCGImage(output, from: output.extent) else { throw ScannerError.message("The page could not be processed.") }
             let sized = try previewThumbnail(UIImage(cgImage: cg), maxDimension: maxDimension)
-            return try applyErasures(sized, page: page)
+            return applyRedactions(try applyErasures(sized, page: page), page: page)
         }
     }
     /// The page in every tone for the tone picker. The photo is loaded and the
@@ -81,7 +81,7 @@ enum Imaging {
                 let base = try DocumentProcessing.finish(prepared, strength: page.enhancementStrength)
                 let output = try trim(DocumentProcessing.adjust(base, settings: page.appearance), edges: page.trimming)
                 guard let cg = DocumentProcessing.context.createCGImage(output, from: output.extent) else { continue }
-                out[tone] = try applyErasures(previewThumbnail(UIImage(cgImage: cg), maxDimension: maxDimension), page: page)
+                out[tone] = applyRedactions(try applyErasures(previewThumbnail(UIImage(cgImage: cg), maxDimension: maxDimension), page: page), page: page)
             }
             return out
         }
@@ -100,7 +100,7 @@ enum Imaging {
         let base = try DocumentProcessing.render(ci, crop: page.crop, turns: page.turns, enhancement: page.enhancement, strength: page.enhancementStrength, identityCleanup: page.identityBackgroundCleanup == true && page.cropReviewNeeded != true)
         let output = try trim(DocumentProcessing.adjust(base, settings: page.appearance), edges: page.trimming)
         guard let cg = DocumentProcessing.context.createCGImage(output, from: output.extent) else { throw ScannerError.message("The page could not be processed.") }
-        return try applyErasures(UIImage(cgImage: cg), page: page)
+        return applyRedactions(try applyErasures(UIImage(cgImage: cg), page: page), page: page)
     }
     /// Fills the spots painted out in the page editor.
     static func applyErasures(_ image: UIImage, page: ScanPage) throws -> UIImage {
@@ -162,7 +162,7 @@ enum Imaging {
                         let scale = min(available.width/image.size.width, available.height/image.size.height)
                         let rect = CGRect(x: (size.width-image.size.width*scale)/2, y: (size.height-image.size.height*scale)/2, width: image.size.width*scale, height: image.size.height*scale)
                         image.draw(in: rect)
-                        PDFTextLayer.draw(blocks: page.textBlocks, in: context.cgContext, imageRect: rect)
+                        PDFTextLayer.draw(blocks: page.visibleTextBlocks, in: context.cgContext, imageRect: rect)
                     } catch { failure = error }
                 }
                 if failure != nil { break }

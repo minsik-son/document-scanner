@@ -1861,3 +1861,12 @@
 "%lld pages in one file." = "Tek dosyada %lld sayfa.";
 "Export one TIFF file" = "Tek TIFF dosyası olarak dışa aktar";
 "Flatten curled page" = "Kıvrık sayfayı düzleştir";
+"Drag the corners or sides of the blue box, or use the sliders. Keep text and barcodes inside it." = "Mavi kutunun köşelerini veya kenarlarını sürükleyin ya da kaydırıcıları kullanın. Metni ve barkodları içinde tutun.";
+"Top left corner" = "Sol üst köşe";
+"Top edge" = "Üst kenar";
+"Top right corner" = "Sağ üst köşe";
+"Right edge" = "Sağ kenar";
+"Bottom right corner" = "Sağ alt köşe";
+"Bottom edge" = "Alt kenar";
+"Bottom left corner" = "Sol alt köşe";
+"Left edge" = "Sol kenar";

@@ -271,4 +271,111 @@ final class DocUNetBenchmarkTests: XCTestCase {
         try lines.joined(separator: "\n").write(to: Self.out.appendingPathComponent("notice-compare.txt"), atomically: true, encoding: .utf8)
         print("NOTICE\n" + lines.joined(separator: "\n"))
     }
+
+    /// Every recognition pass's readings for rendered pages (docunet/config.json
+    /// "ocrPages": ids of office-v2/<id>-page.jpg), with confidences.
+    func testRecognitionPasses() throws {
+        let ids = (config["ocrPages"] as? String)?.split(separator: ",").map(String.init) ?? []
+        guard !ids.isEmpty else { throw XCTSkip("no pages") }
+        var log: [String] = []
+        TextRecognition.log = { log.append($0) }
+        defer { TextRecognition.log = nil }
+        for id in ids {
+            guard let img = UIImage(contentsOfFile: Self.out.appendingPathComponent("office-v2/\(id)-page.jpg").path), let cg = img.cgImage else { continue }
+            log.append("=== \(id)")
+            let blocks = try TextRecognition.recognize(cg)
+            log.append("--- chosen: " + blocks.prefix(40).map { "[\($0.text)]" }.joined(separator: " "))
+        }
+        try log.joined(separator: "\n").write(to: Self.out.appendingPathComponent("ocr-passes.txt"), atomically: true, encoding: .utf8)
+    }
+
+    /// Layout analysis log for one image (docunet/config.json "layoutImage": a
+    /// path under the benchmark folder, e.g. "Scans from a flatbed scanner/40.png").
+    func testLayoutLog() throws {
+        guard let data, let rel = config["layoutImage"] as? String, let raw = UIImage(contentsOfFile: data.appendingPathComponent(rel).path) else { throw XCTSkip("no image") }
+        var log: [String] = []
+        DocumentLayoutAnalyzer.debugLog = { log.append($0) }
+        defer { DocumentLayoutAnalyzer.debugLog = nil }
+        let page = try OfficeLayoutPages.analyze(Imaging.limited(raw, maxPixels: 12_000_000))
+        log.append("columns \(page.columns ?? []) positioned \(page.positioned) form \(page.form)")
+        for item in page.items {
+            switch item {
+            case .paragraph(let p): log.append(String(format: "P [%.0f %.0f %.0f %.0f] ", p.box.x0, p.box.y0, p.box.x1, p.box.y1) + p.lines.prefix(2).map { $0.segments.map(\.text).joined(separator: " | ") }.joined(separator: " / "))
+            case .table(let t): log.append(String(format: "T [%.0f %.0f %.0f %.0f] %dx%d", t.box.x0, t.box.y0, t.box.x1, t.box.y1, t.rowCount, t.columnCount))
+            }
+        }
+        try log.joined(separator: "\n").write(to: Self.out.appendingPathComponent("layout-log.txt"), atomically: true, encoding: .utf8)
+        try OfficeLayoutExport.word([page], image: OfficeLayoutPages.missingPicture).write(to: Self.out.appendingPathComponent("layout-log.docx"))
+    }
+
+    /// Korean phone photos without ground truth (Test Documents/Korean …): the
+    /// scanned page, its text, and Word/Excel/PowerPoint, for review by eye and
+    /// simple checks (crop found, flattened, Hangul read).
+    func testKoreanPhotos() throws {
+        guard let data else { throw XCTSkip("Test Documents not on this Mac.") }
+        let src = data.appendingPathComponent("Korean (HumynLabs CC BY 4.0)")
+        let dir = Self.out.appendingPathComponent("korean" + tag)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("korean-pages")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        var files = ((try? FileManager.default.contentsOfDirectory(at: src, includingPropertiesForKeys: nil)) ?? []).filter { $0.pathExtension.lowercased() == "jpg" }.sorted { $0.lastPathComponent < $1.lastPathComponent }
+        if let only = config["koreanOnly"] as? String { let set = Set(only.split(separator: ",").map(String.init)); files = files.filter { set.contains($0.deletingPathExtension().lastPathComponent) } }
+        for url in files {
+            let id = url.deletingPathExtension().lastPathComponent
+            if FileManager.default.fileExists(atPath: dir.appendingPathComponent("\(id).json").path) { continue }
+            try autoreleasepool {
+                guard let raw = UIImage(contentsOfFile: url.path) else { return }
+                let photo = Imaging.normalized(Imaging.limited(raw, maxPixels: 12_000_000))
+                var r: [String: Any] = ["id": id]
+                let crop = withMacSegmentation(id) { Imaging.detectPage(photo) }
+                r["crop"] = crop == nil ? "none" : "found"
+                try XCTUnwrap(photo.jpegData(compressionQuality: 0.95)).write(to: root.appendingPathComponent("\(id).jpg"))
+                var page = ScanPage(imageFile: "\(id).jpg")
+                if let crop, crop.valid { page.crop = crop }
+                page.enhancement = .document; page.flatten = true
+                let t0 = CFAbsoluteTimeGetCurrent()
+                r["flattened"] = page.flattenRequest.map { _ in PaperFlatten.analyze(CIImage(cgImage: photo.cgImage!), crop: page.crop) != nil } ?? false
+                let rendered = try Imaging.render(page, root: root)
+                r["renderSeconds"] = CFAbsoluteTimeGetCurrent() - t0
+                jpeg(rendered, dir.appendingPathComponent("\(id)-page.jpg"))
+                let text = ocr(rendered)
+                r["text"] = text
+                r["hangul"] = text.unicodeScalars.filter { (0xAC00...0xD7A3).contains($0.value) }.count
+                r["letters"] = text.unicodeScalars.filter { CharacterSet.letters.contains($0) }.count
+                let t1 = CFAbsoluteTimeGetCurrent()
+                do {
+                    let layout = try OfficeLayoutPages.analyze(rendered)
+                    try OfficeLayoutExport.word([layout], image: OfficeLayoutPages.missingPicture).write(to: dir.appendingPathComponent("\(id).docx"))
+                    try OfficeLayoutExport.excel([layout], image: OfficeLayoutPages.missingPicture).write(to: dir.appendingPathComponent("\(id).xlsx"))
+                    try OfficeLayoutExport.powerpoint([layout], theme: OfficeLayoutPages.theme(), image: OfficeLayoutPages.missingPicture).write(to: dir.appendingPathComponent("\(id).pptx"))
+                    r["officeText"] = LayoutText.text([layout])
+                    r["tables"] = layout.items.compactMap { item -> [Int]? in if case .table(let t) = item { return [t.rowCount, t.columnCount] }; return nil }
+                    r["paragraphs"] = layout.items.filter { if case .paragraph = $0 { return true }; return false }.count
+                } catch { r["officeError"] = error.localizedDescription }
+                r["officeSeconds"] = CFAbsoluteTimeGetCurrent() - t1
+                write(r, dir.appendingPathComponent("\(id).json"))
+                try? FileManager.default.removeItem(at: root.appendingPathComponent("\(id).jpg"))
+                print("KOREAN \(id) crop=\(r["crop"]!) flat=\(r["flattened"]!) hangul=\(r["hangul"]!)")
+            }
+        }
+    }
+
+    /// Which layout switch changes the price list sample's table.
+    func testPriceListSwitches() throws {
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "OfficeSamplePriceList", withExtension: "jpg"))
+        let img = try XCTUnwrap(UIImage(contentsOfFile: url.path))
+        var lines: [String] = []
+        defer { DocumentLayoutAnalyzer.splitsTextColumns = true; TextRecognition.prefersPageScript = true }
+        for (cols, script) in [(true, true), (false, true), (true, false), (false, false)] {
+            DocumentLayoutAnalyzer.splitsTextColumns = cols; TextRecognition.prefersPageScript = script
+            var log: [String] = []
+            DocumentLayoutAnalyzer.debugLog = { if $0.hasPrefix("gutters") { log.append($0) } }
+            let page = try OfficeLayoutPages.analyze(img)
+            DocumentLayoutAnalyzer.debugLog = nil
+            let t = page.items.compactMap { item -> LayoutTable? in if case .table(let t) = item { return t }; return nil }
+            lines.append("cols=\(cols) script=\(script) tables \(t.map { "\($0.rowCount)x\($0.columnCount)" }) \(log)")
+        }
+        print("PRICELIST\n" + lines.joined(separator: "\n"))
+        try lines.joined(separator: "\n").write(to: Self.out.appendingPathComponent("pricelist.txt"), atomically: true, encoding: .utf8)
+    }
 }

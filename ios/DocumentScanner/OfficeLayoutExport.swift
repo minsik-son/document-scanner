@@ -77,22 +77,35 @@ enum OfficeLayoutExport {
                 }
             }
             if let parts = page.columnParts(), let c = page.columns {
-                // Two columns: a continuous section with two Word columns, so the
+                // Columns: a continuous section with as many Word columns, so the
                 // text stays editable and reads column by column.
                 flow(parts.above, areaLeft, areaRight, rightMargin: right)
                 let tiny = "<w:spacing w:before=\"0\" w:after=\"0\" w:line=\"20\" w:lineRule=\"exact\"/><w:rPr><w:sz w:val=\"2\"/></w:rPr>"
                 body += "<w:p><w:pPr>\(tiny)<w:sectPr>\(section(columns: ""))</w:sectPr></w:pPr></w:p>"
                 columnsUsed = true
-                let g0 = min(max(c[0], areaLeft + 20), areaRight - 40), g1 = max(min(c[1], areaRight - 20), g0 + 4)
+                // Column edges, clamped into the text area.
+                var edges: [(Double, Double)] = []
+                var left = areaLeft
+                for k in stride(from: 0, to: c.count - 2, by: 2) {
+                    let g0 = min(max(c[k], left + 20), areaRight - 40), g1 = max(min(c[k + 1], areaRight - 20), g0 + 4)
+                    edges.append((left, g0)); left = g1
+                }
+                edges.append((left, areaRight))
                 let start = cursor
-                flow(parts.left, areaLeft, g0, rightMargin: i((g1 - g0) * scale * 0.5))
-                let leftEnd = cursor
-                body += "<w:p><w:pPr>\(tiny)</w:pPr><w:r><w:br w:type=\"column\"/></w:r></w:p>"
-                cursor = start
-                flow(parts.right, g1, areaRight, rightMargin: right)
-                let cols = "<w:cols w:num=\"2\" w:space=\"\(i((g1 - g0) * scale))\" w:equalWidth=\"0\"><w:col w:w=\"\(i((g0 - areaLeft) * scale))\" w:space=\"\(i((g1 - g0) * scale))\"/><w:col w:w=\"\(i((areaRight - g1) * scale))\"/></w:cols>"
+                var end = cursor
+                for (k, column) in parts.columns.enumerated() {
+                    cursor = start
+                    let space = k + 1 < edges.count ? edges[k + 1].0 - edges[k].1 : 0
+                    flow(column, edges[k].0, edges[k].1, rightMargin: k + 1 < edges.count ? i(space * scale * 0.5) : right)
+                    end = max(end, cursor)
+                    if k + 1 < parts.columns.count { body += "<w:p><w:pPr>\(tiny)</w:pPr><w:r><w:br w:type=\"column\"/></w:r></w:p>" }
+                }
+                let colXML = edges.enumerated().map { k, e in
+                    k + 1 < edges.count ? "<w:col w:w=\"\(i((e.1 - e.0) * scale))\" w:space=\"\(i((edges[k + 1].0 - e.1) * scale))\"/>" : "<w:col w:w=\"\(i((e.1 - e.0) * scale))\"/>"
+                }.joined()
+                let cols = "<w:cols w:num=\"\(edges.count)\" w:space=\"\(i((edges.count > 1 ? edges[1].0 - edges[0].1 : 0) * scale))\" w:equalWidth=\"0\">\(colXML)</w:cols>"
                 body += "<w:p><w:pPr>\(tiny)<w:sectPr>\(section(columns: cols))</w:sectPr></w:pPr></w:p>"
-                cursor = max(leftEnd, cursor)
+                cursor = end
                 flow(parts.below, areaLeft, areaRight, rightMargin: right)
             } else {
                 flow(page.items, areaLeft, areaRight, rightMargin: right)

@@ -1861,3 +1861,12 @@
 "%lld pages in one file." = "%lld หน้าในไฟล์เดียว";
 "Export one TIFF file" = "ส่งออกเป็นไฟล์ TIFF เดียว";
 "Flatten curled page" = "ปรับหน้ากระดาษที่โค้งให้เรียบ";
+"Drag the corners or sides of the blue box, or use the sliders. Keep text and barcodes inside it." = "ลากมุมหรือขอบของกรอบสีน้ำเงิน หรือใช้แถบเลื่อน เก็บข้อความและบาร์โค้ดไว้ในกรอบ";
+"Top left corner" = "มุมซ้ายบน";
+"Top edge" = "ขอบบน";
+"Top right corner" = "มุมขวาบน";
+"Right edge" = "ขอบขวา";
+"Bottom right corner" = "มุมขวาล่าง";
+"Bottom edge" = "ขอบล่าง";
+"Bottom left corner" = "มุมซ้ายล่าง";
+"Left edge" = "ขอบซ้าย";

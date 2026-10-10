@@ -18,7 +18,7 @@ struct TrimMarginsView: View {
     }
     var body: some View {
         NavigationStack {
-            ToolPage(title: "Trim margins", subtitle: "Remove borders or empty space. Keep text and barcodes inside the blue box.") {
+            ToolPage(title: "Trim margins", subtitle: "Drag the corners or sides of the blue box, or use the sliders. Keep text and barcodes inside it.") {
                 if let image {
                     preview(image).frame(maxWidth:.infinity).frame(height:300)
                         .background(TK.grey100,in:RoundedRectangle(cornerRadius:20, style: .continuous))
@@ -64,6 +64,49 @@ struct TrimMarginsView: View {
             }
         }
     }
+    /// The eight drag points on the blue box.
+    private enum Handle: String, CaseIterable {
+        case topLeft = "tl", top = "t", topRight = "tr", right = "r", bottomRight = "br", bottom = "b", bottomLeft = "bl", left = "l"
+        var isCorner: Bool { [.topLeft, .topRight, .bottomRight, .bottomLeft].contains(self) }
+        var moves: (left: Bool, top: Bool, right: Bool, bottom: Bool) {
+            switch self {
+            case .topLeft: (true, true, false, false)
+            case .top: (false, true, false, false)
+            case .topRight: (false, true, true, false)
+            case .right: (false, false, true, false)
+            case .bottomRight: (false, false, true, true)
+            case .bottom: (false, false, false, true)
+            case .bottomLeft: (true, false, false, true)
+            case .left: (true, false, false, false)
+            }
+        }
+        func point(in r: CGRect) -> CGPoint {
+            let m = moves
+            let x = m.left ? r.minX : (m.right ? r.maxX : r.midX)
+            let y = m.top ? r.minY : (m.bottom ? r.maxY : r.midY)
+            return CGPoint(x: x, y: y)
+        }
+        var label: String {
+            switch self {
+            case .topLeft: "Top left corner"; case .top: "Top edge"; case .topRight: "Top right corner"; case .right: "Right edge"
+            case .bottomRight: "Bottom right corner"; case .bottom: "Bottom edge"; case .bottomLeft: "Bottom left corner"; case .left: "Left edge"
+            }
+        }
+    }
+    /// Moves the handle's edges to the finger, keeping each margin within range and
+    /// the box at least 12% of the page across.
+    private func move(_ handle: Handle, to location: CGPoint, in size: CGSize) {
+        guard size.width > 0, size.height > 0 else { return }
+        let x = min(max(location.x / size.width, 0), 1), y = min(max(location.y / size.height, 0), 1)
+        var e = edges
+        let m = handle.moves
+        if m.left { e.left = min(x, 0.44, 0.88 - e.right) }
+        if m.right { e.right = min(1 - x, 0.44, 0.88 - e.left) }
+        if m.top { e.top = min(y, 0.44, 0.88 - e.bottom) }
+        if m.bottom { e.bottom = min(1 - y, 0.44, 0.88 - e.top) }
+        for k in [\PageTrim.left, \PageTrim.right, \PageTrim.top, \PageTrim.bottom] { e[keyPath: k] = (max(0, e[keyPath: k]) * 1000).rounded() / 1000 }
+        edges = e
+    }
     @ViewBuilder private func preview(_ image: UIImage) -> some View {
         if showResult, let cg = image.cgImage,
            let cropped = cg.cropping(to:edges.rect(in:CGSize(width:cg.width,height:cg.height)).integral) {
@@ -78,8 +121,21 @@ struct TrimMarginsView: View {
                     Path { path in path.addRect(CGRect(origin:.zero,size:size));path.addRect(rect) }
                         .fill(.black.opacity(0.5),style:FillStyle(eoFill:true))
                     Rectangle().stroke(TK.blue,lineWidth:2).frame(width:rect.width,height:rect.height).offset(x:rect.minX,y:rect.minY)
-                }.frame(width:size.width,height:size.height).position(x:g.size.width/2,y:g.size.height/2)
-                    .accessibilityLabel("Page with selected margins")
+                        .allowsHitTesting(false)
+                    // Drag a corner or the middle of a side to move those edges.
+                    ForEach(Handle.allCases, id: \.self) { handle in
+                        let p = handle.point(in: rect)
+                        Circle().fill(.white).overlay(Circle().stroke(TK.blue, lineWidth: 2.5))
+                            .frame(width: handle.isCorner ? 18 : 14, height: handle.isCorner ? 18 : 14)
+                            .frame(width: 44, height: 44).contentShape(Rectangle())
+                            .position(x: p.x, y: p.y)
+                            .gesture(DragGesture(minimumDistance: 0, coordinateSpace: .named("trim-canvas")).onChanged { value in
+                                move(handle, to: value.location, in: size)
+                            })
+                            .accessibilityElement().accessibilityLabel(L(handle.label)).accessibilityIdentifier("trim-handle-" + handle.rawValue)
+                    }
+                }.frame(width:size.width,height:size.height).coordinateSpace(name: "trim-canvas").position(x:g.size.width/2,y:g.size.height/2)
+                    .accessibilityElement(children: .contain).accessibilityLabel("Page with selected margins")
             }
         }
     }

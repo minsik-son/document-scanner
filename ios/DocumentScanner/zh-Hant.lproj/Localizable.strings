@@ -1861,3 +1861,12 @@
 "%lld pages in one file." = "%lld 頁在一個檔案中。";
 "Export one TIFF file" = "匯出為一個 TIFF 檔案";
 "Flatten curled page" = "展平彎曲的紙張";
+"Drag the corners or sides of the blue box, or use the sliders. Keep text and barcodes inside it." = "拖曳藍色框的角或邊，或使用滑桿調整。請將文字和條碼保留在框內。";
+"Top left corner" = "左上角";
+"Top edge" = "上邊";
+"Top right corner" = "右上角";
+"Right edge" = "右邊";
+"Bottom right corner" = "右下角";
+"Bottom edge" = "下邊";
+"Bottom left corner" = "左下角";
+"Left edge" = "左邊";

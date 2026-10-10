@@ -1861,3 +1861,12 @@
 "%lld pages in one file." = "Strony w jednym pliku: %lld.";
 "Export one TIFF file" = "Eksportuj jeden plik TIFF";
 "Flatten curled page" = "Wyprostuj zagiętą stronę";
+"Drag the corners or sides of the blue box, or use the sliders. Keep text and barcodes inside it." = "Przeciągnij rogi lub boki niebieskiej ramki albo użyj suwaków. Tekst i kody kreskowe zostaw w środku.";
+"Top left corner" = "Lewy górny róg";
+"Top edge" = "Górna krawędź";
+"Top right corner" = "Prawy górny róg";
+"Right edge" = "Prawa krawędź";
+"Bottom right corner" = "Prawy dolny róg";
+"Bottom edge" = "Dolna krawędź";
+"Bottom left corner" = "Lewy dolny róg";
+"Left edge" = "Lewa krawędź";

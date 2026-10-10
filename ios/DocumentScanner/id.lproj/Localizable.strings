@@ -1861,3 +1861,12 @@
 "%lld pages in one file." = "%lld halaman dalam satu file.";
 "Export one TIFF file" = "Ekspor satu file TIFF";
 "Flatten curled page" = "Ratakan halaman melengkung";
+"Drag the corners or sides of the blue box, or use the sliders. Keep text and barcodes inside it." = "Seret sudut atau sisi kotak biru, atau gunakan penggeser. Biarkan teks dan kode batang di dalamnya.";
+"Top left corner" = "Sudut kiri atas";
+"Top edge" = "Tepi atas";
+"Top right corner" = "Sudut kanan atas";
+"Right edge" = "Tepi kanan";
+"Bottom right corner" = "Sudut kanan bawah";
+"Bottom edge" = "Tepi bawah";
+"Bottom left corner" = "Sudut kiri bawah";
+"Left edge" = "Tepi kiri";

@@ -1861,3 +1861,12 @@
 "%lld pages in one file." = "%lld trang trong một tệp.";
 "Export one TIFF file" = "Xuất một tệp TIFF";
 "Flatten curled page" = "Làm phẳng trang bị cong";
+"Drag the corners or sides of the blue box, or use the sliders. Keep text and barcodes inside it." = "Kéo các góc hoặc cạnh của khung xanh, hoặc dùng thanh trượt. Giữ chữ và mã vạch bên trong.";
+"Top left corner" = "Góc trên bên trái";
+"Top edge" = "Cạnh trên";
+"Top right corner" = "Góc trên bên phải";
+"Right edge" = "Cạnh phải";
+"Bottom right corner" = "Góc dưới bên phải";
+"Bottom edge" = "Cạnh dưới";
+"Bottom left corner" = "Góc dưới bên trái";
+"Left edge" = "Cạnh trái";

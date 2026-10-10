@@ -1861,3 +1861,12 @@
 "%lld pages in one file." = "%lld페이지를 한 파일에 담았어요.";
 "Export one TIFF file" = "TIFF 파일 하나로 내보내기";
 "Flatten curled page" = "휜 종이 평면화";
+"Drag the corners or sides of the blue box, or use the sliders. Keep text and barcodes inside it." = "파란 상자의 꼭짓점이나 변을 끌거나 슬라이더로 조정하세요. 글자와 바코드는 상자 안에 두세요.";
+"Top left corner" = "왼쪽 위 꼭짓점";
+"Top edge" = "위쪽 변";
+"Top right corner" = "오른쪽 위 꼭짓점";
+"Right edge" = "오른쪽 변";
+"Bottom right corner" = "오른쪽 아래 꼭짓점";
+"Bottom edge" = "아래쪽 변";
+"Bottom left corner" = "왼쪽 아래 꼭짓점";
+"Left edge" = "왼쪽 변";

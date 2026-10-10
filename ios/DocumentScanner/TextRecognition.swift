@@ -94,11 +94,21 @@ enum TextRecognition {
 
         // Estimate script evidence per pass, then take the strongest pass for each
         // script. Repeated Chinese passes must not gain votes just from duplication.
+        // A page written in a CJK script (or another non-Latin one): one pass
+        // reads many of its characters, even if each line only at low confidence
+        // (small print in a photo). Then that pass's low-confidence lines still
+        // beat the Latin model's letter-and-digit soup for the same lines.
+        var nativeChars: [Int: [Script: Int]] = [:]
+        for reading in readings where reading.candidate.confidence >= 0.25 {
+            for (script, count) in reading.scripts where script != .latin && script != .other { nativeChars[reading.pass, default: [:]][script, default: 0] += count }
+        }
+        let dominant = nativeChars.values.flatMap { $0 }.filter { $0.value >= 80 }.max { $0.value < $1.value }?.key
+        let floor: Double = dominant != nil && prefersPageScript ? 0.25 : 0.4
         var perPass: [Int: [Script: Double]] = [:]
         for reading in readings {
             let confidence = Double(reading.candidate.confidence)
-            for (script, count) in reading.scripts where script != .latin && confidence >= 0.4 {
-                perPass[reading.pass, default: [:]][script, default: 0] += Double(min(12, count)) * confidence * confidence
+            for (script, count) in reading.scripts where script != .latin && confidence >= floor {
+                perPass[reading.pass, default: [:]][script, default: 0] += Double(min(12, count)) * max(confidence, 0.4) * max(confidence, 0.4)
             }
         }
         var evidence: [Script: Double] = [:]
@@ -109,8 +119,16 @@ enum TextRecognition {
         func score(_ reading: Reading) -> Double {
             var value = Double(reading.candidate.confidence) * 0.55
             let native = reading.scripts.filter { $0.key != .latin }
-            if let support = native.map({ (evidence[$0.key] ?? 0) / strongest }).max(), reading.candidate.confidence >= 0.4 {
+            if let support = native.map({ (evidence[$0.key] ?? 0) / strongest }).max(), Double(reading.candidate.confidence) >= floor {
                 value += 0.46 * support
+            }
+            if dominant != nil, prefersPageScript, native.isEmpty, junk(reading.candidate.string) { value -= 0.3 }
+            // A script the page hardly has (kana a Japanese pass sprinkles into
+            // Chinese print) marks a misreading of the page's own script.
+            if dominant != nil, prefersPageScript {
+                let total = native.values.reduce(0, +)
+                let stray = native.filter { (evidence[$0.key] ?? 0) / strongest < 0.35 }.values.reduce(0, +)
+                if total > 0, stray > 0 { value -= 0.25 * Double(stray) / Double(total) }
             }
             // When models agree on a Latin/code line, prefer the Latin model.
             if native.isEmpty && reading.pass % max(1, passes.count) == 0 { value += 0.025 }
@@ -186,6 +204,24 @@ enum TextRecognition {
             return a.midY > b.midY
         }
         return blocks.map(\.1)
+    }
+
+    /// Prefer the page's own script on low-confidence lines (tests turn it off).
+    nonisolated(unsafe) static var prefersPageScript = true
+    /// Letters and digits run together the way a Latin model misreads CJK print:
+    /// most longer tokens mix letters with digits or symbols, or have no vowel.
+    static func junk(_ text: String) -> Bool {
+        let tokens = text.split(whereSeparator: { $0.isWhitespace }).map(String.init).filter { $0.count >= 3 }
+        guard !tokens.isEmpty else { return false }
+        let bad = tokens.filter { t in
+            let letters = t.filter(\.isLetter), digits = t.filter(\.isNumber)
+            let odd = t.filter { !$0.isLetter && !$0.isNumber && !".,-'’:;()%/".contains($0) }
+            if !letters.isEmpty && !digits.isEmpty { return true }
+            if odd.count >= 1 { return true }
+            if letters.count >= 4 && !letters.lowercased().contains(where: { "aeiouy".contains($0) }) { return true }
+            return false
+        }
+        return Double(bad.count) / Double(tokens.count) >= 0.5
     }
 
     private static func script(_ scalar: Unicode.Scalar) -> Script {

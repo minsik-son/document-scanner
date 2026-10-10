@@ -127,8 +127,9 @@ struct PageLayout: Codable, Equatable {
     /// A form: its line art is one picture behind the page and the text that
     /// was read reliably sits on top of it at its exact position.
     var form = false
-    /// Two text columns: [left column's right edge, right column's left edge,
-    /// top, bottom] in pixels. Items inside the band flow as Word columns.
+    /// Text columns: for each gutter its left and right edge (left to right), then
+    /// the band's top and bottom, in pixels: [g0, g1, (g0, g1, …) top, bottom].
+    /// Items inside the band flow as Word columns.
     var columns: [Double]? = nil
     init(width: Int, height: Int, pageWidth: Double, pageHeight: Double, items: [LayoutItem], graphics: [LayoutGraphic]) {
         self.width = width; self.height = height; self.pageWidth = pageWidth; self.pageHeight = pageHeight
@@ -143,19 +144,26 @@ struct PageLayout: Codable, Equatable {
         form = try c.decodeIfPresent(Bool.self, forKey: .form) ?? false
         columns = try c.decodeIfPresent([Double].self, forKey: .columns)
     }
-    /// Items of a two-column page in reading order: above the columns, the left
-    /// column, the right column, below. Nil when the page has no columns.
-    func columnParts() -> (above: [LayoutItem], left: [LayoutItem], right: [LayoutItem], below: [LayoutItem])? {
-        guard let c = columns, c.count == 4 else { return nil }
-        var above: [LayoutItem] = [], left: [LayoutItem] = [], right: [LayoutItem] = [], below: [LayoutItem] = []
+    /// Items of a page set in columns, in reading order: above the columns, each
+    /// column left to right, below. Nil when the page has no columns.
+    func columnParts() -> (above: [LayoutItem], columns: [[LayoutItem]], below: [LayoutItem])? {
+        guard let c = columns, c.count >= 4, c.count % 2 == 0 else { return nil }
+        let gutters = stride(from: 0, to: c.count - 2, by: 2).map { (c[$0], c[$0 + 1]) }
+        let top = c[c.count - 2], bottom = c[c.count - 1]
+        var above: [LayoutItem] = [], below: [LayoutItem] = []
+        var cols = [[LayoutItem]](repeating: [], count: gutters.count + 1)
         for item in items.sorted(by: { $0.box.y0 < $1.box.y0 }) {
             let b = item.box
-            if b.y1 > c[2] && b.y0 < c[3] && b.x1 <= c[0] + 1 { left.append(item) }
-            else if b.y1 > c[2] && b.y0 < c[3] && b.x0 >= c[1] - 1 { right.append(item) }
-            else if b.midY < (c[2] + c[3]) / 2 { above.append(item) }
+            func fits(_ k: Int) -> Bool {
+                let afterLeft: Bool = k == 0 || b.x0 >= gutters[k - 1].1 - 1
+                let beforeRight: Bool = k == gutters.count || b.x1 <= gutters[k].0 + 1
+                return afterLeft && beforeRight
+            }
+            if b.y1 > top && b.y0 < bottom, let k = (0...gutters.count).first(where: fits) { cols[k].append(item) }
+            else if b.midY < (top + bottom) / 2 { above.append(item) }
             else { below.append(item) }
         }
-        return (above, left, right, below)
+        return (above, cols, below)
     }
     var pointsPerPixel: Double { pageWidth / Double(width) }
     var contentBox: LBox {
@@ -821,6 +829,8 @@ enum DocumentLayoutAnalyzer {
         var words: [Word]
         var box: LBox
         var segments: [[Word]] = []
+        /// Column gutters crossing this line: its text never joins across them.
+        var breaks: [Double] = []
     }
     static func visualLines(_ words: [Word]) -> [VisualLine] {
         var lines: [VisualLine] = []
@@ -848,18 +858,116 @@ enum DocumentLayoutAnalyzer {
                 lines[i].words.append(word); lines[i].box = lines[i].box.union(word.box)
             } else { lines.append(VisualLine(words: [word], box: word.box)) }
         }
+        for i in lines.indices { lines[i].words.sort { $0.box.x0 < $1.box.x0 } }
+        let gutters = splitsTextColumns ? columnGutters(lines) : []
+        if !gutters.isEmpty { debugLog?("gutters " + gutters.map { String(format: "x=%.0f y=%.0f-%.0f", $0.x, $0.y0, $0.y1) }.joined(separator: ", ")) }
         for i in lines.indices {
-            lines[i].words.sort { $0.box.x0 < $1.box.x0 }
+            // Body text only: a pull quote or heading set larger runs across columns.
+            let lineH = lines[i].words.map(\.box.height).sorted()[lines[i].words.count / 2]
+            lines[i].breaks = gutters.filter { $0.y0 <= lines[i].box.midY && lines[i].box.midY <= $0.y1 && lineH <= $0.h * 1.2 }.map(\.x)
             let heights = lines[i].words.map(\.box.height).sorted()
             let h = heights[heights.count / 2]
             var segments: [[Word]] = []
             for w in lines[i].words {
-                if let last = segments.last?.last, w.box.x0 - last.box.x1 <= max(h * 1.6, 1) { segments[segments.count - 1].append(w) }
-                else { segments.append([w]) }
+                // A gutter between the two words' middles ends the segment (word
+                // boxes of a line read across columns can reach into the gutter).
+                if let last = segments.last?.last, w.box.x0 - last.box.x1 <= max(h * 1.6, 1),
+                   !gutters.contains(where: { $0.x > last.box.midX && $0.x < w.box.midX && $0.y0 <= lines[i].box.midY && lines[i].box.midY <= $0.y1 }) {
+                    segments[segments.count - 1].append(w)
+                } else { segments.append([w]) }
             }
             lines[i].segments = segments
         }
         return lines.sorted { $0.box.y0 < $1.box.y0 }
+    }
+
+    /// Lines of a page set in columns, in reading order: above the columns, down
+    /// each column in turn, below. Other pages keep top-to-bottom order.
+    static func columnOrder(_ lines: [VisualLine]) -> [VisualLine] {
+        let breaks = Set(lines.flatMap(\.breaks)).sorted()
+        guard !breaks.isEmpty else { return lines }
+        let banded = lines.filter { !$0.breaks.isEmpty }
+        guard let top = banded.map(\.box.y0).min(), let bottom = banded.map(\.box.y1).max() else { return lines }
+        func column(_ l: VisualLine) -> Int { breaks.filter { $0 < l.box.midX }.count }
+        let above = lines.filter { $0.box.midY < top }, below = lines.filter { $0.box.midY > bottom }
+        let ordered = lines.filter { $0.box.midY >= top && $0.box.midY <= bottom }
+            .sorted { column($0) == column($1) ? $0.box.y0 < $1.box.y0 : column($0) < column($1) }
+        return above + ordered + below
+    }
+
+    static func splitAtGutters(_ line: VisualLine) -> [VisualLine] {
+        guard !line.breaks.isEmpty else { return [line] }
+        var parts: [[Word]] = []
+        for w in line.words {
+            if let last = parts.last?.last, !line.breaks.contains(where: { $0 > last.box.midX && $0 < w.box.midX }) { parts[parts.count - 1].append(w) }
+            else { parts.append([w]) }
+        }
+        guard parts.count > 1 else { return [line] }
+        return parts.map { words in
+            var v = VisualLine(words: words, box: LBox.around(words.map(\.box))!)
+            v.breaks = line.breaks
+            v.segments = line.segments.compactMap { seg in
+                let inside = seg.filter { w in words.contains { $0.box == w.box && $0.text == w.text } }
+                return inside.isEmpty ? nil : inside
+            }
+            return v
+        }
+    }
+
+    /// Splits text set in columns even where the recognizer read straight across a
+    /// narrow gutter: tests turn it off to compare.
+    nonisolated(unsafe) static var splitsTextColumns = true
+    struct Gutter { var x: Double; var y0: Double; var y1: Double; var h: Double = 0 }
+    /// Gutters between columns of running text: an x where, line after line, the
+    /// words leave a gap (ordinary word gaps don't line up down a column of
+    /// justified text). Runs of at least eight such lines.
+    static func columnGutters(_ lines: [VisualLine]) -> [Gutter] {
+        let body = lines.filter { $0.words.count >= 3 }.sorted { $0.box.midY < $1.box.midY }
+        guard body.count >= 8 else { return [] }
+        let heights = body.flatMap { $0.words.map(\.box.height) }.sorted()
+        let h = heights[heights.count / 2]
+        guard let minX = body.map(\.box.x0).min(), let maxX = body.map(\.box.x1).max(), maxX - minX > h * 20 else { return [] }
+        func gaps(_ l: VisualLine) -> [(Double, Double)] {
+            zip(l.words, l.words.dropFirst()).compactMap { a, b in b.box.x0 - a.box.x1 >= h * 0.45 ? (a.box.x1, b.box.x0) : nil }
+        }
+        let lineGaps = body.map(gaps)
+        let step = max(1, h / 4)
+        var found: [Gutter] = [], ends: [Double] = []
+        var x = minX + (maxX - minX) * 0.12
+        var lastX = -Double.infinity
+        while x < maxX - (maxX - minX) * 0.12 {
+            // Longest run of consecutive lines crossing x, nearly all with a gap at x.
+            var bestRun = 0, bestY0 = 0.0, bestY1 = 0.0
+            var run = 0, misses = 0, y0 = 0.0, y1 = 0.0
+            for (k, l) in body.enumerated() where l.box.x0 < x - h && l.box.x1 > x + h {
+                if lineGaps[k].contains(where: { $0.0 < x && x < $0.1 }) {
+                    if run == 0 { y0 = l.box.y0; misses = 0 }
+                    run += 1; y1 = l.box.y1
+                } else {
+                    misses += 1
+                    if misses > max(1, run / 10) { run = 0; misses = 0 }
+                }
+                if run > bestRun { bestRun = run; bestY0 = y0; bestY1 = y1 }
+            }
+            // Running text on both sides (several words per line), not the
+            // columns of a table or a price list.
+            let runLines = body.filter { $0.box.y0 >= bestY0 - 1 && $0.box.y1 <= bestY1 + 1 && $0.box.x0 < x - h && $0.box.x1 > x + h }
+            // Words of running text: letters, not numbers, prices or dashes.
+            func wordy(_ w: Word) -> Bool { w.text.filter(\.isLetter).count >= 2 }
+            let leftWords = runLines.map { l in l.words.filter { $0.box.x1 <= x && wordy($0) }.count }.sorted()
+            let rightWords = runLines.map { l in l.words.filter { $0.box.x0 >= x && wordy($0) }.count }.sorted()
+            let prose = !runLines.isEmpty && leftWords[leftWords.count / 2] >= 3 && rightWords[rightWords.count / 2] >= 3
+            if bestRun >= 8 && prose {
+                if x - lastX <= step * 1.5, var g = found.popLast() {
+                    // Same gutter, a step to the right.
+                    g.y0 = min(g.y0, bestY0); g.y1 = max(g.y1, bestY1); found.append(g); ends[ends.count - 1] = x
+                } else { found.append(Gutter(x: x, y0: bestY0, y1: bestY1)); ends.append(x) }
+                lastX = x
+            }
+            x += step
+        }
+        // The middle of each gutter.
+        return zip(found, ends).map { g, e in Gutter(x: (g.x + e) / 2, y0: g.y0, y1: g.y1, h: h) }
     }
 
     // MARK: Main entry
@@ -867,6 +975,7 @@ enum DocumentLayoutAnalyzer {
         let W = raster.width, H = raster.height
         var ink = Ink(raster)
         debugLog?("blocks: " + blocks.map { "[\($0.text)]" }.joined(separator: " "))
+        debugLog?("blockwords: " + blocks.prefix(60).map { b in "[\(b.text.prefix(30))|" + (b.words.map { $0.map { String(format: "%@@%.3f-%.3f", String($0.text.prefix(8)), $0.x, $0.x + $0.width) }.joined(separator: " ") } ?? "NOWORDS") + "]" }.joined(separator: " "))
         var wordLines = words(blocks, width: W, height: H)
         debugLog?("wordlines: " + wordLines.map { $0.map(\.text).joined(separator: " ") }.joined(separator: " | "))
         let allHeights = wordLines.flatMap { $0.map(\.box.height) }.sorted()
@@ -1052,7 +1161,9 @@ enum DocumentLayoutAnalyzer {
                 min(r.a1, wb.x1) - max(r.a0, wb.x0) > wb.width * 0.7
             }) { usedRules.insert(r); free[i].underline = true }
         }
-        let lines = visualLines(free)
+        // Text set in columns: each column's part of a line is a line of its own,
+        // so paragraphs and tables form within a column.
+        let lines = columnOrder(visualLines(free).flatMap(splitAtGutters))
 
         // Borderless tables from aligned columns.
         var consumed = Set<Int>()
@@ -1209,7 +1320,28 @@ enum DocumentLayoutAnalyzer {
     /// either wholly on one side of it, or above / below the band both columns
     /// share. Each column must flow on its own (no side-by-side items inside).
     static func columnSplit(_ items: inout [LayoutItem], width W: Double, textHeight: Double) -> [Double]? {
-        guard items.count >= 4 else { return nil }
+        guard let first = gutterSplit(&items, from: 0, to: W, textHeight: textHeight) else { return nil }
+        var gutters = [(first[0], first[1])]
+        var y0 = first[2], y1 = first[3]
+        // Three or more columns: split each side again within the band.
+        var regions = [(0.0, first[0]), (first[1], W)]
+        while let region = regions.popLast(), gutters.count < 4 {
+            let (lo, hi) = region
+            var inside = items.filter { $0.box.x0 >= lo - 1 && $0.box.x1 <= hi + 1 && $0.box.y1 > y0 && $0.box.y0 < y1 }
+            let rest = items.filter { item in !inside.contains { $0.box == item.box } }
+            guard let g = gutterSplit(&inside, from: lo, to: hi, textHeight: textHeight) else { continue }
+            items = (rest + inside).sorted { $0.box.y0 < $1.box.y0 }
+            gutters.append((g[0], g[1])); y0 = min(y0, g[2]); y1 = max(y1, g[3])
+            regions += [(lo, g[0]), (g[1], hi)]
+        }
+        gutters.sort { $0.0 < $1.0 }
+        return gutters.flatMap { [$0.0, $0.1] } + [y0, y1]
+    }
+
+    /// The best single gutter between two columns of the items inside [lo, hi].
+    static func gutterSplit(_ items: inout [LayoutItem], from lo: Double, to hi: Double, textHeight: Double) -> [Double]? {
+        let W = hi - lo
+        guard items.count >= 4, W > textHeight * 10 else { return nil }
         // A left and a right line on the same baseline become one line with a tab;
         // such a paragraph is split at the gutter rather than blocking it.
         func halves(_ item: LayoutItem, at x: Double) -> (LayoutParagraph, LayoutParagraph)? {
@@ -1230,7 +1362,7 @@ enum DocumentLayoutAnalyzer {
         }
         var best: (score: Double, x: Double, value: [Double])?
         for step in 0...100 {
-            let x = W * (0.25 + 0.5 * Double(step) / 100)
+            let x = lo + W * (0.25 + 0.5 * Double(step) / 100)
             var parts = items.filter { $0.box.x1 <= x || $0.box.x0 >= x }
             var crossing: [LayoutItem] = []
             for item in items where item.box.x0 < x && item.box.x1 > x {
@@ -1245,7 +1377,7 @@ enum DocumentLayoutAnalyzer {
             // Both columns run side by side over most of their height.
             guard hi - lo > 0.4 * min(leftH, rightH), hi - lo > textHeight * 3 else { continue }
             let y0 = min(left.map(\.box.y0).min()!, right.map(\.box.y0).min()!), y1 = max(l1, r1)
-            guard !crossing.contains(where: { $0.box.overlapY(LBox(0, y0, W, y1)) > min($0.box.height, textHeight) * 0.3 }) else { continue }
+            guard !crossing.contains(where: { $0.box.overlapY(LBox(lo, y0, hi, y1)) > min($0.box.height, textHeight) * 0.3 }) else { continue }
             guard !overlaps(left), !overlaps(right) else { continue }
             // Columns of text, not a narrow column of labels beside their values.
             let lw = left.map(\.box.width).reduce(0, +) / Double(left.count), rw = right.map(\.box.width).reduce(0, +) / Double(right.count)
@@ -1737,6 +1869,9 @@ enum DocumentLayoutAnalyzer {
                 let l = spread(boxes.map(\.x0)), r = spread(boxes.map(\.x1)), m = spread(boxes.map(\.midX))
                 if l <= h * 0.6 && l < m && l < r { table.cells[i].alignment = .left }
                 else if r <= h * 0.6 && r < m && r < l { table.cells[i].alignment = .right }
+                // A tall cell of mixed lines (a frame drawn around a whole notice)
+                // is text set flush left, not one centred block.
+                else if lines.count >= 6 && m > h * 2 { table.cells[i].alignment = .left }
             }
             scores[i] = boldScore(ws, ink: ink, fontPt: size)
         }
@@ -1981,7 +2116,8 @@ enum DocumentLayoutAnalyzer {
             var segs: [[Word]] = []
             let h = (line.words.map(\.box.height).sorted())[line.words.count / 2]
             for w in words {
-                if let last = segs.last?.last, w.box.x0 - last.box.x1 <= h * gap, !(splitter?(last, w) ?? false) { segs[segs.count - 1].append(w) } else { segs.append([w]) }
+                if let last = segs.last?.last, w.box.x0 - last.box.x1 <= h * gap, !(splitter?(last, w) ?? false),
+                   !line.breaks.contains(where: { $0 > last.box.midX && $0 < w.box.midX }) { segs[segs.count - 1].append(w) } else { segs.append([w]) }
             }
             if var first = segs.first?.first, segs[0].count > 0 { first.spaceBefore = false; segs[0][0] = first }
             guard !segs.isEmpty else { continue }
@@ -2078,7 +2214,12 @@ enum DocumentLayoutAnalyzer {
         return max(-size * 0.12, min(size * (caps ? 0.8 : 0.08), extra))
     }
     static func paragraphAlignment(_ box: LBox, group: [LBox], width: Double, contentRight: Double) -> LayoutAlignment {
-        let centered = group.allSatisfy { abs($0.midX - width / 2) <= width * 0.025 }
+        // Lines of one length (justified text in a middle column) are not centred.
+        let lengths = group.map(\.width)
+        let even = group.count >= 3 && (lengths.max()! - lengths.min()!) < width * 0.02
+        // A line running nearly the full width is left-set text, not a centred one.
+        let full = group.allSatisfy { $0.width > width * 0.78 }
+        let centered = !even && !full && group.allSatisfy { abs($0.midX - width / 2) <= width * 0.025 }
         if centered && box.x0 > width * 0.2 { return .center }
         if box.x0 > width * 0.55 && abs(box.x1 - contentRight) <= width * 0.02 { return .right }
         return .left

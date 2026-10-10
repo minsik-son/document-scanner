@@ -119,6 +119,33 @@ final class ScannerFlowTests: HushUITestCase {
     }
 
     @MainActor
+    func testTrimMarginsHandlesDragTheBox() throws {
+        let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"-app-language","en","--seed-draft"]
+        app.launch();resumeFirstUnfinishedScan(in:app);editPage(1, in: app)
+        selectEditorTool("crop", in: app)
+        let trim = app.buttons["trim-margins"]
+        for _ in 0..<3 where !trim.isHittable { app.swipeUp() };trim.tap()
+        let corner = app.otherElements["trim-handle-tl"]
+        XCTAssertTrue(corner.waitForExistence(timeout:15))
+        XCTAssertEqual(app.staticTexts["trim-value-top"].label,"0.0%")
+        // Drag the top-left corner in: top and left margins grow.
+        let start = corner.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        start.press(forDuration: 0.1, thenDragTo: start.withOffset(CGVector(dx: 40, dy: 50)))
+        XCTAssertNotEqual(app.staticTexts["trim-value-top"].label,"0.0%")
+        XCTAssertNotEqual(app.staticTexts["trim-value-left"].label,"0.0%")
+        XCTAssertEqual(app.staticTexts["trim-value-right"].label,"0.0%")
+        // The middle of the right side moves only the right margin.
+        let side = app.otherElements["trim-handle-r"]
+        let top = app.staticTexts["trim-value-top"].label
+        let s0 = side.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        s0.press(forDuration: 0.1, thenDragTo: s0.withOffset(CGVector(dx: -40, dy: 30)))
+        XCTAssertNotEqual(app.staticTexts["trim-value-right"].label,"0.0%")
+        XCTAssertEqual(app.staticTexts["trim-value-top"].label, top)
+        let shot = XCTAttachment(screenshot:app.screenshot());shot.name="Trim handles";shot.lifetime = .keepAlways;add(shot)
+        app.buttons["trim-apply"].tap()
+    }
+
+    @MainActor
     func testTrimMarginsCanCancelApplyResetAndReopen() throws {
         let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"-app-language","en","--seed-draft"]
         app.launch();resumeFirstUnfinishedScan(in:app);editPage(1, in: app)

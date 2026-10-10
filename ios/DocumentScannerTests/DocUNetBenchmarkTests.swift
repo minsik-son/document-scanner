@@ -1,6 +1,7 @@
 import XCTest
 import CoreImage
 import UIKit
+import Translation
 @testable import DocumentScanner
 
 /// The DocUNet benchmark (Ma et al., CVPR 2018): 130 phone photos of curled,
@@ -403,5 +404,76 @@ final class DocUNetBenchmarkTests: XCTestCase {
         }
         print("PRICELIST\n" + lines.joined(separator: "\n"))
         try lines.joined(separator: "\n").write(to: Self.out.appendingPathComponent("pricelist.txt"), atomically: true, encoding: .utf8)
+    }
+
+    // MARK: Photo translation
+
+    /// Photo translation on document photos from the web (Test Documents/Translation,
+    /// Korean, Original photos). config "translation": "id:source:target,…". Uses the
+    /// installed Apple model when there is one; otherwise translation/<id>.json
+    /// ({"source text": "translation"}), else leaves the targets empty. Writes the
+    /// corrected scan, the rebuilt page and a region report per page.
+    @MainActor
+    func testPhotoTranslation() async throws {
+        guard let data else { throw XCTSkip("Test Documents not on this Mac.") }
+        let jobs = ((config["translation"] as? String) ?? "").split(separator: ",").map { $0.split(separator: ":").map(String.init) }.filter { $0.count == 3 }
+        guard !jobs.isEmpty else { throw XCTSkip("No translation jobs in config.json.") }
+        let dir = Self.out.appendingPathComponent("translation" + tag)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let supplied = Self.out.appendingPathComponent("translation")
+        let folders = ["Translation (HumynLabs CC BY 4.0)", "Korean (HumynLabs CC BY 4.0)", "Original photos"].map { data.appendingPathComponent($0) }
+        var summary: [String] = []
+        for job in jobs {
+            let (id, src, tgt) = (job[0], job[1], job[2])
+            guard let url = folders.flatMap({ f in ["png", "jpeg", "jpg", "JPG"].map { f.appendingPathComponent("\(id).\($0)") } }).first(where: { FileManager.default.fileExists(atPath: $0.path) }),
+                  let photo = UIImage(contentsOfFile: url.path) else { summary.append("\(id) missing"); continue }
+            let t0 = CFAbsoluteTimeGetCurrent()
+            // Rendered PDF pages are already flat and cropped.
+            let flat = url.path.contains("Translation (") && url.pathExtension == "png"
+            var scan = try withMacSegmentation(id) { try PhotoTranslation.scan(photo, crop: flat ? .full : nil, sourceLanguage: src, targetLanguage: tgt) }
+            scan = TranslationQuality.checked(scan, language: src)
+            let scanSeconds = CFAbsoluteTimeGetCurrent() - t0
+            var regions = scan.regions
+            var model = "none"
+            if #available(iOS 26.0, *) {
+                let a = Locale.Language(identifier: src), b = Locale.Language(identifier: tgt)
+                if await LanguageAvailability().status(from: a, to: b) == .installed {
+                    let session = TranslationSession(installedSource: a, target: b)
+                    for i in regions.indices where !regions[i].keepOriginal {
+                        if let fixed = TranslationGlossary.target(for: regions[i].source, from: src, to: tgt) { regions[i].target = fixed; continue }
+                        regions[i].target = (try? await session.translate(regions[i].source).targetText) ?? ""
+                    }
+                    model = "apple"
+                }
+            }
+            if model == "none", let d = try? Data(contentsOf: supplied.appendingPathComponent("\(id).json")),
+               let map = try? JSONSerialization.jsonObject(with: d) as? [String: String] {
+                func key(_ s: String) -> String { s.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ") }
+                let keyed = Dictionary(map.map { (key($0.key), $0.value) }, uniquingKeysWith: { a, _ in a })
+                for i in regions.indices where !regions[i].keepOriginal {
+                    if let fixed = TranslationGlossary.target(for: regions[i].source, from: src, to: tgt) { regions[i].target = fixed; continue }
+                    regions[i].target = keyed[key(regions[i].source)] ?? ""
+                }
+                model = "supplied"
+            }
+            let t1 = CFAbsoluteTimeGetCurrent()
+            let result = try PhotoTranslation.compose(scan.image, regions: regions)
+            let composeSeconds = CFAbsoluteTimeGetCurrent() - t1
+            jpeg(scan.image, dir.appendingPathComponent("\(id)-scan.jpg"))
+            jpeg(result.image, dir.appendingPathComponent("\(id)-translated.jpg"))
+            let rows: [[String: Any]] = regions.map { r in
+                ["id": r.id, "source": r.source, "target": r.target, "marker": r.isMarker, "unclear": r.unclear, "keep": r.keepOriginal,
+                 "confidence": Double(r.confidence), "lines": max(1, r.sourceBoxes.count),
+                 "box": [r.box.minX, r.box.minY, r.box.width, r.box.height].map { Double($0) }, "issue": result.reasons[r.id]?.rawValue ?? ""]
+            }
+            write(["id": id, "source": src, "target": tgt, "model": model, "edges": scan.edgesDetected, "regions": rows,
+                   "replaced": result.replaced, "kept": result.kept, "unclear": result.unclear, "unchanged": result.unchanged,
+                   "issues": result.issues.count, "scanSeconds": scanSeconds, "composeSeconds": composeSeconds], dir.appendingPathComponent("\(id).json"))
+            var reasons: [String: Int] = [:]
+            for r in result.reasons.values { reasons[r.rawValue, default: 0] += 1 }
+            let line = "\(id) \(src)->\(tgt) model=\(model) regions=\(regions.count) markers=\(regions.filter(\.isMarker).count) unclear=\(regions.filter(\.unclear).count) replaced=\(result.replaced) issues=\(reasons) scan=\(String(format: "%.1f", scanSeconds))s compose=\(String(format: "%.1f", composeSeconds))s"
+            print("TRANSLATION " + line); summary.append(line)
+        }
+        try summary.joined(separator: "\n").write(to: dir.appendingPathComponent("summary.txt"), atomically: true, encoding: .utf8)
     }
 }

@@ -57,16 +57,25 @@ enum PaperFlattener {
         var sides = splitOutline(outline, corners: corners, center: center)
         let diag = hypot(W, H)
         let lines = sides.map { fitLine(Array($0.dropFirst($0.count / 5).dropLast($0.count / 5))) }
-        var usable = [Bool](repeating: false, count: 4)
+        var usable = [Bool](repeating: false, count: 4), outward = [Bool](repeating: false, count: 4)
         for k in 0..<4 {
             guard let l = lines[k], sides[k].count >= 12 else { continue }
             // The outline follows this side of the crop (it isn't a crop inside the paper).
             let a = corners[k], b = corners[(k + 1) % 4]
             let mid = (a + b) / 2
-            usable[k] = distance(l, mid) < diag * 0.03
+            if distance(l, mid) < diag * 0.03 { usable[k] = true; continue }
+            // Or the crop stops short of the paper's edge (a detector that cut off a
+            // curled strip): a straight, parallel paper edge a little farther out.
+            let side = L(p: a, d: simd_normalize(b - a))
+            let beyond = distance(l, center) - distance(side, center)
+            let parallel = abs(simd_dot(l.d, side.d)) > cos(10 * Double.pi / 180)
+            let body = Array(sides[k].dropFirst(sides[k].count / 5).dropLast(sides[k].count / 5))
+            let straight = median(body.map { distance(l, $0) }) < diag * 0.004
+            if beyond > 0, beyond < diag * 0.10, parallel, straight { usable[k] = true; outward[k] = true }
         }
         for k in 0..<4 where usable[k] && usable[(k + 3) % 4] {
-            if let l1 = lines[(k + 3) % 4], let l2 = lines[k], let p = intersect(l1, l2), simd_distance(p, corners[k]) < diag * 0.06 { corners[k] = p }
+            let reach = outward[k] || outward[(k + 3) % 4] ? 0.14 : 0.06
+            if let l1 = lines[(k + 3) % 4], let l2 = lines[k], let p = intersect(l1, l2), simd_distance(p, corners[k]) < diag * reach { corners[k] = p }
         }
         sides = splitOutline(outline, corners: corners, center: center)
         // Page shape: perspective aspect, snapped to Letter or A4 when close.
@@ -135,9 +144,18 @@ enum PaperFlattener {
     /// background.
     static func findPage(_ photo: CGImage) -> ScanQuad? {
         guard let img = RGBAImage(photo, maxSide: 700) else { return nil }
-        let W = Double(img.w), H = Double(img.h)
-        let center = Pt(W / 2, H / 2)
-        guard let mask = PaperFeatures.paperMask(img, seed: center) else { return nil }
+        let center = Pt(Double(img.w) / 2, Double(img.h) / 2)
+        // Light, plain paper first; then paper told apart from its background by colour.
+        for mask in [PaperFeatures.paperMask(img, seed: center), PaperFeatures.contrastPaperMask(img, seed: center)] {
+            if let mask, let quad = pageQuad(mask, center: center) { return quad }
+        }
+        return nil
+    }
+
+    /// The sheet's corners from its mask, when the mask looks like one sheet that
+    /// ends inside the photo.
+    static func pageQuad(_ mask: Plane, center: Pt) -> ScanQuad? {
+        let W = Double(mask.w), H = Double(mask.h)
         let area = Double(mask.p.reduce(0) { $0 + ($1 > 0 ? 1 : 0) }) / (W * H)
         guard area > 0.06, area < 0.9 else { return nil }
         // The paper must end inside the photo on most of its outline.
@@ -145,10 +163,11 @@ enum PaperFlattener {
         guard outline.count > 600 else { return nil }
         let onBorder = outline.filter { $0.x < 3 || $0.y < 3 || $0.x > W - 4 || $0.y > H - 4 }.count
         guard Double(onBorder) / Double(outline.count) < 0.25 else { return nil }
+        // A sheet fills most of its own corner quad (a blob of desk does not).
         let dirs = [Pt(-1, -1), Pt(1, -1), Pt(1, 1), Pt(-1, 1)]
         let corners = dirs.map { d in outline.max { simd_dot($0 - center, d) < simd_dot($1 - center, d) }! }
         let quad = ScanQuad(points: corners.map { ScanPoint(x: $0.x / W, y: $0.y / H) })
-        guard quad.valid, DocumentProcessing.area(quad) > 0.05 else { return nil }
+        guard quad.valid, DocumentProcessing.area(quad) > 0.05, area / DocumentProcessing.area(quad) > 0.75 else { return nil }
         return quad
     }
 
@@ -190,6 +209,7 @@ enum PaperFlattener {
                 missing[c, r] = paper ? 0 : 255
             }
         }
+        missing = edgeGaps(missing)
         let rim = max(1, Int((Double(min(mcols, mrows)) * 0.012).rounded()))
         missing = missing.dilate(2 * rim + 1, 2 * rim + 1)
         // Paper colour: the bright half of the paper pixels.
@@ -207,6 +227,31 @@ enum PaperFlattener {
         for (_, i) in band { for k in 0..<3 { rgb[k] += Double(img.px[i * 4 + k]) } }
         let paper = rgb.map { Float($0 / Double(band.count) / 255) }
         return FlattenMesh(cols: cols, rows: rows, points: pts, aspect: aspect, maskCols: mcols, maskRows: mrows, missing: Data(missing.p), paper: paper)
+    }
+
+    /// Paper is missing only where a corner was cut off or curled out of view:
+    /// gaps along the page's edge. A paper mask that missed dense or dark print
+    /// would otherwise paint over the page itself, so gaps inside the page, or
+    /// more than a small share of it, are not filled at all.
+    static func edgeGaps(_ m: Plane) -> Plane {
+        let w = m.w, h = m.h
+        let bandX = max(2, w * 15 / 100), bandY = max(2, h * 15 / 100)
+        var near = Plane(w: w, h: h)
+        for y in 0..<h { for x in 0..<w where m[x, y] > 0 && (x < bandX || x >= w - bandX || y < bandY || y >= h - bandY) { near[x, y] = 255 } }
+        // Keep the gaps that reach the page's edge.
+        var out = Plane(w: w, h: h)
+        var stack: [Int] = []
+        for x in 0..<w { stack.append(x); stack.append((h - 1) * w + x) }
+        for y in 0..<h { stack.append(y * w); stack.append(y * w + w - 1) }
+        while let i = stack.popLast() {
+            guard near.p[i] > 0, out.p[i] == 0 else { continue }
+            out.p[i] = 255
+            let x = i % w, y = i / w
+            if x > 0 { stack.append(i - 1) }; if x < w - 1 { stack.append(i + 1) }
+            if y > 0 { stack.append(i - w) }; if y < h - 1 { stack.append(i + w) }
+        }
+        let share = Double(out.p.reduce(0) { $0 + ($1 > 0 ? 1 : 0) }) / Double(w * h)
+        return share > 0.10 ? Plane(w: w, h: h) : out
     }
 
     // MARK: Geometry helpers

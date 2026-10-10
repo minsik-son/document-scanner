@@ -34,6 +34,23 @@ final class DocUNetBenchmarkTests: XCTestCase {
         if let limit = config["limit"] as? Int { list = Array(list.prefix(limit)) }
         return list
     }
+    /// Document segmentation for each photo computed on macOS (the simulator's
+    /// model is broken), from Verification/private/scripts/docseg.swift.
+    private lazy var macSegmentation: [String: [(ScanQuad, Float)]] = {
+        guard config["macDocSeg"] as? Bool ?? true,
+              let d = try? Data(contentsOf: Self.out.appendingPathComponent("docseg-mac.json")),
+              let j = try? JSONSerialization.jsonObject(with: d) as? [String: [[String: Any]]] else { return [:] }
+        return j.mapValues { list in list.compactMap { o in
+            guard let q = o["quad"] as? [Double], q.count == 8, let c = o["conf"] as? Double else { return nil }
+            return (ScanQuad(points: stride(from: 0, to: 8, by: 2).map { ScanPoint(x: q[$0], y: q[$0 + 1]) }), Float(c))
+        } }
+    }()
+    private func withMacSegmentation<T>(_ id: String, _ body: () throws -> T) rethrows -> T {
+        if let quads = macSegmentation[id] { DocumentProcessing.documentSegmentationOverride = { _ in quads } }
+        defer { DocumentProcessing.documentSegmentationOverride = nil }
+        return try body()
+    }
+    private var tag: String { config["tag"] as? String ?? "" }
     private func ocr(_ image: UIImage) -> String {
         guard let cg = image.cgImage, let blocks = try? TextRecognition.recognize(cg) else { return "" }
         return blocks.map(\.text).joined(separator: "\n")
@@ -59,7 +76,7 @@ final class DocUNetBenchmarkTests: XCTestCase {
     /// text readable, compared with the flatbed scan of the same page.
     func testScanQuality() throws {
         guard let data else { throw XCTSkip("DocUNet benchmark not on this Mac.") }
-        let dir = Self.out.appendingPathComponent("scan")
+        let dir = Self.out.appendingPathComponent("scan" + tag)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let skipDone = config["skipDone"] as? Bool ?? true
         var gtText: [String: String] = [:]
@@ -74,7 +91,7 @@ final class DocUNetBenchmarkTests: XCTestCase {
                 var r: [String: Any] = ["id": id, "width": photo.size.width * photo.scale, "height": photo.size.height * photo.scale]
                 // The crop the camera finds (rectangle, else the paper outline).
                 var t = CFAbsoluteTimeGetCurrent()
-                let rect = DocumentProcessing.detect(photo.cgImage!)
+                let rect = withMacSegmentation(id) { DocumentProcessing.detect(photo.cgImage!) }
                 let found = rect ?? PaperFlattener.findPage(photo.cgImage!)
                 r["detectSeconds"] = CFAbsoluteTimeGetCurrent() - t
                 r["crop"] = rect != nil ? "rectangle" : (found != nil ? "outline" : "none")
@@ -116,7 +133,7 @@ final class DocUNetBenchmarkTests: XCTestCase {
     /// convert path) next to the same conversion of the flatbed scan.
     func testOfficeFidelity() throws {
         guard let data else { throw XCTSkip("DocUNet benchmark not on this Mac.") }
-        let dir = Self.out.appendingPathComponent("office")
+        let dir = Self.out.appendingPathComponent("office" + tag)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let skipDone = config["skipDone"] as? Bool ?? true
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("docunet-pages")
@@ -154,7 +171,7 @@ final class DocUNetBenchmarkTests: XCTestCase {
                 let file = "\(id).jpg"
                 try XCTUnwrap(photo.jpegData(compressionQuality: 0.95)).write(to: root.appendingPathComponent(file))
                 var page = ScanPage(imageFile: file)
-                if let crop = Imaging.detectPage(photo), crop.valid { page.crop = crop }
+                if let crop = withMacSegmentation(id, { Imaging.detectPage(photo) }), crop.valid { page.crop = crop }
                 page.enhancement = .document
                 page.flatten = true
                 let rendered = try Imaging.render(page, root: root)
@@ -215,5 +232,43 @@ final class DocUNetBenchmarkTests: XCTestCase {
     }
     private func photosAll(_ data: URL) -> [URL] {
         ((try? FileManager.default.contentsOfDirectory(at: data.appendingPathComponent("Original photos"), includingPropertiesForKeys: nil)) ?? [])
+    }
+
+    /// The private Notice photo through the photo → Office path with and without
+    /// paper flattening: page images and what the layout made of them.
+    func testNoticeFlattenComparison() throws {
+        guard let home = ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] else { throw XCTSkip("Mac only") }
+        let folder = URL(fileURLWithPath: home).appendingPathComponent("Documents/ChatGPT/정치 중립/scanner-product/ios/Verification/private")
+        guard let photo = UIImage(contentsOfFile: folder.appendingPathComponent("Notice.jpg").path) else { throw XCTSkip("no Notice.jpg") }
+        defer { OfficeLayoutPages.flattensPhotos = false }
+        var lines: [String] = []
+        for on in [false, true] {
+            OfficeLayoutPages.flattensPhotos = on
+            let pair = try OfficeLayoutPages.flattenedPair(photo)
+            try pair.layout.pngData()?.write(to: Self.out.appendingPathComponent("notice-\(on ? "flat" : "persp")-layout.png"))
+            try pair.reading.pngData()?.write(to: Self.out.appendingPathComponent("notice-\(on ? "flat" : "persp")-reading.png"))
+            let page = try OfficeLayoutPages.analyze(photo)
+            let paragraphs = page.items.compactMap { item -> LayoutParagraph? in if case .paragraph(let p) = item { return p }; return nil }
+            let tables = page.items.compactMap { item -> LayoutTable? in if case .table(let t) = item { return t }; return nil }
+            lines.append("\(on ? "flat" : "persp") size \(pair.layout.size.width * pair.layout.scale)x\(pair.layout.size.height * pair.layout.scale) paragraphs \(paragraphs.count) boxes \(paragraphs.filter { $0.marker == "□" }.count) tables \(tables.map { "\($0.rowCount)x\($0.columnCount)" })")
+        }
+        // The app's scan → convert path: the page as rendered after a camera scan.
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("notice-page")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let upright = Imaging.normalized(photo)
+        try XCTUnwrap(upright.jpegData(compressionQuality: 0.95)).write(to: root.appendingPathComponent("n.jpg"))
+        for on in [false, true] {
+            var page = ScanPage(imageFile: "n.jpg")
+            page.crop = try XCTUnwrap(Imaging.detectPage(upright))
+            page.enhancement = .document; page.flatten = on
+            let rendered = try Imaging.render(page, root: root)
+            try rendered.jpegData(compressionQuality: 0.9)?.write(to: Self.out.appendingPathComponent("notice-app-\(on ? "flat" : "persp").jpg"))
+            let layout = try OfficeLayoutPages.analyze(rendered)
+            let paragraphs = layout.items.compactMap { item -> LayoutParagraph? in if case .paragraph(let p) = item { return p }; return nil }
+            let tables = layout.items.compactMap { item -> LayoutTable? in if case .table(let t) = item { return t }; return nil }
+            lines.append("app \(on ? "flat" : "persp") size \(rendered.size.width * rendered.scale)x\(rendered.size.height * rendered.scale) paragraphs \(paragraphs.count) boxes \(paragraphs.filter { $0.marker == "□" }.count) tables \(tables.map { "\($0.rowCount)x\($0.columnCount)" }) 별지span \(tables.first?.cells.first { $0.text.contains("별지") }?.columnSpan ?? -1)")
+        }
+        try lines.joined(separator: "\n").write(to: Self.out.appendingPathComponent("notice-compare.txt"), atomically: true, encoding: .utf8)
+        print("NOTICE\n" + lines.joined(separator: "\n"))
     }
 }

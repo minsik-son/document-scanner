@@ -277,3 +277,13 @@ Selected-language + close-up OCR, word-gap column separation, mixed-script parag
 - 사각형 감지가 실패하는 말린 종이는 종이 윤곽의 모서리로 자르기를 잡는다(`PaperFlattener.findPage`, 촬영·가져오기 시).
 - 분석이 믿을 만하지 않으면(선·가장자리가 잘 안 맞음, 접힘) 기존 원근 보정으로 돌아간다.
 - 테스트 `FlattenTests`: 개인 샘플 4장(Mac에만, 저장소 제외)으로 줄 휨 p90이 1–2px(원근만: 2.6–12.9px), 평평한 합성 페이지는 그대로. 결과 이미지는 `Verification/private/dewarp/out`. 러너에 `otest`(최적화 빌드 단위 테스트) 추가.
+
+## DocUNet 벤치마크 기반 수정 (2026-10-10)
+- 벤치마크: DocUNet 130장(말림·접힘·구김 실사진 + 평면 스캔 정답), Mac에만 보관. `DocUNetBenchmarkTests`(otest) + `Verification/private/docunet/score*.py`. 결과 정리는 프로젝트 문서 `scanner-docunet-benchmark-2026-10.md`.
+- 종이 채우기 버그 수정: 빽빽하거나 어두운 인쇄에서 종이 영역을 놓치면 본문이 종이색으로 덮이던 문제. 채우기는 페이지 가장자리 띠(15%) 안에서 가장자리와 이어진 빈 곳만, 전체의 10%를 넘으면 채우지 않음(`PaperFlattener.edgeGaps`).
+- 작은 종이: 경계 근거가 강하면(강한 변 3개 이상, 경계 0.25+, 내부 종이 0.8+) 화면의 8%까지 인식(기존 15%).
+- 종이 찾기 보강: 밝은 종이 기준이 실패하면 배경과의 색 대비로 종이 영역을 찾음(베이지·분홍 종이, 어두운 천 위). 덩어리가 사각형을 75% 이상 채워야 인정.
+- 탐지 결과가 종이 안쪽에서 끝날 때, 바깥에 곧고 평행한 종이 가장자리가 있으면 그쪽으로 모서리를 옮김.
+- 시뮬레이터에서는 Vision 문서 분할이 항상 화면 아래 띠를 반환(모델 문제). 테스트에서 Mac에서 계산한 결과를 주입하는 장치(`documentSegmentationOverride`, 앱에서는 nil).
+- 결과(130장): 종이 자동 인식 79% → 89%, 앱 결과 글자 인식 오류율 중앙값 25% → 18%. Word 변환 글자 일치도 평균 0.71 → 0.75(44장).
+- 사진 → Office 도구의 평면화(`OfficeLayoutPages.flattensPhotos`)는 구현했지만 기본 꺼둠: Notice 샘플에서 체크박스·표 셀 인식이 나빠짐. 앱의 스캔 → 변환 경로(렌더된 평면화 페이지)는 같은 샘플에서 체크박스 4개·별지 병합 유지(표 열 하나 차이).

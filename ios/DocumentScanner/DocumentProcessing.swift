@@ -291,35 +291,46 @@ enum DocumentProcessing {
 
     /// Every Vision observation with its paper evidence, accepted or not. `detect`
     /// picks the best accepted one; tests use the full list to explain a crop.
+    /// Tests only: document segmentation results to use instead of Vision's (the
+    /// simulator's segmentation model returns a fixed strip; quads, top-left origin).
+    nonisolated(unsafe) static var documentSegmentationOverride: ((CGImage) -> [(ScanQuad, Float)]?)?
     static func candidates(_ image: CGImage) -> [DetectionCandidate] {
         let handler = VNImageRequestHandler(cgImage: image)
-        let document = VNDetectDocumentSegmentationRequest()
-        try? handler.perform([document])
+        var observations: [(ScanQuad, DetectionKind, Float)] = []
+        func quad(_ o: VNRectangleObservation) -> ScanQuad {
+            ScanQuad(points: [o.topLeft, o.topRight, o.bottomRight, o.bottomLeft].map { ScanPoint(x: Double($0.x), y: 1-Double($0.y)) })
+        }
+        if let injected = documentSegmentationOverride?(image) {
+            observations += injected.map { ($0.0, .document, $0.1) }
+        } else {
+            let document = VNDetectDocumentSegmentationRequest()
+            try? handler.perform([document])
+            observations += (document.results ?? []).map { (quad($0), .document, $0.confidence) }
+        }
         let rectangles = VNDetectRectanglesRequest()
         rectangles.maximumObservations = 12
         rectangles.minimumConfidence = 0.7
         rectangles.minimumAspectRatio = 0.2
         rectangles.minimumSize = 0.12
         try? handler.perform([rectangles])
+        observations += (rectangles.results ?? []).map { (quad($0), .rectangle, $0.confidence) }
         guard let raster = Raster(image, maximumDimension: 384) else { return [] }
-        let observations = (document.results ?? []).map { ($0 as VNRectangleObservation, DetectionKind.document) }
-            + (rectangles.results ?? []).map { ($0 as VNRectangleObservation, DetectionKind.rectangle) }
         // A segmentation confidence is not enough: some desks form a large false polygon.
         // Compare paper on the inside with the surroundings just beyond all four edges.
-        return observations.compactMap { observation, kind -> DetectionCandidate? in
-            let quad = ScanQuad(points: [observation.topLeft, observation.topRight, observation.bottomRight, observation.bottomLeft].map {
-                ScanPoint(x: Double($0.x), y: 1-Double($0.y))
-            })
+        return observations.compactMap { quad, kind, confidence -> DetectionCandidate? in
             guard quad.valid else { return nil }
             let evidence = paperEvidence(quad, raster: raster)
             let supported = evidence.strongEdges >= 2 && evidence.edge > 0.10
+            // A sheet photographed from farther away: clear paper inside and a clear
+            // boundary on (nearly) every side.
+            let strong = evidence.strongEdges >= 3 && evidence.edge >= 0.25 && evidence.interior >= 0.8
             // Near-full-frame sheets may have no visible surroundings. Otherwise real
             // paper boundaries must be present, even for segmentation observations.
-            let accepted = acceptableCrop(quad, source: kind, confidence: observation.confidence, boundarySupport: supported)
+            let accepted = acceptableCrop(quad, source: kind, confidence: confidence, boundarySupport: supported, strongBoundary: strong)
                 && evidence.interior > 0.58
                 && (supported || (area(quad) > 0.72 && evidence.interior > 0.82))
             let score = evidence.interior*0.5 + evidence.edge*0.9 + min(area(quad), 0.75)*0.2
-            return DetectionCandidate(quad: quad, kind: kind, confidence: observation.confidence, interior: evidence.interior,
+            return DetectionCandidate(quad: quad, kind: kind, confidence: confidence, interior: evidence.interior,
                                       edge: evidence.edge, strongEdges: evidence.strongEdges, accepted: accepted, score: score)
         }
     }
@@ -331,11 +342,12 @@ enum DocumentProcessing {
             return value + a.x*b.y-b.x*a.y
         }) / 2
     }
-    static func acceptableCrop(_ quad: ScanQuad, source: DetectionKind = .rectangle, confidence: Float = 1, boundarySupport: Bool = false) -> Bool {
+    static func acceptableCrop(_ quad: ScanQuad, source: DetectionKind = .rectangle, confidence: Float = 1, boundarySupport: Bool = false, strongBoundary: Bool = false) -> Bool {
         guard quad.valid, confidence >= 0.7 else { return false }
         // Small rectangles on paper still need actual paper-boundary evidence. A
-        // confidently segmented sheet is allowed to occupy less of the camera frame.
-        let minimumArea = boundarySupport || (source == .document && confidence >= 0.8) ? 0.15 : 0.45
+        // confidently segmented sheet is allowed to occupy less of the camera frame,
+        // and a sheet with a clear boundary all round even less.
+        let minimumArea = strongBoundary ? 0.08 : (boundarySupport || (source == .document && confidence >= 0.8) ? 0.15 : 0.45)
         return area(quad) >= minimumArea
     }
 

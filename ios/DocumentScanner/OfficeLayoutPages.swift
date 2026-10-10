@@ -61,9 +61,13 @@ enum OfficeLayoutPages {
               DocumentProcessing.area(quad) < 0.9, hasBackground(around: quad, in: cg) else { return (upright, upright) }
         // Perspective correction keeps the photographed proportions; recover the
         // sheet's real shape from the camera geometry before snapping to paper.
-        let aspect = trueAspect(quad, width: Double(cg.width), height: Double(cg.height))
+        // A curled or bent sheet is drawn flat (its true shape comes with it);
+        // otherwise the perspective is corrected and the shape recovered below.
+        let source = CIImage(cgImage: cg)
+        let flattens = flattensPhotos && PaperFlatten.analyze(source, crop: quad) != nil
+        let aspect = flattens ? nil : trueAspect(quad, width: Double(cg.width), height: Double(cg.height))
         func flat(_ tone: Enhancement) throws -> UIImage {
-            let output = try DocumentProcessing.render(CIImage(cgImage: cg), crop: quad, turns: 0, enhancement: tone, alignedOriginal: true)
+            let output = try DocumentProcessing.render(source, crop: quad, turns: 0, enhancement: tone, alignedOriginal: true, flatten: flattens ? FlattenRequest(key: nil) : nil)
             guard let flat = DocumentProcessing.context.createCGImage(output, from: output.extent) else {
                 throw ScannerError.message("This photo couldn't be flattened. Try scanning the page instead.")
             }
@@ -73,6 +77,10 @@ enum OfficeLayoutPages {
         let layout = try flat(flattenTone)
         return (layout, readsOriginalTone ? try flat(.original) : layout)
     }
+    /// Draw curled photographed pages flat here too. Off for now: on the Notice
+    /// sample the flattened page loses checkbox markers and table cells in the
+    /// layout analysis, though it looks as good (tests turn it on to compare).
+    nonisolated(unsafe) static var flattensPhotos = false
     /// Also read the text from the uncleaned page (tests turn it off to compare).
     nonisolated(unsafe) static var readsOriginalTone = true
     /// Height/width of the photographed rectangle in reality (Zhang & He,

@@ -19,34 +19,86 @@ enum PaperFeatures {
             let s = mx == 0 ? 0 : (mx - mn) * 255 / mx
             if s < 70 && mx > 140 { m.p[i] = 255 }
         }
-        let side = max(img.w, img.h)
+        return region(m, seed: seed)
+    }
+
+    /// Pixels whose colour is close to the paper's at `seed`, for paper that is not
+    /// plain white or lies on a light background with another colour (beige paper
+    /// on a dark cloth, a pink receipt on a blue folder). Lightness counts for
+    /// little, so shading across the sheet stays paper.
+    static func contrastPaperMask(_ img: RGBAImage, seed: Pt) -> Plane? {
+        let n = img.w * img.h
+        var L = [Float](repeating: 0, count: n), A = [Float](repeating: 0, count: n), B = [Float](repeating: 0, count: n)
+        for i in 0..<n {
+            let r = Float(img.px[i * 4]), g = Float(img.px[i * 4 + 1]), b = Float(img.px[i * 4 + 2])
+            L[i] = 0.3 * r + 0.59 * g + 0.11 * b; A[i] = r - g; B[i] = (r + g) / 2 - b
+        }
+        // Paper colour: the lighter pixels (not print) around the seed.
+        let rw = max(4, img.w / 10), rh = max(4, img.h / 10)
+        let sx = min(max(0, Int(seed.x)), img.w - 1), sy = min(max(0, Int(seed.y)), img.h - 1)
+        var near: [Int] = []
+        for y in max(0, sy - rh)..<min(img.h, sy + rh) { for x in max(0, sx - rw)..<min(img.w, sx + rw) { near.append(y * img.w + x) } }
+        guard near.count > 50 else { return nil }
+        near.sort { L[$0] < L[$1] }
+        let light = near[(near.count * 6 / 10)...]
+        func med(_ v: [Float]) -> Float { let s = v.sorted(); return s[s.count / 2] }
+        let pl = med(light.map { L[$0] }), pa = med(light.map { A[$0] }), pb = med(light.map { B[$0] })
+        guard pl > 90 else { return nil }
+        var d = [Int](repeating: 0, count: n)
+        var hist = [Int](repeating: 0, count: 256)
+        for i in 0..<n {
+            let dl = (L[i] - pl) * 0.35, da = A[i] - pa, db = B[i] - pb
+            let v = min(255, Int((dl * dl + da * da + db * db).squareRoot()))
+            d[i] = v; hist[v] += 1
+        }
+        // Otsu's split between "paper colour" and "everything else".
+        var sum = 0.0; for k in 0..<256 { sum += Double(k * hist[k]) }
+        var sumB = 0.0, wB = 0.0, best = 0.0, t = 0
+        for k in 0..<256 {
+            wB += Double(hist[k]); guard wB > 0 else { continue }
+            let wF = Double(n) - wB; if wF <= 0 { break }
+            sumB += Double(k * hist[k])
+            let mB = sumB / wB, mF = (sum - sumB) / wF
+            let between = wB * wF * (mB - mF) * (mB - mF)
+            if between > best { best = between; t = k }
+        }
+        guard t >= 12 else { return nil }   // no clear colour difference to the background
+        var m = Plane(w: img.w, h: img.h)
+        for i in 0..<n where d[i] <= t && L[i] > pl * 0.55 { m.p[i] = 255 }
+        return region(m, seed: seed)
+    }
+
+    /// The region of `m` that holds `seed`, cleaned and with holes (the print) filled.
+    static func region(_ m0: Plane, seed: Pt) -> Plane? {
+        var m = m0
+        let side = max(m.w, m.h)
         m = m.open(5, 5)
         let (labels, blobs) = Components.label(m)
-        let sx = min(max(0, Int(seed.x)), img.w - 1), sy = min(max(0, Int(seed.y)), img.h - 1)
-        var id = Int(labels[sy * img.w + sx])
+        let sx = min(max(0, Int(seed.x)), m.w - 1), sy = min(max(0, Int(seed.y)), m.h - 1)
+        var id = Int(labels[sy * m.w + sx])
         if id == 0 {
             // The seed fell on print: take the largest region whose box holds it.
             var best = 0
             for (k, b) in blobs.enumerated() where k > 0 && b.x0 <= sx && sx <= b.x1 && b.y0 <= sy && sy <= b.y1 && b.area > best { best = b.area; id = k }
         }
         guard id > 0 else { return nil }
-        var page = Plane(w: img.w, h: img.h)
-        for i in 0..<(img.w * img.h) where labels[i] == Int32(id) { page.p[i] = 255 }
+        var page = Plane(w: m.w, h: m.h)
+        for i in 0..<(m.w * m.h) where labels[i] == Int32(id) { page.p[i] = 255 }
         let k = max(5, side / 100)
         page = page.close(k, k)
         // Fill holes: what the outside can't reach is page.
-        var outside = Plane(w: img.w, h: img.h)
+        var outside = Plane(w: m.w, h: m.h)
         var stack: [Int] = []
-        for x in 0..<img.w { stack.append(x); stack.append((img.h - 1) * img.w + x) }
-        for y in 0..<img.h { stack.append(y * img.w); stack.append(y * img.w + img.w - 1) }
+        for x in 0..<m.w { stack.append(x); stack.append((m.h - 1) * m.w + x) }
+        for y in 0..<m.h { stack.append(y * m.w); stack.append(y * m.w + m.w - 1) }
         while let i = stack.popLast() {
             if page.p[i] > 0 || outside.p[i] > 0 { continue }
             outside.p[i] = 255
-            let x = i % img.w, y = i / img.w
-            if x > 0 { stack.append(i - 1) }; if x < img.w - 1 { stack.append(i + 1) }
-            if y > 0 { stack.append(i - img.w) }; if y < img.h - 1 { stack.append(i + img.w) }
+            let x = i % m.w, y = i / m.w
+            if x > 0 { stack.append(i - 1) }; if x < m.w - 1 { stack.append(i + 1) }
+            if y > 0 { stack.append(i - m.w) }; if y < m.h - 1 { stack.append(i + m.w) }
         }
-        for i in 0..<(img.w * img.h) { page.p[i] = outside.p[i] > 0 ? 0 : 255 }
+        for i in 0..<(m.w * m.h) { page.p[i] = outside.p[i] > 0 ? 0 : 255 }
         return page
     }
 

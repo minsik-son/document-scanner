@@ -20,6 +20,9 @@ extension PaperFlattener {
         var obs: [Obs] = []
         var acrossY: [Double] = []
         var downX: [Double] = []
+        /// How far the text lines and rules sit from a flat page (80th percentile,
+        /// residual units) before and after the fit.
+        var lineError: (flat: Double, fitted: Double) = (0, 0)
         /// Robust loss scale (residual units).
         let f = 8.0
         let smoothWeight = 10.0
@@ -94,6 +97,18 @@ extension PaperFlattener {
             return total
         }
 
+        func lineError(_ p: Params) -> Double {
+            var errs: [Double] = []
+            for (k, o) in obs.enumerated() {
+                if case .edge = o.kind { continue }
+                let (X, Y) = point(o, local: p.locals[k], ay: p.ay, dx: p.dx)
+                errs.append(simd_length(proj(X, Y, z(X, Y, p.c), p.pose.R, p.pose.t) - o.target) / scale)
+            }
+            guard !errs.isEmpty else { return 0 }
+            errs.sort()
+            return errs[errs.count * 8 / 10]
+        }
+
         /// Fits everything; false when the result isn't trustworthy.
         mutating func solve(pose: inout Pose, iterations: Int) -> Bool {
             guard !obs.isEmpty else { return false }
@@ -101,6 +116,7 @@ extension PaperFlattener {
             let ng = 6 + nC + nA + nD
             let rows = smoothRows()
             var p = Params(pose: pose, c: C, ay: acrossY, dx: downX, locals: obs.map(\.local))
+            lineError.flat = lineError(p)
             var current = cost(p, rows: rows)
             var lambda = 1e-3
             let eps = 1e-6
@@ -216,6 +232,7 @@ extension PaperFlattener {
             }
             pose = p.pose; C = p.c; acrossY = p.ay; downX = p.dx
             for k in obs.indices { obs[k].local = p.locals[k] }
+            lineError.fitted = lineError(p)
             // Trust it only when the lines and edges actually fit.
             let R = pose.R
             var errs: [Double] = []

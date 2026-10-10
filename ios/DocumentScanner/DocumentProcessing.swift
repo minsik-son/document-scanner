@@ -42,7 +42,23 @@ enum DocumentProcessing {
     }
 
     static func detect(_ image: CGImage) -> ScanQuad? {
-        guard let best = candidates(image).filter(\.accepted).max(by: { $0.score < $1.score })?.quad else { return nil }
+        let accepted = candidates(image).filter(\.accepted)
+        guard var best = accepted.max(by: { $0.score < $1.score })?.quad else { return nil }
+        // A rectangle printed on the page (a photo, a box) scores well on its own;
+        // the confidently segmented sheet around it is the page.
+        func inside(_ q: ScanQuad, _ outer: ScanQuad) -> Bool {
+            q.points.allSatisfy { p in
+                (0..<4).allSatisfy { i in
+                    let a = outer.points[i], b = outer.points[(i + 1) % 4]
+                    return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x) >= -0.02
+                } || (0..<4).allSatisfy { i in
+                    let a = outer.points[i], b = outer.points[(i + 1) % 4]
+                    return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x) <= 0.02
+                }
+            }
+        }
+        if let sheet = accepted.filter({ $0.kind == .document && $0.confidence >= 0.85 }).max(by: { area($0.quad) < area($1.quad) }),
+           sheet.quad != best, area(sheet.quad) >= area(best) * 2, inside(best, sheet.quad) { best = sheet.quad }
         guard let raster = Raster(image, maximumDimension: 384) else { return best }
         return extendToPaperEdges(best, raster: raster)
     }
@@ -326,9 +342,12 @@ enum DocumentProcessing {
             let strong = evidence.strongEdges >= 3 && evidence.edge >= 0.25 && evidence.interior >= 0.8
             // Near-full-frame sheets may have no visible surroundings. Otherwise real
             // paper boundaries must be present, even for segmentation observations.
+            // A confidently segmented, heavily printed sheet (a magazine page, coloured
+            // paper) has little plain paper inside but still a boundary on two sides.
+            let printed = kind == .document && confidence >= 0.9 && evidence.strongEdges >= 2 && evidence.edge >= 0.1
+                && (0.3...0.97).contains(area(quad))
             let accepted = acceptableCrop(quad, source: kind, confidence: confidence, boundarySupport: supported, strongBoundary: strong)
-                && evidence.interior > 0.58
-                && (supported || (area(quad) > 0.72 && evidence.interior > 0.82))
+                && (printed || evidence.interior > 0.58 && (supported || (area(quad) > 0.72 && evidence.interior > 0.82)))
             let score = evidence.interior*0.5 + evidence.edge*0.9 + min(area(quad), 0.75)*0.2
             return DetectionCandidate(quad: quad, kind: kind, confidence: confidence, interior: evidence.interior,
                                       edge: evidence.edge, strongEdges: evidence.strongEdges, accepted: accepted, score: score)

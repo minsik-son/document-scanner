@@ -80,7 +80,11 @@ enum PaperFlattener {
         sides = splitOutline(outline, corners: corners, center: center)
         // Page shape: perspective aspect, snapped to Letter or A4 when close.
         guard var aspect = quadAspect(corners, W: W, H: H) else { return nil }
-        for std in [8.5 / 11, 11 / 8.5, 1 / 2.0.squareRoot(), 2.0.squareRoot()] where abs(aspect / std - 1) < 0.06 { aspect = std; break }
+        // The nearest one: Letter and A4 are only 9 % apart.
+        let raw = aspect
+        let standards: [Double] = [8.5 / 11, 11 / 8.5, 1 / 2.0.squareRoot(), 2.0.squareRoot()]
+        func off(_ std: Double) -> Double { abs(raw / std - 1) }
+        if let std = standards.min(by: { off($0) < off($1) }), off(std) < 0.06 { aspect = std }
         let pw = 1.0, ph = 1.0 / aspect
         // Rough rectification to find the lines.
         let pageToPhoto = homography(from: [Pt(0, 0), Pt(pw, 0), Pt(pw, ph), Pt(0, ph)], to: corners)
@@ -132,6 +136,8 @@ enum PaperFlattener {
         }
         guard solver.solve(pose: &pose, iterations: 40) else { lap("solve failed", &t); return nil }
         lap("solve", &t)
+        trace?(String(format: "line error flat %.2f fitted %.2f", solver.lineError.flat, solver.lineError.fitted))
+
         let result = mesh(solver: solver, pose: pose, mask: mask, img: img, aspect: aspect)
         lap("mesh", &t)
         trace?(String(format: "aspect %.3f lines %d down %d edges %d obs %d", aspect, across.count, down.count, edges.count, solver.obs.count))
@@ -176,11 +182,42 @@ enum PaperFlattener {
     static func mesh(solver: Solver, pose: Pose, mask: Plane, img: RGBAImage, aspect: Double) -> FlattenMesh? {
         let W = Double(img.w), H = Double(img.h)
         let cols = 49, rows = max(9, Int((48 / aspect).rounded())) + 1
+        // Paper doesn't stretch: spread the page along the surface's own length, so
+        // a strip that curls away (steep in the photo) gets its full share instead
+        // of being squeezed. Profiles averaged across the page in each direction.
+        let n = 160
+        func profile(along: Bool) -> [Double] {
+            var cum = [Double](repeating: 0, count: n + 1)
+            for k in 0..<9 {
+                let other = (Double(k) + 0.5) / 9
+                var prev: (Double, Double)? = nil
+                var total = 0.0
+                for i in 0...n {
+                    let t = Double(i) / Double(n)
+                    let X = along ? t * solver.pw : other * solver.pw, Y = along ? other * solver.ph : t * solver.ph
+                    let zv = solver.z(X, Y, solver.C), a = along ? X : Y
+                    if let (pa, pz) = prev { total += ((a - pa) * (a - pa) + (zv - pz) * (zv - pz)).squareRoot() }
+                    prev = (a, zv); cum[i] += total
+                }
+            }
+            return cum
+        }
+        let lenX = profile(along: true), lenY = profile(along: false)
+        func invert(_ cum: [Double], _ u: Double) -> Double {
+            guard let last = cum.last, last > 0 else { return u }
+            let target = min(max(u, 0), 1) * last
+            var i = 0
+            while i < n - 1 && cum[i + 1] < target { i += 1 }
+            let span = cum[i + 1] - cum[i]
+            return (Double(i) + (span > 0 ? (target - cum[i]) / span : 0)) / Double(n)
+        }
+        func pageX(_ u: Double) -> Double { invert(lenX, u) * solver.pw }
+        func pageY(_ v: Double) -> Double { invert(lenY, v) * solver.ph }
         var pts = [Float](); pts.reserveCapacity(cols * rows * 2)
         var grid = [Pt]()
         for r in 0..<rows {
             for c in 0..<cols {
-                let X = Double(c) / Double(cols - 1) * solver.pw, Y = Double(r) / Double(rows - 1) * solver.ph
+                let X = pageX(Double(c) / Double(cols - 1)), Y = pageY(Double(r) / Double(rows - 1))
                 let p = solver.project(X, Y, pose: pose)
                 grid.append(p)
                 pts.append(Float(p.x / W)); pts.append(Float(p.y / H))
@@ -202,7 +239,7 @@ enum PaperFlattener {
         var missing = Plane(w: mcols, h: mrows)
         for r in 0..<mrows {
             for c in 0..<mcols {
-                let X = (Double(c) + 0.5) / Double(mcols) * solver.pw, Y = (Double(r) + 0.5) / Double(mrows) * solver.ph
+                let X = pageX((Double(c) + 0.5) / Double(mcols)), Y = pageY((Double(r) + 0.5) / Double(mrows))
                 let p = solver.project(X, Y, pose: pose)
                 let x = Int(p.x), y = Int(p.y)
                 let paper = x >= 0 && y >= 0 && x < mask.w && y < mask.h && mask[x, y] > 0

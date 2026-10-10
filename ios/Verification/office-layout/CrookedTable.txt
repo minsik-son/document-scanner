@@ -5,7 +5,7 @@ TOT	Toronto(토론토)	Bloor(블루어)	HBL	10.31.46.xx
 Dundas(던다스)	HDD	10.31.47.xx
 Finch(핀치)	HFC	10.31.42.xx
 North York(노스 요크)	HNY	10.31.44.xx
-Richmond HII(리치몬드 입)	HRH	10.31.11.xx
+Richmond Hill(리치몬드 입)	HRH	10.31.11.xx
 Steeles(스틸스)	HSS	10.31.45.xx
 Shepherd(쉐퍼드)	MNY	10.31.43.xx
 USA1	Oregon(오레곤)	Bevorton(비버튼)	GBV	10.54.1.xx
@@ -16,7 +16,7 @@ Federal Way	HFW	10.52.1.xx
 Lynwood	HLW	10.53.1.xx
 Redmond(레드몬드)	HRD	10.51.85.xx
 Tacoma	HTM	10.57.1.xx
-	UW|HUW	10.51.83.xx
+UW	HUW	10.51.83.xx
 USA3	Denver(덴버)	Westminster	GWM	10.58.1.xx
 Aurora	HAR	10.55.1.xx
 USA4	Utah(유타)	West Jordan	HWJ	10.21.86.xx

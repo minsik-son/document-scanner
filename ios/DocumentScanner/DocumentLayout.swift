@@ -67,6 +67,8 @@ struct LayoutParagraph: Codable, Equatable {
     var letterSpacing: Double = 0 // points of extra spacing between characters
     /// Distance between baselines in pixels (single line: estimated).
     var linePitch: Double
+    /// Band of color behind a heading (a shaded or dark title bar).
+    var fill: LayoutColor? = nil
 }
 
 struct LayoutCell: Codable, Equatable {
@@ -131,6 +133,8 @@ struct PageLayout: Codable, Equatable {
     /// the band's top and bottom, in pixels: [g0, g1, (g0, g1, …) top, bottom].
     /// Items inside the band flow as Word columns.
     var columns: [Double]? = nil
+    /// A thin border drawn around the whole page's text, in pixels.
+    var frame: LBox? = nil
     init(width: Int, height: Int, pageWidth: Double, pageHeight: Double, items: [LayoutItem], graphics: [LayoutGraphic]) {
         self.width = width; self.height = height; self.pageWidth = pageWidth; self.pageHeight = pageHeight
         self.items = items; self.graphics = graphics
@@ -143,6 +147,7 @@ struct PageLayout: Codable, Equatable {
         positioned = try c.decodeIfPresent(Bool.self, forKey: .positioned) ?? false
         form = try c.decodeIfPresent(Bool.self, forKey: .form) ?? false
         columns = try c.decodeIfPresent([Double].self, forKey: .columns)
+        frame = try c.decodeIfPresent(LBox.self, forKey: .frame)
     }
     /// Items of a page set in columns, in reading order: above the columns, each
     /// column left to right, below. Nil when the page has no columns.
@@ -286,7 +291,9 @@ enum DocumentLayoutAnalyzer {
         }
         /// Average paper-side color in a box, ignoring ink.
         func fill(_ box: LBox) -> LayoutColor? {
-            let b = box.inset(min(box.width, box.height) * 0.12)
+            let i = box.inset(min(box.width, box.height) * 0.12)
+            // Clipped to the page: a box may reach past its edge.
+            let b = LBox(max(0, i.x0), max(0, i.y0), min(Double(raster.width), i.x1), min(Double(raster.height), i.y1))
             guard b.width > 2, b.height > 2 else { return nil }
             var r = 0.0, g = 0.0, bl = 0.0, n = 0.0
             var dr = 0.0, dg = 0.0, db = 0.0, dn = 0.0
@@ -998,6 +1005,29 @@ enum DocumentLayoutAnalyzer {
             let words = wordLines.joined().contains { c.box.contains(x: $0.box.midX, y: $0.box.midY) }
             return !words && ink.darkFraction(c.box) > 0.5
         }
+        // A border around the whole page's text (a notice, a form sheet) is a
+        // frame, not a one-cell table: it becomes a page border, and the boxes
+        // and tables inside it are found without its sides.
+        var pageFrame: LBox?
+        if let fi = tables.firstIndex(where: { t in
+            let b = t.box
+            let lines = wordLines.filter { l in l.contains { b.contains(x: $0.box.midX, y: $0.box.midY) } }.count
+            return t.cells.count <= 2 && b.width > Double(W) * 0.6 && b.height > Double(H) * 0.45 && lines >= 8
+        }) {
+            let f = tables[fi].box
+            let tol = max(8.0, textHeight * 0.4)
+            let innerH = hSegments.filter { !(abs($0.c - f.y0) <= tol || abs($0.c - f.y1) <= tol) }
+            let innerV = vSegments.filter { !(abs($0.c - f.x0) <= tol || abs($0.c - f.x1) <= tol) }
+            tables.remove(at: fi)
+            // Tables already found inside the frame are not added twice.
+            let existing = tables.map(\.box)
+            tables += ruledTables(ink, horizontal: innerH, vertical: innerV, textHeight: textHeight).filter { t in
+                (t.box.width < f.width * 0.98 || t.box.height < f.height * 0.9)
+                    && !existing.contains { $0.overlapX(t.box) * $0.overlapY(t.box) > t.box.width * t.box.height * 0.8 }
+            }
+            pageFrame = f
+            debugLog?(String(format: "page frame %.0f %.0f %.0f %.0f", f.x0, f.y0, f.x1, f.y1))
+        }
         // Text is measured without ruling lines so borders never inflate sizes.
         var textInk = ink
         for s in hSegments {
@@ -1156,7 +1186,10 @@ enum DocumentLayoutAnalyzer {
         var usedRules = Set<Int>()
         for i in free.indices {
             let wb = free[i].box
+            // A rule across most of the page is a box edge or a separator, not
+            // a word's underline.
             if let r = looseRules.firstIndex(where: { r in
+                r.a1 - r.a0 < Double(W) * 0.7 &&
                 r.c > wb.y1 - wb.height * 0.25 && r.c < wb.y1 + wb.height * 0.45 &&
                 min(r.a1, wb.x1) - max(r.a0, wb.x0) > wb.width * 0.7
             }) { usedRules.insert(r); free[i].underline = true }
@@ -1176,12 +1209,28 @@ enum DocumentLayoutAnalyzer {
         let remaining = lines.enumerated().filter { !consumed.contains($0.offset) }.map(\.element)
         var paragraphs = buildParagraphs(remaining, ink: textInk, width: Double(W), ptPerPx: ptPerPx)
         normalizeCheckboxes(&paragraphs)
+        fitLinePitch(&paragraphs, ptPerPx: ptPerPx)
+        if shadesHeadings { shadeHeadings(&paragraphs, ink: textInk, textHeight: textHeight) }
 
         // Graphics: remaining ink that is neither text nor table.
         var textBoxes = wordLines.flatMap { $0.map { $0.box } }
         textBoxes += tables.map { $0.box.inset(-12) }
         let underlineBoxes = usedRules.map { looseRules[$0] }.map { LBox($0.a0, $0.c - $0.extent, $0.a1, $0.c + $0.extent) }
-        var graphics = findGraphics(ink, excluding: textBoxes + underlineBoxes, textHeight: textHeight)
+        // The page frame becomes a page border and heading bars a paragraph fill;
+        // neither is a picture.
+        var drawn: [LBox] = []
+        if let f = pageFrame {
+            let t = max(10, textHeight * 0.6)
+            drawn += [LBox(f.x0 - t, f.y0 - t, f.x1 + t, f.y0 + t), LBox(f.x0 - t, f.y1 - t, f.x1 + t, f.y1 + t),
+                      LBox(f.x0 - t, f.y0 - t, f.x0 + t, f.y1 + t), LBox(f.x1 - t, f.y0 - t, f.x1 + t, f.y1 + t)]
+        }
+        for p in paragraphs where p.fill != nil {
+            let h = p.box.height / Double(max(1, p.lines.count))
+            // A bar runs on past its words, often across the page.
+            drawn.append(LBox(0, p.box.y0 - h * 0.45, Double(W), p.box.y1 + h * 0.45))
+        }
+        var graphics = findGraphics(ink, excluding: textBoxes + underlineBoxes + drawn, textHeight: textHeight)
+        for g in graphics { debugLog?("graphic \(Int(g.box.x0)) \(Int(g.box.y0)) \(Int(g.box.x1)) \(Int(g.box.y1)) cutout \(g.cutout)") }
         // Slivers along the photo's edge are shadow or background, not art.
         graphics.removeAll { g in
             let edge = g.box.x0 <= 2 || g.box.y0 <= 2 || g.box.x1 >= Double(W) - 2 || g.box.y1 >= Double(H) - 2
@@ -1190,22 +1239,37 @@ enum DocumentLayoutAnalyzer {
         // A page frame (a thin border drawn around the text) is not a picture:
         // a picture of it would carry every word inside it a second time.
         let allWords = wordLines.flatMap { $0.map(\.box) }
+        // Likewise ink that only spills past the word boxes (bold thermal print,
+        // a tilted line): a picture of it would print the words twice.
+        let halo = max(3, textHeight * 0.35)
         graphics.removeAll { g in
             let inside = allWords.filter { g.box.contains(x: $0.midX, y: $0.midY) }
-            guard inside.count >= 3 else { return false }
+            // Halo only where words fill much of it (a labelled diagram keeps its lines).
+            let covered = inside.reduce(0.0) { $0 + $1.width * $1.height } / max(1, g.box.width * g.box.height)
+            guard inside.count >= (covered >= 0.3 ? 2 : 3) else { return false }
+            let words = covered >= 0.3 ? inside.map { $0.inset(-halo) } : inside
             var dark = 0, total = 0
             let step = 3
             for y in stride(from: Int(g.box.y0), to: Int(g.box.y1), by: step) { for x in stride(from: Int(g.box.x0), to: Int(g.box.x1), by: step) {
                 guard x >= 0, y >= 0, x < W, y < H else { continue }
-                if inside.contains(where: { $0.contains(x: Double(x), y: Double(y)) }) || tables.contains(where: { $0.box.contains(x: Double(x), y: Double(y)) }) { continue }
+                if words.contains(where: { $0.contains(x: Double(x), y: Double(y)) }) || tables.contains(where: { $0.box.contains(x: Double(x), y: Double(y)) }) { continue }
                 total += 1; if ink.isDark(x, y) { dark += 1 }
             } }
-            return total > 0 && Double(dark) / Double(total) < 0.05
+            debugLog?("graphic \(Int(g.box.y0))-\(Int(g.box.y1)) words \(inside.count) covered \(String(format: "%.2f", covered)) dark \(dark)/\(total)")
+            return total > 0 && Double(dark) / Double(total) < 0.05 || total == 0
+        }
+        // A picture that is mostly recognized words (a symbol the reader missed
+        // beside them) keeps only the rest: the words are written as text.
+        for g in graphics.indices {
+            let inside = allWords.filter { graphics[g].box.contains(x: $0.midX, y: $0.midY) }
+            let covered = inside.reduce(0.0) { $0 + $1.width * $1.height } / max(1, graphics[g].box.width * graphics[g].box.height)
+            if covered >= 0.3 { graphics[g].masks = inside.map { $0.inset(-halo) } }
         }
 
         var items: [LayoutItem] = paragraphs.map { .paragraph($0) } + tables.map { .table($0) }
         items.sort { $0.box.y0 < $1.box.y0 }
         var page = PageLayout(width: W, height: H, pageWidth: size.0, pageHeight: size.1, items: items, graphics: graphics)
+        page.frame = pageFrame
         page.positioned = form || overlaps(items)
         if detectsColumns, !form {
             var split = items
@@ -2127,9 +2191,12 @@ enum DocumentLayoutAnalyzer {
                 // A tilted or noisy line measures too tall; its width tells the truth.
                 let text = s.enumerated().map { ($0.offset > 0 && $0.element.spaceBefore ? " " : "") + $0.element.text }.joined()
                 let ems = text.reduce(0.0) { $0 + glyphWidth($1) }
-                if text.count >= 8, ems > 0 {
+                // Short words too (receipt totals in a heavy, tall print would
+                // otherwise come out far wider than they are and run into
+                // their neighbours).
+                if text.count >= 2, ems > 0 {
                     let byWidth = (LBox.around(s.map(\.box))!.width * ptPerPx) / ems
-                    if size > byWidth * 1.3 { size = byWidth }
+                    if size > byWidth * (text.count >= 8 ? 1.3 : 1.45) { size = byWidth * (text.count >= 8 ? 1 : 1.15) }
                 }
                 return LayoutSegment(runs: runs(copy, ink: ink, fontPx: size / ptPerPx), box: LBox.around(s.map(\.box))!, fontSize: size)
             }
@@ -2283,6 +2350,80 @@ enum DocumentLayoutAnalyzer {
     /// Final clean-up of paragraph text after any re-reading: checkbox lines
     /// lose a misread box glyph, brackets read as digits come back, and stray
     /// punctuation specks at a line end are dropped.
+    /// Keep title bars: tests turn it off to compare.
+    nonisolated(unsafe) static var shadesHeadings = true
+    /// A short paragraph printed on a band of color (a gray section bar, a dark
+    /// title with white letters) keeps that band as paragraph shading.
+    /// A one-line paragraph's letters can't be taller than the room before the
+    /// next line beneath it: a size measured from ink that ran into a neighbour
+    /// (tight receipt lines) would print over that line.
+    static func fitLinePitch(_ paragraphs: inout [LayoutParagraph], ptPerPx: Double) {
+        let boxes = paragraphs.map(\.box)
+        for i in paragraphs.indices where paragraphs[i].lines.count == 1 {
+            let b = boxes[i]
+            let below = boxes.enumerated().filter { $0.offset != i && $0.element.y0 > b.y0 + b.height * 0.5 && $0.element.overlapX(b) > 0 }.map(\.element.y0).min()
+            guard let next = below else { continue }
+            let room = (next - b.y0) * ptPerPx / 1.15
+            let size = paragraphs[i].lines[0].segments.compactMap(\.fontSize).max() ?? paragraphs[i].fontSize
+            guard size > room * 1.1, room > 3 else { continue }
+            let f = room / size
+            paragraphs[i].fontSize *= f
+            for s in paragraphs[i].lines[0].segments.indices { if let v = paragraphs[i].lines[0].segments[s].fontSize { paragraphs[i].lines[0].segments[s].fontSize = v * f } }
+        }
+    }
+
+    static func shadeHeadings(_ paragraphs: inout [LayoutParagraph], ink: Ink, textHeight: Double) {
+        func lum(_ c: LayoutColor) -> Double { 0.3 * Double(c.r) + 0.59 * Double(c.g) + 0.11 * Double(c.b) }
+        for i in paragraphs.indices where paragraphs[i].lines.count <= 2 {
+            // A bullet (▶) sits on the bar too.
+            let b = LBox.around([paragraphs[i].box] + (paragraphs[i].bullet.map { [$0] } ?? []))!
+            let h = max(textHeight, paragraphs[i].box.height / Double(paragraphs[i].lines.count))
+            // The band reaches past the letters on every side.
+            let around = [LBox(b.x0 - h * 0.6, b.y0, b.x0 - h * 0.15, b.y1), LBox(b.x1 + h * 0.15, b.y0, b.x1 + h * 0.6, b.y1),
+                          LBox(b.x0, b.y0 - h * 0.3, b.x1, b.y0 - h * 0.05), LBox(b.x0, b.y1 + h * 0.05, b.x1, b.y1 + h * 0.3)]
+            var fill: LayoutColor?
+            if ink.darkFraction(b) > 0.45 {
+                // A dark bar with light letters: the text's own box is mostly dark.
+                var r = 0.0, g = 0.0, bl = 0.0, n = 0.0
+                for y in stride(from: max(0, Int(b.y0)), to: min(ink.raster.height, Int(b.y1)), by: 2) {
+                    for x in stride(from: max(0, Int(b.x0)), to: min(ink.raster.width, Int(b.x1)), by: 2) where ink.isDark(x, y) {
+                        let c = ink.raster.color(x, y); r += Double(c.0); g += Double(c.1); bl += Double(c.2); n += 1
+                    }
+                }
+                if n > 20 { fill = LayoutColor(r: UInt8(r / n), g: UInt8(g / n), b: UInt8(bl / n)) }
+            } else {
+                // The paper between the letters and just past the words share the
+                // bar's tone (the band left of a line may hold the page frame, above
+                // and below the bar's border lines).
+                if ink.darkFraction(around[1]) < 0.2, let inner = ink.fill(b), let right = ink.fill(around[1]),
+                   abs(lum(inner) - lum(right)) < 30 {
+                    fill = lum(inner) > lum(right) ? inner : right
+                }
+            }
+            guard let f = fill, lum(f) < 225 else { continue }
+            paragraphs[i].fill = f
+            // The bar's own edges are not underlines, of its text or of the line
+            // just above it.
+            let barTop = b.y0 - h * 0.3
+            for k in paragraphs.indices where k != i {
+                let pb = paragraphs[k].box
+                guard pb.y1 <= b.y0 + 2, pb.y1 >= barTop - h * 0.6, pb.overlapX(b) > 0, let last = paragraphs[k].lines.indices.last else { continue }
+                for s in paragraphs[k].lines[last].segments.indices { for r in paragraphs[k].lines[last].segments[s].runs.indices {
+                    paragraphs[k].lines[last].segments[s].runs[r].underline = false
+                } }
+            }
+            for l in paragraphs[i].lines.indices { for s in paragraphs[i].lines[l].segments.indices { for r in paragraphs[i].lines[l].segments[s].runs.indices {
+                paragraphs[i].lines[l].segments[s].runs[r].underline = false
+            } } }
+            // Letters on a dark bar print white.
+            if lum(f) < 110 {
+                for l in paragraphs[i].lines.indices { for s in paragraphs[i].lines[l].segments.indices { for r in paragraphs[i].lines[l].segments[s].runs.indices {
+                    paragraphs[i].lines[l].segments[s].runs[r].color = LayoutColor(r: 255, g: 255, b: 255)
+                } } }
+            }
+        }
+    }
+
     static func tidyParagraphs(_ page: inout PageLayout) {
         let lookalikes: Set<String> = ["ㅁ", "口", "ロ", "□", "☐", "1", "l", "I", "|", "]", "[]", "0", "o", "O"]
         for index in page.items.indices {

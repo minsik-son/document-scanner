@@ -32,8 +32,17 @@ enum OfficeLayoutExport {
         var drawingID = 1
         var columnsUsed = false
         // Section properties; every section after the first starts on the same page.
+        // Pages drawn inside a border keep it as a page border, at its distance
+        // from the paper's edge (Word allows up to 31 pt).
+        var borders = ""
+        if pages.allSatisfy({ $0.frame != nil }), let f = first.frame {
+            let pt = first.pointsPerPixel
+            func space(_ v: Double) -> Int { max(4, min(31, Int((v * pt).rounded()))) }
+            let edge = "w:val=\"single\" w:sz=\"8\" w:color=\"000000\""
+            borders = "<w:pgBorders w:offsetFrom=\"page\"><w:top \(edge) w:space=\"\(space(f.y0))\"/><w:left \(edge) w:space=\"\(space(f.x0))\"/><w:bottom \(edge) w:space=\"\(space(Double(first.height) - f.y1))\"/><w:right \(edge) w:space=\"\(space(Double(first.width) - f.x1))\"/></w:pgBorders>"
+        }
         func section(columns: String) -> String {
-            "<w:type w:val=\"continuous\"/><w:pgSz w:w=\"\(pageW)\" w:h=\"\(pageH)\"\(first.pageWidth > first.pageHeight ? " w:orient=\"landscape\"" : "")/><w:pgMar w:top=\"\(top)\" w:right=\"\(right)\" w:bottom=\"200\" w:left=\"\(left)\" w:header=\"0\" w:footer=\"0\" w:gutter=\"0\"/>" + columns
+            "<w:type w:val=\"continuous\"/><w:pgSz w:w=\"\(pageW)\" w:h=\"\(pageH)\"\(first.pageWidth > first.pageHeight ? " w:orient=\"landscape\"" : "")/><w:pgMar w:top=\"\(top)\" w:right=\"\(right)\" w:bottom=\"200\" w:left=\"\(left)\" w:header=\"0\" w:footer=\"0\" w:gutter=\"0\"/>" + borders + columns
         }
         for (pageIndex, page) in pages.enumerated() {
             let scale = page.pointsPerPixel * 20
@@ -155,6 +164,7 @@ enum OfficeLayoutExport {
     static func wordParagraph(_ p: LayoutParagraph, before: Double, lineHeight: Double, areaLeft: Double, areaRight: Double, scale: Double, rightMargin: Int = 0) -> String {
         var ppr = ""
         if p.bullet != nil && p.marker == nil { ppr += "<w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"1\"/></w:numPr>" }
+        if let fill = p.fill { ppr += "<w:shd w:val=\"clear\" w:color=\"auto\" w:fill=\"\(fill.hex)\"/>" }
         // Tab stops for lines split into separate segments (e.g. footer text and a logo).
         var tabs: [(String, Int)] = []
         if let line = p.lines.first, line.segments.count > 1 {
@@ -173,7 +183,7 @@ enum OfficeLayoutExport {
             let indent = i((p.box.x0 - areaLeft) * scale)
             // Lines break where the page broke them, so the right margin can lend
             // room to a substitute font that runs a little wider.
-            let slack = "w:right=\"-\(max(0, rightMargin - 40))\""
+            let slack = p.fill != nil ? "w:right=\"0\"" : "w:right=\"-\(max(0, rightMargin - 40))\""
             if let b = p.bullet { ppr += "<w:ind w:left=\"\(max(0, indent))\" \(slack) w:hanging=\"\(max(0, i((p.box.x0 - b.x0) * scale)))\"/>" }
             else { ppr += "<w:ind w:left=\"\(max(0, indent))\" \(slack)/>" }
         case .center:

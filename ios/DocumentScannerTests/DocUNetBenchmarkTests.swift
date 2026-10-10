@@ -76,11 +76,31 @@ final class DocUNetBenchmarkTests: XCTestCase {
     /// text readable, compared with the flatbed scan of the same page.
     func testScanQuality() throws {
         guard let data else { throw XCTSkip("DocUNet benchmark not on this Mac.") }
-        let dir = Self.out.appendingPathComponent("scan" + tag)
+        try scanQuality(data: data, photos: photos(data), dir: Self.out.appendingPathComponent("scan" + tag)) { page in
+            data.appendingPathComponent("Scans from a flatbed scanner/\(page).png")
+        }
+    }
+
+    /// The UVDoc benchmark (Verhoeven et al., SIGGRAPH Asia 2023): 50 photos and the
+    /// flat texture of each (Test Documents/UVDoc/UVDoc_benchmark).
+    func testUVDocScan() throws {
+        guard let data else { throw XCTSkip("Test Documents not on this Mac.") }
+        let root = data.appendingPathComponent("UVDoc/UVDoc_benchmark")
+        var list = ((try? FileManager.default.contentsOfDirectory(at: root.appendingPathComponent("img"), includingPropertiesForKeys: nil)) ?? []).filter { $0.pathExtension == "png" }
+        list.sort { $0.lastPathComponent < $1.lastPathComponent }
+        if let only = config["uvOnly"] as? String { let set = Set(only.split(separator: ",").map(String.init)); list = list.filter { set.contains($0.deletingPathExtension().lastPathComponent) } }
+        guard !list.isEmpty else { throw XCTSkip("UVDoc benchmark not unpacked.") }
+        try scanQuality(data: data, photos: list, dir: Self.out.appendingPathComponent("uvdoc" + tag), pageOf: { $0 }) { id in
+            root.appendingPathComponent("texture_sample/\(id).png")
+        }
+    }
+
+    private func scanQuality(data: URL, photos: [URL], dir: URL, pageOf: (String) -> String = { String($0.split(separator: "_").first ?? "") }, truth: (String) -> URL) throws {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let skipDone = config["skipDone"] as? Bool ?? true
         var gtText: [String: String] = [:]
-        for url in photos(data) {
+
+        for url in photos {
             let id = url.deletingPathExtension().lastPathComponent
             let resultURL = dir.appendingPathComponent("\(id).json")
             if skipDone, FileManager.default.fileExists(atPath: resultURL.path) { continue }
@@ -98,7 +118,11 @@ final class DocUNetBenchmarkTests: XCTestCase {
                 let crop = found ?? .full
                 r["quad"] = crop.points.flatMap { [$0.x, $0.y] }
                 t = CFAbsoluteTimeGetCurrent()
+                var lineError = "", steps: [String] = []
+                PaperFlattener.trace = { if $0.hasPrefix("line error") { lineError = $0 }; steps.append(String($0.split(separator: " ").first ?? "")) }
                 let mesh = crop == .full ? nil : PaperFlatten.analyze(source, crop: crop)
+                PaperFlattener.trace = nil
+                r["lineError"] = lineError; r["steps"] = steps.joined(separator: ",")
                 r["flattenSeconds"] = CFAbsoluteTimeGetCurrent() - t
                 r["flattened"] = mesh != nil
                 func render(_ flat: Bool, _ tone: Enhancement) throws -> UIImage {
@@ -114,11 +138,11 @@ final class DocUNetBenchmarkTests: XCTestCase {
                 r["ocrFlat"] = ocr(flatD)
                 r["ocrPlain"] = ocr(plainD)
                 r["ocrSeconds"] = CFAbsoluteTimeGetCurrent() - t
-                let page = String(id.split(separator: "_").first ?? "")
+                let page = pageOf(id)
                 if gtText[page] == nil {
                     let gtURL = dir.appendingPathComponent("gt-\(page).txt")
                     if let s = try? String(contentsOf: gtURL, encoding: .utf8) { gtText[page] = s }
-                    else if let gt = UIImage(contentsOfFile: data.appendingPathComponent("Scans from a flatbed scanner/\(page).png").path) {
+                    else if let gt = UIImage(contentsOfFile: truth(page).path) {
                         let s = ocr(Imaging.limited(gt, maxPixels: 12_000_000)); gtText[page] = s
                         try? s.write(to: gtURL, atomically: true, encoding: .utf8)
                     }
@@ -205,7 +229,7 @@ final class DocUNetBenchmarkTests: XCTestCase {
             guard let url = photosAll(data).first(where: { $0.deletingPathExtension().lastPathComponent == id }), let raw = UIImage(contentsOfFile: url.path) else { continue }
             let photo = Imaging.normalized(Imaging.limited(raw, maxPixels: 12_000_000))
             let cgPhoto = try XCTUnwrap(photo.cgImage)
-            let cands = DocumentProcessing.candidates(cgPhoto)
+            let cands = withMacSegmentation(id) { DocumentProcessing.candidates(cgPhoto) }
             let W = CGFloat(cgPhoto.width), H = CGFloat(cgPhoto.height)
             let s = 900 / max(W, H)
             let size = CGSize(width: (W * s).rounded(), height: (H * s).rounded())
@@ -231,7 +255,9 @@ final class DocUNetBenchmarkTests: XCTestCase {
         try log.joined(separator: "\n").write(to: dir.appendingPathComponent("candidates.txt"), atomically: true, encoding: .utf8)
     }
     private func photosAll(_ data: URL) -> [URL] {
-        ((try? FileManager.default.contentsOfDirectory(at: data.appendingPathComponent("Original photos"), includingPropertiesForKeys: nil)) ?? [])
+        ["Original photos", "UVDoc/UVDoc_benchmark/img"].flatMap {
+            (try? FileManager.default.contentsOfDirectory(at: data.appendingPathComponent($0), includingPropertiesForKeys: nil)) ?? []
+        }
     }
 
     /// The private Notice photo through the photo → Office path with and without

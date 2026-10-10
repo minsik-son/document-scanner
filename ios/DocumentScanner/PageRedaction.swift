@@ -33,6 +33,8 @@ struct PageRedaction: Codable, Equatable {
     var visible: [CGRect]?
     var crop: ScanQuad
     var enhancement: Enhancement
+    /// The page was flattened when the boxes were drawn (nil: not flattened).
+    var flattened: Bool? = nil
 }
 
 extension ScanPage {
@@ -47,7 +49,7 @@ extension ScanPage {
     /// The page was cropped again or got another tone after it was hidden.
     var redactionNeedsCheck: Bool {
         guard let redaction, !redaction.boxes.isEmpty else { return false }
-        return redaction.crop != crop || redaction.enhancement != enhancement
+        return redaction.crop != crop || redaction.enhancement != enhancement || (redaction.flattened ?? false) != (flattenRequest != nil)
     }
     /// Stores boxes drawn on the finished page. Text read before is dropped, so the
     /// next save reads the hidden page again.
@@ -55,7 +57,7 @@ extension ScanPage {
     mutating func setRedaction(hidden: [CGRect], visible: [CGRect], style: RedactionStyle = .black) {
         let toSheet = { (r: CGRect) in RedactionGeometry.toSheet(r, turns: self.turns, trim: self.trimming) }
         if hidden.isEmpty && visible.isEmpty { redaction = nil }
-        else { redaction = PageRedaction(boxes: hidden.map(toSheet), style: style == .black ? nil : style, visible: visible.isEmpty ? nil : visible.map(toSheet), crop: crop, enhancement: enhancement) }
+        else { redaction = PageRedaction(boxes: hidden.map(toSheet), style: style == .black ? nil : style, visible: visible.isEmpty ? nil : visible.map(toSheet), crop: crop, enhancement: enhancement, flattened: flattenRequest != nil ? true : nil) }
         textBlocks = []; ocrComplete = false; ocrProcessingVersion = nil
     }
     /// Recognized text without anything under a hidden area. Every PDF text layer

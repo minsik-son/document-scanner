@@ -381,18 +381,22 @@ enum DocumentProcessing {
         var enhancement: Enhancement
     }
 
-    static func render(_ source: CIImage, crop: ScanQuad, turns: Int, enhancement: Enhancement, strength: Double = 1, identityCleanup: Bool = false, alignedOriginal: Bool = false) throws -> CIImage {
-        try finish(prepare(source, crop: crop, turns: turns, enhancement: enhancement, identityCleanup: identityCleanup, alignedOriginal: alignedOriginal), strength: strength)
+    static func render(_ source: CIImage, crop: ScanQuad, turns: Int, enhancement: Enhancement, strength: Double = 1, identityCleanup: Bool = false, alignedOriginal: Bool = false, flatten: FlattenRequest? = nil) throws -> CIImage {
+        try finish(prepare(source, crop: crop, turns: turns, enhancement: enhancement, identityCleanup: identityCleanup, alignedOriginal: alignedOriginal, flatten: flatten), strength: strength)
     }
 
     // Geometry and illumination estimation do not depend on the cleanup slider.
     // Interactive previews can cache this stage without repeatedly running Vision.
     /// `alignedOriginal`: the Original tone with the same grid/line alignment the
     /// cleaned tones get, so the two renderings share their geometry exactly.
-    static func prepare(_ source: CIImage, crop: ScanQuad, turns: Int, enhancement: Enhancement, identityCleanup: Bool = false, alignedOriginal: Bool = false) throws -> PreparedDocument {
+    static func prepare(_ source: CIImage, crop: ScanQuad, turns: Int, enhancement: Enhancement, identityCleanup: Bool = false, alignedOriginal: Bool = false, flatten: FlattenRequest? = nil) throws -> PreparedDocument {
         guard crop.valid else { throw ScannerError.message("Check the four crop corners before saving.") }
         var image = source
-        if crop != .full {
+        // A curled or bent sheet is drawn flat; otherwise the four corners are enough.
+        var flattened = false
+        if let flatten, !identityCleanup, let mesh = PaperFlatten.mesh(for: source, crop: crop, key: flatten.key), let flat = PaperFlatten.apply(mesh, to: source) {
+            image = flat; flattened = true
+        } else if crop != .full {
             let f = CIFilter.perspectiveCorrection(); f.inputImage = image
             let p = crop.points.map { CGPoint(x: image.extent.minX + $0.x*image.extent.width, y: image.extent.minY + (1-$0.y)*image.extent.height) }
             f.topLeft = p[0]; f.topRight = p[1]; f.bottomRight = p[2]; f.bottomLeft = p[3]
@@ -402,7 +406,7 @@ enum DocumentProcessing {
         image = image.transformed(by: CGAffineTransform(translationX: -image.extent.minX, y: -image.extent.minY))
         // Remove the strip of desk/shadow that survives when the crop corners sit a
         // little outside the paper. ID crops have their own edge cleanup below.
-        if crop != .full && !identityCleanup { image = removeResidualEdges(image) }
+        if crop != .full && !identityCleanup && !flattened { image = removeResidualEdges(image) }
         if identityCleanup { image = IdentityBackground.clean(image) }
         if turns % 4 != 0 { image = image.oriented([.up, .right, .down, .left][((turns%4)+4)%4]) }
         guard enhancement != .original || alignedOriginal else { return .init(image: image, enhancement: enhancement) }

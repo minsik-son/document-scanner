@@ -1860,3 +1860,4 @@
 "Your TIFF file is ready" = "File TIFF Anda sudah siap";
 "%lld pages in one file." = "%lld halaman dalam satu file.";
 "Export one TIFF file" = "Ekspor satu file TIFF";
+"Flatten curled page" = "Ratakan halaman melengkung";

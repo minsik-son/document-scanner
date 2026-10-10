@@ -1860,3 +1860,4 @@
 "Your TIFF file is ready" = "TIFF 檔案已就緒";
 "%lld pages in one file." = "%lld 頁在一個檔案中。";
 "Export one TIFF file" = "匯出為一個 TIFF 檔案";
+"Flatten curled page" = "展平彎曲的紙張";

@@ -1860,3 +1860,4 @@
 "Your TIFF file is ready" = "Tệp TIFF đã sẵn sàng";
 "%lld pages in one file." = "%lld trang trong một tệp.";
 "Export one TIFF file" = "Xuất một tệp TIFF";
+"Flatten curled page" = "Làm phẳng trang bị cong";

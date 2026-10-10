@@ -121,6 +121,8 @@ struct ScanPage: Codable, Identifiable, Equatable {
     var erasures: [PageErasure]?
     /// Hide personal info in the review; applied to every output (PageRedaction.swift).
     var redaction: PageRedaction?
+    /// Draw the photographed sheet flat (PaperFlatten); set for new camera pages.
+    var flatten: Bool?
     /// Erasures painted on the current crop, rotation and margins.
     var activeErasures: [PageErasure] { (erasures ?? []).filter { $0.crop == crop && $0.turns == turns && ($0.trim ?? .zero) == trimming } }
     var preservesPDF: Bool { sourcePDF != nil && correctedText != true && crop == .full && enhancement == .original && appearance == PageAdjustments() && activeErasures.isEmpty && !hasRedaction }

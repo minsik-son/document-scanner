@@ -1860,3 +1860,4 @@
 "Your TIFF file is ready" = "TIFF dosyan hazır";
 "%lld pages in one file." = "Tek dosyada %lld sayfa.";
 "Export one TIFF file" = "Tek TIFF dosyası olarak dışa aktar";
+"Flatten curled page" = "Kıvrık sayfayı düzleştir";

@@ -1860,3 +1860,4 @@
 "Your TIFF file is ready" = "Deine TIFF-Datei ist fertig";
 "%lld pages in one file." = "%lld Seiten in einer Datei.";
 "Export one TIFF file" = "Als eine TIFF-Datei exportieren";
+"Flatten curled page" = "Gewölbte Seite glätten";

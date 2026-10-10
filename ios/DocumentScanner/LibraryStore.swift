@@ -80,6 +80,8 @@ final class LibraryStore: ObservableObject {
         if let style { page.enhancementStrength = style.strength; doc.captureStyle = style }
         page.cropReviewNeeded = (enhancement != .original || style != nil) && (detectedCrop == nil || detectedCrop?.valid == false)
         if let crop = detectedCrop, crop.valid { page.crop = crop }
+        // A photographed sheet of paper is drawn flat (not ID cards, slides or whiteboards).
+        if style == nil || style == .document { page.flatten = true }
         // Sideways capture: the photo stays as taken, the page is shown rotated.
         page.turns = ((turns % 4) + 4) % 4
         doc.pages.append(page)

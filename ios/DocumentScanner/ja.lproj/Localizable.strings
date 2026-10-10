@@ -1860,3 +1860,4 @@
 "Your TIFF file is ready" = "TIFFファイルができました";
 "%lld pages in one file." = "%lldページを1ファイルに。";
 "Export one TIFF file" = "1つのTIFFファイルで書き出す";
+"Flatten curled page" = "曲がった紙を平らにする";

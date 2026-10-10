@@ -1860,3 +1860,4 @@
 "Your TIFF file is ready" = "Il file TIFF è pronto";
 "%lld pages in one file." = "%lld pagine in un file.";
 "Export one TIFF file" = "Esporta un file TIFF";
+"Flatten curled page" = "Appiattisci pagina curva";

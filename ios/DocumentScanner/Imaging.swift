@@ -36,7 +36,13 @@ enum Imaging {
     }
     static func preparePhoto(_ image: UIImage) -> (UIImage, ScanQuad?) {
         let normalized = normalized(image)
-        return (normalized, detect(normalized))
+        return (normalized, detectPage(normalized))
+    }
+    /// A photographed sheet: its rectangle, or for a curled or bent sheet that
+    /// isn't a clean rectangle, the paper's corners (the page is flattened later).
+    static func detectPage(_ image: UIImage) -> ScanQuad? {
+        guard let cg = image.cgImage else { return nil }
+        return DocumentProcessing.detect(cg) ?? PaperFlattener.findPage(cg)
     }
     static func source(_ page: ScanPage, root: URL) throws -> CIImage {
         guard let image = UIImage(contentsOfFile: root.appendingPathComponent(page.imageFile).path), let ci = CIImage(image: image) else { throw ScannerError.message("This page could not be opened. Your original has not been changed.") }
@@ -60,7 +66,7 @@ enum Imaging {
     static func renderThumbnail(_ page: ScanPage, root: URL, maxDimension: Int) throws -> UIImage {
         try autoreleasepool {
             let ci = try source(page, root: root, maxPixel: max(1600, maxDimension * 2))
-            let base = try DocumentProcessing.render(ci, crop: page.crop, turns: page.turns, enhancement: page.enhancement, strength: page.enhancementStrength, identityCleanup: page.identityBackgroundCleanup == true && page.cropReviewNeeded != true)
+            let base = try DocumentProcessing.render(ci, crop: page.crop, turns: page.turns, enhancement: page.enhancement, strength: page.enhancementStrength, identityCleanup: page.identityBackgroundCleanup == true && page.cropReviewNeeded != true, flatten: page.flattenRequest)
             let output = try trim(DocumentProcessing.adjust(base, settings: page.appearance), edges: page.trimming)
             guard let cg = DocumentProcessing.context.createCGImage(output, from: output.extent) else { throw ScannerError.message("The page could not be processed.") }
             let sized = try previewThumbnail(UIImage(cgImage: cg), maxDimension: maxDimension)
@@ -73,8 +79,8 @@ enum Imaging {
         try autoreleasepool {
             let ci = try source(page, root: root, maxPixel: max(900, maxDimension * 3))
             let identity = page.identityBackgroundCleanup == true && page.cropReviewNeeded != true
-            let raw = try DocumentProcessing.prepare(ci, crop: page.crop, turns: page.turns, enhancement: .original, identityCleanup: identity)
-            let flat = try DocumentProcessing.prepare(ci, crop: page.crop, turns: page.turns, enhancement: .document, identityCleanup: identity)
+            let raw = try DocumentProcessing.prepare(ci, crop: page.crop, turns: page.turns, enhancement: .original, identityCleanup: identity, flatten: page.flattenRequest)
+            let flat = try DocumentProcessing.prepare(ci, crop: page.crop, turns: page.turns, enhancement: .document, identityCleanup: identity, flatten: page.flattenRequest)
             var out: [Enhancement: UIImage] = [:]
             for tone in Enhancement.allCases {
                 let prepared = tone == .original ? raw : DocumentProcessing.PreparedDocument(image: flat.image, enhancement: tone)
@@ -97,7 +103,7 @@ enum Imaging {
     }
     private static func renderUngated(_ page: ScanPage, root: URL) throws -> UIImage {
         let ci = try source(page, root: root)
-        let base = try DocumentProcessing.render(ci, crop: page.crop, turns: page.turns, enhancement: page.enhancement, strength: page.enhancementStrength, identityCleanup: page.identityBackgroundCleanup == true && page.cropReviewNeeded != true)
+        let base = try DocumentProcessing.render(ci, crop: page.crop, turns: page.turns, enhancement: page.enhancement, strength: page.enhancementStrength, identityCleanup: page.identityBackgroundCleanup == true && page.cropReviewNeeded != true, flatten: page.flattenRequest)
         let output = try trim(DocumentProcessing.adjust(base, settings: page.appearance), edges: page.trimming)
         guard let cg = DocumentProcessing.context.createCGImage(output, from: output.extent) else { throw ScannerError.message("The page could not be processed.") }
         return applyRedactions(try applyErasures(UIImage(cgImage: cg), page: page), page: page)

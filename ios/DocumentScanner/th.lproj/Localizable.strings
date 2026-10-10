@@ -1860,3 +1860,4 @@
 "Your TIFF file is ready" = "ไฟล์ TIFF พร้อมแล้ว";
 "%lld pages in one file." = "%lld หน้าในไฟล์เดียว";
 "Export one TIFF file" = "ส่งออกเป็นไฟล์ TIFF เดียว";
+"Flatten curled page" = "ปรับหน้ากระดาษที่โค้งให้เรียบ";

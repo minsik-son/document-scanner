@@ -16,6 +16,7 @@ enum CaptureStyle: String, Codable, CaseIterable {
     }
     func detect(_ image: UIImage, capturedPhoto: Bool = false) -> ScanQuad? {
         if self == .card && capturedPhoto { return Self.detectCardPhoto(image) }
+        if self == .document && capturedPhoto { return Imaging.detectPage(image) }
         if self == .document || self == .whiteboard { return Imaging.detect(image) }
         guard let cg = image.cgImage else { return nil }
         let request = VNDetectRectanglesRequest()

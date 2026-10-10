@@ -470,6 +470,16 @@ struct ReviewView: View {
                     Button("Reorder pages") { withAnimation { reordering = true } }.disabled(doc.pages.count < 2)
                     if doc.isDraft { Button("PDF options") { pdfOptions = true } }
                     Button("Duplicate page") { change { value in var copy = page; copy.id = UUID(); value.pages.insert(copy, at: index+1) } }
+                    if page.sourcePDF == nil, page.crop != .full, page.identityBackgroundCleanup != true {
+                        Toggle(isOn: Binding(get: { page.flatten == true }, set: { on in
+                            change {
+                                $0.pages[index].flatten = on
+                                $0.pages[index].textBlocks = []; $0.pages[index].ocrComplete = false; $0.pages[index].ocrProcessingVersion = nil
+                                $0.searchable = false
+                            }
+                        })) { Label("Flatten curled page", systemImage: "doc.plaintext") }
+                        .accessibilityIdentifier("review-flatten")
+                    }
                     Button("Apply tone and adjustments to all pages") { change { $0.applyAppearance(from: page) } }
                         .disabled(doc.pages.contains { $0.preservesPDF })
                     Button("Move earlier") { change { $0.pages.swapAt(index, index-1) }; current = index - 1 }.disabled(index == 0)

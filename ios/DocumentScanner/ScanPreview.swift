@@ -11,7 +11,9 @@ private struct PreviewGeometry: Equatable {
     let turns: Int
     let enhancement: Enhancement
     let identityCleanup: Bool
+    let flatten: FlattenRequest?
     init(_ page: ScanPage, root: URL) {
+        flatten = page.flattenRequest
         identityCleanup = page.identityBackgroundCleanup == true && page.cropReviewNeeded != true
         self.root = root.standardizedFileURL
         imageFile = page.imageFile; crop = page.crop; turns = page.turns; enhancement = page.enhancement
@@ -39,7 +41,7 @@ actor ScanPreviewRenderer {
                 // values before the tone/ink filters get to interpret them.
                 prepared = nil; geometry = nil; toneImage = nil; toneStrength = nil
                 let source = try Imaging.source(page, root: root)
-                let result = try DocumentProcessing.prepare(source, crop: page.crop, turns: page.turns, enhancement: page.enhancement, identityCleanup: key.identityCleanup)
+                let result = try DocumentProcessing.prepare(source, crop: page.crop, turns: page.turns, enhancement: page.enhancement, identityCleanup: key.identityCleanup, flatten: key.flatten)
                 try Task.checkCancellation()
                 prepared = result; geometry = key; toneStrength = nil; toneImage = nil
             }

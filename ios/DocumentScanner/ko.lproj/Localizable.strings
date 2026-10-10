@@ -1860,3 +1860,4 @@
 "Your TIFF file is ready" = "TIFF 파일이 준비됐어요";
 "%lld pages in one file." = "%lld페이지를 한 파일에 담았어요.";
 "Export one TIFF file" = "TIFF 파일 하나로 내보내기";
+"Flatten curled page" = "휜 종이 평면화";

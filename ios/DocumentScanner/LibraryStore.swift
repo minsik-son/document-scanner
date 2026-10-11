@@ -3,6 +3,8 @@ import UIKit
 import Combine
 import CryptoKit
 import PDFKit
+import ImageIO
+import UniformTypeIdentifiers
 
 @MainActor
 final class LibraryStore: ObservableObject {
@@ -69,10 +71,29 @@ final class LibraryStore: ObservableObject {
     private static func isEmptyDraft(_ document: ScanDocument) -> Bool {
         document.isDraft && document.deletedAt == nil && document.pages.isEmpty && document.pdfFile == nil
     }
+    /// Page photos are stored as HEIC, about half the size of a JPEG of the same
+    /// quality (a 24 MP page is ~3 MB instead of ~6 MB). JPEG when the photo isn't
+    /// upright pixels or HEIC can't be written. Safe to call off the main actor.
+    nonisolated static func encodedPhoto(_ image: UIImage) -> (data: Data, ext: String)? {
+        if image.imageOrientation == .up, let cg = image.cgImage {
+            let data = NSMutableData()
+            if let destination = CGImageDestinationCreateWithData(data, UTType.heic.identifier as CFString, 1, nil) {
+                CGImageDestinationAddImage(destination, cg, [kCGImageDestinationLossyCompressionQuality: 0.9] as CFDictionary)
+                if CGImageDestinationFinalize(destination), data.length > 0 { return (data as Data, "heic") }
+            }
+        }
+        return image.jpegData(compressionQuality: 0.94).map { ($0, "jpg") }
+    }
     func appendImage(_ image: UIImage, to id: UUID, detectedCrop: ScanQuad? = nil, enhancement: Enhancement = .document, style: CaptureStyle? = nil, turns: Int = 0) throws {
+        guard let encoded = Self.encodedPhoto(image) else { throw ScannerError.message("This photo couldn't be saved. Try taking it again.") }
+        try appendEncoded(encoded, to: id, detectedCrop: detectedCrop, enhancement: enhancement, style: style, turns: turns)
+    }
+    /// A page from a photo already encoded with `encodedPhoto` (camera pages are
+    /// encoded off the main actor).
+    func appendEncoded(_ encoded: (data: Data, ext: String), to id: UUID, detectedCrop: ScanQuad? = nil, enhancement: Enhancement = .document, style: CaptureStyle? = nil, turns: Int = 0) throws {
         guard var doc = document(id) else { throw ScannerError.message("This scan is no longer available.") }
-        guard let data = image.jpegData(compressionQuality: 0.94) else { throw ScannerError.message("This photo couldn't be saved. Try taking it again.") }
-        let name = UUID().uuidString + ".jpg"
+        let data = encoded.data
+        let name = UUID().uuidString + "." + encoded.ext
         try data.write(to: url(name), options: [.atomic, .completeFileProtectionUnlessOpen])
         var page = ScanPage(imageFile: name)
         page.enhancement = enhancement

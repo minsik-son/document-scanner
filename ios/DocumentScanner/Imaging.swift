@@ -251,7 +251,8 @@ enum PerfTrace {
         let start = CFAbsoluteTimeGetCurrent(), before = footprint().current
         let result = try work()
         let seconds = CFAbsoluteTimeGetCurrent() - start, after = footprint()
-        note(String(format: "  %@ %.0f ms, memory %d→%d MB (peak %d MB)", label(), seconds*1000, before, after.current, after.peak))
+        let line = String(format: "  %@ %.0f ms, memory %d→%d MB (peak %d MB)", label(), seconds*1000, before, after.current, after.peak)
+        print("PERF" + line); note(line)
         return result
         #else
         return try work()

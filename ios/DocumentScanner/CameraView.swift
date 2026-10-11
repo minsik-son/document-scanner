@@ -330,11 +330,19 @@ struct CameraView: View {
         do {
             let image = try result.get()
             let mode = style
-            let prepared = await Task.detached { () -> (UIImage, ScanQuad?) in
-                let normalized = PerfTrace.measure("orient") { Imaging.normalized(image) }
-                return (normalized, PerfTrace.measure("find page") { mode.detect(normalized, capturedPhoto: true) })
+            // Orienting, page finding and encoding run off the main actor; finding
+            // the page works on at most 12 MP (corners are relative, and that is the
+            // size it was tuned on), so a 24 MP photo isn't copied at full size.
+            let prepared = await Task.detached { () -> ((data: Data, ext: String)?, ScanQuad?) in
+                // The camera frame is decoded upright already (`decode`): no second
+                // full-size copy.
+                let upright = image.imageOrientation == .up && image.scale == 1 && image.cgImage != nil
+                let normalized = upright ? image : PerfTrace.measure("orient") { Imaging.normalized(image) }
+                let crop = PerfTrace.measure("find page") { mode.detect(Imaging.limited(normalized, maxPixels: 12_200_000), capturedPhoto: true) }
+                return (PerfTrace.measure("encode") { LibraryStore.encodedPhoto(normalized) }, crop)
             }.value
-            try PerfTrace.measure("save JPEG (main thread)") { try store.appendImage(prepared.0, to: documentID, detectedCrop: testCamera ? .full : prepared.1, enhancement: mode.enhancement, style: mode, turns: turns) }
+            guard let encoded = prepared.0 else { throw ScannerError.message("This photo couldn't be saved. Try taking it again.") }
+            try PerfTrace.measure("save") { try store.appendEncoded(encoded, to: documentID, detectedCrop: testCamera ? .full : prepared.1, enhancement: mode.enhancement, style: mode, turns: turns) }
             // Persist original pixels first. Stop capture while the user decides;
             // neither automatic capture nor app foregrounding skips this review.
             camera.stop()

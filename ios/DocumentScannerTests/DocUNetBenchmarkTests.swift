@@ -478,6 +478,22 @@ final class DocUNetBenchmarkTests: XCTestCase {
         try summary.joined(separator: "\n").write(to: dir.appendingPathComponent("summary.txt"), atomically: true, encoding: .utf8)
     }
 
+    /// Time of each step of the page preparation on a 24 MP phone photo
+    /// (private sample; skipped when absent). Run with `otest` for real timings.
+    func testPrepareTiming24MP() throws {
+        let url = Self.ios.appendingPathComponent("Verification/private/td-48.jpg")
+        guard let raw = UIImage(contentsOfFile: url.path), let source = CIImage(image: raw) else { throw XCTSkip("private sample missing") }
+        let crop = ScanQuad(points: [.init(x: 0.3056, y: 0.2461), .init(x: 0.7431, y: 0.2305), .init(x: 0.7847, y: 0.6797), .init(x: 0.2917, y: 0.6797)])
+        PaperFlattener.trace = { print("LAP " + $0) }
+        defer { PaperFlattener.trace = nil }
+        let start = CFAbsoluteTimeGetCurrent()
+        let prepared = try DocumentProcessing.prepare(source, crop: crop, turns: 0, enhancement: .document, flatten: FlattenRequest(key: "timing-test-\(UUID())"))
+        let mid = CFAbsoluteTimeGetCurrent()
+        let done = try DocumentProcessing.finish(prepared)
+        _ = try XCTUnwrap(DocumentProcessing.context.createCGImage(done, from: done.extent))
+        print(String(format: "TIMING prepare %.0f ms finish %.0f ms", (mid-start)*1000, (CFAbsoluteTimeGetCurrent()-mid)*1000))
+    }
+
     /// Scan sharpness: the same page crop through the Document tone with variants
     /// (wider stroke ramp, upsampling before the tone step), next to the photo.
     func testScanSharpnessVariants() throws {

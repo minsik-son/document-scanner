@@ -42,7 +42,9 @@ enum DocumentClarity {
     """)
 
     /// Local contrast at which a pixel starts and finishes counting as a stroke.
-    nonisolated(unsafe) static var inkRange: (low: CGFloat, high: CGFloat) = (0.18, 0.55)
+    /// A wider ramp than a hard cut keeps the soft edge of each letter; wider
+    /// still (0.12–0.8) loses thin printed boxes.
+    nonisolated(unsafe) static var inkRange: (low: CGFloat, high: CGFloat) = (0.14, 0.65)
     static func enhance(_ image: CIImage, strength: CGFloat = 1) throws -> CIImage {
         guard let kernel else { throw ScannerError.message("Text clarity enhancement couldn't be loaded. Try the Original filter.") }
         let extent = image.extent

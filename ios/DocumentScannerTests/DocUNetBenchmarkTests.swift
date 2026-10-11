@@ -484,18 +484,21 @@ final class DocUNetBenchmarkTests: XCTestCase {
         let folder = Self.ios.appendingPathComponent("Verification/private")
         let out = Self.out.appendingPathComponent("sharp")
         try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
-        for name in ["td-letter.jpg", "Notice.jpg"] {
+        for name in ["td-scan.jpg"] {
             guard let raw = UIImage(contentsOfFile: folder.appendingPathComponent(name).path) else { continue }
             let photo = Imaging.normalized(raw)
             let cg = try XCTUnwrap(photo.cgImage)
-            let quad = Imaging.detectPage(photo) ?? .full
+            // The crop the app saved for this page (library.json), else detection.
+            let saved = ScanQuad(points: [ScanPoint(x: 0.28376561403274536, y: 0.2764837145805359), ScanPoint(x: 0.7209703922271729, y: 0.2696693539619446),
+                                          ScanPoint(x: 0.7667312622070312, y: 0.7136296033859253), ScanPoint(x: 0.26819974184036255, y: 0.7215010523796082)])
+            let quad = name == "td-scan.jpg" ? saved : (Imaging.detectPage(photo) ?? .full)
             let source = CIImage(cgImage: cg)
             let base = try DocumentProcessing.prepare(source, crop: quad, turns: 0, enhancement: .document, flatten: quad == .full ? nil : FlattenRequest(key: nil))
             let original = try DocumentProcessing.prepare(source, crop: quad, turns: 0, enhancement: .original, alignedOriginal: true, flatten: quad == .full ? nil : FlattenRequest(key: nil))
             func save(_ image: CIImage, _ tag: String, scale: CGFloat = 1) throws {
                 let e = image.extent
                 // Same page region at every scale: a band a third of the way down.
-                let crop = CGRect(x: e.minX + e.width * 0.15, y: e.minY + e.height * 0.55, width: e.width * 0.35, height: e.height * 0.12)
+                let crop = CGRect(x: e.minX + e.width * 0.12, y: e.minY + e.height * 0.62, width: e.width * 0.45, height: e.height * 0.12)
                 guard let c = DocumentProcessing.context.createCGImage(image, from: crop) else { return }
                 try XCTUnwrap(UIImage(cgImage: c).pngData()).write(to: out.appendingPathComponent("\(name.prefix(5))-\(tag).png"))
                 print("SHARP \(name) \(tag) page \(Int(e.width))x\(Int(e.height))")

@@ -4,6 +4,7 @@ import AVFoundation
 import UIKit
 import CoreImage
 import CoreMotion
+import ImageIO
 
 struct CameraView: View {
     @EnvironmentObject var store: LibraryStore
@@ -375,6 +376,10 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
     private var spin: Double { spinLock.lock(); defer { spinLock.unlock() }; return spinValue }
     private var burst: [UIImage] = []
     private var burstTarget = 1
+    /// Still sizes picked when the session starts; `useFullResolution` chooses per capture.
+    private var standardDimensions: CMVideoDimensions?
+    private var fullDimensions: CMVideoDimensions?
+    private var useFullResolution = false
     private var pendingFlash = false
     /// What the analysis queue needs from the session state, copied under a lock
     /// as it changes, so analysis never waits on the session queue (which may be
@@ -459,13 +464,18 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
                     self.session.addInput(input)
                     self.session.addOutput(self.photoOutput)
                     self.photoOutput.maxPhotoQualityPrioritization = .quality
-                    // Largest still the format offers up to ~25 MP (24 MP on recent Pro
-                    // phones, 12 MP elsewhere). 48 MP is skipped: it disables multi-frame
-                    // processing on some models and multiplies memory for every page.
-                    let dimensions = device.activeFormat.supportedMaxPhotoDimensions
-                        .filter { Int($0.width)*Int($0.height) <= 25_000_000 }
-                        .max { Int($0.width)*Int($0.height) < Int($1.width)*Int($1.height) }
-                    if let dimensions { self.photoOutput.maxPhotoDimensions = dimensions }
+                    // Two still sizes: the largest up to ~25 MP for dim light (multi-frame
+                    // noise reduction matters more there), and the sensor's full 48 MP for
+                    // good light. The 48 MP frame is scaled to 24 MP on arrival — the same
+                    // detail the Camera app keeps — so pages don't cost more memory.
+                    let sizes = device.activeFormat.supportedMaxPhotoDimensions
+                    func largest(upTo limit: Int) -> CMVideoDimensions? {
+                        sizes.filter { Int($0.width)*Int($0.height) <= limit }
+                            .max { Int($0.width)*Int($0.height) < Int($1.width)*Int($1.height) }
+                    }
+                    self.standardDimensions = largest(upTo: 25_000_000)
+                    self.fullDimensions = largest(upTo: 50_000_000)
+                    if let dimensions = self.fullDimensions ?? self.standardDimensions { self.photoOutput.maxPhotoDimensions = dimensions }
                     self.device = device
                     self.configureFocus(device, style: self.captureStyle)
                     self.videoOutput.alwaysDiscardsLateVideoFrames = true
@@ -576,8 +586,11 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
         // Quality prioritization lets iOS apply its multi-frame processing (Deep
         // Fusion / Photonic Engine) — the same post-capture sharpening as the Camera app.
         settings.photoQualityPrioritization = burst.isEmpty ? .quality : .balanced
+        let wanted = (useFullResolution ? fullDimensions : nil) ?? standardDimensions ?? photoOutput.maxPhotoDimensions
         let maximum = photoOutput.maxPhotoDimensions
-        if maximum.width > 0, maximum.height > 0 { settings.maxPhotoDimensions = maximum }
+        if wanted.width > 0, wanted.height > 0, Int(wanted.width)*Int(wanted.height) <= Int(maximum.width)*Int(maximum.height) {
+            settings.maxPhotoDimensions = wanted
+        }
         if photoOutput.supportedFlashModes.contains(pendingFlash ? .on : .off) { settings.flashMode = pendingFlash ? .on : .off }
         captureID = settings.uniqueID
         if let device, (try? device.lockForConfiguration()) != nil { capExposure(device); device.unlockForConfiguration() }
@@ -638,6 +651,7 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
             self.burst = []
             // In dim light without flash, take three frames and keep the sharpest.
             self.burstTarget = (!flash && self.dim) ? 3 : 1
+            self.useFullResolution = !self.dim
             self.shoot()
         }
     }
@@ -720,7 +734,7 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
         let result: Result<UIImage, Error>
         if let error { result = .failure(error) }
-        else if let data = photo.fileDataRepresentation(), let image = UIImage(data: data) { result = .success(image) }
+        else if let data = photo.fileDataRepresentation(), let image = Self.decode(data, maxPixels: 25_000_000) { result = .success(image) }
         else { result = .failure(ScannerError.message("The camera didn't return a photo. Try again.")) }
         queue.async {
             let id = photo.resolvedSettings.uniqueID
@@ -741,6 +755,28 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
             }
         }
     }
+    /// Decodes a still, scaling a 48 MP frame down to about 24 MP straight from the
+    /// file (ImageIO subsamples while decoding, so the full frame is never held
+    /// uncompressed) with the orientation already applied.
+    static func decode(_ data: Data, maxPixels: Int) -> UIImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let width = properties[kCGImagePropertyPixelWidth] as? Int,
+              let height = properties[kCGImagePropertyPixelHeight] as? Int, width > 0, height > 0
+        else { return UIImage(data: data) }
+        guard width * height > maxPixels else { return UIImage(data: data) }
+        let scale = (Double(maxPixels) / Double(width * height)).squareRoot()
+        let side = Int((Double(max(width, height)) * scale).rounded(.down))
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: side,
+            kCGImageSourceShouldCacheImmediately: true
+        ]
+        guard let scaled = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return UIImage(data: data) }
+        return UIImage(cgImage: scaled)
+    }
+
     private func deliver(_ result: Result<UIImage, Error>, captureID: Int64) {
         guard active, self.captureID == captureID, let pending = completion else { return }
         completion = nil; self.captureID = nil

@@ -471,6 +471,26 @@ enum DocumentProcessing {
         return .init(image: flat, enhancement: enhancement, flattened: flattened)
     }
 
+    /// Long side the clarity step works at: smaller pages are enlarged toward it
+    /// (at most 2×) for that step and scaled back, so thresholding a stroke leaves
+    /// antialiased edges instead of whole-pixel stairs. The page size is unchanged.
+    nonisolated(unsafe) static var clarityLongSide: CGFloat = 3600
+    static func supersampled(_ image: CIImage, _ step: (CIImage) throws -> CIImage) rethrows -> CIImage {
+        let extent = image.extent
+        let longSide = max(extent.width, extent.height)
+        let factor = longSide > 0 ? min(2, clarityLongSide / longSide) : 1
+        guard factor >= 1.15 else { return try step(image) }
+        let moved = image.transformed(by: CGAffineTransform(translationX: -extent.minX, y: -extent.minY))
+        let big = CGSize(width: (extent.width*factor).rounded(), height: (extent.height*factor).rounded())
+        let up = moved.clampedToExtent().applyingFilter("CILanczosScaleTransform", parameters: [kCIInputScaleKey: factor, kCIInputAspectRatioKey: 1.0])
+            .cropped(to: CGRect(origin: .zero, size: big))
+        let done = try step(up)
+        let scale = extent.height / big.height, aspect = (extent.width / big.width) / scale
+        return done.clampedToExtent().applyingFilter("CILanczosScaleTransform", parameters: [kCIInputScaleKey: scale, kCIInputAspectRatioKey: aspect])
+            .cropped(to: CGRect(origin: .zero, size: extent.size))
+            .transformed(by: CGAffineTransform(translationX: extent.minX, y: extent.minY))
+    }
+
     static func finish(_ prepared: PreparedDocument, strength: Double = 1) throws -> CIImage {
         guard prepared.enhancement != .original else { return prepared.image }
         var flat = prepared.image
@@ -517,7 +537,8 @@ enum DocumentProcessing {
                 .applyingFilter("CIColorControls", parameters: [kCIInputSaturationKey: 1 + 0.12*amount, kCIInputContrastKey: 1 + 0.06*amount])
         default: break
         }
-        return try DocumentClarity.enhance(flat, strength: gentle ? amount*0.5 : amount).cropped(to: extent)
+        let clarity = gentle ? amount*0.5 : amount
+        return try supersampled(flat) { try DocumentClarity.enhance($0, strength: clarity) }.cropped(to: extent)
     }
 
     // Vision's document corners come from a coarse mask and often sit a few pixels

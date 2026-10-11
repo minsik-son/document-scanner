@@ -331,10 +331,10 @@ struct CameraView: View {
             let image = try result.get()
             let mode = style
             let prepared = await Task.detached { () -> (UIImage, ScanQuad?) in
-                let normalized = Imaging.normalized(image)
-                return (normalized, mode.detect(normalized, capturedPhoto: true))
+                let normalized = PerfTrace.measure("orient") { Imaging.normalized(image) }
+                return (normalized, PerfTrace.measure("find page") { mode.detect(normalized, capturedPhoto: true) })
             }.value
-            try store.appendImage(prepared.0, to: documentID, detectedCrop: testCamera ? .full : prepared.1, enhancement: mode.enhancement, style: mode, turns: turns)
+            try PerfTrace.measure("save JPEG (main thread)") { try store.appendImage(prepared.0, to: documentID, detectedCrop: testCamera ? .full : prepared.1, enhancement: mode.enhancement, style: mode, turns: turns) }
             // Persist original pixels first. Stop capture while the user decides;
             // neither automatic capture nor app foregrounding skips this review.
             camera.stop()
@@ -450,11 +450,14 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
                     self.session.inputs.forEach(self.session.removeInput)
                     self.session.outputs.forEach(self.session.removeOutput)
                     self.session.sessionPreset = .photo
-                    // The main (wide) lens only. The multi-camera device switched to the
-                    // 12 MP ultra wide for close-ups, so a page shot from letter distance
-                    // came back at 12 MP even when 24 MP was requested. A sheet of paper
-                    // fits the frame beyond the main lens's ~20 cm focus distance.
-                    guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
+                    // The multi-camera device, like the Camera app: closer than the main
+                    // lens can focus, iOS switches to the macro-capable ultra wide (12 MP)
+                    // instead of producing a soft photo. Used only when it has a format
+                    // with the main lens's 48 MP mode; otherwise the main lens alone, so
+                    // a page at normal distance isn't held to 12 MP.
+                    let types: [AVCaptureDevice.DeviceType] = [.builtInTripleCamera, .builtInDualWideCamera, .builtInWideAngleCamera]
+                    let available = types.compactMap { AVCaptureDevice.default($0, for: .video, position: .back) }
+                    guard let device = available.first(where: { $0.formats.contains { Self.offersFullResolution($0) } }) ?? available.last else {
                         throw ScannerError.message("A camera is unavailable. Use Import on this device.")
                     }
                     let input = try AVCaptureDeviceInput(device: device)
@@ -589,6 +592,9 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
     /// The session's photo preset can pick a format without the 48 MP sensor mode.
     /// Switches to a format with the same preview size, pixel format and frame rate
     /// that also offers it; otherwise the preset's format stays.
+    static func offersFullResolution(_ format: AVCaptureDevice.Format) -> Bool {
+        format.supportedMaxPhotoDimensions.contains { Int($0.width)*Int($0.height) >= 40_000_000 }
+    }
     static func selectFullResolutionFormat(_ device: AVCaptureDevice) {
         func best(_ f: AVCaptureDevice.Format) -> Int { f.supportedMaxPhotoDimensions.map { Int($0.width)*Int($0.height) }.max() ?? 0 }
         let current = device.activeFormat
@@ -612,9 +618,11 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
     /// Metering at the shutter press, written next to the library with the size
     /// actually delivered (capture-log.txt), to check which path a test shot took.
     private var meterNote = ""
+    private var shutterTime: CFAbsoluteTime = 0
     private func logCapture(_ photo: AVCapturePhoto) {
         let size = photo.resolvedSettings.photoDimensions
-        let line = "\(Date()) \(size.width)x\(size.height) \(meterNote) burst \(burst.count + 1)/\(burstTarget)\n"
+        let wait = (CFAbsoluteTimeGetCurrent() - shutterTime) * 1000
+        let line = "\(Date()) \(size.width)x\(size.height) \(meterNote) burst \(burst.count + 1)/\(burstTarget) shutter→photo \(Int(wait)) ms\n"
         let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("DocumentScanner", isDirectory: true)
         let url = root.appendingPathComponent("capture-log.txt")
         if let handle = try? FileHandle(forWritingTo: url) { handle.seekToEndOfFile(); handle.write(Data(line.utf8)); try? handle.close() }
@@ -633,6 +641,9 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
         }
         if photoOutput.supportedFlashModes.contains(pendingFlash ? .on : .off) { settings.flashMode = pendingFlash ? .on : .off }
         captureID = settings.uniqueID
+        #if DEBUG
+        shutterTime = CFAbsoluteTimeGetCurrent()
+        #endif
         if let device, (try? device.lockForConfiguration()) != nil { capExposure(device); device.unlockForConfiguration() }
         // Pressing the shutter can start a refocus; a photo taken mid-hunt is soft.
         afterFocusSettles(attempt: 0) {
@@ -782,7 +793,7 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
         let result: Result<UIImage, Error>
         if let error { result = .failure(error) }
-        else if let data = photo.fileDataRepresentation(), let image = Self.decode(data, maxPixels: 25_000_000) { result = .success(image) }
+        else if let data = photo.fileDataRepresentation(), let image = PerfTrace.measure("decode to ~24 MP", { Self.decode(data, maxPixels: 25_000_000) }) { result = .success(image) }
         else { result = .failure(ScannerError.message("The camera didn't return a photo. Try again.")) }
         queue.async {
             let id = photo.resolvedSettings.uniqueID

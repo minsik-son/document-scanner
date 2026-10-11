@@ -41,7 +41,7 @@ actor ScanPreviewRenderer {
                 // values before the tone/ink filters get to interpret them.
                 prepared = nil; geometry = nil; toneImage = nil; toneStrength = nil
                 let source = try Imaging.source(page, root: root)
-                let result = try DocumentProcessing.prepare(source, crop: page.crop, turns: page.turns, enhancement: page.enhancement, identityCleanup: key.identityCleanup, flatten: key.flatten)
+                let result = try PerfTrace.measure("preview prepare (flatten, lighting)") { try DocumentProcessing.prepare(source, crop: page.crop, turns: page.turns, enhancement: page.enhancement, identityCleanup: key.identityCleanup, flatten: key.flatten) }
                 try Task.checkCancellation()
                 prepared = result; geometry = key; toneStrength = nil; toneImage = nil
             }
@@ -51,7 +51,7 @@ actor ScanPreviewRenderer {
                 // resolution tone and adjustments), then the same resize as export.
                 let finished = try DocumentProcessing.finish(prepared, strength: page.enhancementStrength)
                 let adjusted = try Imaging.trim(DocumentProcessing.adjust(finished, settings: page.appearance), edges: page.trimming)
-                guard let raster = DocumentProcessing.context.createCGImage(adjusted, from: adjusted.extent) else {
+                guard let raster = PerfTrace.measure("preview tone \(Int(adjusted.extent.width))x\(Int(adjusted.extent.height))", { DocumentProcessing.context.createCGImage(adjusted, from: adjusted.extent) }) else {
                     throw ScannerError.message("These adjustments couldn't be previewed. Try again.")
                 }
                 try Task.checkCancellation()

@@ -142,7 +142,7 @@ enum Imaging {
     static func render(_ page: ScanPage, root: URL) throws -> UIImage {
         renderGate.wait(); defer { renderGate.signal() }
         try Task.checkCancellation()
-        return try autoreleasepool { try renderUngated(page, root: root) }
+        return try autoreleasepool { try PerfTrace.measure("full page render") { try renderUngated(page, root: root) } }
     }
     private static func renderUngated(_ page: ScanPage, root: URL) throws -> UIImage {
         let ci = try source(page, root: root)
@@ -190,7 +190,7 @@ enum Imaging {
     }
     static func recognize(_ image: UIImage) throws -> [TextBlock] {
         guard let cg = image.cgImage else { throw ScannerError.message("This page couldn't be prepared for text recognition. Your scanned page is still saved.") }
-        return try TextRecognition.recognize(cg)
+        return try PerfTrace.measure("text recognition \(cg.width)x\(cg.height)") { try TextRecognition.recognize(cg) }
     }
     static func pdf(_ document: ScanDocument, root: URL) throws -> Data {
         guard !document.pages.isEmpty else { throw ScannerError.message("Add at least one page before saving.") }
@@ -238,5 +238,44 @@ enum Imaging {
             }
             try await receive(image)
         }
+    }
+}
+
+
+/// Debug-build timing and memory trace for camera pages, appended to
+/// capture-log.txt next to the library. Release builds run the work untouched.
+enum PerfTrace {
+    @discardableResult
+    static func measure<T>(_ label: @autoclosure () -> String, _ work: () throws -> T) rethrows -> T {
+        #if DEBUG
+        let start = CFAbsoluteTimeGetCurrent(), before = footprint().current
+        let result = try work()
+        let seconds = CFAbsoluteTimeGetCurrent() - start, after = footprint()
+        note(String(format: "  %@ %.0f ms, memory %d→%d MB (peak %d MB)", label(), seconds*1000, before, after.current, after.peak))
+        return result
+        #else
+        return try work()
+        #endif
+    }
+    static func note(_ text: String) {
+        #if DEBUG
+        let line = text + "\n"
+        let url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("DocumentScanner", isDirectory: true).appendingPathComponent("capture-log.txt")
+        lock.lock(); defer { lock.unlock() }
+        if let handle = try? FileHandle(forWritingTo: url) { handle.seekToEndOfFile(); handle.write(Data(line.utf8)); try? handle.close() }
+        else { try? Data(line.utf8).write(to: url) }
+        #endif
+    }
+    private static let lock = NSLock()
+    /// The app's physical footprint now and its peak since launch, in MB.
+    static func footprint() -> (current: Int, peak: Int) {
+        var info = task_vm_info_data_t()
+        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
+        let result = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) { task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count) }
+        }
+        guard result == KERN_SUCCESS else { return (0, 0) }
+        return (Int(info.phys_footprint >> 20), Int(info.ledger_phys_footprint_peak >> 20))
     }
 }

@@ -450,11 +450,11 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
                     self.session.inputs.forEach(self.session.removeInput)
                     self.session.outputs.forEach(self.session.removeOutput)
                     self.session.sessionPreset = .photo
-                    // Prefer the multi-camera device, like the Camera app: when the phone
-                    // is closer than the main lens can focus, iOS switches to the macro-
-                    // capable ultra wide automatically instead of producing a soft photo.
-                    let types: [AVCaptureDevice.DeviceType] = [.builtInTripleCamera, .builtInDualWideCamera, .builtInWideAngleCamera]
-                    guard let device = types.lazy.compactMap({ AVCaptureDevice.default($0, for: .video, position: .back) }).first else {
+                    // The main (wide) lens only. The multi-camera device switched to the
+                    // 12 MP ultra wide for close-ups, so a page shot from letter distance
+                    // came back at 12 MP even when 24 MP was requested. A sheet of paper
+                    // fits the frame beyond the main lens's ~20 cm focus distance.
+                    guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
                         throw ScannerError.message("A camera is unavailable. Use Import on this device.")
                     }
                     let input = try AVCaptureDeviceInput(device: device)
@@ -462,20 +462,23 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
                         throw ScannerError.message("The camera couldn't start.")
                     }
                     self.session.addInput(input)
+                    // After the input joins: adding it applies the preset's format.
+                    Self.selectFullResolutionFormat(device)
                     self.session.addOutput(self.photoOutput)
                     self.photoOutput.maxPhotoQualityPrioritization = .quality
-                    // Two still sizes: the largest up to ~25 MP for dim light (multi-frame
-                    // noise reduction matters more there), and the sensor's full 48 MP for
-                    // good light. The 48 MP frame is scaled to 24 MP on arrival — the same
-                    // detail the Camera app keeps — so pages don't cost more memory.
+                    // Two still sizes: 12 MP for dim light (multi-frame noise reduction
+                    // matters more there) and, in good light, 24 MP as the Camera app saves
+                    // (fused from the 48 MP sensor), else the full 48 MP frame, which is
+                    // scaled to ~24 MP on arrival so pages don't cost more memory.
                     let sizes = device.activeFormat.supportedMaxPhotoDimensions
+                    func pixels(_ d: CMVideoDimensions) -> Int { Int(d.width)*Int(d.height) }
                     func largest(upTo limit: Int) -> CMVideoDimensions? {
-                        sizes.filter { Int($0.width)*Int($0.height) <= limit }
-                            .max { Int($0.width)*Int($0.height) < Int($1.width)*Int($1.height) }
+                        sizes.filter { pixels($0) <= limit }.max { pixels($0) < pixels($1) }
                     }
-                    self.standardDimensions = largest(upTo: 25_000_000)
-                    self.fullDimensions = largest(upTo: 50_000_000)
-                    if let dimensions = self.fullDimensions ?? self.standardDimensions { self.photoOutput.maxPhotoDimensions = dimensions }
+                    self.standardDimensions = largest(upTo: 13_000_000)
+                    let fused = largest(upTo: 25_000_000).flatMap { pixels($0) > 13_000_000 ? $0 : nil }
+                    self.fullDimensions = fused ?? largest(upTo: 50_000_000)
+                    if let output = sizes.max(by: { pixels($0) < pixels($1) }) { self.photoOutput.maxPhotoDimensions = output }
                     self.device = device
                     self.configureFocus(device, style: self.captureStyle)
                     self.videoOutput.alwaysDiscardsLateVideoFrames = true
@@ -583,6 +586,28 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
         guard let device else { return false }
         return device.exposureDuration.seconds >= 1.0 / 15 || device.iso >= min(1600, device.activeFormat.maxISO * 0.5)
     }
+    /// The session's photo preset can pick a format without the 48 MP sensor mode.
+    /// Switches to a format with the same preview size, pixel format and frame rate
+    /// that also offers it; otherwise the preset's format stays.
+    static func selectFullResolutionFormat(_ device: AVCaptureDevice) {
+        func best(_ f: AVCaptureDevice.Format) -> Int { f.supportedMaxPhotoDimensions.map { Int($0.width)*Int($0.height) }.max() ?? 0 }
+        let current = device.activeFormat
+        guard best(current) < 40_000_000 else { return }
+        let size = CMVideoFormatDescriptionGetDimensions(current.formatDescription)
+        let subtype = CMFormatDescriptionGetMediaSubType(current.formatDescription)
+        let maxRate = current.videoSupportedFrameRateRanges.map(\.maxFrameRate).max() ?? 30
+        let candidates = device.formats.filter { f in
+            let d = CMVideoFormatDescriptionGetDimensions(f.formatDescription)
+            return d.width == size.width && d.height == size.height
+                && CMFormatDescriptionGetMediaSubType(f.formatDescription) == subtype
+                && (f.videoSupportedFrameRateRanges.map(\.maxFrameRate).max() ?? 0) >= min(30, maxRate)
+                && best(f) >= 40_000_000
+        }
+        guard let format = candidates.max(by: { best($0) < best($1) }), (try? device.lockForConfiguration()) != nil else { return }
+        device.activeFormat = format
+        device.unlockForConfiguration()
+    }
+
     #if DEBUG
     /// Metering at the shutter press, written next to the library with the size
     /// actually delivered (capture-log.txt), to check which path a test shot took.
@@ -670,7 +695,9 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
             #if DEBUG
             if let device = self.device {
                 let full = self.fullDimensions.map { "\($0.width)x\($0.height)" } ?? "none"
-                self.meterNote = String(format: "exposure 1/%.0f iso %.0f dim %@ full %@", 1 / max(0.0001, device.exposureDuration.seconds), device.iso, self.dim ? "yes" : "no", full)
+                let offered = device.activeFormat.supportedMaxPhotoDimensions.map { "\($0.width)x\($0.height)" }.joined(separator: ",")
+                let lens = (device.activePrimaryConstituent ?? device).deviceType.rawValue.replacingOccurrences(of: "AVCaptureDeviceTypeBuiltIn", with: "")
+                self.meterNote = String(format: "exposure 1/%.0f iso %.0f dim %@ want %@ offered [%@] lens %@ zoom %.2f", 1 / max(0.0001, device.exposureDuration.seconds), device.iso, self.dim ? "yes" : "no", self.useFullResolution ? full : "standard", offered, lens, device.videoZoomFactor)
             }
             #endif
             self.shoot()

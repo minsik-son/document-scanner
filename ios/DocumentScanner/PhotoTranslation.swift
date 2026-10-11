@@ -135,7 +135,9 @@ enum PhotoTranslation {
             for obstacle in other {
                 let overlap = layoutBox.intersection(obstacle)
                 guard !overlap.isNull,overlap.width > 0,overlap.height > 0 else { continue }
-                let tolerance = min(4,min(layoutBox.height,obstacle.height)*0.2)
+                // OCR boxes are padded by about a fifth of the line height on each side,
+                // so neighbouring lines' boxes share a band that holds no ink.
+                let tolerance = max(4,min(layoutBox.height,obstacle.height)*0.25)
                 // OCR boxes include slant and antialiasing margins. Split a narrow shared edge
                 // instead of treating a bullet touching its paragraph as a second text layer.
                 if overlap.width <= tolerance {
@@ -307,7 +309,12 @@ enum TranslationQuality {
             let garbled = spelling.map { misspelled(r.source,checker:checker,language:$0) } ?? false
             // Codes, counters and stray glyphs ("Z2.P6CS/1001042", "A" from a warning icon)
             // have no word to translate.
+            // Korean, Japanese and Chinese words carry meaning in two characters (이름,
+            // 금연, 名前), Chinese and Japanese often in one ideograph (課).
+            let ideographic = prefix == "zh" || prefix == "ja"
             let wordless = r.source.range(of:"\\p{L}{3,}",options:.regularExpression) == nil
+                && r.source.range(of:"[\\p{Hangul}\\p{Hiragana}\\p{Katakana}\\p{Han}]{2,}",options:.regularExpression) == nil
+                && !(ideographic && r.source.range(of:"\\p{Han}",options:.regularExpression) != nil)
             if r.confidence < 0.5 || tiny || garbled || wordless { r.unclear = true;r.keepOriginal = true }
             return r
         }

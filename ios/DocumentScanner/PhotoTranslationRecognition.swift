@@ -82,11 +82,25 @@ enum PhotoTranslationRecognition {
                     let a = box(readings[i].block),overlap = a.intersection(b)
                     return !overlap.isNull && overlap.width*overlap.height > min(a.width*a.height,b.width*b.height)*0.65
                 }
+                // On a page in a non-Latin source script (Japanese, Chinese…), the target
+                // model misreads source lines as its own script ("中国人喝茶" → "7E시초").
+                // A line already read in the source script stays.
+                if nativeScript(language) != nil,conflicts.contains(where:{ readsSourceScript(readings[$0].block.text,language:language) }) { continue }
                 for i in conflicts.reversed() { readings.remove(at:i) }
                 readings.append(candidate)
             }
         }
         return readings.map(\.block)
+    }
+    /// Mostly letters of the source language's own script (kana and kanji for Japanese).
+    static func readsSourceScript(_ text:String,language:String) -> Bool {
+        let letters = text.unicodeScalars.filter { CharacterSet.letters.contains($0) }
+        let code = language.split(separator:"-").first.map(String.init) ?? language
+        let own = letters.filter { s in
+            if code == "ja" { return (0x3040...0x30FF).contains(s.value) || (0x3400...0x9FFF).contains(s.value) }
+            return nativeScript(language)?.contains(s.value) ?? false
+        }.count
+        return own >= 2 && own*2 >= letters.count
     }
     private static func nativeScript(_ language:String) -> ClosedRange<UInt32>? {
         switch language.split(separator:"-").first {

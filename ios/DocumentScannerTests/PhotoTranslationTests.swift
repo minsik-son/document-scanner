@@ -377,3 +377,102 @@ final class PhotoTranslationTests: XCTestCase {
         return Data(bytes)
     }
 }
+
+/// Problems found by the web-photo translation benchmark (2026-10-10). Each test
+/// states the behavior photo translation should have; failing ones mark open bugs.
+final class PhotoTranslationKnownIssueTests: XCTestCase {
+    private struct Item { let text:String;let rect:CGRect;let size:CGFloat;var color:UIColor = .black;var fill:UIColor? = nil;var font:String? = nil }
+    private func page(_ size:CGSize,background:UIColor = .white,_ items:[Item]) -> UIImage {
+        let f = UIGraphicsImageRendererFormat();f.scale = 1;f.opaque = true
+        return UIGraphicsImageRenderer(size:size,format:f).image { c in
+            background.setFill();c.fill(CGRect(origin:.zero,size:size))
+            for item in items {
+                if let fill = item.fill { fill.setFill();c.fill(item.rect) }
+                let font = item.font.flatMap { UIFont(name:$0,size:item.size) } ?? UIFont.systemFont(ofSize:item.size,weight:.medium)
+                (item.text as NSString).draw(in:item.rect,withAttributes:[.font:font,.foregroundColor:item.color])
+            }
+        }
+    }
+    private func hangul(_ s:String) -> Int { s.unicodeScalars.filter { (0xAC00...0xD7A3).contains($0.value) }.count }
+
+    /// ja → ko: the Korean second reader must not replace Japanese lines with Hangul.
+    func testJapanesePageWithKoreanTargetKeepsJapanese() throws {
+        let lines = ["①A：はじめまして。カルロスです。会社員です。","B：高校の教師です。","③A：趣味は何ですか。","B：テニスです。わあ、同じですね。","④A：誕生日はいつですか。"]
+        let image = page(CGSize(width:1200,height:700),lines.enumerated().map { Item(text:$1,rect:CGRect(x:60,y:60+CGFloat($0)*110,width:1100,height:60),size:40,font:"HiraginoSans-W3") })
+        let text = try PhotoTranslationRecognition.recognize(XCTUnwrap(image.cgImage),language:"ja",secondaryLanguage:"ko").map(\.text).joined(separator:"\n")
+        XCTAssertEqual(hangul(text),0,text)
+        XCTAssertTrue(text.contains("教師"),text)
+    }
+    /// zh → ko, as above.
+    func testChinesePageWithKoreanTargetKeepsChinese() throws {
+        let lines = ["1. 西瓜好吃吗？多少钱一斤？贵不贵？","2. 英文，西瓜怎么说？对吃吗？美国西瓜多不多？","3. 中国人喝茶，美国人喝什么呢？","4. 我现在非常渴，想喝一点儿东西。"]
+        let image = page(CGSize(width:1200,height:600),lines.enumerated().map { Item(text:$1,rect:CGRect(x:60,y:60+CGFloat($0)*120,width:1100,height:60),size:40,font:"PingFangSC-Regular") })
+        let text = try PhotoTranslationRecognition.recognize(XCTUnwrap(image.cgImage),language:"zh-Hans",secondaryLanguage:"ko").map(\.text).joined(separator:"\n")
+        XCTAssertEqual(hangul(text),0,text)
+        XCTAssertTrue(text.contains("西瓜"),text)
+    }
+    /// Korean and CJK words carry meaning in one or two characters: 이름, 금연, 名前.
+    @MainActor
+    func testShortKoreanAndCJKWordsAreTranslated() {
+        func region(_ id:Int,_ text:String) -> TranslationRegion {
+            TranslationRegion(id:id,source:text,box:CGRect(x:0.1,y:0.05*Double(id+1),width:0.3,height:0.03))
+        }
+        let ko = TranslationQuality.review([region(0,"이름"),region(1,"금연"),region(2,"메인 메뉴"),region(3,"제품 번호:"),region(4,"12000"),region(5,"2.")],language:"ko",imageHeight:2000)
+        for i in 0..<4 { XCTAssertFalse(ko[i].unclear,"\(ko[i].source) should be translated") }
+        XCTAssertTrue(ko[4].unclear,"A price has nothing to translate");XCTAssertTrue(ko[5].unclear,"A list number has nothing to translate")
+        let ja = TranslationQuality.review([region(0,"名前"),region(1,"初級"),region(2,"課")],language:"ja",imageHeight:2000)
+        for r in ja { XCTAssertFalse(r.unclear,"\(r.source) should be translated") }
+    }
+    /// OCR boxes of a numbered line and its indented continuation overlap by their
+    /// padding although the letters don't touch (zh_02 item 7). Both are replaced.
+    func testContinuationLineWhoseBoxTouchesTheLineAboveIsReplaced() throws {
+        let image = page(CGSize(width:1200,height:500),[Item(text:"7. The first line of a numbered item that wraps",rect:CGRect(x:60,y:100,width:1100,height:50),size:34),
+                                                        Item(text:"onto a second line.",rect:CGRect(x:110,y:150,width:900,height:50),size:34)])
+        let regions = [TranslationRegion(id:0,source:"7. The first line of a numbered item that wraps",target:"7. 줄이 넘어가는 번호 항목의 첫 줄",box:CGRect(x:55.0/1200,y:92.0/500,width:1000.0/1200,height:62.0/500)),
+                       TranslationRegion(id:1,source:"onto a second line.",target:"두 번째 줄.",box:CGRect(x:105.0/1200,y:142.0/500,width:420.0/1200,height:62.0/500))]
+        let result = try PhotoTranslation.compose(image,regions:regions)
+        XCTAssertEqual(result.replaced,2,"\(result.reasons)")
+    }
+    /// White letters on a solid red sign: the panel color is the background to restore.
+    func testWhiteTextOnSolidRedSignIsReplaced() throws {
+        let red = UIColor(red:0.85,green:0.1,blue:0.12,alpha:1)
+        let image = page(CGSize(width:1000,height:600),[Item(text:"",rect:CGRect(x:100,y:100,width:800,height:400),size:10,fill:red),
+                                                        Item(text:"공사중",rect:CGRect(x:330,y:230,width:400,height:130),size:110,color:.white)])
+        let regions = [TranslationRegion(id:0,source:"공사중",target:"Under Construction",box:CGRect(x:325.0/1000,y:235.0/600,width:345.0/1000,height:130.0/600))]
+        let result = try PhotoTranslation.compose(image,regions:regions)
+        XCTAssertEqual(result.replaced,1,"\(result.reasons)")
+    }
+    /// An English translation longer than the Korean source uses the free space
+    /// beside it or a smaller size instead of being refused (kowarn_04).
+    func testLongerTranslationUsesFreeSpace() throws {
+        let image = page(CGSize(width:1400,height:700),[Item(text:"지정된 긴급 대피장소입니다.",rect:CGRect(x:300,y:300,width:900,height:90),size:60)])
+        let regions = [TranslationRegion(id:0,source:"지정된 긴급 대피장소입니다.",target:"This is a designated emergency evacuation site.",box:CGRect(x:295.0/1400,y:300.0/700,width:760.0/1400,height:85.0/700))]
+        let result = try PhotoTranslation.compose(image,regions:regions)
+        XCTAssertEqual(result.replaced,1,"\(result.reasons)")
+    }
+    /// A curled page photographed on a desk: lines are flattened before reading, so
+    /// their boxes don't overlap and the paragraphs can be replaced (DocUNet 1_1).
+    func testCurledPageLinesDoNotOverlap() throws {
+        let lines = (0..<9).map { "Line \($0 + 1) of a page that curls up toward the right edge here." }
+        let flat = page(CGSize(width:1100,height:1400),lines.enumerated().map { Item(text:$1,rect:CGRect(x:80,y:120+CGFloat($0)*48,width:960,height:44),size:30) })
+        // Bend: each column moves down by a sine of its x, like a page lifting at one side.
+        let f = UIGraphicsImageRendererFormat();f.scale = 1;f.opaque = true
+        let photo = UIGraphicsImageRenderer(size:CGSize(width:1500,height:1900),format:f).image { c in
+            UIColor(white:0.25,alpha:1).setFill();c.fill(CGRect(x:0,y:0,width:1500,height:1900))
+            let cg = flat.cgImage!
+            for x in stride(from:0,to:1100,by:4) {
+                let dy = 70*sin(Double(x)/1100*Double.pi*0.9)
+                guard let strip = cg.cropping(to:CGRect(x:x,y:0,width:4,height:1400)) else { continue }
+                UIImage(cgImage:strip).draw(in:CGRect(x:200+CGFloat(x),y:250+CGFloat(dy),width:4,height:1400))
+            }
+        }
+        let scan = try PhotoTranslation.scan(photo,sourceLanguage:"en",targetLanguage:"ko")
+        let boxes = scan.regions.filter { !$0.isMarker }.flatMap { $0.sourceBoxes.isEmpty ? [$0.box] : $0.sourceBoxes }
+        var overlapping = 0
+        for i in boxes.indices { for j in boxes.indices where j > i {
+            let o = boxes[i].intersection(boxes[j])
+            if !o.isNull, o.height > min(boxes[i].height,boxes[j].height)*0.3 { overlapping += 1 }
+        } }
+        XCTAssertEqual(overlapping,0,scan.regions.map { "\($0.box) \($0.source)" }.joined(separator:"\n"))
+    }
+}

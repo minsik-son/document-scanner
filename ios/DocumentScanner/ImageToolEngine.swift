@@ -1394,7 +1394,8 @@ enum ImageToolEngine {
     /// the perspective. Returns the photo unchanged when no clear page is found.
     static func cropToPage(_ input: UIImage) -> UIImage {
         let image = Imaging.normalized(input)
-        guard let cg = image.cgImage, let quad = DocumentProcessing.detect(cg), quad.valid,
+        // The page found as a camera scan finds it (rectangle, else the paper outline).
+        guard let cg = image.cgImage, let quad = Imaging.detectPage(image), quad.valid,
               DocumentProcessing.area(quad) > 0.2, DocumentProcessing.area(quad) < 0.97,
               let rendered = try? DocumentProcessing.render(CIImage(cgImage: cg), crop: quad, turns: 0, enhancement: .original),
               let result = try? output(rendered) else { return image }

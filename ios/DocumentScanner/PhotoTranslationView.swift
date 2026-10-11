@@ -30,9 +30,7 @@ struct PhotoTranslationView: View {
     private func name(_ code: String) -> String { LanguageName.of(code) }
     private func languageChanged() { if !from.isEmpty { rereadSourceLanguage() } }
     private func loadLanguages() async {
-        let supported = await LanguageAvailability().supportedLanguages.map(\.minimalIdentifier)
-        let all = Set(supported + [from, to]).subtracting([""])
-        languages = all.sorted { name($0).compare(name($1), options: [.caseInsensitive], locale: AppLanguage.locale) == .orderedAscending }
+        languages = await OfflineTranslator.languages(including: [from, to])
     }
     private var canTranslate: Bool { !busy && !scan.regions.isEmpty && from != to && !from.isEmpty }
     private var translateTitle: String { complete ? "Preview translation" : "Translate to \(LanguageName.direction(to))" }
@@ -273,43 +271,18 @@ struct PhotoTranslationView: View {
                 throw ScannerError.message("Read this page in the selected source language before translating. Select the source language again or adjust the crop to retry.")
             }
             var translated = regions
-            var pending = regions.indices.filter { !regions[$0].keepOriginal && regions[$0].target.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty }
-            // Headings and interface labels with a fixed meaning are filled from the glossary.
-            for i in pending { if let fixed = TranslationGlossary.target(for:regions[i].source,from:source,to:target) { translated[i].target = fixed } }
-            pending = pending.filter { translated[$0].target.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty }
-            if !pending.isEmpty {
+            let pending = regions.indices.filter { !regions[$0].keepOriginal && regions[$0].target.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty }
+            if source == target { for i in pending { translated[i].target = regions[i].source } }
+            else if !pending.isEmpty {
                 guard pending.reduce(0,{ $0+regions[$1].source.count }) <= 20000 else { throw ScannerError.message("Use a smaller section with up to 20,000 characters.") }
-                if source == target { for i in pending { translated[i].target = regions[i].source } }
-                else {
-                    guard #available(iOS 26.0,*) else { throw ScannerError.message("Offline translation requires iOS 26 or later. You can enter translations in Review text areas.") }
-                    let a = Locale.Language(identifier:source),b = Locale.Language(identifier:target)
-                    guard await LanguageAvailability().status(from:a,to:b) == .installed else {
-                        TranslationLanguageGuide.present(source: source, target: target)
-                        return
-                    }
-                    let session = TranslationSession(installedSource:a,target:b)
-                    // Keep successful batches even when one paragraph fails. Retrying only fills missing targets.
-                    for start in stride(from:0,to:pending.count,by:8) {
-                        try Task.checkCancellation()
-                        let batch = Array(pending[start..<min(start+8,pending.count)])
-                        let requests = batch.map { TranslationSession.Request(sourceText:regions[$0].source,clientIdentifier:String($0)) }
-                        do {
-                            let responses = try await session.translations(from:requests)
-                            for response in responses {
-                                guard let id = response.clientIdentifier,let i = Int(id),batch.contains(i) else { continue }
-                                translated[i].target = response.targetText
-                            }
-                        } catch {
-                            try Task.checkCancellation()
-                        }
-                        // A successful batch can still omit a response. Retry those areas too.
-                        for i in batch where translated[i].target.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty {
-                                do { translated[i].target = try await session.translate(regions[i].source).targetText }
-                                catch { try Task.checkCancellation() }
-                        }
-                        scan.regions = translated
-                    }
+                guard #available(iOS 26.0,*) else { throw ScannerError.message("Offline translation requires iOS 26 or later. You can enter translations in Review text areas.") }
+                guard await OfflineTranslator.ensureInstalled(from:source,to:target) else { return }
+                // Successful batches are kept even when one area fails; retrying fills only missing targets.
+                let results = try await OfflineTranslator.translate(pending.map { regions[$0].source },from:source,to:target) { partial in
+                    for (k,i) in pending.enumerated() { if let t = partial[k] { translated[i].target = t } }
+                    scan.regions = translated
                 }
+                for (k,i) in pending.enumerated() { if let t = results[k] { translated[i].target = t } }
             }
             try Task.checkCancellation();phase = "Rebuilding your page…"
             let completed = translated

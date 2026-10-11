@@ -14,6 +14,17 @@ enum TextRecognition {
         let scripts: [Script: Int]
     }
 
+    /// Recognition languages for re-reading text already read once: the script
+    /// model of that text first (Korean, Japanese or Chinese), then English for
+    /// codes and Latin words. A Japanese or Chinese line read with the Korean model
+    /// comes back as made-up Hangul.
+    static func languages(forScriptOf text: String) -> [String] {
+        let scalars = text.unicodeScalars
+        if scalars.contains(where: { (0xAC00...0xD7A3).contains($0.value) || (0x1100...0x11FF).contains($0.value) }) { return ["ko-KR", "en-US"] }
+        if scalars.contains(where: { (0x3040...0x30FF).contains($0.value) }) { return ["ja-JP", "en-US"] }
+        if scalars.contains(where: { (0x3400...0x9FFF).contains($0.value) }) { return ["zh-Hans", "zh-Hant", "en-US"] }
+        return ["en-US"]
+    }
     static func supportedLanguages() throws -> [String] {
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .accurate

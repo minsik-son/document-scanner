@@ -475,4 +475,12 @@ final class PhotoTranslationKnownIssueTests: XCTestCase {
         } }
         XCTAssertEqual(overlapping,0,scan.regions.map { "\($0.box) \($0.source)" }.joined(separator:"\n"))
     }
+    /// Table cells re-read with the script model of their first reading, not Korean
+    /// for every wide character (a Japanese cell read as Korean is made-up Hangul).
+    func testRereadLanguagesFollowTheScript() {
+        XCTAssertEqual(TextRecognition.languages(forScriptOf: "이름").first, "ko-KR")
+        XCTAssertEqual(TextRecognition.languages(forScriptOf: "お名前").first, "ja-JP")
+        XCTAssertEqual(TextRecognition.languages(forScriptOf: "西瓜").first, "zh-Hans")
+        XCTAssertEqual(TextRecognition.languages(forScriptOf: "HRH 10.31.11.xx"), ["en-US"])
+    }
 }

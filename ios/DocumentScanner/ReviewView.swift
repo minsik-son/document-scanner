@@ -255,7 +255,7 @@ struct ReviewView: View {
                     save()
                 } else { resumeSaveAfterCrop = false }
             }) { page in
-                CropView(page: page, confirmationRequired: true) { quad in
+                CropView(page: page, confirmationRequired: true, detect: { [style = document?.captureStyle ?? .document] in style.detect($0, capturedPhoto: true) }) { quad in
                     if let i = document?.pages.firstIndex(where: { $0.id == page.id }) {
                         document?.pages[i].crop = quad
                         document?.pages[i].trimming = .zero
@@ -785,7 +785,7 @@ struct PageEditor: View {
                 if let action = pendingAction, page.cropReviewNeeded != true { pendingAction = nil; finish(action) }
                 else { pendingAction = nil }
             }) {
-                CropView(page: page, confirmationRequired: captureReview && page.cropReviewNeeded == true) { quad in
+                CropView(page: page, confirmationRequired: captureReview && page.cropReviewNeeded == true, detect: { [style = scanStyle] in style.detect($0, capturedPhoto: true) }) { quad in
                     page.crop = quad; page.cropReviewNeeded = false; page.trimming = .zero; changed()
                 }
             }
@@ -954,6 +954,9 @@ struct CropView: View {
     let page: ScanPage
     var confirmationRequired = false
     var temporaryImage: UIImage? = nil
+    /// "Detect edges" finds the page the way a camera scan does (rectangle, else
+    /// the paper outline of a curled sheet); cards pass their own detector.
+    var detect: @Sendable (UIImage) -> ScanQuad? = { Imaging.detectPage($0) }
     let apply: (ScanQuad) -> Void
     @State private var quad = ScanQuad.full
     @State private var original: UIImage?
@@ -993,7 +996,8 @@ struct CropView: View {
                     Button("Detect edges") {
                         guard let original else { return }
                         Task {
-                            if let detected = await Task.detached(operation: { Imaging.detect(original) }).value { quad = detected; detectionMessage = nil }
+                            let detect = detect
+                            if let detected = await Task.detached(operation: { detect(original) }).value { quad = detected; detectionMessage = nil }
                             else { detectionMessage = "Edges weren't found. Drag the corners to the paper, or confirm the full image." }
                         }
                     }

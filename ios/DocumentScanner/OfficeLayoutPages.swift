@@ -355,11 +355,10 @@ enum OfficeLayoutPages {
             context.draw(crop, in: CGRect(x: 0, y: 0, width: context.width, height: context.height))
             if let big = context.makeImage() { crop = big }
         }
-        let wide = old.contains { DocumentLayoutAnalyzer.isWide($0) }
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .accurate
         request.usesLanguageCorrection = prose
-        request.recognitionLanguages = wide ? ["ko-KR", "en-US"] : ["en-US"]
+        request.recognitionLanguages = TextRecognition.languages(forScriptOf: old)
         guard (try? VNImageRequestHandler(cgImage: crop, options: [:]).perform([request])) != nil else { return nil }
         let observations = (request.results ?? []).sorted { abs($0.boundingBox.midY - $1.boundingBox.midY) < 0.3 ? $0.boundingBox.minX < $1.boundingBox.minX : $0.boundingBox.midY > $1.boundingBox.midY }
         let candidates = observations.compactMap { $0.topCandidates(1).first }

@@ -739,10 +739,8 @@ struct AdvancedOfflineToolContent:View {
                 guard !body.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty,body.count <= 20000 else { throw ScannerError.message("Enter 1–20,000 characters to translate.") }
                 if from == to { translated = body;return }
                 guard #available(iOS 26.0,*) else { throw ScannerError.message("Strict offline translation requires iOS 26 or later.") }
-                let sourceLanguage = Locale.Language(identifier:from),target = Locale.Language(identifier:to)
-                guard await LanguageAvailability().status(from:sourceLanguage,to:target) == .installed else { TranslationLanguageGuide.present(source: from, target: to); return }
-                let session = TranslationSession(installedSource:sourceLanguage,target:target)
-                let result = try await session.translate(body).targetText;try Task.checkCancellation();translated = result;return
+                guard await OfflineTranslator.ensureInstalled(from:from,to:to) else { return }
+                let result = try await OfflineTranslator.translate(body,from:from,to:to);try Task.checkCancellation();translated = result;return
             }
             if tool == .math { translated = try LocalMath.solve(body);return }
             if tool.office {
@@ -1076,8 +1074,8 @@ struct CameraTextToolView: View {
         .onDisappear { visible = false; camera.stop(); if !zoom { job?.cancel() } }
         .task {
             if !math {
-                let supported = await LanguageAvailability().supportedLanguages.map(\.minimalIdentifier).sorted()
-                if !supported.isEmpty { languages = Array(Set(supported + [from,to])).sorted() }
+                let all = await OfflineTranslator.languages(including:[from,to])
+                if all.count > 2 { languages = all }
             }
         }
     }
@@ -1270,16 +1268,8 @@ struct CameraTextToolView: View {
             else {
                 guard body.count <= 20000 else { throw ScannerError.message("Use up to 20,000 characters at a time.") }
                 guard #available(iOS 26.0,*) else { throw ScannerError.message("Offline translation requires iOS 26 or later.") }
-                if source == target { result = body }
-                else {
-                    let a = Locale.Language(identifier:source), b = Locale.Language(identifier:target)
-                    guard await LanguageAvailability().status(from:a,to:b) == .installed else {
-                        TranslationLanguageGuide.present(source: source, target: target)
-                        return
-                    }
-                    let session = TranslationSession(installedSource:a,target:b)
-                    result = try await session.translate(body).targetText
-                }
+                guard await OfflineTranslator.ensureInstalled(from:source,to:target) else { return }
+                result = try await OfflineTranslator.translate(body,from:source,to:target)
             }
             try Task.checkCancellation(); step = .result
         } catch { result = ""; report(error) } }

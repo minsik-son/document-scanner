@@ -467,17 +467,17 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
                     self.session.addOutput(self.photoOutput)
                     self.photoOutput.maxPhotoQualityPrioritization = .quality
                     // Two still sizes: 12 MP for dim light (multi-frame noise reduction
-                    // matters more there) and, in good light, 24 MP as the Camera app saves
-                    // (fused from the 48 MP sensor), else the full 48 MP frame, which is
-                    // scaled to ~24 MP on arrival so pages don't cost more memory.
+                    // matters more there) and, in good light, the full 48 MP frame, scaled
+                    // to ~24 MP on arrival so pages don't cost more memory. A 24 MP request
+                    // came back at 12 MP in ordinary room light (ISO ~800): iOS skips that
+                    // fused size when it judges the light low; a 48 MP request is kept.
                     let sizes = device.activeFormat.supportedMaxPhotoDimensions
                     func pixels(_ d: CMVideoDimensions) -> Int { Int(d.width)*Int(d.height) }
                     func largest(upTo limit: Int) -> CMVideoDimensions? {
                         sizes.filter { pixels($0) <= limit }.max { pixels($0) < pixels($1) }
                     }
                     self.standardDimensions = largest(upTo: 13_000_000)
-                    let fused = largest(upTo: 25_000_000).flatMap { pixels($0) > 13_000_000 ? $0 : nil }
-                    self.fullDimensions = fused ?? largest(upTo: 50_000_000)
+                    self.fullDimensions = largest(upTo: 50_000_000)
                     if let output = sizes.max(by: { pixels($0) < pixels($1) }) { self.photoOutput.maxPhotoDimensions = output }
                     self.device = device
                     self.configureFocus(device, style: self.captureStyle)

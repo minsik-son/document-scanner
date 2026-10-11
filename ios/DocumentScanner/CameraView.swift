@@ -704,6 +704,7 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
     /// actually delivered (capture-log.txt), to check which path a test shot took.
     private var meterNote = ""
     private var shutterTime: CFAbsoluteTime = 0
+    private var autoTriggerTime: CFAbsoluteTime = 0
     private func logCapture(_ photo: AVCapturePhoto) {
         let size = photo.resolvedSettings.photoDimensions
         let wait = (CFAbsoluteTimeGetCurrent() - shutterTime) * 1000
@@ -728,12 +729,16 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
         captureID = settings.uniqueID
         #if DEBUG
         shutterTime = CFAbsoluteTimeGetCurrent()
+        if autoTriggerTime > 0 { PerfTrace.note(String(format: "  auto scan: steady → shutter %.0f ms", (shutterTime - autoTriggerTime) * 1000)); autoTriggerTime = 0 }
         #endif
         if let device, (try? device.lockForConfiguration()) != nil { capExposure(device); device.unlockForConfiguration() }
         // Pressing the shutter can start a refocus; a photo taken mid-hunt is soft.
         afterFocusSettles(attempt: 0) {
             self.afterPhoneSteadies(attempt: 0) {
                 guard self.active, self.captureID == settings.uniqueID, self.completion != nil else { return }
+                #if DEBUG
+                PerfTrace.note(String(format: "  focus/steadiness wait %.0f ms", (CFAbsoluteTimeGetCurrent() - self.shutterTime) * 1000))
+                #endif
                 self.photoOutput.capturePhoto(with: settings, delegate: self)
             }
         }
@@ -795,10 +800,47 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
                 let lens = (device.activePrimaryConstituent ?? device).deviceType.rawValue.replacingOccurrences(of: "AVCaptureDeviceTypeBuiltIn", with: "")
                 self.meterNote = String(format: "exposure 1/%.0f iso %.0f dim %@ want %@ offered [%@] lens %@ zoom %.2f focus %.2f ~%.0f mm", 1 / max(0.0001, device.exposureDuration.seconds), device.iso, self.dim ? "yes" : "no", self.useFullResolution ? full : "standard", offered, lens, device.videoZoomFactor, device.lensPosition, Self.focusDistance(device))
             }
-            #endif
+            // Test builds: three comparison stills first (48 MP, 24 MP, 12 MP).
+            if Self.comparesStillSizes { self.compareStillSizes(index: 0) { self.shoot() } } else { self.shoot() }
+            #else
             self.shoot()
+            #endif
         }
     }
+
+    #if DEBUG
+    /// Test builds only: before each page, the same scene at three still sizes —
+    /// A the full 48 MP frame, B 24 MP (iOS fusion), C 12 MP — all with quality
+    /// prioritization, saved as the camera delivered them to compare/ next to the
+    /// library, to choose the size per light level.
+    static let comparesStillSizes = false
+    private var compareDelegates: [StillCompare] = []
+    private func compareStillSizes(index: Int, then next: @escaping () -> Void) {
+        let sizes = device?.activeFormat.supportedMaxPhotoDimensions ?? []
+        func near(_ megapixels: Int) -> CMVideoDimensions? {
+            sizes.min { abs(Int($0.width)*Int($0.height) - megapixels) < abs(Int($1.width)*Int($1.height) - megapixels) }
+        }
+        let plan: [(String, CMVideoDimensions?)] = [("A-48MP", near(48_000_000)), ("B-24MP", near(24_000_000)), ("C-12MP", near(12_000_000))]
+        guard active, index < plan.count else { compareDelegates = []; next(); return }
+        let (label, size) = plan[index]
+        let settings = AVCapturePhotoSettings()
+        settings.photoQualityPrioritization = .quality
+        if let size, Int(size.width)*Int(size.height) <= Int(photoOutput.maxPhotoDimensions.width)*Int(photoOutput.maxPhotoDimensions.height) { settings.maxPhotoDimensions = size }
+        let stamp = Int(Date().timeIntervalSince1970)
+        let start = CFAbsoluteTimeGetCurrent()
+        let delegate = StillCompare { [weak self] data, resolved in
+            guard let self else { return }
+            let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("DocumentScanner/compare", isDirectory: true)
+            try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            let name = "\(stamp)-\(label).heic"
+            if let data { try? data.write(to: root.appendingPathComponent(name)) }
+            PerfTrace.note(String(format: "  compare %@ %dx%d %.0f ms %d KB %@", label, resolved.width, resolved.height, (CFAbsoluteTimeGetCurrent() - start) * 1000, (data?.count ?? 0) / 1024, name))
+            self.queue.async { self.compareStillSizes(index: index + 1, then: next) }
+        }
+        compareDelegates.append(delegate)
+        photoOutput.capturePhoto(with: settings, delegate: delegate)
+    }
+    #endif
 
     /// Waits up to 0.6 s on the session queue for autofocus to finish.
     private func afterFocusSettles(attempt: Int, _ action: @escaping () -> Void) {
@@ -824,7 +866,7 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
         guard !analyzing, let buffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let now = ProcessInfo.processInfo.systemUptime
         let plan: (style: CaptureStyle, generation: Int)? = withGate { g in
-            guard g.active, !g.busy, now - g.lastAnalysis >= (g.style == .card ? 0.15 : 0.22) else { return nil }
+            guard g.active, !g.busy, now - g.lastAnalysis >= 0.15 else { return nil }
             g.lastAnalysis = now
             return (g.style, g.generation)
         }
@@ -848,11 +890,20 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
             let eligible = !card || CaptureStyle.fullyVisible(found, in: self.visibleCardArea)
             // Two consistent analysis frames qualify an ID. No green-state timer:
             // the same qualifying frame publishes green and requests the shutter.
+            // Half a second of a still page is enough: the shutter itself still
+            // waits for the gyro to settle and for focus, so this only checks the
+            // framing has stopped moving.
             let state = self.tracker.update(found, at: now, eligible: eligible,
-                                            requiredSteadyDuration: card ? 0.12 : 0.8,
+                                            requiredSteadyDuration: card ? 0.12 : 0.5,
                                             missingReleaseDuration: card ? 0.2 : 0.8)
             let shouldCapture = self.autoEnabled && !self.autoPending && state.canAutoCapture
             if shouldCapture { self.autoPending = true }
+            #if DEBUG
+            if shouldCapture, let found = self.tracker.foundSince {
+                self.autoTriggerTime = CFAbsoluteTimeGetCurrent()
+                PerfTrace.note(String(format: "  auto scan: page seen → steady %.0f ms (steady timer restarted %d×)", (now - found) * 1000, self.tracker.restarts))
+            }
+            #endif
             let generation = self.generation
             DispatchQueue.main.async {
                 self.publishIfCurrent(generation) {
@@ -931,6 +982,21 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
         DispatchQueue.main.async { pending(result) }
     }
 }
+
+#if DEBUG
+/// One comparison still (test builds): hands back the camera's file data.
+final class StillCompare: NSObject, AVCapturePhotoCaptureDelegate {
+    private let done: (Data?, CMVideoDimensions) -> Void
+    private var data: Data?
+    init(_ done: @escaping (Data?, CMVideoDimensions) -> Void) { self.done = done }
+    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        data = photo.fileDataRepresentation()
+    }
+    func photoOutput(_ output: AVCapturePhotoOutput, didFinishCaptureFor resolvedSettings: AVCaptureResolvedPhotoSettings, error: Error?) {
+        done(data, resolvedSettings.photoDimensions)
+    }
+}
+#endif
 
 final class PreviewSurface: UIView {
     override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }

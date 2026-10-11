@@ -26,14 +26,22 @@ struct LiveDocumentTracker {
     private var stableSince: TimeInterval?
     private var missingSince: TimeInterval?
     private var captured = false
+    /// When the current page was first seen, and how often its steady timer
+    /// restarted (debug timing).
+    private(set) var foundSince: TimeInterval?
+    private(set) var restarts = 0
     private(set) var snapshot = LiveDocumentSnapshot()
+    /// Largest corner shift (fraction of the frame) still counted as holding steady.
+    /// Hand tremor plus detection jitter on a page held in the hand is ~2 %; at
+    /// 1.8 % the steady timer kept restarting and auto scan waited seconds.
+    static let steadyTolerance = 0.03
     let steadyDuration: TimeInterval = 0.8
     let releaseDuration: TimeInterval = 0.8
 
     mutating func update(_ candidate: ScanQuad?, at time: TimeInterval, eligible: Bool = true, requiredSteadyDuration: TimeInterval = 0.8, missingReleaseDuration: TimeInterval = 0.8) -> LiveDocumentSnapshot {
         guard let candidate, candidate.valid else {
             if missingSince == nil { missingSince = time }
-            anchor = nil; stableSince = nil
+            anchor = nil; stableSince = nil; foundSince = nil; restarts = 0
             let missingFor = time - (missingSince ?? time)
             if missingFor >= 0.25 { displayed = nil }
             if missingFor >= missingReleaseDuration { captured = false }
@@ -41,6 +49,7 @@ struct LiveDocumentTracker {
             return snapshot
         }
         missingSince = nil
+        if foundSince == nil { foundSince = time }
         if let previous = displayed {
             displayed = ScanQuad(points: zip(previous.points, candidate.points).map {
                 ScanPoint(x: $0.x * 0.35 + $1.x * 0.65, y: $0.y * 0.35 + $1.y * 0.65)
@@ -51,7 +60,8 @@ struct LiveDocumentTracker {
             snapshot = LiveDocumentSnapshot(quad: displayed, phase: captured ? .nextPage : .aligning)
             return snapshot
         }
-        if anchor == nil || Self.movement(anchor!, candidate) > 0.018 {
+        if anchor == nil || Self.movement(anchor!, candidate) > Self.steadyTolerance {
+            if anchor != nil { restarts += 1 }
             anchor = candidate; stableSince = time
         }
         let steady = time - (stableSince ?? time) >= requiredSteadyDuration

@@ -576,11 +576,26 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
         guard motion.isGyroActive, spin > 0.12, attempt < 10 else { action(); return }
         queue.asyncAfter(deadline: .now() + 0.08) { self.afterPhoneSteadies(attempt: attempt + 1, action) }
     }
-    /// Dim enough that the exposure is long or the sensor gain is high.
+    /// Dark enough for the 12 MP three-frame burst: a long exposure or high sensor
+    /// gain. Ordinary room light (1/30–1/60 s) stays at full resolution, as in the
+    /// Camera app, which only drops to 12 MP in real low light.
     private var dim: Bool {
         guard let device else { return false }
-        return device.exposureDuration.seconds >= 1.0 / 40 || device.iso >= min(800, device.activeFormat.maxISO * 0.5)
+        return device.exposureDuration.seconds >= 1.0 / 15 || device.iso >= min(1600, device.activeFormat.maxISO * 0.5)
     }
+    #if DEBUG
+    /// Metering at the shutter press, written next to the library with the size
+    /// actually delivered (capture-log.txt), to check which path a test shot took.
+    private var meterNote = ""
+    private func logCapture(_ photo: AVCapturePhoto) {
+        let size = photo.resolvedSettings.photoDimensions
+        let line = "\(Date()) \(size.width)x\(size.height) \(meterNote) burst \(burst.count + 1)/\(burstTarget)\n"
+        let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("DocumentScanner", isDirectory: true)
+        let url = root.appendingPathComponent("capture-log.txt")
+        if let handle = try? FileHandle(forWritingTo: url) { handle.seekToEndOfFile(); handle.write(Data(line.utf8)); try? handle.close() }
+        else { try? Data(line.utf8).write(to: url) }
+    }
+    #endif
     private func shoot() {
         let settings = AVCapturePhotoSettings()
         // Quality prioritization lets iOS apply its multi-frame processing (Deep
@@ -652,6 +667,12 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
             // In dim light without flash, take three frames and keep the sharpest.
             self.burstTarget = (!flash && self.dim) ? 3 : 1
             self.useFullResolution = !self.dim
+            #if DEBUG
+            if let device = self.device {
+                let full = self.fullDimensions.map { "\($0.width)x\($0.height)" } ?? "none"
+                self.meterNote = String(format: "exposure 1/%.0f iso %.0f dim %@ full %@", 1 / max(0.0001, device.exposureDuration.seconds), device.iso, self.dim ? "yes" : "no", full)
+            }
+            #endif
             self.shoot()
         }
     }
@@ -739,6 +760,9 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
         queue.async {
             let id = photo.resolvedSettings.uniqueID
             guard self.active, self.captureID == id, self.completion != nil else { return }
+            #if DEBUG
+            self.logCapture(photo)
+            #endif
             if case .success(let image) = result {
                 self.burst.append(image)
                 if self.burst.count < self.burstTarget { self.shoot(); return }

@@ -44,6 +44,49 @@ enum Imaging {
         guard let cg = image.cgImage else { return nil }
         return DocumentProcessing.detect(cg) ?? PaperFlattener.findPage(cg)
     }
+    /// A photographed sheet turned into a clean page by the same steps as a camera
+    /// scan: the page found (its rectangle, else the paper outline), a curled or
+    /// bent sheet flattened, perspective and lighting corrected. Tools that take a
+    /// photo directly (photo translation, math, photo → Office) start from this, so
+    /// every tool reads the same page a saved scan would show.
+    struct PhotoPage {
+        /// The photo upright and within the size limit; crop points refer to it.
+        let original: UIImage
+        let crop: ScanQuad
+        /// False when no page was found and the whole photo was used.
+        let detected: Bool
+        /// Drawn flat from the curled paper's shape; otherwise the perspective is
+        /// corrected and the photographed proportions remain.
+        let flattened: Bool
+        /// Same geometry as `page`, before the paper-white tone curve and ink
+        /// sharpening: small gray print is still legible here. With
+        /// `originalReading`, the photo's own tones (no lighting correction either).
+        let reading: CGImage
+        /// The finished page in `enhancement`, same geometry as `reading`.
+        let page: CGImage
+    }
+    static func photoPage(_ photo: UIImage, crop explicitCrop: ScanQuad? = nil, enhancement: Enhancement = .document, flatten: Bool = true, originalReading: Bool = false, maxPixels: Int = 20_000_000) throws -> PhotoPage {
+        try Task.checkCancellation()
+        let original = limited(normalized(photo), maxPixels: maxPixels)
+        guard let cg = original.cgImage, cg.width * cg.height <= maxPixels else {
+            throw ScannerError.message("Choose a photo up to \(maxPixels / 1_000_000) megapixels.")
+        }
+        let detected = explicitCrop ?? detectPage(original)
+        let crop = detected ?? .full
+        let base = try DocumentProcessing.prepare(CIImage(cgImage: cg), crop: crop, turns: 0, enhancement: enhancement,
+                                                  flatten: !flatten || crop == .full ? nil : FlattenRequest(key: nil))
+        let finished = try DocumentProcessing.finish(base)
+        let readingImage = originalReading
+            ? try DocumentProcessing.prepare(CIImage(cgImage: cg), crop: crop, turns: 0, enhancement: .original, alignedOriginal: true,
+                                             flatten: !flatten || crop == .full ? nil : FlattenRequest(key: nil)).image
+            : base.image
+        guard let page = DocumentProcessing.context.createCGImage(finished, from: finished.extent),
+              let reading = DocumentProcessing.context.createCGImage(readingImage, from: finished.extent) else {
+            throw ScannerError.message("The scan couldn't be prepared. Retake the photo.")
+        }
+        try Task.checkCancellation()
+        return PhotoPage(original: original, crop: crop, detected: detected != nil, flattened: base.flattened, reading: reading, page: page)
+    }
     static func source(_ page: ScanPage, root: URL) throws -> CIImage {
         guard let image = UIImage(contentsOfFile: root.appendingPathComponent(page.imageFile).path), let ci = CIImage(image: image) else { throw ScannerError.message("This page could not be opened. Your original has not been changed.") }
         return ci

@@ -58,28 +58,15 @@ enum TranslationIssue: String, CaseIterable {
 /// Pixels outside accepted text masks and replacement text stay on the scanned page.
 enum PhotoTranslation {
     static func scan(_ source: UIImage, crop explicitCrop: ScanQuad? = nil, sourceLanguage:String = "en",targetLanguage:String = "ko") throws -> TranslationScan {
-        try Task.checkCancellation()
-        let original = Imaging.limited(Imaging.normalized(source),maxPixels:20_000_000)
-        guard let cg = original.cgImage, cg.width*cg.height <= 20_000_000 else {
-            throw ScannerError.message("Choose a document photo up to 20 megapixels.")
-        }
-        let detected = explicitCrop ?? Imaging.detect(original)
-        let crop = detected ?? .full
-        // Geometry and illumination first; the paper-white tone curve and ink
-        // sharpening are applied only to the page that is shown and rebuilt.
-        // Recognizing text before that step keeps small, light-gray print legible.
-        let base = try DocumentProcessing.prepare(CIImage(cgImage:cg),crop:crop,turns:0,enhancement:.document)
-        let finished = try DocumentProcessing.finish(base)
-        guard let output = DocumentProcessing.context.createCGImage(finished,from:finished.extent),
-              let reading = DocumentProcessing.context.createCGImage(base.image,from:finished.extent) else {
-            throw ScannerError.message("The scan couldn't be prepared. Retake the photo.")
-        }
-        try Task.checkCancellation()
-        let blocks = try PhotoTranslationRecognition.recognize(reading,language:sourceLanguage,secondaryLanguage:targetLanguage)
+        // The same clean page as a camera scan (found, flattened, lighting evened).
+        // Text is read before the paper-white tone curve, which keeps small,
+        // light-gray print legible; the finished page is shown and rebuilt.
+        let photo = try Imaging.photoPage(source, crop: explicitCrop)
+        let blocks = try PhotoTranslationRecognition.recognize(photo.reading,language:sourceLanguage,secondaryLanguage:targetLanguage)
         guard blocks.count <= 400 else { throw ScannerError.message("This page has too many text areas. Crop to a smaller section.") }
-        return TranslationScan(original:original,image:UIImage(cgImage:output),crop:crop,edgesDetected:detected != nil,
-            regions:TranslationParagraphs.group(blocks,raster:try TranslationRaster(reading)),recognitionLanguage:sourceLanguage,
-            reading:UIImage(cgImage:reading))
+        return TranslationScan(original:photo.original,image:UIImage(cgImage:photo.page),crop:photo.crop,edgesDetected:photo.detected,
+            regions:TranslationParagraphs.group(blocks,raster:try TranslationRaster(photo.reading)),recognitionLanguage:sourceLanguage,
+            reading:UIImage(cgImage:photo.reading))
     }
     private struct Placement { let region:TranslationRegion; let inks:[TranslationRaster.Ink]; let text:NSAttributedString; let rect:CGRect }
     static func compose(_ image:UIImage, regions:[TranslationRegion]) throws -> TranslationComposition {
@@ -240,14 +227,17 @@ enum PhotoTranslation {
     private static func expanded(_ base:CGRect,raster:TranslationRaster,obstacles:[CGRect],lineHeight:CGFloat,background:[UInt8],target:String,fits:(CGRect)->Bool) -> CGRect {
         var rect = base
         let step = max(2,lineHeight*0.25)
+        // Sideways a translation may run on across the free part of its row (a short
+        // Korean line becomes a long English one), up to about 30 line heights.
+        let sideways = max(2,lineHeight*0.5)
         let firstLetter = target.unicodeScalars.first { CharacterSet.letters.contains($0) }?.value ?? 0
         let rightToLeft = (0x0590...0x08FF).contains(firstLetter)
         // Preserve the paragraph's starting edge and stop as soon as the translation fits.
         for direction in 0..<2 {
-            for _ in 0..<(direction == 0 ? 16 : 12) {
+            for _ in 0..<(direction == 0 ? 60 : 12) {
                 var next = rect;let strip:CGRect
-                if direction == 0 && !rightToLeft { next.size.width += step;strip = CGRect(x:rect.maxX,y:rect.minY,width:step,height:rect.height) }
-                else if direction == 0 { next.origin.x -= step;next.size.width += step;strip = CGRect(x:next.minX,y:rect.minY,width:step,height:rect.height) }
+                if direction == 0 && !rightToLeft { next.size.width += sideways;strip = CGRect(x:rect.maxX,y:rect.minY,width:sideways,height:rect.height) }
+                else if direction == 0 { next.origin.x -= sideways;next.size.width += sideways;strip = CGRect(x:next.minX,y:rect.minY,width:sideways,height:rect.height) }
                 else { next.size.height += step;strip = CGRect(x:rect.minX,y:rect.maxY,width:rect.width,height:step) }
                 guard raster.bounds.contains(next),!obstacles.contains(where:{ $0.intersects(next) }),raster.empty(strip,background:background) else { break }
                 rect = next

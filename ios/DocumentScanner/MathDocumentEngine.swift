@@ -14,19 +14,9 @@ struct MathScan {
 /// Never infer an exponent or fraction from an ambiguous character substitution.
 enum MathDocumentEngine {
     static func prepare(_ source: UIImage, crop: ScanQuad? = nil) throws -> MathScan {
-        try Task.checkCancellation()
-        let original = Imaging.limited(Imaging.normalized(source), maxPixels: 20_000_000)
-        guard let cg = original.cgImage, cg.width * cg.height <= 20_000_000 else {
-            throw ScannerError.message("Choose a photo up to 20 megapixels.")
-        }
-        let detected = crop ?? Imaging.detect(original)
-        let quad = detected ?? .full
-        let prepared = try DocumentProcessing.render(CIImage(cgImage:cg),crop:quad,turns:0,enhancement:.document)
-        guard let output = DocumentProcessing.context.createCGImage(prepared,from:prepared.extent) else {
-            throw ScannerError.message("The scan couldn't be prepared. Try another photo.")
-        }
-        try Task.checkCancellation()
-        return MathScan(original:original,image:UIImage(cgImage:output),crop:quad,detected:detected != nil)
+        // The same clean page as a camera scan (found, flattened, lighting evened).
+        let photo = try Imaging.photoPage(source, crop: crop)
+        return MathScan(original:photo.original,image:UIImage(cgImage:photo.page),crop:photo.crop,detected:photo.detected)
     }
     static func recognize(_ image: UIImage) throws -> String {
         guard let cg = image.cgImage else { throw ScannerError.message("The scan couldn't be read.") }

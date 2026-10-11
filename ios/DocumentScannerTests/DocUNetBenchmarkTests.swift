@@ -269,15 +269,16 @@ final class DocUNetBenchmarkTests: XCTestCase {
         guard let photo = UIImage(contentsOfFile: folder.appendingPathComponent("Notice.jpg").path) else { throw XCTSkip("no Notice.jpg") }
         defer { OfficeLayoutPages.flattensPhotos = false }
         var lines: [String] = []
-        for on in [false, true] {
-            OfficeLayoutPages.flattensPhotos = on
+        defer { OfficeLayoutPages.readsOriginalTone = true }
+        for (on, original) in [(false, true), (true, true), (true, false)] {
+            OfficeLayoutPages.flattensPhotos = on; OfficeLayoutPages.readsOriginalTone = original
             let pair = try OfficeLayoutPages.flattenedPair(photo)
             try pair.layout.pngData()?.write(to: Self.out.appendingPathComponent("notice-\(on ? "flat" : "persp")-layout.png"))
             try pair.reading.pngData()?.write(to: Self.out.appendingPathComponent("notice-\(on ? "flat" : "persp")-reading.png"))
             let page = try OfficeLayoutPages.analyze(photo)
             let paragraphs = page.items.compactMap { item -> LayoutParagraph? in if case .paragraph(let p) = item { return p }; return nil }
             let tables = page.items.compactMap { item -> LayoutTable? in if case .table(let t) = item { return t }; return nil }
-            lines.append("\(on ? "flat" : "persp") size \(pair.layout.size.width * pair.layout.scale)x\(pair.layout.size.height * pair.layout.scale) paragraphs \(paragraphs.count) boxes \(paragraphs.filter { $0.marker == "□" }.count) tables \(tables.map { "\($0.rowCount)x\($0.columnCount)" })")
+            lines.append("\(on ? "flat" : "persp")\(original ? "" : "-pageread") size \(pair.layout.size.width * pair.layout.scale)x\(pair.layout.size.height * pair.layout.scale) paragraphs \(paragraphs.count) boxes \(paragraphs.filter { $0.marker == "□" }.count) tables \(tables.map { "\($0.rowCount)x\($0.columnCount)" })")
         }
         // The app's scan → convert path: the page as rendered after a camera scan.
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("notice-page")

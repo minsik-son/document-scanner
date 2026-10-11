@@ -410,6 +410,8 @@ enum DocumentProcessing {
     struct PreparedDocument {
         var image: CIImage
         var enhancement: Enhancement
+        /// Drawn flat from a curled-paper mesh (else perspective-corrected only).
+        var flattened = false
     }
 
     static func render(_ source: CIImage, crop: ScanQuad, turns: Int, enhancement: Enhancement, strength: Double = 1, identityCleanup: Bool = false, alignedOriginal: Bool = false, flatten: FlattenRequest? = nil) throws -> CIImage {
@@ -440,7 +442,7 @@ enum DocumentProcessing {
         if crop != .full && !identityCleanup && !flattened { image = removeResidualEdges(image) }
         if identityCleanup { image = IdentityBackground.clean(image) }
         if turns % 4 != 0 { image = image.oriented([.up, .right, .down, .left][((turns%4)+4)%4]) }
-        guard enhancement != .original || alignedOriginal else { return .init(image: image, enhancement: enhancement) }
+        guard enhancement != .original || alignedOriginal else { return .init(image: image, enhancement: enhancement, flattened: flattened) }
 
         // A correctly cropped sheet can still contain a slanted printed grid,
         // especially when the page was bent or the paper-edge detector was off by
@@ -449,7 +451,7 @@ enum DocumentProcessing {
         // grid stay in the image; this is not a crop to the printed table.
         let alignment = alignPrintedGrid(image)
         image = alignment.grid == nil ? alignTextLines(alignment.image) : alignment.image
-        if enhancement == .original { return .init(image: image, enhancement: enhancement) }
+        if enhancement == .original { return .init(image: image, enhancement: enhancement, flattened: flattened) }
         let extent = image.extent
         // Estimate illumination from paper-like pixels. Colored cells and logos do
         // not become the local white reference, even when they fill a large area.
@@ -466,7 +468,7 @@ enum DocumentProcessing {
             }
             flat = cleaned
         }
-        return .init(image: flat, enhancement: enhancement)
+        return .init(image: flat, enhancement: enhancement, flattened: flattened)
     }
 
     static func finish(_ prepared: PreparedDocument, strength: Double = 1) throws -> CIImage {

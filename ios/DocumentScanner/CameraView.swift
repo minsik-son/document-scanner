@@ -477,33 +477,17 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
                     Self.selectFullResolutionFormat(device)
                     self.session.addOutput(self.photoOutput)
                     self.photoOutput.maxPhotoQualityPrioritization = .quality
-                    // Two still sizes: 12 MP for dim light (multi-frame noise reduction
-                    // matters more there) and, in good light, the full 48 MP frame, scaled
-                    // to ~24 MP on arrival so pages don't cost more memory. A 24 MP request
-                    // came back at 12 MP in ordinary room light (ISO ~800): iOS skips that
-                    // fused size when it judges the light low; a 48 MP request is kept.
-                    let sizes = device.activeFormat.supportedMaxPhotoDimensions
-                    func pixels(_ d: CMVideoDimensions) -> Int { Int(d.width)*Int(d.height) }
-                    func largest(upTo limit: Int) -> CMVideoDimensions? {
-                        sizes.filter { pixels($0) <= limit }.max { pixels($0) < pixels($1) }
-                    }
-                    self.standardDimensions = largest(upTo: 13_000_000)
-                    self.fullDimensions = largest(upTo: 50_000_000)
-                    if let output = sizes.max(by: { pixels($0) < pixels($1) }) { self.photoOutput.maxPhotoDimensions = output }
+                    self.configurePhotoSizes(device)
                     self.device = device
+                    self.mainDevice = device
+                    self.macroDevice = device.isVirtualDevice ? nil : Self.macroCamera(for: device)
                     self.configureFocus(device, style: self.captureStyle)
                     self.videoOutput.alwaysDiscardsLateVideoFrames = true
                     self.videoOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange]
                     self.session.addOutput(self.videoOutput)
                     self.videoOutput.setSampleBufferDelegate(self, queue: self.analysisQueue)
-                    for output in [self.photoOutput as AVCaptureOutput, self.videoOutput] {
-                        guard let connection = output.connection(with: .video), connection.isVideoRotationAngleSupported(90) else {
-                            throw ScannerError.message("This camera couldn't provide a portrait scan preview. Try importing a photo instead.")
-                        }
-                        connection.videoRotationAngle = 90
-                        if connection.isVideoMirroringSupported {
-                            connection.automaticallyAdjustsVideoMirroring = false; connection.isVideoMirrored = false
-                        }
+                    guard self.applyPortraitConnections() else {
+                        throw ScannerError.message("This camera couldn't provide a portrait scan preview. Try importing a photo instead.")
                     }
                     self.configured = true
                 }
@@ -600,6 +584,99 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
     /// The session's photo preset can pick a format without the 48 MP sensor mode.
     /// Switches to a format with the same preview size, pixel format and frame rate
     /// that also offers it; otherwise the preset's format stays.
+    /// Two still sizes: 12 MP for dim light (multi-frame noise reduction matters
+    /// more there) and, in good light, the full 48 MP frame, scaled to ~24 MP on
+    /// arrival so pages don't cost more memory. A 24 MP request came back at 12 MP
+    /// in ordinary room light (ISO ~800): iOS skips that fused size when it judges
+    /// the light low; a 48 MP request is kept. Session queue, inside a configuration.
+    private func configurePhotoSizes(_ device: AVCaptureDevice) {
+        let sizes = device.activeFormat.supportedMaxPhotoDimensions
+        func pixels(_ d: CMVideoDimensions) -> Int { Int(d.width)*Int(d.height) }
+        func largest(upTo limit: Int) -> CMVideoDimensions? {
+            sizes.filter { pixels($0) <= limit }.max { pixels($0) < pixels($1) }
+        }
+        standardDimensions = largest(upTo: 13_000_000)
+        fullDimensions = largest(upTo: 50_000_000)
+        if let output = sizes.max(by: { pixels($0) < pixels($1) }) { photoOutput.maxPhotoDimensions = output }
+    }
+    /// Portrait, unmirrored frames for the photo and analysis outputs (their
+    /// connections are rebuilt whenever the camera input changes).
+    private func applyPortraitConnections() -> Bool {
+        for output in [photoOutput as AVCaptureOutput, videoOutput] {
+            guard let connection = output.connection(with: .video), connection.isVideoRotationAngleSupported(90) else { return false }
+            connection.videoRotationAngle = 90
+            if connection.isVideoMirroringSupported {
+                connection.automaticallyAdjustsVideoMirroring = false; connection.isVideoMirrored = false
+            }
+        }
+        return true
+    }
+
+    // MARK: Close-ups
+    // With the main lens alone (no multi-camera device offering 48 MP), a page held
+    // closer than the main lens can focus (~20 cm) would come out soft. The ultra
+    // wide of Pro phones focuses down to ~2 cm, so the session switches to it while
+    // the subject is that close, at the main lens's framing, and back when it moves
+    // away — what the Camera app does automatically.
+    private var mainDevice: AVCaptureDevice?
+    private var macroDevice: AVCaptureDevice?
+    private var nearSince: TimeInterval?
+    private var farSince: TimeInterval?
+    private var lastLensSwitch: TimeInterval = 0
+    /// The ultra wide, when it focuses much closer than the main lens.
+    static func macroCamera(for main: AVCaptureDevice) -> AVCaptureDevice? {
+        guard let wide = AVCaptureDevice.default(.builtInUltraWideCamera, for: .video, position: .back),
+              wide.isFocusModeSupported(.continuousAutoFocus), wide.minimumFocusDistance > 0 else { return nil }
+        let mainNearest = main.minimumFocusDistance > 0 ? main.minimumFocusDistance : 200
+        return wide.minimumFocusDistance * 2 < mainNearest ? wide : nil
+    }
+    /// Rough subject distance in mm from the focus position: the lens moves about
+    /// linearly with focus power (1/distance), from the nearest distance at 0 to
+    /// infinity at 1.
+    static func focusDistance(_ device: AVCaptureDevice) -> Double {
+        let nearest = Double(device.minimumFocusDistance > 0 ? device.minimumFocusDistance : 200)
+        let away = 1 - Double(device.lensPosition)
+        return away <= 0.001 ? .infinity : nearest / away
+    }
+    /// Session queue, after each analysed preview frame.
+    private func updateCloseUp(now: TimeInterval) {
+        guard let device, let main = mainDevice, let macro = macroDevice, !busy, now - lastLensSwitch > 1.5 else { return }
+        let mainNearest = Double(main.minimumFocusDistance > 0 ? main.minimumFocusDistance : 200)
+        let farStyle = captureStyle == .whiteboard || captureStyle == .slides
+        if device === main {
+            // The main lens sits at its nearest focus: the subject is at or inside it.
+            nearSince = !farStyle && device.lensPosition <= 0.03 ? (nearSince ?? now) : nil
+            if let since = nearSince, now - since >= 0.8 { switchLens(to: macro, now: now) }
+        } else {
+            // Back once the subject is clearly beyond the main lens's nearest focus.
+            farSince = farStyle || Self.focusDistance(device) > mainNearest * 1.3 ? (farSince ?? now) : nil
+            if let since = farSince, now - since >= 0.8 { switchLens(to: main, now: now) }
+        }
+    }
+    private func switchLens(to target: AVCaptureDevice, now: TimeInterval) {
+        guard let current = session.inputs.compactMap({ $0 as? AVCaptureDeviceInput }).first,
+              let input = try? AVCaptureDeviceInput(device: target) else { return }
+        let from = device.map { String(format: "lens %.2f ~%.0f mm", $0.lensPosition, Self.focusDistance($0)) } ?? ""
+        session.beginConfiguration()
+        session.removeInput(current)
+        if session.canSetSessionPreset(.photo) { session.sessionPreset = .photo }
+        guard session.canAddInput(input) else { session.addInput(current); session.commitConfiguration(); return }
+        session.addInput(input)
+        if target === mainDevice { Self.selectFullResolutionFormat(target) }
+        configurePhotoSizes(target)
+        _ = applyPortraitConnections()
+        session.commitConfiguration()
+        device = target
+        configureFocus(target, style: captureStyle)
+        if target === macroDevice, (try? target.lockForConfiguration()) != nil {
+            // The main lens's framing: the ultra wide sees twice as wide.
+            target.videoZoomFactor = min(2, target.activeFormat.videoMaxZoomFactor)
+            target.unlockForConfiguration()
+        }
+        lastLensSwitch = now; nearSince = nil; farSince = nil
+        PerfTrace.note("  switched to \(target === macroDevice ? "close-up (ultra wide)" : "main lens") from \(from)")
+    }
+
     static func offersFullResolution(_ format: AVCaptureDevice.Format) -> Bool {
         format.supportedMaxPhotoDimensions.contains { Int($0.width)*Int($0.height) >= 40_000_000 }
     }
@@ -716,7 +793,7 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
                 let full = self.fullDimensions.map { "\($0.width)x\($0.height)" } ?? "none"
                 let offered = device.activeFormat.supportedMaxPhotoDimensions.map { "\($0.width)x\($0.height)" }.joined(separator: ",")
                 let lens = (device.activePrimaryConstituent ?? device).deviceType.rawValue.replacingOccurrences(of: "AVCaptureDeviceTypeBuiltIn", with: "")
-                self.meterNote = String(format: "exposure 1/%.0f iso %.0f dim %@ want %@ offered [%@] lens %@ zoom %.2f", 1 / max(0.0001, device.exposureDuration.seconds), device.iso, self.dim ? "yes" : "no", self.useFullResolution ? full : "standard", offered, lens, device.videoZoomFactor)
+                self.meterNote = String(format: "exposure 1/%.0f iso %.0f dim %@ want %@ offered [%@] lens %@ zoom %.2f focus %.2f ~%.0f mm", 1 / max(0.0001, device.exposureDuration.seconds), device.iso, self.dim ? "yes" : "no", self.useFullResolution ? full : "standard", offered, lens, device.videoZoomFactor, device.lensPosition, Self.focusDistance(device))
             }
             #endif
             self.shoot()
@@ -766,6 +843,7 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
         queue.async {
             // A capture started, the page changed or the camera stopped meanwhile.
             guard self.active, !self.busy, self.generation == plan.generation, self.captureStyle == plan.style else { return }
+            self.updateCloseUp(now: now)
             let card = plan.style == .card
             let eligible = !card || CaptureStyle.fullyVisible(found, in: self.visibleCardArea)
             // Two consistent analysis frames qualify an ID. No green-state timer:

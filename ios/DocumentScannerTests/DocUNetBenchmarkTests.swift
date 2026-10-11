@@ -477,4 +477,44 @@ final class DocUNetBenchmarkTests: XCTestCase {
         }
         try summary.joined(separator: "\n").write(to: dir.appendingPathComponent("summary.txt"), atomically: true, encoding: .utf8)
     }
+
+    /// Scan sharpness: the same page crop through the Document tone with variants
+    /// (wider stroke ramp, upsampling before the tone step), next to the photo.
+    func testScanSharpnessVariants() throws {
+        let folder = Self.ios.appendingPathComponent("Verification/private")
+        let out = Self.out.appendingPathComponent("sharp")
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        for name in ["td-letter.jpg", "Notice.jpg"] {
+            guard let raw = UIImage(contentsOfFile: folder.appendingPathComponent(name).path) else { continue }
+            let photo = Imaging.normalized(raw)
+            let cg = try XCTUnwrap(photo.cgImage)
+            let quad = Imaging.detectPage(photo) ?? .full
+            let source = CIImage(cgImage: cg)
+            let base = try DocumentProcessing.prepare(source, crop: quad, turns: 0, enhancement: .document, flatten: quad == .full ? nil : FlattenRequest(key: nil))
+            let original = try DocumentProcessing.prepare(source, crop: quad, turns: 0, enhancement: .original, alignedOriginal: true, flatten: quad == .full ? nil : FlattenRequest(key: nil))
+            func save(_ image: CIImage, _ tag: String, scale: CGFloat = 1) throws {
+                let e = image.extent
+                // Same page region at every scale: a band a third of the way down.
+                let crop = CGRect(x: e.minX + e.width * 0.15, y: e.minY + e.height * 0.55, width: e.width * 0.35, height: e.height * 0.12)
+                guard let c = DocumentProcessing.context.createCGImage(image, from: crop) else { return }
+                try XCTUnwrap(UIImage(cgImage: c).pngData()).write(to: out.appendingPathComponent("\(name.prefix(5))-\(tag).png"))
+                print("SHARP \(name) \(tag) page \(Int(e.width))x\(Int(e.height))")
+            }
+            try save(original.image, "0-photo")
+            let defaults = DocumentClarity.inkRange
+            defer { DocumentClarity.inkRange = defaults }
+            try save(DocumentProcessing.finish(base), "1-current")
+            DocumentClarity.inkRange = (0.12, 0.8)
+            try save(DocumentProcessing.finish(base), "2-wide")
+            DocumentClarity.inkRange = defaults
+            for f in [1.5, 2.0] {
+                let up = base.image.applyingFilter("CILanczosScaleTransform", parameters: [kCIInputScaleKey: f, kCIInputAspectRatioKey: 1.0])
+                let moved = up.transformed(by: CGAffineTransform(translationX: -up.extent.minX, y: -up.extent.minY))
+                try save(DocumentProcessing.finish(DocumentProcessing.PreparedDocument(image: moved, enhancement: .document)), "3-up\(f)")
+                DocumentClarity.inkRange = (0.12, 0.8)
+                try save(DocumentProcessing.finish(DocumentProcessing.PreparedDocument(image: moved, enhancement: .document)), "4-up\(f)-wide")
+                DocumentClarity.inkRange = defaults
+            }
+        }
+    }
 }

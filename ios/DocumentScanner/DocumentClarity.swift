@@ -6,7 +6,7 @@ enum DocumentClarity {
     private static let kernel = CIColorKernel(source: """
     kernel vec4 documentClarity(__sample source, __sample blurred,
                                 __sample localWhite, __sample localLow,
-                                float amount) {
+                                float amount, float inkLow, float inkHigh) {
         vec3 weights = vec3(0.2126, 0.7152, 0.0722);
         // Core Image keeps extended (including negative) channels between filters.
         // Clip the analysis range so a contrast-adjusted black cannot invert white.
@@ -27,7 +27,7 @@ enum DocumentClarity {
 
         // Sharpen within the neighboring luminance bounds, then reinforce only
         // convincing dark strokes. This avoids bright outlines around glyphs.
-        float stroke = smoothstep(0.18, 0.55, contrast);
+        float stroke = smoothstep(inkLow, inkHigh, contrast);
         float sharpened = clamp(baseY+(y-softY)*1.35*amount*stroke, lowY, whiteY);
         float high = max(sourceRGB.r, max(sourceRGB.g, sourceRGB.b));
         float low = min(sourceRGB.r, min(sourceRGB.g, sourceRGB.b));
@@ -41,6 +41,8 @@ enum DocumentClarity {
     }
     """)
 
+    /// Local contrast at which a pixel starts and finishes counting as a stroke.
+    nonisolated(unsafe) static var inkRange: (low: CGFloat, high: CGFloat) = (0.18, 0.55)
     static func enhance(_ image: CIImage, strength: CGFloat = 1) throws -> CIImage {
         guard let kernel else { throw ScannerError.message("Text clarity enhancement couldn't be loaded. Try the Original filter.") }
         let extent = image.extent
@@ -52,7 +54,7 @@ enum DocumentClarity {
         let smooth = clamped.applyingFilter("CIGaussianBlur",parameters: [kCIInputRadiusKey: 0.65*scale]).cropped(to: extent)
         let white = clamped.applyingFilter("CIMorphologyMaximum",parameters: [kCIInputRadiusKey: 4.5*scale]).cropped(to: extent)
         let low = clamped.applyingFilter("CIMorphologyMinimum",parameters: [kCIInputRadiusKey: 1.5*scale]).cropped(to: extent)
-        guard let result = kernel.apply(extent: extent,arguments: [image,smooth,white,low,amount]) else {
+        guard let result = kernel.apply(extent: extent,arguments: [image,smooth,white,low,amount,inkRange.low,inkRange.high]) else {
             throw ScannerError.message("Text clarity enhancement couldn't be applied. Try the Original filter.")
         }
         return result.cropped(to: extent)

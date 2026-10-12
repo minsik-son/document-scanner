@@ -412,6 +412,10 @@ enum DocumentProcessing {
         var enhancement: Enhancement
         /// Drawn flat from a curled-paper mesh (else perspective-corrected only).
         var flattened = false
+        /// Thin dark strips (desk, shadow, the paper's own edge) along the sides, as
+        /// rectangles in page fractions (top-left origin). Painted paper-white by the
+        /// tone step.
+        var edgeStrips: [CGRect] = []
     }
 
     static func render(_ source: CIImage, crop: ScanQuad, turns: Int, enhancement: Enhancement, strength: Double = 1, identityCleanup: Bool = false, alignedOriginal: Bool = false, flatten: FlattenRequest? = nil) throws -> CIImage {
@@ -468,7 +472,20 @@ enum DocumentProcessing {
             }
             flat = cleaned
         }
-        return .init(image: flat, enhancement: enhancement, flattened: flattened)
+        // Thin dark strips left along the sides (the crop or the flattened outline
+        // a little outside the paper) are found on the lighting-corrected page,
+        // where paper reads as white.
+        // Judged on a small copy put through the tone step, where the strips look
+        // as they will on the finished page.
+        var strips = [CGRect]()
+        if crop != .full && !identityCleanup {
+            let e = flat.extent, f = min(1, 1200/max(e.width, e.height))
+            let small = flat.transformed(by: CGAffineTransform(scaleX: f, y: f))
+            let moved = small.transformed(by: CGAffineTransform(translationX: -small.extent.minX, y: -small.extent.minY))
+            let toned = (try? finish(.init(image: moved.cropped(to: moved.extent.integral), enhancement: enhancement))) ?? moved
+            strips = edgeStrips(toned)
+        }
+        return .init(image: flat, enhancement: enhancement, flattened: flattened, edgeStrips: strips)
     }
 
     /// Long side the clarity step works at: smaller pages are enlarged toward it
@@ -538,7 +555,8 @@ enum DocumentProcessing {
         default: break
         }
         let clarity = gentle ? amount*0.5 : amount
-        return try supersampled(flat) { try DocumentClarity.enhance($0, strength: clarity) }.cropped(to: extent)
+        let toned = try supersampled(flat) { try DocumentClarity.enhance($0, strength: clarity) }.cropped(to: extent)
+        return paintEdgeStrips(toned, prepared.edgeStrips)
     }
 
     // Vision's document corners come from a coarse mask and often sit a few pixels
@@ -555,6 +573,99 @@ enum DocumentProcessing {
         static let untouched = ResidualEdges()
     }
     static let maximumResidualEdge = 0.045
+
+    /// Paints the strips found by `edgeStrips` paper-white.
+    static func paintEdgeStrips(_ image: CIImage, _ strips: [CGRect]) -> CIImage {
+        guard !strips.isEmpty else { return image }
+        let e = image.extent
+        var output = image
+        for r in strips {
+            let rect = CGRect(x: e.minX + r.minX*e.width, y: e.maxY - r.maxY*e.height, width: r.width*e.width, height: r.height*e.height).integral
+            output = CIImage(color: .white).cropped(to: rect).composited(over: output)
+        }
+        return output.cropped(to: e)
+    }
+
+    /// Dark strips hugging the sides of a page. Each side is cut into short
+    /// segments; in a segment the strip is the darker band that starts at the outer
+    /// edge (or up to 0.6 % in), stays within 2.5 % of the page and
+    /// is followed by clean paper. Only runs of at least three neighbouring segments
+    /// count, so a word or logo that happens to touch the margin is left alone.
+    static func edgeStrips(_ image: CIImage) -> [CGRect] {
+        let extent = image.extent
+        guard !extent.isInfinite, extent.width >= 64, extent.height >= 64 else { return [] }
+        let scale = min(1, 1200/max(extent.width, extent.height))
+        let reduced = image.transformed(by: CGAffineTransform(translationX: -extent.minX, y: -extent.minY)).transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        let bounds = CGRect(x: 0, y: 0, width: floor(extent.width*scale), height: floor(extent.height*scale))
+        guard let cg = context.createCGImage(reduced, from: bounds), let raster = Raster(cg, maximumDimension: 1200),
+              raster.width >= 32, raster.height >= 32 else { return [] }
+        let w = raster.width, h = raster.height
+        func lum(_ x: Int, _ y: Int) -> Double {
+            let i = (y*w + x)*4
+            return (0.2126*Double(raster.bytes[i]) + 0.7152*Double(raster.bytes[i+1]) + 0.0722*Double(raster.bytes[i+2]))/255
+        }
+        var result = [CGRect]()
+        for side in 0..<4 {
+            let length = side % 2 == 0 ? w : h, span = side % 2 == 0 ? h : w
+            func at(_ depth: Int, _ p: Int) -> Double {
+                switch side {
+                case 0: return lum(p, depth)
+                case 1: return lum(w - 1 - depth, p)
+                case 2: return lum(p, h - 1 - depth)
+                default: return lum(depth, p)
+                }
+            }
+            let limit = max(3, Int(Double(span)*0.025))
+            let segments = 40, size = length/segments
+            guard size >= 4 else { continue }
+            // Paper level just inside this side (median of a band 4–7 % in).
+            var reference = [Double]()
+            for d in stride(from: span*4/100, to: max(span*4/100 + 1, span*7/100), by: 3) {
+                for p in stride(from: length/20, to: length*19/20, by: 3) { reference.append(at(d, p)) }
+            }
+            reference.sort()
+            let paper = reference[reference.count/2]
+            guard paper > 0.8 else { continue }
+            // Strip depth per segment (0 = none).
+            var depths = [Int](repeating: 0, count: segments)
+            for s in 0..<segments {
+                let range = (s*size)..<min(length, (s+1)*size)
+                let rows = (0..<(limit + 4)).map { d in range.reduce(0.0) { $0 + at(d, $1) } / Double(range.count) }
+                // The band must start at the edge, or just inside it: the flattened
+                // page fills a few pixels beyond the paper's edge with paper colour,
+                // leaving the edge itself as a thin line slightly in.
+                guard let first = rows.prefix(max(3, span*6/1000)).firstIndex(where: { $0 < paper - 0.06 }) else { continue }
+                var end = first
+                while end + 1 < limit && rows[end + 1] < paper - 0.03 { end += 1 }
+                // ...and give way to clean paper before the limit.
+                guard end + 1 < limit, rows[(end + 1)...(end + 3)].allSatisfy({ $0 >= paper - 0.03 }) else { continue }
+                depths[s] = end + 2
+            }
+            // Keep runs of three or more neighbouring segments.
+            var s = 0
+            while s < segments {
+                guard depths[s] > 0 else { s += 1; continue }
+                var e = s
+                while e + 1 < segments && depths[e + 1] > 0 { e += 1 }
+                if e - s + 1 >= 3 {
+                    for k in s...e {
+                        // From the outer edge (the light pixels outside the line too);
+                        // overlap neighbours a little so the fill has no seams.
+                        let a = Double(max(0, k*size - 2))/Double(length), b = Double(min(length, (k+1)*size + 2))/Double(length)
+                        let d = Double(depths[k])/Double(span)
+                        switch side {
+                        case 0: result.append(CGRect(x: a, y: 0, width: b - a, height: d))
+                        case 1: result.append(CGRect(x: 1 - d, y: a, width: d, height: b - a))
+                        case 2: result.append(CGRect(x: a, y: 1 - d, width: b - a, height: d))
+                        default: result.append(CGRect(x: 0, y: a, width: d, height: b - a))
+                        }
+                    }
+                }
+                s = e + 1
+            }
+        }
+        return result
+    }
 
     static func removeResidualEdges(_ image: CIImage) -> CIImage {
         let edges = residualEdges(image)

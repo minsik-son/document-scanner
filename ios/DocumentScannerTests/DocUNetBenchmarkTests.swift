@@ -494,6 +494,58 @@ final class DocUNetBenchmarkTests: XCTestCase {
         print(String(format: "TIMING prepare %.0f ms finish %.0f ms", (mid-start)*1000, (CFAbsoluteTimeGetCurrent()-mid)*1000))
     }
 
+    /// Dark desk strips left along the edges of flattened phone scans (private
+    /// photos with their saved crops; skipped when absent). Writes the pages and
+    /// prints the darkest edge band per side.
+    func testFlattenedPageEdges() throws {
+        let dir = Self.ios.appendingPathComponent("Verification/private")
+        let out = Self.out.appendingPathComponent("edges")
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        let samples: [(String, [Double])] = [
+            ("td-c7.heic", [0.2569, 0.3008, 0.6806, 0.2773, 0.7847, 0.6914, 0.2222, 0.7227]),
+            ("td-47.heic", [0.2173, 0.2636, 0.7101, 0.2556, 0.7681, 0.7336, 0.2295, 0.7666]),
+            ("td-48.jpg", [0.3056, 0.2461, 0.7431, 0.2305, 0.7847, 0.6797, 0.2917, 0.6797]),
+        ]
+        var checked = 0
+        for (name, c) in samples {
+            guard let raw = UIImage(contentsOfFile: dir.appendingPathComponent(name).path) else { continue }
+            let photo = Imaging.normalized(raw)
+            let source = try XCTUnwrap(CIImage(image: photo))
+            let crop = ScanQuad(points: stride(from: 0, to: 8, by: 2).map { ScanPoint(x: c[$0], y: c[$0 + 1]) })
+            let page = try DocumentProcessing.render(source, crop: crop, turns: 0, enhancement: .document, flatten: FlattenRequest(key: nil))
+            let cg = try XCTUnwrap(DocumentProcessing.context.createCGImage(page, from: page.extent))
+            try XCTUnwrap(UIImage(cgImage: cg).jpegData(compressionQuality: 0.8)).write(to: out.appendingPathComponent(name + ".jpg"))
+            let scale = min(1, 1600 / Double(max(cg.width, cg.height)))
+            let rw = Int(Double(cg.width) * scale), rh = Int(Double(cg.height) * scale)
+            var bytes = [UInt8](repeating: 0, count: rw * rh * 4)
+            bytes.withUnsafeMutableBytes { buffer in
+                let ctx = CGContext(data: buffer.baseAddress, width: rw, height: rh, bitsPerComponent: 8, bytesPerRow: rw * 4, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+                ctx?.interpolationQuality = .medium
+                ctx?.draw(cg, in: CGRect(x: 0, y: 0, width: rw, height: rh))
+            }
+            let raster = (width: rw, height: rh, bytes: bytes)
+            func lum(_ x: Int, _ y: Int) -> Double { let i = (y * raster.width + x) * 4; return (0.2126 * Double(raster.bytes[i]) + 0.7152 * Double(raster.bytes[i+1]) + 0.0722 * Double(raster.bytes[i+2])) / 255 }
+            // Darkest mean over the outer 1 % band of each side (corners skipped).
+            func band(_ side: Int) -> Double {
+                let w = raster.width, h = raster.height, depth = max(2, (side % 2 == 0 ? h : w) / 100)
+                var worst = 1.0
+                for d in 0..<depth {
+                    var sum = 0.0, n = 0
+                    let length = side % 2 == 0 ? w : h
+                    for p in stride(from: length / 10, to: length * 9 / 10, by: 2) {
+                        let (x, y): (Int, Int) = side == 0 ? (p, d) : side == 1 ? (w - 1 - d, p) : side == 2 ? (p, h - 1 - d) : (d, p)
+                        sum += lum(x, y); n += 1
+                    }
+                    worst = min(worst, sum / Double(n))
+                }
+                return worst
+            }
+            print(String(format: "EDGES %@ %dx%d top %.2f right %.2f bottom %.2f left %.2f", name, raster.width, raster.height, band(0), band(1), band(2), band(3)))
+            checked += 1
+        }
+        if checked == 0 { throw XCTSkip("private photos missing") }
+    }
+
     /// Scan sharpness: the same page crop through the Document tone with variants
     /// (wider stroke ramp, upsampling before the tone step), next to the photo.
     func testScanSharpnessVariants() throws {

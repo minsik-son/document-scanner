@@ -249,11 +249,28 @@ struct ScanPreview: View {
 }
 
 
-/// The camera's instant result: a quick page from the preview frame and when the
-/// shutter was pressed (so the animation continues across screens).
+/// The camera's instant result: a quick page from the preview frame, its soft
+/// "before" look, and when the shutter was pressed (so the animation continues
+/// across screens). Both images are made and decoded off the main thread, so the
+/// animation only moves them (no per-frame blur).
 struct InstantPlaceholder: Equatable {
     let image: UIImage
+    let soft: UIImage
     let start: Date
+    nonisolated static func make(_ page: UIImage, start: Date) -> InstantPlaceholder? {
+        guard let cg = page.cgImage else { return nil }
+        // The page is shown about 1000 px tall on a phone.
+        let scale = min(1, 1100 / CGFloat(max(cg.width, cg.height)))
+        let clean = CIImage(cgImage: cg).transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        let extent = clean.extent.integral
+        let soft = clean.clampedToExtent().applyingGaussianBlur(sigma: 2.2).cropped(to: extent)
+            .applyingFilter("CIColorControls", parameters: [kCIInputSaturationKey: 0.6])
+            .applyingFilter("CIMultiplyCompositing", parameters: [kCIInputBackgroundImageKey: CIImage(color: CIColor(red: 0.80, green: 0.78, blue: 0.73)).cropped(to: extent)])
+        guard let a = DocumentProcessing.context.createCGImage(clean, from: extent),
+              let b = DocumentProcessing.context.createCGImage(soft, from: extent),
+              let shown = UIImage(cgImage: a).preparingForDisplay(), let before = UIImage(cgImage: b).preparingForDisplay() else { return nil }
+        return InstantPlaceholder(image: shown, soft: before, start: start)
+    }
 }
 
 /// The scan-to-PDF animation over the instant result. The preview page sits on
@@ -267,8 +284,11 @@ struct ScanBeamPage: View {
     private static let reveal: TimeInterval = 1.2
     private static let pass: TimeInterval = 1.5
     var body: some View {
-        TimelineView(.animation(paused: done || reduceMotion)) { timeline in
+        TimelineView(.animation(minimumInterval: 1.0 / 60, paused: done || reduceMotion)) { timeline in
             let t = max(0, timeline.date.timeIntervalSince(placeholder.start))
+            #if DEBUG
+            let _ = HitchMeter.shared.tick(timeline.date, done: done)
+            #endif
             let revealing = !reduceMotion && t < Self.reveal
             let progress = revealing ? Self.ease(t / Self.reveal) : 1
             let beam = revealing ? progress : Self.ease((t - Self.reveal).truncatingRemainder(dividingBy: Self.pass) / Self.pass)
@@ -290,24 +310,33 @@ struct ScanBeamPage: View {
             let width = min(box.size.width, box.size.height * aspect)
             let height = width / aspect
             ZStack(alignment: .top) {
-                Color.white
-                Image(uiImage: image).resizable().interpolation(.high)
-                // Not yet swept: the soft, warm look of the raw preview.
-                Image(uiImage: image).resizable().blur(radius: 1.6).saturation(0.6)
-                    .overlay(Color(red: 0.80, green: 0.78, blue: 0.73).blendMode(.multiply))
-                    .mask(alignment: .bottom) { Rectangle().frame(height: max(0, height * (1 - revealed))) }
-                // The beam: a soft glow trailing a bright scan line.
+                Image(uiImage: image).resizable()
+                // Not yet swept: the soft "before" image, cut at the beam (a clip,
+                // not a mask, so nothing is rendered offscreen each frame).
+                Image(uiImage: placeholder.soft).resizable()
+                    .frame(width: width, height: height)
+                    .frame(width: width, height: max(0, height * (1 - revealed)), alignment: .bottom)
+                    .clipped()
+                    .frame(width: width, height: height, alignment: .bottom)
+                // The beam: a soft glow trailing a bright scan line (gradients only).
                 VStack(spacing: 0) {
                     LinearGradient(colors: [Design.blue.opacity(0), Design.blue.opacity(0.10), Design.blue.opacity(0.32)], startPoint: .top, endPoint: .bottom)
                         .frame(height: 64)
                     Rectangle().fill(Design.blue).frame(height: 2.5)
-                        .shadow(color: Design.blue.opacity(0.9), radius: 6)
+                    LinearGradient(colors: [Design.blue.opacity(0.35), Design.blue.opacity(0)], startPoint: .top, endPoint: .bottom)
+                        .frame(height: 6)
                 }
-                .offset(y: height * beam - 66)
+                .offset(y: height * beam - 66.5)
                 .opacity(beamOpacity)
             }
             .frame(width: width, height: height)
             .clipShape(RoundedRectangle(cornerRadius: 4))
+            // The paper's shadow comes from a still shape behind it, so the moving
+            // beam never forces an offscreen shadow pass.
+            .background {
+                RoundedRectangle(cornerRadius: 4).fill(.white)
+                    .shadow(color: .black.opacity(done ? 0.16 : 0.09), radius: done ? 14 : 6, y: done ? 8 : 3)
+            }
             .overlay(alignment: .topTrailing) {
                 // The folded corner.
                 ZStack(alignment: .topTrailing) {
@@ -318,7 +347,6 @@ struct ScanBeamPage: View {
                 .frame(width: 30, height: 30)
                 .scaleEffect(done ? 1 : 0.01, anchor: .topTrailing)
             }
-            .shadow(color: .black.opacity(done ? 0.16 : 0.09), radius: done ? 14 : 6, y: done ? 8 : 3)
             .scaleEffect(done ? 1.02 : 1)
             .offset(y: done ? -4 : 0)
             .overlay(alignment: .bottomTrailing) {
@@ -369,3 +397,18 @@ struct ScanProgressSteps: View {
     /// The step in progress (3 = all done). Making the PDF follows the enhanced page.
     private var active: Int { stage == .saving ? 0 : (stage == .enhancing ? 1 : 3) }
 }
+
+#if DEBUG
+/// Debug builds: logs frames of the scan animation that arrive late (a hitch).
+final class HitchMeter: @unchecked Sendable {
+    static let shared = HitchMeter()
+    private var last: Date?
+    @discardableResult func tick(_ date: Date, done: Bool) -> Bool {
+        defer { last = done ? nil : date }
+        guard let last, !done else { return false }
+        let gap = date.timeIntervalSince(last)
+        if gap > 0.05 && gap < 5 { PerfTrace.note(String(format: "  animation hitch %.0f ms", gap * 1000)) }
+        return true
+    }
+}
+#endif

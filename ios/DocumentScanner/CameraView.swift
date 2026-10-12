@@ -348,7 +348,8 @@ struct CameraView: View {
                 guard let frame else { return }
                 Task.detached {
                     let image = PerfTrace.measure("instant result") { CameraView.instantPage(frame, crop: quad, turns: turns, style: mode) }
-                    await MainActor.run { if saving, capturedPage == nil, let image { instantResult = InstantPlaceholder(image: image, start: start) } }
+                    let placeholder = image.flatMap { InstantPlaceholder.make($0, start: start) }
+                    await MainActor.run { if saving, capturedPage == nil, let placeholder { instantResult = placeholder } }
                 }
             }
         }

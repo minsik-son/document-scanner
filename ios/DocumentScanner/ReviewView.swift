@@ -658,7 +658,7 @@ struct PageEditor: View {
     /// Tab to open on ("Crop", "Tone", "Adjust" or "Retouch"); the review's tool row picks it.
     var initialTool: String? = nil
     /// The camera's instant result, shown until the page's own render is ready.
-    var placeholder: UIImage? = nil
+    var placeholder: InstantPlaceholder? = nil
     let onSave: (ScanPage) throws -> Void
     @State private var cropping = false
     @State private var trimming = false

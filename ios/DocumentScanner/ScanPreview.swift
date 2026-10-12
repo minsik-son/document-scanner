@@ -199,7 +199,8 @@ struct ScanPreview: View {
     let page: ScanPage
     var onReady: (Bool) -> Void = { _ in }
     /// Shown until the first render is done (the camera's instant result).
-    var placeholder: UIImage? = nil
+    var placeholder: InstantPlaceholder? = nil
+    @State private var placeholderFinished = false
     @StateObject private var model = ScanPreviewModel()
     @State private var retry = 0
     @State private var enlarged: EnlargedPreview?
@@ -213,7 +214,10 @@ struct ScanPreview: View {
     var body: some View {
         ZStack {
             Design.muted
-            if let image = model.image {
+            if let placeholder, !placeholderFinished, model.problem == nil {
+                ScanBeamPage(placeholder: placeholder, done: model.image != nil)
+                    .transition(.opacity)
+            } else if let image = model.image {
                 Button {
                     enlarged = EnlargedPreview(page: page, image: image, root: store.root)
                 } label: {
@@ -225,11 +229,6 @@ struct ScanPreview: View {
                 .accessibilityLabel("Enlarge page preview")
                 .accessibilityHint("Opens a full-screen preview with pinch to zoom")
                 .accessibilityIdentifier("enlarge-page-preview")
-            }
-            if model.image == nil, model.problem == nil, let placeholder {
-                Image(uiImage: placeholder).resizable().interpolation(.high).scaledToFit()
-                    .padding(12).frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .overlay(alignment: .bottom) { ProgressView().padding(10).background(.regularMaterial, in: Circle()).padding(16) }
             }
             // Keep the last completed frame visible throughout a gesture. Only
             // initial preparation needs a progress indicator over the empty canvas.
@@ -243,6 +242,11 @@ struct ScanPreview: View {
         }
         .task(id: Request(page: page, retry: retry)) { model.request(page, root: store.root) }
         .onChange(of: model.isReady, initial: true) { _, ready in onReady(ready) }
+        .onChange(of: model.image != nil) { _, rendered in
+            // Let the finish (fold, PDF badge, check) play, then show the page itself.
+            guard rendered, placeholder != nil, !placeholderFinished else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.85) { withAnimation(.easeInOut(duration: 0.25)) { placeholderFinished = true } }
+        }
         .fullScreenCover(item: $enlarged) { selection in
             EnlargedScanPreview(initialImage: selection.image) {
                 try await model.fullResolution(selection.page, root: selection.root)
@@ -250,6 +254,89 @@ struct ScanPreview: View {
         }
         .onDisappear {
             if enlarged == nil { model.cancel(); onReady(false) }
+        }
+    }
+}
+
+
+/// The camera's instant result: a quick page from the preview frame and when the
+/// shutter was pressed (so the animation continues across screens).
+struct InstantPlaceholder: Equatable {
+    let image: UIImage
+    let start: Date
+}
+
+/// The scan-to-PDF animation over the instant result. A blue beam sweeps the soft
+/// preview page clean, keeps passing while the page is saved and enhanced, and when
+/// `done` the corner folds, a PDF badge lands and a check appears.
+struct ScanBeamPage: View {
+    let placeholder: InstantPlaceholder
+    let done: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private static let reveal: TimeInterval = 1.1
+    private static let pass: TimeInterval = 1.6
+    var body: some View {
+        TimelineView(.animation(paused: done || reduceMotion)) { timeline in
+            let t = max(0, timeline.date.timeIntervalSince(placeholder.start))
+            let revealing = !reduceMotion && t < Self.reveal
+            let progress = revealing ? Self.ease(t / Self.reveal) : 1
+            let beam: CGFloat = revealing ? progress : CGFloat((t - Self.reveal).truncatingRemainder(dividingBy: Self.pass) / Self.pass)
+            ZStack {
+                Design.muted
+                page(revealed: progress, beam: beam, beamOpacity: done || reduceMotion ? 0 : (revealing ? 1 : 0.45)).padding(12)
+                Text(L(done ? "Done" : (revealing ? "Saving your scan…" : "Preparing PDF…")))
+                    .font(.footnote.weight(.semibold)).foregroundStyle(done ? Design.blue : .secondary)
+                    .padding(.horizontal, 12).padding(.vertical, 7).background(.regularMaterial, in: Capsule())
+                    .frame(maxHeight: .infinity, alignment: .bottom).padding(.bottom, 14)
+            }
+        }
+        .animation(.spring(response: 0.35, dampingFraction: 0.6), value: done)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(L(done ? "Done" : "Saving your scan…"))
+    }
+    private static func ease(_ x: Double) -> CGFloat { CGFloat(x < 0.5 ? 2 * x * x : 1 - pow(-2 * x + 2, 2) / 2) }
+    private func page(revealed: CGFloat, beam: CGFloat, beamOpacity: Double) -> some View {
+        GeometryReader { box in
+            let image = placeholder.image
+            let aspect = image.size.width / max(1, image.size.height)
+            let width = min(box.size.width, box.size.height * aspect)
+            let height = width / aspect
+            ZStack(alignment: .top) {
+                Image(uiImage: image).resizable().interpolation(.high)
+                // Not yet swept: the soft, warm preview look.
+                Image(uiImage: image).resizable().blur(radius: 1.2)
+                    .overlay(Color(red: 0.85, green: 0.84, blue: 0.81).blendMode(.multiply))
+                    .mask(alignment: .bottom) { Rectangle().frame(height: height * (1 - revealed)) }
+                LinearGradient(colors: [Design.blue.opacity(0), Design.blue.opacity(0.22), Design.blue.opacity(0.9)], startPoint: .top, endPoint: .bottom)
+                    .frame(height: 44)
+                    .offset(y: height * beam - 44)
+                    .opacity(beamOpacity)
+            }
+            .frame(width: width, height: height)
+            .clipped()
+            .overlay(alignment: .topTrailing) {
+                // The folded corner.
+                ZStack(alignment: .topTrailing) {
+                    Path { p in p.move(to: .zero); p.addLine(to: CGPoint(x: 26, y: 0)); p.addLine(to: CGPoint(x: 26, y: 26)); p.closeSubpath() }.fill(Design.muted)
+                    Path { p in p.move(to: .zero); p.addLine(to: CGPoint(x: 26, y: 26)); p.addLine(to: CGPoint(x: 0, y: 26)); p.closeSubpath() }
+                        .fill(Color(red: 0.79, green: 0.82, blue: 0.86))
+                }
+                .frame(width: 26, height: 26)
+                .scaleEffect(done ? 1 : 0.01, anchor: .topTrailing)
+            }
+            .overlay(alignment: .bottomTrailing) {
+                Text("PDF").font(.system(size: 13, weight: .heavy)).foregroundStyle(.white)
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .background(Color(red: 0.94, green: 0.27, blue: 0.32), in: RoundedRectangle(cornerRadius: 9))
+                    .offset(x: -12, y: -12)
+                    .scaleEffect(done ? 1 : 0.01)
+            }
+            .overlay {
+                Image(systemName: "checkmark").font(.system(size: 26, weight: .bold)).foregroundStyle(.white)
+                    .frame(width: 58, height: 58).background(Design.blue, in: Circle())
+                    .scaleEffect(done ? 1 : 0.01).opacity(done ? 1 : 0)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 }

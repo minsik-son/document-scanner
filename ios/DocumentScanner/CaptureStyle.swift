@@ -64,6 +64,10 @@ enum CaptureStyle: String, Codable, CaseIterable {
             guard let pixels = context.createCGImage(enhanced, from: small.extent) else { continue }
             if let found = CaptureStyle.card.detect(UIImage(cgImage: pixels)) { return found }
         }
+        // At the photo's own size: a card held farther away (or shot through the
+        // close-up lens) can be found there when the 1800 px copy misses it.
+        if source.extent.width * source.extent.height > small.extent.width * small.extent.height * 1.5,
+           let found = CaptureStyle.card.detect(image) { return found }
         // Never crop to the guide blindly: it could cut off an unmatched card.
         // The editor asks the user to set the corners when detection fails.
         return nil

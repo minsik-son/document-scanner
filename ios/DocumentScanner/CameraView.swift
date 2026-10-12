@@ -65,7 +65,7 @@ struct CameraView: View {
             } else if instantResult == nil { liveCamera }
             // While the photo is saved and the page enhanced, only this screen shows.
             if let instantResult {
-                InstantResultView(placeholder: instantResult, done: instantDone)
+                InstantResultView(placeholder: instantResult, stage: instantDone ? .done : (capturedPage == nil ? .saving : .enhancing))
                     .transition(.opacity)
             }
         }
@@ -405,17 +405,21 @@ struct CameraView: View {
 /// beam keeps running in the page editor until the page's own render is ready).
 private struct InstantResultView: View {
     let placeholder: InstantPlaceholder
-    let done: Bool
+    let stage: ScanProgressSteps.Stage
     var body: some View {
         NavigationStack {
             GeometryReader { geometry in
-                ScrollView {
-                    VStack(spacing: 16) {
-                        ScanBeamPage(placeholder: placeholder, done: done)
-                            .frame(height: max(260, geometry.size.height * 0.60))
-                            .clipShape(RoundedRectangle(cornerRadius: 20))
-                    }.padding(20)
+                VStack(spacing: 18) {
+                    ScanBeamPage(placeholder: placeholder, done: stage == .done)
+                        .frame(height: max(260, geometry.size.height * 0.62))
+                        .clipShape(RoundedRectangle(cornerRadius: 22))
+                    Text(L(stage == .done ? "Done" : "Preparing PDF…"))
+                        .font(.headline).foregroundStyle(stage == .done ? Design.blue : .primary)
+                        .contentTransition(.opacity).animation(.easeInOut(duration: 0.2), value: stage)
+                    ScanProgressSteps(stage: stage)
+                    Spacer(minLength: 0)
                 }
+                .padding(.horizontal, 20).padding(.top, 8)
             }
             .navigationTitle("Review scan").navigationBarTitleDisplayMode(.inline)
         }

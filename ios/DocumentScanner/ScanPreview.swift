@@ -256,77 +256,116 @@ struct InstantPlaceholder: Equatable {
     let start: Date
 }
 
-/// The scan-to-PDF animation over the instant result. A blue beam sweeps the soft
-/// preview page clean, keeps passing while the page is saved and enhanced, and when
-/// `done` the corner folds, a PDF badge lands and a check appears.
+/// The scan-to-PDF animation over the instant result. The preview page sits on
+/// the canvas like a sheet of paper; a blue scan beam sweeps it from soft and
+/// warm to clean, keeps passing while the page is saved and enhanced, and when
+/// `done` the page lifts, its corner folds, a PDF badge lands and a check appears.
 struct ScanBeamPage: View {
     let placeholder: InstantPlaceholder
     let done: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    private static let reveal: TimeInterval = 1.1
-    private static let pass: TimeInterval = 1.6
+    private static let reveal: TimeInterval = 1.2
+    private static let pass: TimeInterval = 1.5
     var body: some View {
         TimelineView(.animation(paused: done || reduceMotion)) { timeline in
             let t = max(0, timeline.date.timeIntervalSince(placeholder.start))
             let revealing = !reduceMotion && t < Self.reveal
             let progress = revealing ? Self.ease(t / Self.reveal) : 1
-            let beam: CGFloat = revealing ? progress : CGFloat((t - Self.reveal).truncatingRemainder(dividingBy: Self.pass) / Self.pass)
+            let beam = revealing ? progress : Self.ease((t - Self.reveal).truncatingRemainder(dividingBy: Self.pass) / Self.pass)
             ZStack {
                 Design.muted
-                page(revealed: progress, beam: beam, beamOpacity: done || reduceMotion ? 0 : (revealing ? 1 : 0.45)).padding(12)
-                Text(L(done ? "Done" : (revealing ? "Saving your scan…" : "Preparing PDF…")))
-                    .font(.footnote.weight(.semibold)).foregroundStyle(done ? Design.blue : .secondary)
-                    .padding(.horizontal, 12).padding(.vertical, 7).background(.regularMaterial, in: Capsule())
-                    .frame(maxHeight: .infinity, alignment: .bottom).padding(.bottom, 14)
+                sheet(revealed: progress, beam: beam, beamOpacity: done || reduceMotion ? 0 : (revealing ? 1 : 0.55))
+                    .padding(.horizontal, 30).padding(.vertical, 26)
             }
         }
-        .animation(.spring(response: 0.35, dampingFraction: 0.6), value: done)
+        .animation(.spring(response: 0.38, dampingFraction: 0.62), value: done)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(L(done ? "Done" : "Saving your scan…"))
+        .accessibilityLabel(L(done ? "Done" : "Preparing PDF…"))
     }
     private static func ease(_ x: Double) -> CGFloat { CGFloat(x < 0.5 ? 2 * x * x : 1 - pow(-2 * x + 2, 2) / 2) }
-    private func page(revealed: CGFloat, beam: CGFloat, beamOpacity: Double) -> some View {
+    private func sheet(revealed: CGFloat, beam: CGFloat, beamOpacity: Double) -> some View {
         GeometryReader { box in
             let image = placeholder.image
             let aspect = image.size.width / max(1, image.size.height)
             let width = min(box.size.width, box.size.height * aspect)
             let height = width / aspect
             ZStack(alignment: .top) {
+                Color.white
                 Image(uiImage: image).resizable().interpolation(.high)
-                // Not yet swept: the soft, warm preview look.
-                Image(uiImage: image).resizable().blur(radius: 1.2)
-                    .overlay(Color(red: 0.85, green: 0.84, blue: 0.81).blendMode(.multiply))
-                    .mask(alignment: .bottom) { Rectangle().frame(height: height * (1 - revealed)) }
-                LinearGradient(colors: [Design.blue.opacity(0), Design.blue.opacity(0.22), Design.blue.opacity(0.9)], startPoint: .top, endPoint: .bottom)
-                    .frame(height: 44)
-                    .offset(y: height * beam - 44)
-                    .opacity(beamOpacity)
+                // Not yet swept: the soft, warm look of the raw preview.
+                Image(uiImage: image).resizable().blur(radius: 1.6).saturation(0.6)
+                    .overlay(Color(red: 0.80, green: 0.78, blue: 0.73).blendMode(.multiply))
+                    .mask(alignment: .bottom) { Rectangle().frame(height: max(0, height * (1 - revealed))) }
+                // The beam: a soft glow trailing a bright scan line.
+                VStack(spacing: 0) {
+                    LinearGradient(colors: [Design.blue.opacity(0), Design.blue.opacity(0.10), Design.blue.opacity(0.32)], startPoint: .top, endPoint: .bottom)
+                        .frame(height: 64)
+                    Rectangle().fill(Design.blue).frame(height: 2.5)
+                        .shadow(color: Design.blue.opacity(0.9), radius: 6)
+                }
+                .offset(y: height * beam - 66)
+                .opacity(beamOpacity)
             }
             .frame(width: width, height: height)
-            .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: 4))
             .overlay(alignment: .topTrailing) {
                 // The folded corner.
                 ZStack(alignment: .topTrailing) {
-                    Path { p in p.move(to: .zero); p.addLine(to: CGPoint(x: 26, y: 0)); p.addLine(to: CGPoint(x: 26, y: 26)); p.closeSubpath() }.fill(Design.muted)
-                    Path { p in p.move(to: .zero); p.addLine(to: CGPoint(x: 26, y: 26)); p.addLine(to: CGPoint(x: 0, y: 26)); p.closeSubpath() }
-                        .fill(Color(red: 0.79, green: 0.82, blue: 0.86))
+                    Path { p in p.move(to: .zero); p.addLine(to: CGPoint(x: 30, y: 0)); p.addLine(to: CGPoint(x: 30, y: 30)); p.closeSubpath() }.fill(Design.muted)
+                    Path { p in p.move(to: .zero); p.addLine(to: CGPoint(x: 30, y: 30)); p.addLine(to: CGPoint(x: 0, y: 30)); p.closeSubpath() }
+                        .fill(LinearGradient(colors: [Color(red: 0.86, green: 0.88, blue: 0.91), Color(red: 0.74, green: 0.78, blue: 0.83)], startPoint: .topLeading, endPoint: .bottomTrailing))
                 }
-                .frame(width: 26, height: 26)
+                .frame(width: 30, height: 30)
                 .scaleEffect(done ? 1 : 0.01, anchor: .topTrailing)
             }
+            .shadow(color: .black.opacity(done ? 0.16 : 0.09), radius: done ? 14 : 6, y: done ? 8 : 3)
+            .scaleEffect(done ? 1.02 : 1)
+            .offset(y: done ? -4 : 0)
             .overlay(alignment: .bottomTrailing) {
-                Text("PDF").font(.system(size: 13, weight: .heavy)).foregroundStyle(.white)
-                    .padding(.horizontal, 10).padding(.vertical, 6)
-                    .background(Color(red: 0.94, green: 0.27, blue: 0.32), in: RoundedRectangle(cornerRadius: 9))
-                    .offset(x: -12, y: -12)
+                Text("PDF").font(.system(size: 15, weight: .heavy)).foregroundStyle(.white)
+                    .padding(.horizontal, 12).padding(.vertical, 7)
+                    .background(Color(red: 0.94, green: 0.27, blue: 0.32), in: RoundedRectangle(cornerRadius: 10))
+                    .shadow(color: Color(red: 0.94, green: 0.27, blue: 0.32).opacity(0.35), radius: 6, y: 3)
+                    .offset(x: 10, y: 10)
                     .scaleEffect(done ? 1 : 0.01)
+                    .rotationEffect(.degrees(done ? -6 : -30))
             }
             .overlay {
-                Image(systemName: "checkmark").font(.system(size: 26, weight: .bold)).foregroundStyle(.white)
-                    .frame(width: 58, height: 58).background(Design.blue, in: Circle())
+                Image(systemName: "checkmark").font(.system(size: 28, weight: .bold)).foregroundStyle(.white)
+                    .frame(width: 64, height: 64).background(Design.blue, in: Circle())
+                    .shadow(color: Design.blue.opacity(0.35), radius: 10, y: 4)
                     .scaleEffect(done ? 1 : 0.01).opacity(done ? 1 : 0)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
+}
+
+/// The steps behind the "Preparing PDF" screen, ticked off as they finish.
+struct ScanProgressSteps: View {
+    enum Stage: Int { case saving, enhancing, done }
+    let stage: Stage
+    private let steps = ["Saving the photo", "Flattening the page and evening out the light", "Making the PDF"]
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            ForEach(Array(steps.enumerated()), id: \.offset) { index, title in
+                let state = index < active ? 2 : (index == active ? 1 : 0)
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle().fill(state == 2 ? Design.blue : Design.muted).frame(width: 26, height: 26)
+                        if state == 2 { Image(systemName: "checkmark").font(.system(size: 12, weight: .bold)).foregroundStyle(.white) }
+                        else if state == 1 { ProgressView().controlSize(.small) }
+                    }
+                    Text(L(title)).font(.subheadline.weight(state == 1 ? .semibold : .regular))
+                        .foregroundStyle(state == 0 ? .secondary : .primary)
+                    Spacer(minLength: 0)
+                }
+                .animation(.easeInOut(duration: 0.25), value: state)
+            }
+        }
+        .padding(18)
+        .background(Design.muted.opacity(0.6), in: RoundedRectangle(cornerRadius: 18))
+    }
+    /// The step in progress (3 = all done). Making the PDF follows the enhanced page.
+    private var active: Int { stage == .saving ? 0 : (stage == .enhancing ? 1 : 3) }
 }

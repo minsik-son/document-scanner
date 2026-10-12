@@ -1870,3 +1870,6 @@
 "Bottom edge" = "ขอบล่าง";
 "Bottom left corner" = "มุมซ้ายล่าง";
 "Left edge" = "ขอบซ้าย";
+"Saving the photo" = "กำลังบันทึกรูปภาพ";
+"Flattening the page and evening out the light" = "ปรับหน้าให้เรียบและปรับแสงให้สม่ำเสมอ";
+"Making the PDF" = "กำลังสร้าง PDF";

@@ -198,9 +198,6 @@ struct ScanPreview: View {
     @EnvironmentObject var store: LibraryStore
     let page: ScanPage
     var onReady: (Bool) -> Void = { _ in }
-    /// Shown until the first render is done (the camera's instant result).
-    var placeholder: InstantPlaceholder? = nil
-    @State private var placeholderFinished = false
     @StateObject private var model = ScanPreviewModel()
     @State private var retry = 0
     @State private var enlarged: EnlargedPreview?
@@ -214,10 +211,7 @@ struct ScanPreview: View {
     var body: some View {
         ZStack {
             Design.muted
-            if let placeholder, !placeholderFinished, model.problem == nil {
-                ScanBeamPage(placeholder: placeholder, done: model.image != nil)
-                    .transition(.opacity)
-            } else if let image = model.image {
+            if let image = model.image {
                 Button {
                     enlarged = EnlargedPreview(page: page, image: image, root: store.root)
                 } label: {
@@ -232,7 +226,7 @@ struct ScanPreview: View {
             }
             // Keep the last completed frame visible throughout a gesture. Only
             // initial preparation needs a progress indicator over the empty canvas.
-            if model.image == nil && model.problem == nil && placeholder == nil {
+            if model.image == nil && model.problem == nil {
                 ProgressView("Enhancing your scan…").padding(12).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
             }
             if let problem = model.problem {
@@ -242,11 +236,7 @@ struct ScanPreview: View {
         }
         .task(id: Request(page: page, retry: retry)) { model.request(page, root: store.root) }
         .onChange(of: model.isReady, initial: true) { _, ready in onReady(ready) }
-        .onChange(of: model.image != nil) { _, rendered in
-            // Let the finish (fold, PDF badge, check) play, then show the page itself.
-            guard rendered, placeholder != nil, !placeholderFinished else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.85) { withAnimation(.easeInOut(duration: 0.25)) { placeholderFinished = true } }
-        }
+
         .fullScreenCover(item: $enlarged) { selection in
             EnlargedScanPreview(initialImage: selection.image) {
                 try await model.fullResolution(selection.page, root: selection.root)

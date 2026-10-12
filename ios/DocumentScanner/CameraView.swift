@@ -27,6 +27,8 @@ struct CameraView: View {
     /// The page drawn from the preview frame at the shutter, shown at once while
     /// the full-resolution photo is captured and saved.
     @State private var instantResult: InstantPlaceholder?
+    /// The page editor's preview is rendered: the instant result plays its finish.
+    @State private var instantDone = false
     @State private var visible = false
     @State private var flash = false
     @State private var shutter = 0
@@ -42,7 +44,13 @@ struct CameraView: View {
                 PageEditor(page: capturedPage, onAddPage: !singlePage && !identityCapture && retakingPageID == nil && !cardComplete ? { updated in try returnToCamera(updated) } : nil, onCancelCapture: {
                     try cancelCapture(capturedPage.id)
                 }, doneTitle: identityCapture ? (reviewingFront ? (retakingPageID == nil ? "Use front · Continue" : "Use front · Preview") : "Use back · Preview") : finishTitle,
-                           dismissOnSave: !identityCapture, scanStyle: style, placeholder: instantResult, onSave: { updated in
+                           dismissOnSave: !identityCapture, scanStyle: style, onPreviewReady: {
+                    // The editor opened under the "Preparing PDF" screen; once its page is
+                    // enhanced, the screen finishes (fold, PDF badge, check) and lifts.
+                    guard instantResult != nil, !instantDone else { return }
+                    instantDone = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.85) { withAnimation(.easeInOut(duration: 0.25)) { instantResult = nil } }
+                }, onSave: { updated in
                     try keepAdjustments(updated)
                     if identityCapture {
                         if retakingPageID != nil || cardComplete { dismiss() }
@@ -54,11 +62,15 @@ struct CameraView: View {
                         }
                     }
                 }).id(capturedPage.id)
-            } else if let instantResult {
-                InstantResultView(placeholder: instantResult)
-            } else { liveCamera }
+            } else if instantResult == nil { liveCamera }
+            // While the photo is saved and the page enhanced, only this screen shows.
+            if let instantResult {
+                InstantResultView(placeholder: instantResult, done: instantDone)
+                    .transition(.opacity)
+            }
         }
         .onChange(of: capturedPage?.id) { _, id in if id == nil { instantResult = nil } }
+        .onChange(of: instantResult == nil) { _, cleared in if cleared { instantDone = false } }
         .onAppear {
             style = identityCapture ? .card : (store.document(documentID)?.captureStyle ?? .document)
             camera.setCaptureStyle(style)
@@ -376,6 +388,10 @@ struct CameraView: View {
             // neither automatic capture nor app foregrounding skips this review.
             camera.stop()
             capturedPage = store.document(documentID)?.pages.last
+            // Never leave the "Preparing PDF" screen up if the preview can't render.
+            if instantResult != nil, let id = capturedPage?.id {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 30) { if capturedPage?.id == id, instantResult != nil { instantResult = nil } }
+            }
         } catch {
             self.error = "This page wasn't saved. \(error.localizedDescription)"
             instantResult = nil
@@ -389,12 +405,13 @@ struct CameraView: View {
 /// beam keeps running in the page editor until the page's own render is ready).
 private struct InstantResultView: View {
     let placeholder: InstantPlaceholder
+    let done: Bool
     var body: some View {
         NavigationStack {
             GeometryReader { geometry in
                 ScrollView {
                     VStack(spacing: 16) {
-                        ScanBeamPage(placeholder: placeholder, done: false)
+                        ScanBeamPage(placeholder: placeholder, done: done)
                             .frame(height: max(260, geometry.size.height * 0.60))
                             .clipShape(RoundedRectangle(cornerRadius: 20))
                     }.padding(20)
@@ -402,6 +419,7 @@ private struct InstantResultView: View {
             }
             .navigationTitle("Review scan").navigationBarTitleDisplayMode(.inline)
         }
+        .background(Color(.systemBackground))
         .accessibilityIdentifier("instant-result")
     }
 }

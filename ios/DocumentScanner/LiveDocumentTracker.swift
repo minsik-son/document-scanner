@@ -60,9 +60,12 @@ struct LiveDocumentTracker {
             snapshot = LiveDocumentSnapshot(quad: displayed, phase: captured ? .nextPage : .aligning)
             return snapshot
         }
-        if anchor == nil || Self.movement(anchor!, candidate) > Self.steadyTolerance {
+        // Compared on the smoothed outline: frame-to-frame detection jitter alone
+        // restarted the timer 2–6 times per page on a phone held still.
+        let current = displayed ?? candidate
+        if anchor == nil || Self.movement(anchor!, current) > Self.steadyTolerance {
             if anchor != nil { restarts += 1 }
-            anchor = candidate; stableSince = time
+            anchor = current; stableSince = time
         }
         let steady = time - (stableSince ?? time) >= requiredSteadyDuration
         snapshot = LiveDocumentSnapshot(quad: displayed, phase: captured ? .nextPage : (steady ? .steady : .positioning))

@@ -330,16 +330,18 @@ struct CameraView: View {
         do {
             let image = try result.get()
             let mode = style
-            // Orienting, page finding and encoding run off the main actor; finding
-            // the page works on at most 12 MP (corners are relative, and that is the
-            // size it was tuned on), so a 24 MP photo isn't copied at full size.
-            let prepared = await Task.detached { () -> ((data: Data, ext: String)?, ScanQuad?) in
+            // Orienting, page finding and encoding run off the main actor, and a
+            // 24 MP photo is never copied at full size.
+            let prepared = await Task.detached { () async -> ((data: Data, ext: String)?, ScanQuad?) in
                 // The camera frame is decoded upright already (`decode`): no second
                 // full-size copy.
                 let upright = image.imageOrientation == .up && image.scale == 1 && image.cgImage != nil
                 let normalized = upright ? image : PerfTrace.measure("orient") { Imaging.normalized(image) }
-                let crop = PerfTrace.measure("find page") { mode.detect(Imaging.limited(normalized, maxPixels: 12_200_000), capturedPhoto: true) }
-                return (PerfTrace.measure("encode") { LibraryStore.encodedPhoto(normalized) }, crop)
+                // Page finding (on at most 12 MP: a 4 MP copy moved the corners of
+                // some photos) and encoding run side by side.
+                async let crop = PerfTrace.measure("find page") { mode.detect(Imaging.limited(normalized, maxPixels: 12_200_000), capturedPhoto: true) }
+                async let encoded = PerfTrace.measure("encode") { LibraryStore.encodedPhoto(normalized) }
+                return await (encoded, crop)
             }.value
             guard let encoded = prepared.0 else { throw ScannerError.message("This photo couldn't be saved. Try taking it again.") }
             try PerfTrace.measure("save") { try store.appendEncoded(encoded, to: documentID, detectedCrop: testCamera ? .full : prepared.1, enhancement: mode.enhancement, style: mode, turns: turns) }

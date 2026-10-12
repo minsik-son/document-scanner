@@ -198,6 +198,8 @@ struct ScanPreview: View {
     @EnvironmentObject var store: LibraryStore
     let page: ScanPage
     var onReady: (Bool) -> Void = { _ in }
+    /// Shown until the first render is done (the camera's instant result).
+    var placeholder: UIImage? = nil
     @StateObject private var model = ScanPreviewModel()
     @State private var retry = 0
     @State private var enlarged: EnlargedPreview?
@@ -224,9 +226,14 @@ struct ScanPreview: View {
                 .accessibilityHint("Opens a full-screen preview with pinch to zoom")
                 .accessibilityIdentifier("enlarge-page-preview")
             }
+            if model.image == nil, model.problem == nil, let placeholder {
+                Image(uiImage: placeholder).resizable().interpolation(.high).scaledToFit()
+                    .padding(12).frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .overlay(alignment: .bottom) { ProgressView().padding(10).background(.regularMaterial, in: Circle()).padding(16) }
+            }
             // Keep the last completed frame visible throughout a gesture. Only
             // initial preparation needs a progress indicator over the empty canvas.
-            if model.image == nil && model.problem == nil {
+            if model.image == nil && model.problem == nil && placeholder == nil {
                 ProgressView("Enhancing your scan…").padding(12).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
             }
             if let problem = model.problem {

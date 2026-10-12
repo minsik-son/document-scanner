@@ -657,6 +657,8 @@ struct PageEditor: View {
     var scanStyle = CaptureStyle.document
     /// Tab to open on ("Crop", "Tone", "Adjust" or "Retouch"); the review's tool row picks it.
     var initialTool: String? = nil
+    /// The camera's instant result, shown until the page's own render is ready.
+    var placeholder: UIImage? = nil
     let onSave: (ScanPage) throws -> Void
     @State private var cropping = false
     @State private var trimming = false
@@ -696,7 +698,7 @@ struct PageEditor: View {
             GeometryReader { geometry in
                 ScrollView {
                     VStack(spacing: 16) {
-                        ScanPreview(page: displayedPage) { previewReady = $0 }
+                        ScanPreview(page: displayedPage, onReady: { previewReady = $0 }, placeholder: placeholder)
                             .frame(height: max(260, geometry.size.height * 0.60))
                             .clipShape(RoundedRectangle(cornerRadius: 20))
                             .overlay(alignment: .topTrailing) {

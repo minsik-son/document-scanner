@@ -24,6 +24,9 @@ struct CameraView: View {
     @State private var autoScan = false
     @State private var error: String?
     @State private var capturedPage: ScanPage?
+    /// The page drawn from the preview frame at the shutter, shown at once while
+    /// the full-resolution photo is captured and saved.
+    @State private var instantResult: UIImage?
     @State private var visible = false
     @State private var flash = false
     @State private var shutter = 0
@@ -39,7 +42,7 @@ struct CameraView: View {
                 PageEditor(page: capturedPage, onAddPage: !singlePage && !identityCapture && retakingPageID == nil && !cardComplete ? { updated in try returnToCamera(updated) } : nil, onCancelCapture: {
                     try cancelCapture(capturedPage.id)
                 }, doneTitle: identityCapture ? (reviewingFront ? (retakingPageID == nil ? "Use front · Continue" : "Use front · Preview") : "Use back · Preview") : finishTitle,
-                           dismissOnSave: !identityCapture, scanStyle: style, onSave: { updated in
+                           dismissOnSave: !identityCapture, scanStyle: style, placeholder: instantResult, onSave: { updated in
                     try keepAdjustments(updated)
                     if identityCapture {
                         if retakingPageID != nil || cardComplete { dismiss() }
@@ -51,8 +54,11 @@ struct CameraView: View {
                         }
                     }
                 }).id(capturedPage.id)
+            } else if let instantResult {
+                InstantResultView(image: instantResult)
             } else { liveCamera }
         }
+        .onChange(of: capturedPage?.id) { _, id in if id == nil { instantResult = nil } }
         .onAppear {
             style = identityCapture ? .card : (store.document(documentID)?.captureStyle ?? .document)
             camera.setCaptureStyle(style)
@@ -322,9 +328,30 @@ struct CameraView: View {
             return
         }
 #endif
+        // The result screen opens at once from the preview frame and the tracked
+        // outline; the full-resolution page replaces it when it is saved.
+        if let quad = camera.tracking.quad, quad.valid {
+            let mode = style
+            camera.previewSnapshot { frame in
+                guard let frame else { return }
+                Task.detached {
+                    let image = PerfTrace.measure("instant result") { CameraView.instantPage(frame, crop: quad, turns: turns, style: mode) }
+                    await MainActor.run { if saving, capturedPage == nil, let image { instantResult = image } }
+                }
+            }
+        }
         camera.capture(flash: flash) { result in
             Task { @MainActor in await receiveCapture(result, turns: turns) }
         }
+    }
+    /// A quick page from a preview frame: the tracked outline straightened and
+    /// toned like the scan (no flattening), for the instant result screen.
+    nonisolated static func instantPage(_ frame: CGImage, crop: ScanQuad, turns: Int, style: CaptureStyle) -> UIImage? {
+        let source = CIImage(cgImage: frame)
+        guard let output = (try? DocumentProcessing.render(source, crop: crop, turns: turns, enhancement: style.enhancement, strength: style.strength))
+                ?? (try? DocumentProcessing.render(source, crop: crop, turns: turns, enhancement: .original)),
+              let cg = DocumentProcessing.context.createCGImage(output, from: output.extent) else { return nil }
+        return UIImage(cgImage: cg)
     }
     @MainActor private func receiveCapture(_ result: Result<UIImage, Error>, turns: Int = 0) async {
         do {
@@ -351,9 +378,36 @@ struct CameraView: View {
             capturedPage = store.document(documentID)?.pages.last
         } catch {
             self.error = "This page wasn't saved. \(error.localizedDescription)"
+            instantResult = nil
             camera.finishSaving()
         }
         saving = false
+    }
+}
+
+/// The result screen's frame while the full-resolution page is being saved.
+private struct InstantResultView: View {
+    let image: UIImage
+    var body: some View {
+        NavigationStack {
+            GeometryReader { geometry in
+                ScrollView {
+                    VStack(spacing: 16) {
+                        ZStack {
+                            Design.muted
+                            Image(uiImage: image).resizable().interpolation(.high).scaledToFit()
+                                .padding(12).frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .overlay(alignment: .bottom) { ProgressView().padding(10).background(.regularMaterial, in: Circle()).padding(16) }
+                        }
+                        .frame(height: max(260, geometry.size.height * 0.60))
+                        .clipShape(RoundedRectangle(cornerRadius: 20))
+                        Text("Saving your scan…").font(.subheadline).foregroundStyle(.secondary)
+                    }.padding(20)
+                }
+            }
+            .navigationTitle("Review scan").navigationBarTitleDisplayMode(.inline)
+        }
+        .accessibilityIdentifier("instant-result")
     }
 }
 
@@ -398,6 +452,12 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
     private let gateLock = NSLock()
     private var gate = Gate()
     private func withGate<T>(_ body: (inout Gate) -> T) -> T { gateLock.lock(); defer { gateLock.unlock() }; return body(&gate) }
+    /// Next preview frame, wanted as a still for the instant result (under gateLock).
+    private var snapshotRequest: ((CGImage?) -> Void)?
+    /// Hands back the next preview frame (portrait, about 1400 px) on a background queue.
+    func previewSnapshot(_ done: @escaping (CGImage?) -> Void) {
+        gateLock.lock(); snapshotRequest = done; gateLock.unlock()
+    }
     private var lastAnalysis: TimeInterval {
         get { withGate { $0.lastAnalysis } }
         set { withGate { $0.lastAnalysis = newValue } }
@@ -865,7 +925,18 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         // Analysis queue: read the gate, find the edges here, then hand the result
         // to the session queue, which owns the tracker and auto-capture.
-        guard !analyzing, let buffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        guard let buffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        gateLock.lock(); let snapshot = snapshotRequest; snapshotRequest = nil; gateLock.unlock()
+        if let snapshot {
+            let frame = autoreleasepool { () -> CGImage? in
+                let image = CIImage(cvPixelBuffer: buffer)
+                let scale = min(1, 1400 / max(image.extent.width, image.extent.height))
+                let small = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+                return imageContext.createCGImage(small, from: small.extent)
+            }
+            snapshot(frame)
+        }
+        guard !analyzing else { return }
         let now = ProcessInfo.processInfo.systemUptime
         let plan: (style: CaptureStyle, generation: Int)? = withGate { g in
             guard g.active, !g.busy, now - g.lastAnalysis >= 0.15 else { return nil }

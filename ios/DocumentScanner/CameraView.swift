@@ -27,6 +27,7 @@ struct CameraView: View {
     /// The page drawn from the preview frame at the shutter, shown at once while
     /// the full-resolution photo is captured and saved.
     @State private var instantResult: UIImage?
+    @State private var instantDone = false
     @State private var visible = false
     @State private var flash = false
     @State private var shutter = 0
@@ -55,10 +56,10 @@ struct CameraView: View {
                     }
                 }).id(capturedPage.id)
             } else if let instantResult {
-                InstantResultView(image: instantResult)
+                InstantResultView(image: instantResult, done: instantDone)
             } else { liveCamera }
         }
-        .onChange(of: capturedPage?.id) { _, id in if id == nil { instantResult = nil } }
+        .onChange(of: capturedPage?.id) { _, id in if id == nil { instantResult = nil; instantDone = false } }
         .onAppear {
             style = identityCapture ? .card : (store.document(documentID)?.captureStyle ?? .document)
             camera.setCaptureStyle(style)
@@ -375,19 +376,33 @@ struct CameraView: View {
             // Persist original pixels first. Stop capture while the user decides;
             // neither automatic capture nor app foregrounding skips this review.
             camera.stop()
-            capturedPage = store.document(documentID)?.pages.last
+            let saved = store.document(documentID)?.pages.last
+            // The instant result finishes first: fold, PDF badge and check.
+            if instantResult != nil {
+                instantDone = true
+                try? await Task.sleep(nanoseconds: 750_000_000)
+            }
+            capturedPage = saved
         } catch {
             self.error = "This page wasn't saved. \(error.localizedDescription)"
-            instantResult = nil
+            instantResult = nil; instantDone = false
             camera.finishSaving()
         }
         saving = false
     }
 }
 
-/// The result screen's frame while the full-resolution page is being saved.
+/// The result screen while the full-resolution page is being saved: a blue scan
+/// beam sweeps the quick preview page from soft to clean, and when the page is
+/// saved its corner folds, a PDF badge lands and a check appears.
 private struct InstantResultView: View {
     let image: UIImage
+    let done: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var sweep: CGFloat = 0
+    @State private var swept = false
+    @State private var finale = false
+    private var status: String { finale ? "Done" : (swept ? "Preparing PDF…" : "Saving your scan…") }
     var body: some View {
         NavigationStack {
             GeometryReader { geometry in
@@ -395,19 +410,75 @@ private struct InstantResultView: View {
                     VStack(spacing: 16) {
                         ZStack {
                             Design.muted
-                            Image(uiImage: image).resizable().interpolation(.high).scaledToFit()
-                                .padding(12).frame(maxWidth: .infinity, maxHeight: .infinity)
-                                .overlay(alignment: .bottom) { ProgressView().padding(10).background(.regularMaterial, in: Circle()).padding(16) }
+                            page.padding(12)
                         }
                         .frame(height: max(260, geometry.size.height * 0.60))
                         .clipShape(RoundedRectangle(cornerRadius: 20))
-                        Text("Saving your scan…").font(.subheadline).foregroundStyle(.secondary)
+                        Text(L(status)).font(.subheadline.weight(finale ? .semibold : .regular))
+                            .foregroundStyle(finale ? Design.blue : .secondary)
+                            .contentTransition(.opacity)
+                            .animation(.easeInOut(duration: 0.2), value: status)
                     }.padding(20)
                 }
             }
             .navigationTitle("Review scan").navigationBarTitleDisplayMode(.inline)
         }
         .accessibilityIdentifier("instant-result")
+        .onAppear {
+            if reduceMotion { sweep = 1; swept = true; return }
+            withAnimation(.easeInOut(duration: 1.1)) { sweep = 1 }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) { swept = true; if done { showFinale() } }
+        }
+        .onChange(of: done) { _, now in if now && swept { showFinale() } }
+    }
+    private func showFinale() {
+        guard !finale else { return }
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.6)) { finale = true }
+    }
+    /// The page drawn at its fitted size, so the beam and the fold follow the paper.
+    private var page: some View {
+        GeometryReader { box in
+            let aspect = image.size.width / max(1, image.size.height)
+            let width = min(box.size.width, box.size.height * aspect)
+            let height = width / aspect
+            ZStack(alignment: .top) {
+                Image(uiImage: image).resizable().interpolation(.high)
+                // Not yet swept: the soft, warm preview look.
+                Image(uiImage: image).resizable().blur(radius: 1.2)
+                    .overlay(Color(red: 0.85, green: 0.84, blue: 0.81).blendMode(.multiply))
+                    .mask(alignment: .bottom) { Rectangle().frame(height: height * (1 - sweep)) }
+                LinearGradient(colors: [Design.blue.opacity(0), Design.blue.opacity(0.22), Design.blue.opacity(0.9)], startPoint: .top, endPoint: .bottom)
+                    .frame(height: 44)
+                    .offset(y: height * sweep - 44)
+                    .opacity(swept ? 0 : 1)
+                    .animation(.easeOut(duration: 0.25), value: swept)
+            }
+            .frame(width: width, height: height)
+            .clipped()
+            .overlay(alignment: .topTrailing) {
+                // The folded corner.
+                Path { p in p.move(to: .zero); p.addLine(to: CGPoint(x: 26, y: 26)); p.addLine(to: CGPoint(x: 0, y: 26)); p.closeSubpath() }
+                    .fill(Color(red: 0.79, green: 0.82, blue: 0.86))
+                    .background(alignment: .topTrailing) {
+                        Path { p in p.move(to: .zero); p.addLine(to: CGPoint(x: 26, y: 0)); p.addLine(to: CGPoint(x: 26, y: 26)); p.closeSubpath() }.fill(Design.muted)
+                    }
+                    .frame(width: 26, height: 26)
+                    .scaleEffect(finale ? 1 : 0.01, anchor: .topTrailing)
+            }
+            .overlay(alignment: .bottomTrailing) {
+                Text("PDF").font(.system(size: 13, weight: .heavy)).foregroundStyle(.white)
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .background(Color(red: 0.94, green: 0.27, blue: 0.32), in: RoundedRectangle(cornerRadius: 9))
+                    .offset(x: 8, y: 8)
+                    .scaleEffect(finale ? 1 : 0.01)
+            }
+            .overlay {
+                Image(systemName: "checkmark").font(.system(size: 26, weight: .bold)).foregroundStyle(.white)
+                    .frame(width: 58, height: 58).background(Design.blue, in: Circle())
+                    .scaleEffect(finale ? 1 : 0.01).opacity(finale ? 1 : 0)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
     }
 }
 

@@ -42,7 +42,9 @@ struct CameraView: View {
         ZStack {
             if let capturedPage {
                 PageEditor(page: capturedPage, onAddPage: !singlePage && !identityCapture && retakingPageID == nil && !cardComplete ? { updated in try returnToCamera(updated) } : nil, onCancelCapture: {
-                    try cancelCapture(capturedPage.id)
+                    try stopScanning(capturedPage.id)
+                }, onRetake: {
+                    try retake(capturedPage.id)
                 }, doneTitle: identityCapture ? (reviewingFront ? (retakingPageID == nil ? "Use front · Continue" : "Use front · Preview") : "Use back · Preview") : finishTitle,
                            dismissOnSave: !identityCapture, scanStyle: style, onPreviewReady: {
                     // The editor opened under the "Preparing PDF" screen; once its page is
@@ -275,12 +277,20 @@ struct CameraView: View {
         }
         return count == 0 ? "No pages yet" : (count == 1 ? "1 page added" : "\(count) pages added")
     }
-    private func cancelCapture(_ pageID: UUID) throws {
+    /// Retake: this capture is discarded and the camera opens again. Automatic
+    /// capture is released at once, but its first shot waits for the page to be
+    /// held still twice as long, so there is time to reframe.
+    private func retake(_ pageID: UUID) throws {
         try store.discardCapturedPage(pageID, from: documentID)
-        // Retain automatic capture's latch so the rejected sheet is not captured
-        // again immediately. The manual shutter remains available for a retake.
+        camera.beginNextPage(afterRetake: true)
         capturedPage = nil
         Task { await startCamera() }
+    }
+    /// Cancel (confirmed in the review): this capture is discarded and scanning
+    /// closes, as the camera's close button does.
+    private func stopScanning(_ pageID: UUID) throws {
+        try store.discardCapturedPage(pageID, from: documentID)
+        dismiss()
     }
     private func returnToCamera(_ page: ScanPage) throws {
         try keepAdjustments(page)
@@ -846,12 +856,15 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
     func cancelAutoRequest() {
         queue.async { self.autoPending = false }
     }
-    func beginNextPage() {
+    func beginNextPage(afterRetake: Bool = false) {
         queue.async {
             self.tracker.beginNextPage()
             self.autoPending = false; self.lastAnalysis = -Double.infinity
+            self.slowNextAuto = afterRetake
         }
     }
+    /// After a retake, the first automatic shot needs the page held still longer.
+    private var slowNextAuto = false
 
     private func sessionFailed() {
         guard active else { return }
@@ -994,10 +1007,10 @@ final class CameraController: NSObject, ObservableObject, AVCapturePhotoCaptureD
             // waits for the gyro to settle and for focus, so this only checks the
             // framing has stopped moving.
             let state = self.tracker.update(found, at: now, eligible: eligible,
-                                            requiredSteadyDuration: card ? 0.12 : 0.5,
+                                            requiredSteadyDuration: card ? (self.slowNextAuto ? 0.5 : 0.12) : (self.slowNextAuto ? 1.0 : 0.5),
                                             missingReleaseDuration: card ? 0.2 : 0.8)
             let shouldCapture = self.autoEnabled && !self.autoPending && state.canAutoCapture
-            if shouldCapture { self.autoPending = true }
+            if shouldCapture { self.autoPending = true; self.slowNextAuto = false }
             #if DEBUG
             if shouldCapture, let found = self.tracker.foundSince {
                 self.autoTriggerTime = CFAbsoluteTimeGetCurrent()

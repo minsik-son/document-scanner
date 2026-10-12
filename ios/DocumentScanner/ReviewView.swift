@@ -652,6 +652,8 @@ struct PageEditor: View {
     @State var page: ScanPage
     var onAddPage: ((ScanPage) throws -> Void)? = nil
     var onCancelCapture: (() throws -> Void)? = nil
+    /// Capture review: discard this capture and go back to the camera.
+    var onRetake: (() throws -> Void)? = nil
     var doneTitle = "Done"
     var dismissOnSave = true
     var scanStyle = CaptureStyle.document
@@ -669,6 +671,7 @@ struct PageEditor: View {
     @State private var previewReady = false
     @State private var message: String?
     @State private var saveError: String?
+    @State private var confirmStop = false
     @State private var selectedTool = EditorTool.tone
     @State private var selectedAdjustment = Adjustment.brightness
     @State private var pendingAction: FinishAction?
@@ -758,18 +761,32 @@ struct PageEditor: View {
                 Button("Apply image edits") { if let action = rasterAction { commitFinish(action) } }
                 Button("Cancel", role: .cancel) { rasterAction = nil }
             } message: { Text("Text will be recognized again. Original links and forms on this page will not be kept in the edited output. The imported original remains stored.") }
+            .alert("Stop scanning?", isPresented: $confirmStop) {
+                Button("Stop scanning", role: .destructive) {
+                    do { try onCancelCapture?() }
+                    catch { saveError = error.localizedDescription }
+                }
+                Button("Keep editing", role: .cancel) {}
+            } message: { Text("This page won't be saved.") }
             .alert("This action couldn't be completed", isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
                 Button("OK") { saveError = nil }
             } message: { Text(saveError ?? "") }
             .toolbar {
                 if captureReview {
                     ToolbarItem(placement: .cancellationAction) {
-                        // Cancel rejects this new capture, including when its
-                        // preview failed. Previously accepted pages stay intact.
-                        Button("Cancel") {
-                            do { try onCancelCapture?() }
-                            catch { saveError = error.localizedDescription }
-                        }.disabled(detecting).accessibilityIdentifier("capture-review-cancel")
+                        // Cancel leaves scanning (after a confirmation); this capture
+                        // is discarded and previously accepted pages stay intact.
+                        Button("Cancel") { confirmStop = true }
+                            .disabled(detecting).accessibilityIdentifier("capture-review-cancel")
+                    }
+                    if onRetake != nil {
+                        ToolbarItem(placement: .primaryAction) {
+                            Button {
+                                do { try onRetake?() }
+                                catch { saveError = error.localizedDescription }
+                            } label: { Label("Retake", systemImage: "camera.rotate").labelStyle(.titleAndIcon) }
+                            .disabled(detecting).accessibilityIdentifier("capture-review-retake")
+                        }
                     }
                 } else {
                     ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }

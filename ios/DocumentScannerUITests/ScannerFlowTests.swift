@@ -663,6 +663,27 @@ final class ScannerFlowTests: HushUITestCase {
     }
 
     @MainActor
+    func testCancelInCaptureReviewConfirmsAndLeavesScanning() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--simulate-camera"]
+        app.launch()
+        startScan(app)
+        waitEnabled(app.buttons["Capture page"]); app.buttons["Capture page"].tap()
+        XCTAssertTrue(app.navigationBars["Review scan"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["capture-review-retake"].exists)
+        // Cancel asks first; keeping on editing stays in the review.
+        app.buttons["capture-review-cancel"].tap()
+        XCTAssertTrue(app.alerts["Stop scanning?"].waitForExistence(timeout: 5))
+        app.alerts["Stop scanning?"].buttons["Keep editing"].tap()
+        XCTAssertTrue(app.navigationBars["Review scan"].exists)
+        // Confirming closes scanning without saving the page.
+        app.buttons["capture-review-cancel"].tap()
+        app.alerts["Stop scanning?"].buttons["Stop scanning"].tap()
+        XCTAssertFalse(app.navigationBars["Review scan"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["Capture page"].exists)
+    }
+
+    @MainActor
     func testCancelCaptureDiscardsOnlyRejectedPageAndAllowsRetake() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--simulate-camera"]
@@ -671,7 +692,7 @@ final class ScannerFlowTests: HushUITestCase {
         waitEnabled(app.buttons["Capture page"]); app.buttons["Capture page"].tap()
         XCTAssertTrue(app.navigationBars["Review scan"].waitForExistence(timeout: 10))
         // Reject even before the first preview finishes.
-        app.buttons["capture-review-cancel"].tap()
+        app.buttons["capture-review-retake"].tap()
         waitEnabled(app.buttons["Capture page"])
         XCTAssertTrue(app.staticTexts["No pages yet"].exists)
         XCTAssertFalse(app.buttons["review-save"].isHittable)
@@ -689,7 +710,7 @@ final class ScannerFlowTests: HushUITestCase {
         // Cancel the next shot without losing the accepted first page.
         app.buttons["Capture page"].tap()
         XCTAssertTrue(app.navigationBars["Review scan"].waitForExistence(timeout: 10))
-        app.buttons["capture-review-cancel"].tap()
+        app.buttons["capture-review-retake"].tap()
         waitEnabled(app.buttons["Capture page"])
         XCTAssertTrue(app.staticTexts["1 page added"].exists)
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = "Camera after rejecting next page"; shot.lifetime = .keepAlways; add(shot)

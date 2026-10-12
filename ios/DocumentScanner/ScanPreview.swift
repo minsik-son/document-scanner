@@ -56,7 +56,10 @@ actor ScanPreviewRenderer {
                 }
                 try Task.checkCancellation()
                 let full = Imaging.applyRedactions(try Imaging.applyErasures(UIImage(cgImage: raster), page: page), page: page)
-                return try Imaging.previewThumbnail(full, maxDimension: maxDimension)
+                // Decoded here, off the main thread: a ~3000 px page uploaded on first
+                // display stalled the screen for a few hundred ms.
+                let preview = try Imaging.previewThumbnail(full, maxDimension: maxDimension)
+                return preview.preparingForDisplay() ?? preview
             }
             guard let maxDimension else {
                 // Full resolution is requested rarely (zoomed inspection); don't keep

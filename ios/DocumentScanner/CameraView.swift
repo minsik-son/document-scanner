@@ -62,7 +62,13 @@ struct CameraView: View {
                         }
                     }
                 }).id(capturedPage.id)
-            } else if instantResult == nil { liveCamera }
+            }
+            // The live camera stays in place (hidden under the result screen) until
+            // the result screen lifts. Removing its preview layer while the session
+            // was taking the 48 MP photo blocked the main thread for 1–1.5 s.
+            if capturedPage == nil || instantResult != nil {
+                liveCamera.opacity(capturedPage == nil ? 1 : 0).allowsHitTesting(capturedPage == nil && instantResult == nil)
+            }
             // While the photo is saved and the page enhanced, only this screen shows.
             if let instantResult {
                 InstantResultView(placeholder: instantResult, stage: instantDone ? .done : (capturedPage == nil ? .saving : .enhancing))
@@ -343,13 +349,16 @@ struct CameraView: View {
         // The result screen opens at once from the preview frame and the tracked
         // outline; the full-resolution page replaces it when it is saved.
         if let quad = camera.tracking.quad, quad.valid {
-            let mode = style, start = Date()
+            let mode = style
             camera.previewSnapshot { frame in
                 guard let frame else { return }
                 Task.detached {
                     let image = PerfTrace.measure("instant result") { CameraView.instantPage(frame, crop: quad, turns: turns, style: mode) }
-                    let placeholder = image.flatMap { InstantPlaceholder.make($0, start: start) }
-                    await MainActor.run { if saving, capturedPage == nil, let placeholder { instantResult = placeholder } }
+                    // The animation starts when the screen appears, not at the shutter.
+                    let placeholder = image.flatMap { InstantPlaceholder.make($0, start: Date()) }
+                    await MainActor.run {
+                        if saving, capturedPage == nil, let placeholder { instantResult = InstantPlaceholder(image: placeholder.image, soft: placeholder.soft, start: Date()) }
+                    }
                 }
             }
         }

@@ -5,6 +5,16 @@ import Translation
 /// translates (text, document pages, photos) goes through it, so all of them get
 /// the same install check, glossary and retry behavior. Nothing is downloaded.
 enum OfflineTranslator {
+    /// The app's language as a translation language: the default target, so
+    /// nobody starts with a language they did not choose.
+    static var appLanguage: String { Locale.Language(identifier: AppLanguage.current.rawValue).minimalIdentifier }
+    /// Where a page in `source` is translated to by default: the app's language,
+    /// else the person's next preferred language, else English (Spanish for English pages).
+    static func defaultTarget(for source: String) -> String {
+        let candidates = [appLanguage] + Locale.preferredLanguages.map { Locale.Language(identifier: $0).minimalIdentifier }
+        if let pick = candidates.first(where: { $0 != source && !$0.isEmpty }) { return pick }
+        return source == "en" ? "es" : "en"
+    }
     /// Languages the system can translate, with the current pair, sorted by name.
     static func languages(including extra: [String]) async -> [String] {
         let supported = await LanguageAvailability().supportedLanguages.map(\.minimalIdentifier)

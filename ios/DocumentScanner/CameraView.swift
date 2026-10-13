@@ -346,6 +346,12 @@ struct CameraView: View {
         let turns = captureTurns
 #if DEBUG
         if testCamera {
+            // Store screenshots: a sample photo stands in for the camera.
+            let args = ProcessInfo.processInfo.arguments
+            if style != .card, let i = args.firstIndex(of: "--camera-sample"), args.indices.contains(i + 1), let photo = UIImage(contentsOfFile: args[i + 1]) {
+                Task { await receiveCapture(.success(photo), turns: turns) }
+                return
+            }
             let format = UIGraphicsImageRendererFormat(); format.scale = 1
             let size = style == .card ? CGSize(width: 856, height: 540) : CGSize(width: 600, height: 800)
             let image = UIGraphicsImageRenderer(size: size, format: format).image { context in

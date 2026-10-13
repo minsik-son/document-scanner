@@ -321,7 +321,7 @@ struct AdvancedOfflineToolContent:View {
     @FocusState private var editingText: Bool
     @State private var translated = ""
     @State private var from = "en"
-    @State private var to = "ko"
+    @State private var to = OfflineTranslator.appLanguage
     @State private var languages:[String] = ["en","ko","ja","zh-Hans","fr","de","es","pt","it","ar"]
     @State private var busy = false
     @State private var cancelling = false
@@ -1012,7 +1012,7 @@ struct CameraTextToolView: View {
     @State private var lines: [String] = []
     @State private var result = ""
     @State private var from = "en"
-    @State private var to = "ko"
+    @State private var to = OfflineTranslator.appLanguage
     @State private var languages = ["en", "ko", "ja", "zh-Hans", "fr", "de", "es"]
     @State private var busy = false
     @State private var phase = "Reading text…"
@@ -1224,12 +1224,12 @@ struct CameraTextToolView: View {
             // again in that language. Not confident: the person chooses.
             let guess = SourceLanguageGuess.detect(prepared.regions.map(\.source))
             if let guess, guess != prepared.recognitionLanguage {
-                let target = guess == to ? "en" : to
+                let target = guess == to ? OfflineTranslator.defaultTarget(for: guess) : to
                 if let again = try? await OfflineWork.perform({ try PhotoTranslation.scan(source, sourceLanguage: guess, targetLanguage: target) }) { prepared = again }
             }
             try Task.checkCancellation()
             from = guess ?? ""
-            if let guess, guess == to { to = AppLanguage.current.rawValue != guess ? AppLanguage.current.rawValue : "en" }
+            if let guess, guess == to { to = OfflineTranslator.defaultTarget(for: guess) }
             documentScan = prepared; step = .review; return
         }
         phase = "Preparing the digital scan…"

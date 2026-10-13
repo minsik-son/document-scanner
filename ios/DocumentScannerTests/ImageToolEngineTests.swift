@@ -254,8 +254,8 @@ final class ImageToolEngineTests: XCTestCase {
     /// Runs the whole ID photo on private test portraits (AI-generated
     /// people) and writes the results to Verification/private/id-check for review.
     func testPrivatePortraitsEndToEnd() throws {
-        guard let home = ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] else { throw XCTSkip("Private samples are only on the developer Mac.") }
-        let folder = URL(fileURLWithPath: home).appendingPathComponent("Documents/ChatGPT/정치 중립/scanner-product/ios/Verification/private")
+        guard ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] != nil else { throw XCTSkip("Private samples are only on the developer Mac.") }
+        let folder = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Verification/private")
         let out = folder.appendingPathComponent("id-check")
         try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
         var found = 0

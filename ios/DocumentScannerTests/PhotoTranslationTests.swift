@@ -230,8 +230,8 @@ final class PhotoTranslationTests: XCTestCase {
         let report = regions.map { "\($0.id) \($0.box) lines=\($0.sourceBoxes.count): \($0.source) → \($0.target) | \(result.reasons[$0.id]?.rawValue ?? "OK")" }.joined(separator:"\n")
         print(report)
         let log = XCTAttachment(string:report);log.name = "latest-pdf-body-report";log.lifetime = .keepAlways;add(log)
-        if let home = ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] {
-            let folder = URL(fileURLWithPath:home).appendingPathComponent("Documents/ChatGPT/정치 중립/scanner-product/ios/Verification/scan-quality-sample/translation-original")
+        if ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] != nil {
+            let folder = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Verification/scan-quality-sample/translation-original")
             try? FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true)
             try? report.write(to:folder.appendingPathComponent("latest-pdf-report.txt"),atomically:true,encoding:.utf8)
         }
@@ -353,8 +353,8 @@ final class PhotoTranslationTests: XCTestCase {
         print(report)
         let log = XCTAttachment(string:report);log.name = "original-photo-report";log.lifetime = .keepAlways;add(log)
         let shot = XCTAttachment(image:result.image);shot.name = "original-photo-translated";shot.lifetime = .keepAlways;add(shot)
-        if let home = ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] {
-            let folder = URL(fileURLWithPath:home).appendingPathComponent("Documents/ChatGPT/정치 중립/scanner-product/ios/Verification/scan-quality-sample/translation-original")
+        if ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] != nil {
+            let folder = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Verification/scan-quality-sample/translation-original")
             try? FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true)
             try? report.write(to:folder.appendingPathComponent("report.txt"),atomically:true,encoding:.utf8)
             try? scan.image.pngData()?.write(to:folder.appendingPathComponent("scan.png"))

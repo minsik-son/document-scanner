@@ -264,8 +264,8 @@ final class DocUNetBenchmarkTests: XCTestCase {
     /// The private Notice photo through the photo → Office path with and without
     /// paper flattening: page images and what the layout made of them.
     func testNoticeFlattenComparison() throws {
-        guard let home = ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] else { throw XCTSkip("Mac only") }
-        let folder = URL(fileURLWithPath: home).appendingPathComponent("Documents/ChatGPT/정치 중립/scanner-product/ios/Verification/private")
+        guard ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] != nil else { throw XCTSkip("Mac only") }
+        let folder = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Verification/private")
         guard let photo = UIImage(contentsOfFile: folder.appendingPathComponent("Notice.jpg").path) else { throw XCTSkip("no Notice.jpg") }
         defer { OfficeLayoutPages.flattensPhotos = false }
         var lines: [String] = []

@@ -14,8 +14,8 @@ final class OfficeLayoutTests: XCTestCase {
         return try XCTUnwrap(UIImage(contentsOfFile: url.path))
     }
     private var verification: URL? {
-        guard let home = ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] else { return nil }
-        let folder = URL(fileURLWithPath: home).appendingPathComponent("Documents/ChatGPT/정치 중립/scanner-product/ios/Verification/office-layout")
+        guard ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] != nil else { return nil }
+        let folder = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Verification/office-layout")
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         return folder
     }
@@ -180,8 +180,8 @@ final class OfficeLayoutTests: XCTestCase {
 
     /// Personal forms kept outside the repository (Verification/private).
     private func privateSample(_ name: String) throws -> (UIImage, URL) {
-        guard let home = ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] else { throw XCTSkip("Private samples are only on the developer Mac.") }
-        let folder = URL(fileURLWithPath: home).appendingPathComponent("Documents/ChatGPT/정치 중립/scanner-product/ios/Verification/private")
+        guard ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] != nil else { throw XCTSkip("Private samples are only on the developer Mac.") }
+        let folder = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Verification/private")
         guard let image = UIImage(contentsOfFile: folder.appendingPathComponent(name).path) else { throw XCTSkip("\(name) is not available.") }
         return (image, folder)
     }

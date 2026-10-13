@@ -87,8 +87,8 @@ final class ScreenshotFixesTests: XCTestCase {
         let again = try Imaging.recognize(ExtractRender.page(URL(fileURLWithPath: { let u = FileManager.default.temporaryDirectory.appendingPathComponent("r.pdf"); try? data.write(to: u); return u.path }()), index: 0, maxSide: 2000))
         let reread = again.map(\.text).joined(separator: " ")
         for needle in ["123-45-6789", "4418 2209 7731"] { XCTAssertFalse(reread.contains(needle), reread) }
-        if let home = ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] {
-            let folder = URL(fileURLWithPath: home).appendingPathComponent("Documents/ChatGPT/정치 중립/scanner-product/ios/Verification/private/review-shots")
+        if ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] != nil {
+            let folder = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Verification/private/review-shots")
             try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             try? data.write(to: folder.appendingPathComponent("redacted-sample.pdf"))
         }

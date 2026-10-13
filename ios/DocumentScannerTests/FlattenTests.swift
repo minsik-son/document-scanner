@@ -7,8 +7,8 @@ import UIKit
 /// flat: text lines and ruled lines straight.
 final class FlattenTests: XCTestCase {
     private var folder: URL? {
-        guard let home = ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] else { return nil }
-        return URL(fileURLWithPath: home).appendingPathComponent("Documents/ChatGPT/정치 중립/scanner-product/ios/Verification/private/dewarp")
+        guard ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] != nil else { return nil }
+        return URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Verification/private/dewarp")
     }
 
     /// How far lines on a page are from straight and level/upright, in pixels at

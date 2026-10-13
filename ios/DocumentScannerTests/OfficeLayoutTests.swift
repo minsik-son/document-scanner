@@ -1,5 +1,6 @@
 import XCTest
 import UIKit
+import CoreImage
 @testable import DocumentScanner
 
 /// Rebuilds the sample scans as Word, Excel and PowerPoint files and checks
@@ -214,6 +215,46 @@ final class OfficeLayoutTests: XCTestCase {
         XCTAssertEqual(page.graphics.count, 1)
         XCTAssertFalse(page.items.contains { if case .table = $0 { return true }; return false })
         XCTAssertGreaterThan(page.items.count, 30)
+    }
+
+    /// A photographed packing list (ruled form with a long item table). Dumps
+    /// the app's scan and the Office reconstruction for review; no pass bar yet.
+    @MainActor func testPackingListDiagnostics() throws {
+        let (photo, root) = try privateSample("PackingList.jpg")
+        let folder = root.appendingPathComponent("packing")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        var report: [String] = []
+        // 1. The scan as the camera makes it: found edges, flattened, Document tone.
+        let cg = try XCTUnwrap(photo.cgImage), source = CIImage(cgImage: cg)
+        let crop = try XCTUnwrap(CaptureStyle.document.detect(photo, capturedPhoto: true), "page edges")
+        report.append("crop " + crop.points.map { String(format: "(%.3f,%.3f)", $0.x, $0.y) }.joined())
+        for (name, flat, tone) in [("scan", true, Enhancement.document), ("scan-plain", false, Enhancement.document), ("scan-original", true, Enhancement.original)] {
+            let ci = try DocumentProcessing.render(source, crop: crop, turns: 0, enhancement: tone, flatten: flat ? FlattenRequest(key: nil) : nil)
+            let out = try XCTUnwrap(DocumentProcessing.context.createCGImage(ci, from: ci.extent))
+            try UIImage(cgImage: out).jpegData(compressionQuality: 0.92)?.write(to: folder.appendingPathComponent("\(name).jpg"))
+            let b = FlattenTests.bend(out)
+            report.append(String(format: "%@ %dx%d bend median %.1f p90 %.1f lines %d", name, out.width, out.height, b.median, b.worst, b.lines))
+        }
+        // 2. Word / Excel reconstruction.
+        var log: [String] = []
+        OfficeLayoutPages.refineLog = { log.append($0) }
+        defer { OfficeLayoutPages.refineLog = nil }
+        let page = try OfficeLayoutPages.analyze(photo)
+        try log.joined(separator: "\n").write(to: folder.appendingPathComponent("reread.txt"), atomically: true, encoding: .utf8)
+        let flat = try OfficeLayoutPages.flattenedIfPhoto(photo)
+        try UIImage(cgImage: try OfficeLayoutPages.prepare(flat).image).pngData()?.write(to: folder.appendingPathComponent("layout-input.png"))
+        var copy = page; for i in copy.graphics.indices { copy.graphics[i].png = nil }
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
+        try encoder.encode(copy).write(to: folder.appendingPathComponent("layout.json"))
+        try OfficeLayoutExport.word([page], image: OfficeLayoutPages.missingPicture).write(to: folder.appendingPathComponent("PackingList.docx"))
+        try OfficeLayoutExport.excel([page], image: OfficeLayoutPages.missingPicture).write(to: folder.appendingPathComponent("PackingList.xlsx"))
+        for (i, g) in page.graphics.enumerated() { try g.png?.write(to: folder.appendingPathComponent("graphic-\(i).png")) }
+        if let preview = OfficePagePreview.image(page) { try preview.pngData()?.write(to: folder.appendingPathComponent("preview.png")) }
+        let tables = page.items.compactMap { item -> LayoutTable? in if case .table(let t) = item { return t }; return nil }
+        report.append("page form=\(page.form) positioned=\(page.positioned) items=\(page.items.count) tables=\(tables.count) graphics=\(page.graphics.count)")
+        for t in tables { report.append("  table \(t.rowCount)x\(t.columnCount) cells=\(t.cells.count) ruled=\(t.ruled) box=\(Int(t.box.x0)),\(Int(t.box.y0)),\(Int(t.box.x1)),\(Int(t.box.y1))") }
+        try report.joined(separator: "\n").write(to: folder.appendingPathComponent("report.txt"), atomically: true, encoding: .utf8)
+        print("PACKING\n" + report.joined(separator: "\n"))
     }
 
     func testReviewedTextKeepsFormatting() throws {

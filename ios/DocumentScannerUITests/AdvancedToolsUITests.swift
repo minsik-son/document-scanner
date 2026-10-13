@@ -392,7 +392,11 @@ final class AdvancedToolsUITests: HushUITestCase {
         cell.tap()
         let editor = app.textViews["excel-cell-value"]
         XCTAssertTrue(editor.waitForExistence(timeout:5))
-        editor.tap();editor.typeText(" corrected")
+        sleep(3)
+        XCTAssertTrue(editor.exists, "The cell editor stays open while the user reads it")
+        editor.tap();sleep(2)
+        XCTAssertTrue(editor.exists, "The cell editor stays open with the keyboard up")
+        editor.typeText(" corrected")
         app.buttons["excel-cell-save"].tap()
         XCTAssertTrue(cell.label.contains("corrected"))
         let shot = XCTAttachment(screenshot:app.screenshot());shot.name = "Excel review cells";shot.lifetime = .keepAlways;add(shot)

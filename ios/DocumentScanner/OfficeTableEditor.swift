@@ -232,8 +232,10 @@ struct OfficePageEditor: View {
     let pageIndex: Int
     @State private var image: UIImage?
     @State private var editing: OfficeCellTarget?
+    @State private var draft = ""
     @State private var highlight: LBox?
     @State private var fade: Task<Void, Never>?
+    @FocusState private var typing: Bool
 
     private var page: PageLayout { layout.corrected(by: tables, page: pageIndex) }
 
@@ -254,42 +256,81 @@ struct OfficePageEditor: View {
         NavigationStack {
             Group {
                 if let image {
-                    OfficeCellCanvas(image: image, pageWidth: CGFloat(max(1, page.width)), targets: targets, highlight: highlight) { target in
-                        fade?.cancel(); highlight = target.box; editing = target
-                    }
+                    OfficeCellCanvas(image: image, pageWidth: CGFloat(max(1, page.width)), targets: targets, highlight: highlight, onTap: open)
                 } else {
                     ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
             .background(TK.grey100)
-            .safeAreaInset(edge: .bottom) {
-                VStack(spacing: 4) {
-                    Text(L("Tap a cell to correct it. Merged cells, fills and fonts are kept."))
-                    Text(L("Pinch to zoom · Double-tap to zoom or reset"))
-                }
-                .font(.system(size: 13)).foregroundStyle(TK.grey600).multilineTextAlignment(.center)
-                .padding(12).frame(maxWidth: .infinity).background(.bar)
+            // The cell being corrected sits in a panel under the page rather than
+            // in a separate sheet, so the page stays in view while typing.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if let editing { cellPanel(editing) } else { hint }
             }
             .navigationTitle(L("Correct cells"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(L("Done")) { dismiss() }.accessibilityIdentifier("office-page-editor-done")
+                    Button(L("Done")) { commit(); dismiss() }.accessibilityIdentifier("office-page-editor-done")
                 }
             }
         }
         // Redrawn after each correction; the zoom and position stay where they were.
         .task(id: page) { image = OfficePagePreview.image(page, width: 2600) }
-        .sheet(item: $editing, onDismiss: clearHighlight) { target in
-            OfficeCellEditor(value: tables[target.table].cells[target.row][target.column],
-                             title: "\(OfficeExport.column(target.column))\(target.row + 1)") { value in
-                tables[target.table].cells[target.row][target.column] = value
-            }
-        }
     }
 
-    /// The corrected cell stays marked for a moment after the sheet closes.
-    private func clearHighlight() {
+    private var hint: some View {
+        VStack(spacing: 4) {
+            Text(L("Tap a cell to correct it. Merged cells, fills and fonts are kept."))
+            Text(L("Pinch to zoom · Double-tap to zoom or reset"))
+        }
+        .font(.system(size: 13)).foregroundStyle(TK.grey600).multilineTextAlignment(.center)
+        .padding(12).frame(maxWidth: .infinity).background(.bar)
+    }
+
+    private func cellPanel(_ target: OfficeCellTarget) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(String(format: L("Edit %@"), "\(OfficeExport.column(target.column))\(target.row + 1)"))
+                    .font(.system(size: 17, weight: .bold)).foregroundStyle(TK.grey900)
+                Spacer()
+                Button(L("Close")) { close() }.font(.system(size: 16)).accessibilityIdentifier("excel-cell-close")
+            }
+            TextEditor(text: $draft).font(.system(size: 17)).scrollContentBackground(.hidden)
+                .focused($typing)
+                .padding(8).frame(height: 96)
+                .background(TK.grey50, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .accessibilityIdentifier("excel-cell-value")
+            Button(L("Done")) { commit(); close() }.buttonStyle(CTAButtonStyle()).accessibilityIdentifier("excel-cell-save")
+        }
+        .padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 8)
+        .background(TK.paper)
+        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24))
+        .shadow(color: .black.opacity(0.08), radius: 12, y: -2)
+    }
+
+    private func open(_ target: OfficeCellTarget) {
+        commit()
+        fade?.cancel()
+        highlight = target.box
+        draft = tables[target.table].cells[target.row][target.column]
+        editing = target
+        typing = true
+    }
+
+    /// Writes the panel's text into its cell (also when another cell is tapped).
+    private func commit() {
+        guard let target = editing, tables.indices.contains(target.table),
+              tables[target.table].cells.indices.contains(target.row),
+              tables[target.table].cells[target.row].indices.contains(target.column),
+              tables[target.table].cells[target.row][target.column] != draft else { return }
+        tables[target.table].cells[target.row][target.column] = draft
+    }
+
+    /// The corrected cell stays marked for a moment after the panel closes.
+    private func close() {
+        typing = false
+        editing = nil
         fade?.cancel()
         fade = Task {
             try? await Task.sleep(for: .seconds(1.2))
@@ -364,12 +405,20 @@ final class OfficeCellScrollView: UIScrollView, UIScrollViewDelegate {
         self.scale = scale; self.onTap = onTap
         if targets != self.targets { self.targets = targets; cellElements = [] }
         if let box = highlight {
+            let moved = marker.isHidden || marker.frame != rect(box)
             marker.frame = rect(box)
             marker.isHidden = false; marker.alpha = 1
+            if moved { DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { self.revealMarker() } }
         } else if !marker.isHidden {
             UIView.animate(withDuration: 0.25, animations: { self.marker.alpha = 0 }) { _ in self.marker.isHidden = true }
         }
         updateMarkerBorder()
+    }
+
+    /// Keeps the cell being corrected in view above the panel and keyboard.
+    private func revealMarker() {
+        guard !marker.isHidden, zoomScale > minimumZoomScale * 1.01 else { return }
+        scrollRectToVisible(pageView.convert(marker.frame.insetBy(dx: -24, dy: -24), to: self), animated: true)
     }
 
     private func rect(_ b: LBox) -> CGRect { CGRect(x: b.x0 * scale, y: b.y0 * scale, width: b.width * scale, height: b.height * scale) }
@@ -378,13 +427,16 @@ final class OfficeCellScrollView: UIScrollView, UIScrollViewDelegate {
         super.layoutSubviews()
         guard bounds.width > 0, bounds.height > 0 else { return }
         if viewport != bounds.size {
+            let first = viewport.width != bounds.width
             viewport = bounds.size
-            // Start with the whole page in view.
+            // Start with the whole page in view. When only the height changes
+            // (the keyboard or the cell panel) the zoom stays where it is.
             let inset: CGFloat = 16
             let fit = min((bounds.width - inset * 2) / pageView.bounds.width, (bounds.height - inset * 2) / pageView.bounds.height)
             minimumZoomScale = fit
-            maximumZoomScale = fit * 8
-            setZoomScale(fit, animated: false)
+            maximumZoomScale = max(fit * 8, zoomScale)
+            if first || zoomScale < fit { setZoomScale(fit, animated: false) }
+            revealMarker()
         }
         centerPage()
     }

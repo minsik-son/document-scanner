@@ -92,6 +92,9 @@ enum OfficePagePreview {
 struct OfficePageOverview: View {
     let page: PageLayout
     var caption: String = "The whole page as it will print. Tap to zoom."
+    /// When set, tapping the page opens the corrections instead of the zoom view.
+    var editLabel: String? = nil
+    var onEdit: (() -> Void)? = nil
     private struct Zoom: Identifiable { let id = UUID(); let image: UIImage }
     @State private var zoom: Zoom?
 
@@ -100,21 +103,29 @@ struct OfficePageOverview: View {
             GeometryReader { geo in
                 let w = geo.size.width
                 Button {
+                    if let onEdit { onEdit(); return }
                     // Item-driven so the cover always receives the rendered page.
                     zoom = OfficePagePreview.image(page).map { Zoom(image: $0) }
                 } label: {
                     OfficePageCanvas(page: page, width: w)
                         .overlay(Rectangle().strokeBorder(TK.grey200, lineWidth: 1))
                         .shadow(color: .black.opacity(0.12), radius: 8, y: 3)
-                        .overlay(alignment: .bottomTrailing) {
-                            Image(systemName: "arrow.up.left.and.arrow.down.right")
-                                .font(.system(size: 14, weight: .semibold)).foregroundStyle(.white)
-                                .padding(8).background(.black.opacity(0.55), in: Circle()).padding(8)
+                        .overlay(alignment: editLabel == nil ? .bottomTrailing : .topTrailing) {
+                            if let editLabel {
+                                Label(L(editLabel), systemImage: "pencil")
+                                    .font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+                                    .padding(.horizontal, 16).padding(.vertical, 10)
+                                    .background(.black.opacity(0.78), in: Capsule()).padding(10)
+                            } else {
+                                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                    .font(.system(size: 14, weight: .semibold)).foregroundStyle(.white)
+                                    .padding(8).background(.black.opacity(0.55), in: Circle()).padding(8)
+                            }
                         }
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Page preview")
-                .accessibilityHint("Opens the whole page full screen to zoom in")
+                .accessibilityHint(editLabel.map { L($0) } ?? L("Opens the whole page full screen to zoom in"))
                 .accessibilityIdentifier("office-page-preview")
             }
             .aspectRatio(CGFloat(max(1, page.width)) / CGFloat(max(1, page.height)), contentMode: .fit)

@@ -301,12 +301,17 @@ final class StoreScreenshotsUITests: HushUITestCase {
         for _ in 0..<6 where !excel.isHittable { app.swipeUp() }
         excel.tap()
         if app.buttons["pro-try-free"].waitForExistence(timeout: 4) { app.buttons["pro-try-free"].tap() }
-        if app.buttons["office-continue"].waitForExistence(timeout: 8), !app.buttons["excel-cell-0-0"].exists { app.buttons["office-continue"].tap() }
-        XCTAssertTrue(app.buttons["excel-cell-0-0"].waitForExistence(timeout: 90))
+        let excelPage = app.descendants(matching: .any)["office-page-preview"].firstMatch
+        if app.buttons["office-continue"].waitForExistence(timeout: 8), !excelPage.exists { app.buttons["office-continue"].tap() }
+        XCTAssertTrue(excelPage.waitForExistence(timeout: 90))
         sleep(1)
         save(app, language, "02-excel")
-        let window = app.windows.firstMatch
-        window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7)).press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.42)))
+        // Corrections: the whole form first, then zoomed in on the table.
+        excelPage.tap()
+        let editor = app.descendants(matching: .any)["office-page-editor"].firstMatch
+        XCTAssertTrue(editor.waitForExistence(timeout: 10))
+        sleep(1)
+        editor.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.42)).doubleTap()
         sleep(1)
         save(app, language, "02-excel-cells")
         app.terminate()

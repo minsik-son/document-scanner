@@ -49,6 +49,7 @@ struct PowerPointExportView: View {
     @State private var slideTexts: [String] = []
     @State private var tables: [OfficeTable] = []
     @State private var tableIndex = 0
+    @State private var correcting = false
     private var formatName: String { excel ? "Excel" : "PowerPoint" }
     @StateObject private var workspace = PresentationWorkspace()
     @State private var pages: [PresentationPage] = []
@@ -203,32 +204,33 @@ struct PowerPointExportView: View {
     }
 
     /// The page of the table being checked, with every correction made so far.
+    private var excelPreviewIndex: Int { tables.indices.contains(tableIndex) ? (tables[tableIndex].layoutPage ?? 0) : 0 }
     private var excelPreviewPage: PageLayout? {
-        let index = tables.indices.contains(tableIndex) ? (tables[tableIndex].layoutPage ?? 0) : 0
+        let index = excelPreviewIndex
         guard layouts.indices.contains(index), !layouts[index].items.isEmpty else { return nil }
-        var page = layouts[index]
-        for table in tables where table.layoutPage == index {
-            guard let i = table.layoutItem, page.items.indices.contains(i), case .table(var layout) = page.items[i] else { continue }
-            layout.apply(table); page.items[i] = .table(layout)
-        }
-        return page
+        return layouts[index].corrected(by: tables, page: index)
     }
 
     /// Step 3: check cells (Excel) or slide text.
     private var reviewPage: some View {
         ToolPage(title: excel ? "Check your tables" : "Check your slide text", subtitle: excel ? "Check the whole page first, then tap a cell to correct it. Merged cells, fills and fonts are kept." : "Pictures and page layout aren't included in text slides.") {
             if excel {
-                // The whole page first, as it will print, with corrections applied.
-                if let preview = excelPreviewPage {
-                    OfficePageOverview(page: preview)
-                    SectionLabel(text: "Correct cells")
-                }
                 if tables.count > 1 {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) { ForEach(tables.indices, id: \.self) { i in Button(tables[i].name) { tableIndex = i }.buttonStyle(ChipStyle(selected: tableIndex == i)) } }
                     }
                 }
-                if tables.indices.contains(tableIndex) { OfficeTableEditor(table: $tables[tableIndex]) }
+                if let preview = excelPreviewPage {
+                    // One job per screen: the whole page as it will print. Tapping it
+                    // opens the corrections, which start from the whole form too.
+                    let table = tables.indices.contains(tableIndex) ? tables[tableIndex] : nil
+                    OfficePageOverview(page: preview,
+                                       caption: table.map { "\($0.cells.count) rows · \($0.columnCount) columns" } ?? "",
+                                       editLabel: "Correct cells") { correcting = true }
+                } else if tables.indices.contains(tableIndex) {
+                    // No page layout to show (plain text table): edit the grid directly.
+                    OfficeTableEditor(table: $tables[tableIndex])
+                }
             } else {
                 ForEach(slideTexts.indices, id: \.self) { index in
                     VStack(alignment: .leading, spacing: 8) {
@@ -245,6 +247,11 @@ struct PowerPointExportView: View {
             Button("Create \(formatName)") { create() }.buttonStyle(CTAButtonStyle())
                 .disabled(busy || (!excel && slideTexts.allSatisfy { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }))
                 .accessibilityIdentifier("ppt-create")
+        }
+        .fullScreenCover(isPresented: $correcting) {
+            if layouts.indices.contains(excelPreviewIndex) {
+                OfficePageEditor(tables: $tables, layout: layouts[excelPreviewIndex], pageIndex: excelPreviewIndex)
+            }
         }
     }
 

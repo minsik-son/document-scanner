@@ -374,8 +374,21 @@ final class AdvancedToolsUITests: HushUITestCase {
         ready(app.buttons["office-continue"])
         XCTAssertFalse(app.buttons["ppt-create"].exists)
         app.buttons["office-continue"].tap()
-        let cell = app.buttons["excel-cell-0-0"]
-        XCTAssertTrue(cell.waitForExistence(timeout:60))
+        // The review shows only the page; tapping it opens the corrections.
+        let preview = app.descendants(matching:.any)["office-page-preview"].firstMatch
+        let cell = app.descendants(matching:.any)["excel-cell-0-0"].firstMatch
+        let deadline = Date().addingTimeInterval(60)
+        while !preview.exists && !cell.exists && Date() < deadline { usleep(250_000) }
+        let onPage = preview.exists
+        if onPage {
+            XCTAssertFalse(cell.exists, "The review page shows the page only, not the cells")
+            sleep(1)
+            let review = XCTAttachment(screenshot:app.screenshot());review.name = "Excel review page";review.lifetime = .keepAlways;add(review)
+            preview.tap()
+            XCTAssertTrue(app.descendants(matching:.any)["office-page-editor"].waitForExistence(timeout:10))
+            let whole = XCTAttachment(screenshot:app.screenshot());whole.name = "Excel corrections whole page";whole.lifetime = .keepAlways;add(whole)
+        }
+        XCTAssertTrue(cell.waitForExistence(timeout:10))
         cell.tap()
         let editor = app.textViews["excel-cell-value"]
         XCTAssertTrue(editor.waitForExistence(timeout:5))
@@ -383,12 +396,15 @@ final class AdvancedToolsUITests: HushUITestCase {
         app.buttons["excel-cell-save"].tap()
         XCTAssertTrue(cell.label.contains("corrected"))
         let shot = XCTAttachment(screenshot:app.screenshot());shot.name = "Excel review cells";shot.lifetime = .keepAlways;add(shot)
+        if onPage { app.buttons["office-page-editor-done"].tap(); XCTAssertTrue(preview.waitForExistence(timeout:5)) }
         app.buttons["ppt-create"].tap();closePreview(app);ready(app.buttons["ppt-share"])
         app.buttons["ppt-preview"].tap()
         XCTAssertTrue(app.navigationBars.buttons["Done"].waitForExistence(timeout:15))
         _ = app.staticTexts.containing(NSPredicate(format:"label CONTAINS[c] %@","Paper")).firstMatch.waitForExistence(timeout:15)
-        let preview = XCTAttachment(screenshot:app.screenshot());preview.name = "Excel Quick Look";preview.lifetime = .keepAlways;add(preview)
+        let quickLook = XCTAttachment(screenshot:app.screenshot());quickLook.name = "Excel Quick Look";quickLook.lifetime = .keepAlways;add(quickLook)
         app.navigationBars.buttons["Done"].tap();app.buttons["ppt-edit"].tap()
+        if onPage { XCTAssertTrue(preview.waitForExistence(timeout:10)); preview.tap() }
+        XCTAssertTrue(cell.waitForExistence(timeout:10))
         XCTAssertTrue(cell.label.contains("corrected"))
         XCTAssertFalse(app.buttons["ppt-share"].exists)
     }
@@ -463,7 +479,11 @@ final class AdvancedToolsUITests: HushUITestCase {
         // Excel: check cells.
         app = launch(document:true,table:true);app.tool("Excel export").tap()
         ready(app.buttons["office-continue"]);app.buttons["office-continue"].tap()
-        XCTAssertTrue(app.buttons["excel-cell-0-0"].waitForExistence(timeout:60));designShot(app,"excel-2-review")
+        let excelPage = app.descendants(matching:.any)["office-page-preview"].firstMatch, excelCell = app.descendants(matching:.any)["excel-cell-0-0"].firstMatch
+        let excelDeadline = Date().addingTimeInterval(60)
+        while !excelPage.exists && !excelCell.exists && Date() < excelDeadline { usleep(250_000) }
+        XCTAssertTrue(excelPage.exists || excelCell.exists);designShot(app,"excel-2-review")
+        if excelPage.exists { excelPage.tap(); XCTAssertTrue(excelCell.waitForExistence(timeout:10)); designShot(app,"excel-3-correct") }
         app.terminate()
         // Photo translation: camera, language, result.
         app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"-app-language","en","--simulate-camera"]

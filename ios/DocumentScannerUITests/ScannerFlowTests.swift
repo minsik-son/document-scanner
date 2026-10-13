@@ -14,6 +14,17 @@ class HushUITestCase: XCTestCase {
         }
         super.record(issue)
     }
+    /// Waits for the startup cover to lift (the tab bar becomes tappable) and
+    /// closes the one-time "Welcome to Pro" card a test purchase shows at launch.
+    @MainActor func settle(_ app: XCUIApplication, timeout: TimeInterval = 15) {
+        let tab = app.buttons["nav-home"], welcome = app.buttons["welcome-pro-start"]
+        let end = Date().addingTimeInterval(timeout)
+        while Date() < end {
+            if welcome.exists && welcome.isHittable { welcome.tap() }
+            else if tab.exists && tab.isHittable { return }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+        }
+    }
 }
 
 final class ScannerFlowTests: HushUITestCase {
@@ -178,7 +189,7 @@ final class ScannerFlowTests: HushUITestCase {
         try session.buyProduct(productIdentifier: "com.hushscan.pro.yearly")
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-saved"]
-        app.launch()
+        app.launch(); settle(app)
         openTestDocument(app)
         openDocumentTools(app); app.buttons["Extract pages · PRO"].tap()
         XCTAssertTrue(app.buttons["page-cell-2"].waitForExistence(timeout: 10))

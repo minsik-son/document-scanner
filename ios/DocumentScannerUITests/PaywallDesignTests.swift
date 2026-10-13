@@ -6,7 +6,7 @@ final class PaywallDesignTests: HushUITestCase {
         let configuration = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "Scanner", withExtension: "storekit"))
         let session = try SKTestSession(contentsOf: configuration)
         session.disableDialogs = true;session.clearTransactions()
-        let app = XCUIApplication();app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en"];app.launch()
+        let app = XCUIApplication();app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en"];app.launch();settle(app)
         app.buttons["nav-settings"].tap();app.buttons["Explore Pro"].tap()
         XCTAssertTrue(app.buttons["subscribe-button"].waitForExistence(timeout: 10))
         capture(app, "Pro spotlight")
@@ -44,7 +44,7 @@ final class PaywallDesignTests: HushUITestCase {
         let session = try SKTestSession(contentsOf: configuration);session.clearTransactions()
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-session",UUID().uuidString,"-app-language","en","-UIPreferredContentSizeCategoryName","UICTContentSizeCategoryAccessibilityXXXL"]
-        app.launch();app.buttons["nav-settings"].tap()
+        app.launch();settle(app);app.buttons["nav-settings"].tap()
         let explore = app.buttons["Explore Pro"]
         for _ in 0..<6 where !explore.isHittable { app.swipeUp() }
         explore.tap()

@@ -1,4 +1,5 @@
 import XCTest
+import StoreKitTest
 
 /// Screens checked after the store-screenshot fixes (2026-10-08). PNGs go to
 /// Verification/private/review-shots/fixes (git-ignored). Sample photos are fictional.
@@ -97,9 +98,14 @@ final class ScreenshotFixesUITests: XCTestCase {
     }
 
     /// E1: the lifetime plan shows the founding ribbon ending Dec 17.
-    @MainActor func testPaywallFoundingRibbon() {
+    @MainActor func testPaywallFoundingRibbon() throws {
+        // A purchase left by an earlier test would hide the Get PRO button.
+        let configuration = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "Scanner", withExtension: "storekit"))
+        let session = try SKTestSession(contentsOf: configuration); session.clearTransactions()
         for language in ["en", "ko"] {
             let app = launch(language)
+            let pro = app.buttons["home-pro"]
+            for _ in 0..<50 where !pro.isHittable { RunLoop.current.run(until: Date().addingTimeInterval(0.2)) }
             app.buttons["home-pro"].tap()
             let ribbon = app.staticTexts["founding-price"]
             if !ribbon.waitForExistence(timeout: 15) {

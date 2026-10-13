@@ -152,7 +152,9 @@ struct MegaCameraView: View {
     private func shoot() {
         withAnimation(.easeOut(duration: 0.08)) { flash = true }
         withAnimation(.easeIn(duration: 0.25).delay(0.08)) { flash = false }
+        #if DEBUG
         if Self.simulated { camera.taken?(Self.simulatedShot(shots.count, direction: direction)); return }
+        #endif
         camera.capture()
     }
 

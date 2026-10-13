@@ -291,10 +291,16 @@ final class AdvancedToolsUITests: HushUITestCase {
         app.buttons["word-extract"].tap()
         ready(app.buttons["offline-run"])
         XCTAssertFalse(app.buttons["word-extract"].exists)
+        // The review shows the page only; its lines are corrected after tapping it.
+        let page = app.descendants(matching:.any)["office-page-preview"].firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout:5))
         let line = app.descendants(matching:.any).matching(NSPredicate(format:"identifier BEGINSWITH 'word-line-'")).firstMatch
-        XCTAssertTrue(line.waitForExistence(timeout:5))
-        XCTAssertTrue((line.value as? String ?? "").contains("SCANNER TEST PAGE"))
+        XCTAssertFalse(line.exists, "No editing on the review page")
         shot("Word 2 review text")
+        page.tap()
+        XCTAssertTrue(line.waitForExistence(timeout:10))
+        XCTAssertTrue((line.value as? String ?? "").contains("SCANNER TEST PAGE"))
+        app.buttons["office-page-editor-done"].tap();ready(app.buttons["offline-run"])
         app.buttons["word-step-back"].tap()
         ready(app.buttons["word-extract"])
         XCTAssertFalse(app.buttons["offline-run"].exists)
@@ -311,21 +317,25 @@ final class AdvancedToolsUITests: HushUITestCase {
     @MainActor func testWordReviewShowsTablesWithEditableCells() {
         let app = launch(document:true,table:true);app.tool("Word export").tap()
         ready(app.buttons["word-extract"]);app.buttons["word-extract"].tap();ready(app.buttons["offline-run"])
-        let header = app.buttons["word-cell-0-0"]
-        XCTAssertTrue(header.waitForExistence(timeout:5),"Tables are shown as tables")
+        let page = app.descendants(matching:.any)["office-page-preview"].firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout:5));page.tap()
+        let header = app.descendants(matching:.any)["word-cell-0-0"].firstMatch
+        XCTAssertTrue(header.waitForExistence(timeout:10),"Tables are shown as tables")
         XCTAssertTrue(header.label.contains("Product"))
         let shot = XCTAttachment(screenshot:app.screenshot());shot.name = "Word review table";shot.lifetime = .keepAlways;add(shot)
-        let cell = app.buttons["word-cell-1-1"];XCTAssertTrue(cell.label.contains("12"))
+        let cell = app.descendants(matching:.any)["word-cell-1-1"].firstMatch;XCTAssertTrue(cell.label.contains("12"))
         cell.tap()
         let value = app.textViews["word-cell-value"];XCTAssertTrue(value.waitForExistence(timeout:5))
         value.tap();value.typeText(String(repeating:XCUIKeyboardKey.delete.rawValue,count:6)+"15")
         app.buttons["word-cell-save"].tap()
-        XCTAssertTrue(app.buttons["word-cell-1-1"].waitForExistence(timeout:5))
-        XCTAssertTrue(app.buttons["word-cell-1-1"].label.contains("15"),"The corrected cell keeps its place")
+        XCTAssertTrue(cell.waitForExistence(timeout:5))
+        XCTAssertTrue(cell.label.contains("15"),"The corrected cell keeps its place")
+        let edited = XCTAttachment(screenshot:app.screenshot());edited.name = "Word corrected cell";edited.lifetime = .keepAlways;add(edited)
+        app.buttons["office-page-editor-done"].tap();ready(app.buttons["offline-run"])
         app.buttons["word-plain-text"].tap()
         XCTAssertTrue((app.textViews["offline-text"].value as? String ?? "").contains("Paper\t15"))
         app.buttons["word-plain-text"].tap()
-        XCTAssertTrue(app.buttons["word-cell-1-1"].waitForExistence(timeout:5))
+        XCTAssertTrue(page.waitForExistence(timeout:5))
         app.buttons["offline-run"].tap();closePreview(app);ready(app.buttons["word-share"])
     }
     @MainActor func testPowerPointMultiplePagesOrderRemovalAndExport() {

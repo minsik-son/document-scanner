@@ -758,8 +758,8 @@ final class ScannerFlowTests: HushUITestCase {
         XCTAssertTrue(preview.waitForExistence(timeout: 90), "Word review opens with the whole page")
         designShot(app, "save-3-word-review")
         preview.tap()
-        XCTAssertTrue(app.buttons["close-enlarged-preview"].waitForExistence(timeout: 10))
-        app.buttons["close-enlarged-preview"].tap()
+        XCTAssertTrue(app.buttons["office-page-editor-done"].waitForExistence(timeout: 10), "Tapping the page opens the corrections")
+        app.buttons["office-page-editor-done"].tap()
         app.buttons["export-close"].tap()
         XCTAssertTrue(app.staticTexts["Saved on this iPhone"].waitForExistence(timeout: 10), "The PDF was saved too")
     }

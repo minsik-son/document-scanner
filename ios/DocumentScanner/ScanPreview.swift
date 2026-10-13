@@ -376,7 +376,9 @@ struct ScanBeamPage: View {
 struct ScanProgressSteps: View {
     enum Stage: Int { case saving, enhancing, done }
     let stage: Stage
-    private let steps = ["Saving the photo", "Flattening the page and evening out the light", "Making the PDF"]
+    private let steps = ["Saving the photo", "Flattening the paper", "Enhancing the scan", "Making the PDF"]
+    /// Flattening runs first in the enhancement, then the light and ink are corrected.
+    @State private var flattened = false
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             ForEach(Array(steps.enumerated()), id: \.offset) { index, title in
@@ -396,9 +398,15 @@ struct ScanProgressSteps: View {
         }
         .padding(18)
         .background(Design.muted.opacity(0.6), in: RoundedRectangle(cornerRadius: 18))
+        .task(id: stage) {
+            flattened = false
+            guard stage == .enhancing else { return }
+            try? await Task.sleep(for: .seconds(0.9))
+            if !Task.isCancelled { flattened = true }
+        }
     }
-    /// The step in progress (3 = all done). Making the PDF follows the enhanced page.
-    private var active: Int { stage == .saving ? 0 : (stage == .enhancing ? 1 : 3) }
+    /// The step in progress (4 = all done). Making the PDF follows the enhanced page.
+    private var active: Int { stage == .saving ? 0 : (stage == .enhancing ? (flattened ? 2 : 1) : 4) }
 }
 
 #if DEBUG

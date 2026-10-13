@@ -307,6 +307,7 @@ struct AdvancedOfflineToolContent:View {
     private enum WordStep { case source, review, ready }
     @State private var wordStep = WordStep.source
     @State private var wordReviewPage = 0
+    @State private var correctingWord = false
     @State private var wordCamera = false
     @State private var wordFilePicker = false
     @State private var wordPDF: URL?
@@ -532,11 +533,15 @@ struct AdvancedOfflineToolContent:View {
                     }
                 }
             }
+            // Above the page so the switch is never hidden under the button.
+            if !wordLayouts.isEmpty {
+                Button { toggleWordPlainText() } label: { Label(wordPlainText ? "Show as tables" : "Edit as plain text", systemImage: wordPlainText ? "tablecells" : "text.alignleft") }
+                    .buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("word-plain-text")
+            }
             if showsWordLayout {
-                // The whole page first, as it will print: is the layout right?
-                OfficePageOverview(page: wordLayoutPage(wordReviewPage).wrappedValue)
-                SectionLabel(text: "Correct text")
-                WordLayoutReview(page: wordLayoutPage(wordReviewPage))
+                // One job per screen: the whole page as it will print. Tapping it
+                // opens the corrections, which start from the whole page too.
+                OfficePageOverview(page: wordLayoutPage(wordReviewPage).wrappedValue, caption: "", editLabel: "Correct text") { correctingWord = true }
             } else {
                 TextEditor(text: wordReviewText).focused($editingText)
                     .font(.system(size: 16)).scrollContentBackground(.hidden)
@@ -544,15 +549,14 @@ struct AdvancedOfflineToolContent:View {
                     .background(TK.grey50, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .accessibilityLabel("Text for your Word file").accessibilityIdentifier("offline-text")
             }
-            if !wordLayouts.isEmpty {
-                Button { toggleWordPlainText() } label: { Label(wordPlainText ? "Show as tables" : "Edit as plain text", systemImage: wordPlainText ? "tablecells" : "text.alignleft") }
-                    .buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("word-plain-text")
-            }
             if let message { ToastMessage(text: message).accessibilityIdentifier("offline-status") }
         } actions: {
             Button("Create Word file") { run() }.buttonStyle(CTAButtonStyle())
                 .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .accessibilityIdentifier("offline-run")
+        }
+        .fullScreenCover(isPresented: $correctingWord) {
+            if wordLayouts.indices.contains(wordReviewPage) { WordPageEditor(page: wordLayoutPage(wordReviewPage)) }
         }
     }
 

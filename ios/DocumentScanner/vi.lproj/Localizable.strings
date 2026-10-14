@@ -1993,3 +1993,9 @@
 "Defaults to the current time. You can change it; this is a label, not a certified capture time." = "Mặc định là thời gian hiện tại. Bạn có thể đổi; đây là nhãn, không phải thời gian chụp được chứng nhận.";
 "Drag on the page to add a black box. Tap a box to move it, resize it from its corners, show it or delete it." = "Kéo trên trang để thêm ô đen. Chạm vào một ô để di chuyển, đổi kích thước từ góc, hiện hoặc xóa.";
 "Drag to add a box. Tap a box to change it." = "Kéo để thêm ô. Chạm vào ô để chỉnh.";
+
+/* Kinds of personal info found by Hide personal info */
+"ID number" = "Số giấy tờ tùy thân";
+"Card number" = "Số thẻ";
+"Account number" = "Số tài khoản";
+"Date of birth" = "Ngày sinh";

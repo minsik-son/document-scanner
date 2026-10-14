@@ -1993,3 +1993,9 @@
 "Defaults to the current time. You can change it; this is a label, not a certified capture time." = "Por defecto es la hora actual. Puedes cambiarla; es una etiqueta, no una hora de captura certificada.";
 "Drag on the page to add a black box. Tap a box to move it, resize it from its corners, show it or delete it." = "Arrastra en la página para añadir un recuadro negro. Toca un recuadro para moverlo, cambiar su tamaño desde las esquinas, mostrarlo o eliminarlo.";
 "Drag to add a box. Tap a box to change it." = "Arrastra para añadir un recuadro. Toca uno para cambiarlo.";
+
+/* Kinds of personal info found by Hide personal info */
+"ID number" = "Número de identificación";
+"Card number" = "Número de tarjeta";
+"Account number" = "Número de cuenta";
+"Date of birth" = "Fecha de nacimiento";

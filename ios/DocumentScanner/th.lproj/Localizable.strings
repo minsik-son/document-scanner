@@ -1993,3 +1993,9 @@
 "Defaults to the current time. You can change it; this is a label, not a certified capture time." = "ค่าเริ่มต้นคือเวลาปัจจุบัน เปลี่ยนได้ นี่เป็นป้ายกำกับ ไม่ใช่เวลาถ่ายที่รับรองแล้ว";
 "Drag on the page to add a black box. Tap a box to move it, resize it from its corners, show it or delete it." = "ลากบนหน้าเพื่อเพิ่มกล่องสีดำ แตะกล่องเพื่อย้าย ปรับขนาดจากมุม แสดง หรือลบ";
 "Drag to add a box. Tap a box to change it." = "ลากเพื่อเพิ่มกล่อง แตะกล่องเพื่อแก้ไข";
+
+/* Kinds of personal info found by Hide personal info */
+"ID number" = "เลขประจำตัว";
+"Card number" = "หมายเลขบัตร";
+"Account number" = "เลขที่บัญชี";
+"Date of birth" = "วันเกิด";

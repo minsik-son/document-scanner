@@ -1993,3 +1993,9 @@
 "Defaults to the current time. You can change it; this is a label, not a certified capture time." = "默认是当前时间。你可以更改；这只是标签，不是经认证的拍摄时间。";
 "Drag on the page to add a black box. Tap a box to move it, resize it from its corners, show it or delete it." = "在页面上拖动可添加黑框。轻点黑框可移动、拖动角调整大小、显示或删除。";
 "Drag to add a box. Tap a box to change it." = "拖动添加黑框 · 轻点黑框进行编辑";
+
+/* Kinds of personal info found by Hide personal info */
+"ID number" = "证件号码";
+"Card number" = "卡号";
+"Account number" = "账号";
+"Date of birth" = "出生日期";

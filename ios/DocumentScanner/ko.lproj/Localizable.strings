@@ -1993,3 +1993,9 @@
 "Defaults to the current time. You can change it; this is a label, not a certified capture time." = "기본값은 현재 시각이에요. 바꿀 수 있어요. 인증된 촬영 시각이 아니라 표시용 라벨이에요.";
 "Drag on the page to add a black box. Tap a box to move it, resize it from its corners, show it or delete it." = "페이지를 드래그하면 검은 상자가 생겨요. 상자를 탭하면 옮기거나, 모서리로 크기를 바꾸거나, 보이게 하거나 지울 수 있어요.";
 "Drag to add a box. Tap a box to change it." = "드래그해서 상자 추가 · 상자를 탭해서 편집";
+
+/* Kinds of personal info found by Hide personal info */
+"ID number" = "신분증 번호";
+"Card number" = "카드 번호";
+"Account number" = "계좌 번호";
+"Date of birth" = "생년월일";

@@ -1531,8 +1531,13 @@ enum Redaction {
     private static let passportWords = ["passport", "여권"]
     private static let licenceWords = ["licence", "license", "driver", "운전면허", "면허번호"]
     /// Finds ID, card, account and phone numbers and emails on a rendered page.
-    nonisolated static func detect(_ image: UIImage) throws -> [Box] { boxes(in: try Imaging.recognize(image)) }
-    nonisolated static func boxes(in blocks: [TextBlock]) -> [Box] {
+    nonisolated static func detect(_ image: UIImage) throws -> [Box] {
+        try readParts(image).flatMap { part in boxes(in: part.blocks, card: part.card).map { var b = $0; b.rect = part.place($0.rect); return b } }
+    }
+    /// The page's text as the finder sees it, placed on the page.
+    nonisolated static func read(_ image: UIImage) throws -> [TextBlock] { try readParts(image).flatMap { part in part.blocks.map(part.place) } }
+    /// `card`: the blocks are one licence, ID or residence card by itself.
+    nonisolated static func boxes(in blocks: [TextBlock], card: Bool = false) -> [Box] {
         var boxes: [Box] = []
         for block in blocks {
             let text = block.text, ns = text as NSString
@@ -1558,7 +1563,24 @@ enum Redaction {
                 if !boxes.contains(where: { $0.rect.intersects(rect) && $0.kind == kind }) { boxes.append(Box(rect: rect, kind: kind)) }
             }
         }
+        // Names, birth dates and addresses on licences and ID cards.
+        for (kind, found) in cardFields(blocks, card: card) {
+            let rect = found.insetBy(dx: -max(0.004, found.height * 0.1), dy: -max(0.003, found.height * 0.15)), area = rect.width * rect.height
+            if boxes.contains(where: { let i = $0.rect.intersection(rect); return !i.isNull && i.width * i.height >= 0.7 * area }) { continue }
+            boxes.append(Box(rect: rect, kind: kind))
+        }
         return boxes
+    }
+    /// Each recognized word's character range in its line, with its box.
+    nonisolated static func wordRanges(_ block: TextBlock) -> [(NSRange, CGRect)] {
+        let ns = block.text as NSString
+        var out: [(NSRange, CGRect)] = [], cursor = 0
+        for w in block.words ?? [] {
+            let r = ns.range(of: w.text, options: [], range: NSRange(location: cursor, length: ns.length - cursor))
+            guard r.location != NSNotFound else { continue }
+            out.append((r, CGRect(x: w.x, y: w.y, width: w.width, height: w.height))); cursor = r.location + r.length
+        }
+        return out
     }
     /// The line plus labels in the same row to its left ("Account number | 1234567").
     nonisolated static func rowContext(_ block: TextBlock, in blocks: [TextBlock]) -> String {
@@ -1694,6 +1716,470 @@ enum Redaction {
         }
         pdf.closePDF()
         return out as Data
+    }
+}
+
+// MARK: - Licences, ID and residence cards
+
+extension Redaction {
+    /// Text read from one part of a page: the whole page, or one card lying on it.
+    /// Blocks are normalized to `frame`; `frame` is normalized to the page.
+    struct Part {
+        var blocks: [TextBlock]
+        var frame = CGRect(x: 0, y: 0, width: 1, height: 1)
+        /// A card on its own (licence, ID or residence card): names, birth dates and addresses are hidden too.
+        var card = false
+        func place(_ r: CGRect) -> CGRect {
+            CGRect(x: frame.minX + r.minX * frame.width, y: frame.minY + r.minY * frame.height, width: r.width * frame.width, height: r.height * frame.height)
+        }
+        func place(_ b: TextBlock) -> TextBlock {
+            var o = b
+            let r = place(CGRect(x: b.x, y: b.y, width: b.width, height: b.height))
+            o.x = Double(r.minX); o.y = Double(r.minY); o.width = Double(r.width); o.height = Double(r.height)
+            o.words = b.words?.map { w in
+                let q = place(CGRect(x: w.x, y: w.y, width: w.width, height: w.height))
+                return TextWord(text: w.text, x: Double(q.minX), y: Double(q.minY), width: Double(q.width), height: Double(q.height))
+            }
+            return o
+        }
+    }
+
+    /// Reads the page. Cards lying on a page (a licence scanned front and back) are cut out and
+    /// read up close; small pictures are enlarged first so short lines aren't missed.
+    nonisolated static func readParts(_ image: UIImage) throws -> [Part] {
+        guard let cg = image.cgImage else { return [Part(blocks: try Imaging.recognize(image))] }
+        let W = CGFloat(cg.width), H = CGFloat(cg.height)
+        let layout = cardLayout(cg)
+        if layout.cards.isEmpty { return [Part(blocks: try recognizeClose(cg), card: cardShaped(W / max(1, H)))] }
+        var parts: [Part] = []
+        for r in layout.cards {
+            let px = CGRect(x: r.minX * W, y: r.minY * H, width: r.width * W, height: r.height * H).integral.intersection(CGRect(x: 0, y: 0, width: W, height: H))
+            guard px.width > 8, px.height > 8, let crop = cg.cropping(to: px) else { continue }
+            parts.append(Part(blocks: try recognizeClose(crop), frame: CGRect(x: px.minX / W, y: px.minY / H, width: px.width / W, height: px.height / H), card: true))
+        }
+        if layout.other || parts.isEmpty {
+            // Writing elsewhere on the page keeps the ordinary rules.
+            let frames = parts.map(\.frame)
+            let rest = try TextRecognition.recognize(cg).filter { b in !frames.contains { $0.contains(CGPoint(x: b.x + b.width / 2, y: b.y + b.height / 2)) } }
+            parts.append(Part(blocks: rest))
+        }
+        return parts
+    }
+    /// Vision skips lines only a few pixels tall, so small pictures are enlarged before reading.
+    nonisolated static func recognizeClose(_ cg: CGImage) throws -> [TextBlock] {
+        let long = CGFloat(max(cg.width, cg.height))
+        guard long > 0, long < 1600, let big = enlarged(cg, by: min(3, 2000 / long)) else { return try TextRecognition.recognize(cg) }
+        return try TextRecognition.recognize(big)
+    }
+    nonisolated static func enlarged(_ cg: CGImage, by s: CGFloat) -> CGImage? {
+        let w = Int(CGFloat(cg.width) * s), h = Int(CGFloat(cg.height) * s)
+        guard w > 0, h > 0, let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
+                                                bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { return nil }
+        ctx.setFillColor(UIColor.white.cgColor)
+        ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
+        ctx.interpolationQuality = .high
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+        return ctx.makeImage()
+    }
+    /// A picture that is one card lying flat: ID-1 cards are 1.586:1, residence cards a little squarer.
+    /// A4 (1.41) and Letter (1.29) pages fall outside, and so do upright pictures.
+    nonisolated static func cardShaped(_ aspect: CGFloat) -> Bool { (1.45...1.75).contains(aspect) }
+    /// Cards lying on a mostly blank page, found on a small grey copy as solid, card-shaped patches.
+    /// `other` is true when something else is on the page too.
+    nonisolated static func cardLayout(_ cg: CGImage) -> (cards: [CGRect], other: Bool) {
+        let W = 160, H = Int((CGFloat(cg.height) / CGFloat(max(1, cg.width)) * 160).rounded())
+        guard (60...480).contains(H) else { return ([], true) }
+        var px = [UInt8](repeating: 255, count: W * H)
+        let drawn = px.withUnsafeMutableBytes { buf -> Bool in
+            guard let ctx = CGContext(data: buf.baseAddress, width: W, height: H, bitsPerComponent: 8, bytesPerRow: W,
+                                      space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue) else { return false }
+            ctx.interpolationQuality = .medium
+            ctx.draw(cg, in: CGRect(x: 0, y: 0, width: W, height: H))
+            return true
+        }
+        guard drawn else { return ([], true) }
+        var border: [Int] = []
+        for x in 0..<W { border.append(Int(px[x])); border.append(Int(px[(H - 1) * W + x])) }
+        for y in 0..<H { border.append(Int(px[y * W])); border.append(Int(px[y * W + W - 1])) }
+        border.sort()
+        let paper = border[border.count / 2]
+        let ink = px.map { abs(Int($0) - paper) > 12 }
+        var grown = ink
+        for y in 0..<H {
+            for x in 0..<W where ink[y * W + x] {
+                for yy in max(0, y - 2)...min(H - 1, y + 2) { for xx in max(0, x - 2)...min(W - 1, x + 2) { grown[yy * W + xx] = true } }
+            }
+        }
+        var seen = [Bool](repeating: false, count: W * H)
+        var cards: [CGRect] = [], other = false
+        for start in 0..<(W * H) where grown[start] && !seen[start] {
+            var stack = [start]; seen[start] = true
+            var x0 = W, x1 = 0, y0 = H, y1 = 0
+            while let p = stack.popLast() {
+                let x = p % W, y = p / W
+                x0 = min(x0, x); x1 = max(x1, x); y0 = min(y0, y); y1 = max(y1, y)
+                var next: [Int] = []
+                if y > 0 { next.append(p - W) }
+                if y < H - 1 { next.append(p + W) }
+                if x > 0 { next.append(p - 1) }
+                if x < W - 1 { next.append(p + 1) }
+                for q in next where grown[q] && !seen[q] { seen[q] = true; stack.append(q) }
+            }
+            let w = x1 - x0 + 1, h = y1 - y0 + 1
+            var filled = 0
+            for y in y0...y1 { for x in x0...x1 where ink[y * W + x] { filled += 1 } }
+            let r = CGRect(x: CGFloat(x0) / CGFloat(W), y: CGFloat(y0) / CGFloat(H), width: CGFloat(w) / CGFloat(W), height: CGFloat(h) / CGFloat(H))
+            let area = r.width * r.height, aspect = CGFloat(w) / CGFloat(h), fill = CGFloat(filled) / CGFloat(w * h)
+            if r.width >= 0.2, (0.6...2.1).contains(aspect), fill >= 0.5, (0.03...0.6).contains(area) { cards.append(r) }
+            else if area >= 0.002 { other = true }
+        }
+        return (cards, other)
+    }
+
+    // MARK: Fields on a card
+
+    private enum IDRx {
+        static func make(_ p: String, _ caseless: Bool = false) -> NSRegularExpression {
+            try! NSRegularExpression(pattern: p, options: caseless ? [.caseInsensitive] : [])
+        }
+        static let cjkLabels: [(String, NSRegularExpression)] = [
+            ("name", make(#"^\s*(?:氏\s*名|姓\s*名|성\s*명|이\s*름)"#)),
+            ("dob", make(#"^\s*(?:出\s*生(?:日期)?|生年月日|생년월일)"#)),
+            ("address", make(#"^\s*(?:住\s*所|住\s*址|주\s*소)"#)),
+            ("number", make(#"^\s*(?:公民身份号码|证件号码|番\s*号|면허번호|주민번호|주민등록번호|個人番号)"#)),
+            ("other", make(#"^\s*(?:性\s*别|性別|民\s*族|交\s*付|有効|签发机关|有效期限|国籍|조건|적성검사|발급)"#)),
+        ]
+        static let lead = make(#"^[\s\-*.]*(?:\d{1,2}[a-z]?[.,:]?\s*)?"#)
+        static let gluedLow = make(#"^(ln|fn)(?=[a-z]{2,})"#)
+        static let gluedCaps = make(#"^\s*(?:\d{1,2}\s*)?(LN|FN)[A-Z]"#)
+        static let words = make(#"[a-z]+|\d+"#)
+        static let twoDigits = make(#"\d{2,}"#)
+        static let separators = make(#"^[\s:#./!|\-]*"#)
+        static let mrzLine = make(#"^[A-Z0-9<]{25,}$"#)
+        static let token = make(#"(?<![\w/])[A-Z0-9][A-Z0-9\-]{5,22}[A-Z0-9](?![\w/])"#)
+        static let shortDate = make(#"^\d{1,4}[./\-]\d{1,2}[./\-]\d{1,4}$"#)
+        static let spaced = make(#"(?<!\d)\d{3,4}(?: \d{3,4}){2,3}(?!\d)"#)
+        static let numberPiece = make(#"^[\d\s\-]{3,}$"#)
+        static let aamva = make(#"^\s*(1|2|8)\s?([A-Z][A-Z' ,.\-]+|\d+ .+)$"#)
+        static let street = make(#"^(?:\d{1,2}[:.]\s?)?\d+\s+[A-Z0-9][A-Z0-9 .'-]*\b(ST|STREET|AVE|AVENUE|RD|ROAD|DR|DRIVE|BLVD|WAY|LN|LANE|CT|CRES|PL|HWY)\b"#)
+        static let postal = make(#"\b[A-Z]{2}\s+\d{5}(-\d{4})?\b|\b[A-Z]\d[A-Z]\s?\d[A-Z]\d\b"#)
+        static let cjkAddress = make(#"[都道府県市区町村省县路街]\S*\d|[시도구군]\s\S+[로길동]\s?\d|\d+\s?동\s?\d+\s?호|[室座栋幢]$|号楼|单元|아파트"#)
+        static let rrn = make(#"\d{6}-[1-8]\d{6}"#)
+        static let rrnLoose = make(#"\d{6}-\d{7}"#)
+        static let hangulName = make(#"[가-힣]{2,4}"#)
+        static let capsLine = make(#"^[A-Z][A-Z'.\-]*(?:,?\s+[A-Z][A-Z'.\-]*){0,3},?$"#)
+        static let bornSuffix = make(#"\d\s*日\s*生$"#)
+        static let ymd = make(#"(?<!\d)(19\d\d|20\d\d)\s?[./\- 年]\s?(\d{1,2})\s?[./\- 月]\s?(\d{1,2})日?(?!\d)"#)
+        static let mdy = make(#"(?<!\d)(\d{1,2})[./\-](\d{1,2})[./\-](19\d\d|20\d\d)(?!\d)"#)
+        static let yMonD = make(#"(?<!\d)(19\d\d|20\d\d)[\s./\-]([A-Za-z]{3})[A-Za-z]*\.?[\s./\-](\d{1,2})(?!\d)"#)
+        static let ymdMisread = make(#"(?<!\d)(19\d\d|20\d\d)[./\-](\d{2})[71](\d{2})(?!\d)"#)
+        static let dMonY = make(#"(?<!\d)(\d{1,2})\s*([A-Za-z]{3})[A-Za-zÀ-ÿ]*\.?\s*(?:/\s*[A-Za-zÀ-ÿ]{3,5}\.?)?[\s:,]*((?:19|20)?\d\d)(?!\d)"#)
+        static let era = make(#"(明治|大正|昭和|平成|令和)\s*(\d{1,2}|元)\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日\s*生?"#)
+    }
+    /// Words printed on licences, ID and residence cards in the five markets we test against.
+    private static let idWords = ["driver", "licence", "license", "permis", "identification", "identity", "id card", "passport", "passeport", "dln",
+                                  "date of birth", "naissance", "resident", "citizenship", "status", "services card", "photo card", "health number",
+                                  "주민등록", "운전면허", "면허", "運転免許", "個人番号", "マイナンバー", "公安委員会", "免許", "有効", "身份", "居民", "居留", "在留", "证件", "签发", "外国人"]
+    /// Label words, with what the value next to them is.
+    private static let labelWords: [String: String] = {
+        var v: [String: String] = [:]
+        for w in "name names nom noms surname surnames given family famille prenom prenoms alias emprunt last first lastname firstname".split(separator: " ") { v[String(w)] = "name" }
+        for w in "birth naissance dob ddn born birthdate".split(separator: " ") { v[String(w)] = "dob" }
+        for w in "address adresse addr domicile".split(separator: " ") { v[String(w)] = "address" }
+        for w in "number numero dln dl lic passport passeport registration inscription phn sin ssn".split(separator: " ") { v[String(w)] = "number" }
+        for w in "of de date d du la the and et no n id le full personal health social insurance security".split(separator: " ") { v[String(w)] = "filler" }
+        for w in ("place lieu issue issued delivrance expiry expiration expires exp iss nationality nationalite sex sexe authority autorite height hgt eyes yeux " +
+                  "hair weight wgt class classe restrictions endorsements type country pays issuing emetteur band group groupe registre conditions donor veteran signature taille").split(separator: " ") { v[String(w)] = "other" }
+        return v
+    }()
+    /// Card words that are never a person's name.
+    private static let cardWords: Set<String> = Set(("driver drivers driver's licence license permis conduire canada ontario british columbia california washington " +
+        "massachusetts usa can passport passeport photo card carte permanent resident resident's residente government gouvernement of du de the et and class none " +
+        "end rest restrictions endorsements sex eyes hair hgt wgt brn blk blu donor veteran enhanced real id dl exp iss dd nationality canadian canadienne brown " +
+        "blue black green hazel people's republic china foreign issued national immigration administration certificate status indian citizenship citoyennete " +
+        "affairs northern services identification health province state department motor vehicles transport ministry new york texas florida korea japan " +
+        "corrected lenses required organ category categorie categories golden star cardholder's signature apt duplicate temporary valid until").split(separator: " ").map(String.init))
+    private static let gluedLabels: [(String, [String])] = [("name", ["name", "nom"]), ("dob", ["dobddn", "birth", "naissance"]), ("address", ["address", "adresse"]), ("number", ["number", "numero"])]
+    private static let months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
+    private static let eras: [String: Int] = ["明治": 1867, "大正": 1911, "昭和": 1925, "平成": 1988, "令和": 2018]
+
+    nonisolated static func fold(_ s: String) -> String { s.folding(options: [.diacriticInsensitive, .caseInsensitive, .widthInsensitive], locale: nil).lowercased() }
+    private nonisolated static func digits(_ s: String) -> Int { s.unicodeScalars.filter { $0.properties.generalCategory == .decimalNumber }.count }
+    private nonisolated static func alnum(_ s: String) -> Int { s.unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) }.count }
+    private nonisolated static func letters(_ s: String) -> Int { s.unicodeScalars.filter { $0.properties.isAlphabetic && $0.properties.generalCategory != .decimalNumber }.count }
+    private nonisolated static func full(_ s: String) -> NSRange { NSRange(location: 0, length: (s as NSString).length) }
+    private nonisolated static func has(_ rx: NSRegularExpression, _ s: String) -> Bool { rx.firstMatch(in: s, range: full(s)) != nil }
+
+    private nonisolated static func distance(_ a: [Character], _ b: [Character]) -> Int {
+        if abs(a.count - b.count) > 2 { return 3 }
+        var prev = Array(0...b.count)
+        for (i, ca) in a.enumerated() {
+            var cur = [i + 1]
+            for (j, cb) in b.enumerated() { cur.append(min(prev[j + 1] + 1, cur[j] + 1, prev[j] + (ca == cb ? 0 : 1))) }
+            prev = cur
+        }
+        return prev[b.count]
+    }
+    /// What a label word stands for, allowing a letter or two misread ("Nares" for "Names").
+    private nonisolated static func labelRole(_ word: String) -> String? {
+        if let r = labelWords[word] { return r }
+        guard word.count >= 4 else { return nil }
+        let w = Array(word)
+        var best: (Int, String)?
+        for (v, r) in labelWords where v.count >= 4 {
+            let d = distance(w, Array(v))
+            if d <= (v.count <= 6 ? 1 : 2), best == nil || d < best!.0 { best = (d, r) }
+        }
+        return best?.1
+    }
+    private nonisolated static func pickRole(_ roles: [String]) -> String {
+        if roles.contains("other") { return "other" }
+        for k in ["dob", "name", "address"] where roles.contains(k) { return k }
+        return "number"
+    }
+    /// A field label at the start of a line: what its value is, where the label ends,
+    /// and whether the line is only the label (the value is beside or under it).
+    nonisolated static func idLabel(_ text: String) -> (kind: String, end: Int, only: Bool)? {
+        let ns = text as NSString, n = ns.length
+        for (kind, rx) in IDRx.cjkLabels {
+            if let m = rx.firstMatch(in: text, range: full(text)) {
+                return (kind, m.range.upperBound, alnum(ns.substring(from: m.range.upperBound)) < 2)
+            }
+        }
+        let f = fold(text), fs = f as NSString
+        let start = IDRx.lead.firstMatch(in: f, range: full(f))?.range.upperBound ?? 0
+        let body = fs.substring(from: min(start, fs.length))
+        if has(IDRx.gluedLow, body), has(IDRx.gluedCaps, text) { return ("name", min(n, start + 2), false) }
+        let words = IDRx.words.matches(in: body, range: full(body)).map { (w: (body as NSString).substring(with: $0.range), end: $0.range.upperBound + start) }
+        guard !words.isEmpty else { return nil }
+        if !has(IDRx.twoDigits, body) {
+            let alpha = words.map(\.w).filter { digits($0) == 0 }
+            let roles = alpha.map(labelRole)
+            let known = roles.compactMap { $0 }, strong = known.filter { $0 != "filler" }
+            if !strong.isEmpty, known.count * 2 >= roles.count, roles.count <= 7 { return (pickRole(strong), n, true) }
+            let trimmed = text.trimmingCharacters(in: .whitespaces)
+            if strong.isEmpty, trimmed.count <= 12, alpha.contains(where: { $0 == "no" || $0 == "id" }), known.count * 2 >= roles.count { return ("number", n, true) }
+            let plain = body.filter { $0 >= "a" && $0 <= "z" }
+            if (3...12).contains(plain.count) {
+                for (kind, keys) in gluedLabels where keys.contains(where: { plain.contains($0) }) { return (kind, n, true) }
+            }
+            return nil
+        }
+        var roles: [String] = [], end = 0
+        for w in words {
+            if digits(w.w) > 0 { break }
+            guard let r = labelRole(w.w) else { break }
+            roles.append(r); end = w.end
+        }
+        let strong = roles.filter { $0 != "filler" }
+        guard !strong.isEmpty else { return nil }
+        end = min(end, n)
+        let after = ns.substring(from: end)
+        end += IDRx.separators.firstMatch(in: after, range: full(after))?.range.length ?? 0
+        return (pickRole(strong), end, alnum(ns.substring(from: min(end, n))) < 2)
+    }
+    private nonisolated static func plausible(_ kind: String, _ text: String) -> Bool {
+        let d = digits(text)
+        switch kind {
+        case "number": return d >= 4
+        case "dob": return d >= 1
+        case "name": return d <= 1 && letters(text) >= 2
+        default: return text.trimmingCharacters(in: .whitespaces).count >= 3
+        }
+    }
+    /// A line that is just a name in capitals ("ALEX JORDAN", "SAMPLE,").
+    nonisolated static func capsName(_ text: String) -> Bool {
+        let t = text.trimmingCharacters(in: .whitespaces)
+        guard has(IDRx.capsLine, t) else { return false }
+        let words = t.components(separatedBy: CharacterSet(charactersIn: " ,")).map { $0.trimmingCharacters(in: CharacterSet(charactersIn: ",.'-")) }.filter { !$0.isEmpty }
+        guard !words.isEmpty, words.reduce(0, { $0 + $1.count }) >= 3, words.contains(where: { $0.count > 2 }) else { return false }
+        if words.contains(where: { cardWords.contains(fold($0)) }) { return false }
+        return !(words.count == 1 && words[0].count > 14)
+    }
+    /// Dates on a line with their year.
+    nonisolated static func dates(_ text: String) -> [(year: Int, range: NSRange)] {
+        let ns = text as NSString
+        func int(_ m: NSTextCheckingResult, _ i: Int) -> Int { Int(ns.substring(with: m.range(at: i))) ?? 0 }
+        func day(_ month: Int, _ day: Int) -> Bool { (1...12).contains(month) && (1...31).contains(day) }
+        var out: [(Int, NSRange)] = []
+        for m in IDRx.ymd.matches(in: text, range: full(text)) where day(int(m, 2), int(m, 3)) { out.append((int(m, 1), m.range)) }
+        // "1972/11720": the second slash read as a 7 or 1.
+        for m in IDRx.ymdMisread.matches(in: text, range: full(text)) where day(int(m, 2), int(m, 3)) { out.append((int(m, 1), m.range)) }
+        for m in IDRx.yMonD.matches(in: text, range: full(text)) where months.contains(fold(ns.substring(with: m.range(at: 2)))) && (1...31).contains(int(m, 3)) { out.append((int(m, 1), m.range)) }
+        for m in IDRx.mdy.matches(in: text, range: full(text)) where day(int(m, 1), int(m, 2)) || day(int(m, 2), int(m, 1)) { out.append((int(m, 3), m.range)) }
+        let thisYear = Calendar(identifier: .gregorian).component(.year, from: Date())
+        for m in IDRx.dMonY.matches(in: text, range: full(text)) where months.contains(fold(ns.substring(with: m.range(at: 2)))) && (1...31).contains(int(m, 1)) {
+            var y = int(m, 3)
+            if y < 100 { y += y > thisYear - 2000 ? 1900 : 2000 }
+            out.append((y, m.range))
+        }
+        for m in IDRx.era.matches(in: text, range: full(text)) where day(int(m, 3), int(m, 4)) {
+            let n = ns.substring(with: m.range(at: 2)) == "元" ? 1 : int(m, 2)
+            if n >= 1 { out.append(((eras[ns.substring(with: m.range(at: 1))] ?? 0) + n, m.range)) }
+        }
+        return out
+    }
+    private nonisolated static func compactDate(_ s: String) -> Bool {
+        guard s.count == 8, s.allSatisfy({ $0.isASCII && $0.isNumber }) else { return false }
+        let n = s.compactMap { $0.wholeNumberValue }
+        let a = n[0] * 1000 + n[1] * 100 + n[2] * 10 + n[3], b = n[4] * 10 + n[5], c = n[6] * 10 + n[7]
+        if (1900...2100).contains(a), (1...12).contains(b), (1...31).contains(c) { return true }
+        let m = n[0] * 10 + n[1], d = n[2] * 10 + n[3], y = n[4] * 1000 + n[5] * 100 + n[6] * 10 + n[7]
+        return (1...31).contains(m) && (1...31).contains(d) && (1900...2100).contains(y)
+    }
+
+    /// Names, birth dates, addresses and card numbers on a licence, ID or residence card.
+    /// Runs when the part is a card on its own, or its text reads like one.
+    nonisolated static func cardFields(_ blocks: [TextBlock], card: Bool) -> [(String, CGRect)] {
+        let all = blocks.map(\.text).joined(separator: " ")
+        let lowered = all.lowercased(), folded = fold(all)
+        func marks(_ t: String) -> Int { t.filter { $0 == "<" || $0 == "＜" || $0 == "く" }.count }
+        let mrz = blocks.contains { marks($0.text) >= 3 }
+        let infos = blocks.map { idLabel($0.text) }
+        let kinds = Set(infos.compactMap { $0?.kind }.filter { $0 != "other" })
+        let keyword = idWords.contains { lowered.contains($0) || folded.contains($0) }
+        let strong = card || mrz || has(IDRx.rrn, all) || (keyword && !kinds.isEmpty)
+        guard strong || kinds.count >= 2 else { return [] }
+        let names = ["name": "Name", "dob": "Date of birth", "address": "Address", "number": "ID number"]
+        var out: [(String, CGRect)] = []
+        var used = Set<Int>()
+        func rect(_ b: TextBlock) -> CGRect { CGRect(x: b.x, y: b.y, width: b.width, height: b.height) }
+        func span(_ b: TextBlock, _ lo: Int, _ hi: Int) -> CGRect {
+            let n = Double(max(1, (b.text as NSString).length))
+            let a = max(0, Double(lo) - 1), z = min(n, Double(hi) + 1)
+            let guess = CGRect(x: b.x + b.width * a / n, y: b.y, width: b.width * (z - a) / n, height: b.height)
+            // Proportional guesses drift on mixed-width text; the words it touches keep it honest.
+            let range = NSRange(location: lo, length: max(0, hi - lo))
+            return wordRanges(b).filter { NSIntersectionRange($0.0, range).length > 0 }.reduce(guess) { $0.union($1.1) }
+        }
+        func overlapY(_ a: TextBlock, _ b: TextBlock) -> Double { min(a.y + a.height, b.y + b.height) - max(a.y, b.y) }
+        func isLabel(_ j: Int) -> Bool { infos[j]?.only == true }
+        func add(_ j: Int, _ kind: String) { out.append((names[kind] ?? kind, rect(blocks[j]))); used.insert(j) }
+        /// Address lines that run on under block `j`; stops at the first line that is a label or a date.
+        func continuation(_ j: Int, anchor: Double) {
+            var last = blocks[j]
+            for _ in 0..<2 {
+                let next = blocks.indices.filter { k in
+                    let d = blocks[k], gap = d.y - (last.y + last.height)
+                    return k != j && d.y > last.y && gap >= -0.5 * d.height && gap < 1.2 * max(d.height, last.height) && abs(d.x - anchor) < 0.15 && d.x < last.x + last.width
+                }.min { blocks[$0].y < blocks[$1].y }
+                guard let k = next, infos[k] == nil, dates(blocks[k].text).isEmpty else { break }
+                add(k, "address"); last = blocks[k]
+            }
+        }
+        for (i, b) in blocks.enumerated() {
+            let t = b.text, ns = t as NSString, n = ns.length
+            // Machine-readable lines on passports and residence cards.
+            if marks(t) >= 3 || (has(IDRx.mrzLine, t.replacingOccurrences(of: " ", with: "")) && digits(t) >= 8) { add(i, "number"); continue }
+            let label = infos[i]
+            if let label, label.kind != "other" {
+                let kind = label.kind
+                if !label.only {
+                    let value = ns.substring(from: min(label.end, n))
+                    if plausible(kind, value) {
+                        out.append((names[kind]!, span(b, label.end, n))); used.insert(i)
+                        if kind == "address" { continuation(i, anchor: b.x + b.width * Double(label.end) / Double(max(1, n))) }
+                    }
+                } else {
+                    // The value to the right on the same row…
+                    let row = blocks.indices.filter { j in
+                        let c = blocks[j]
+                        return j != i && c.x >= b.x + b.width - 0.02 && c.x - (b.x + b.width) < 0.35 && overlapY(b, c) > 0.4 * min(c.height, b.height) && !isLabel(j)
+                    }.sorted { blocks[$0].x < blocks[$1].x }
+                    var got: Int?, before: [Int] = []
+                    for j in row {
+                        if plausible(kind, blocks[j].text) { got = j; break }
+                        if blocks[j].text.trimmingCharacters(in: .whitespaces).count <= 2 { before.append(j); continue }
+                        break
+                    }
+                    if let got {
+                        for j in before { add(j, kind) }
+                        add(got, kind)
+                        // Values split in pieces: 石見 + 修, 第 + 600800101440 + 号, 1234 + 5678 9012.
+                        var c = blocks[got]
+                        let rest = blocks.indices.filter { k in k != i && blocks[k].x > blocks[got].x && overlapY(blocks[got], blocks[k]) > 0.4 * min(blocks[got].height, blocks[k].height) && !isLabel(k) }
+                            .sorted { blocks[$0].x < blocks[$1].x }
+                        for k in rest where !used.contains(k) && blocks[k].x > c.x {
+                            let d = blocks[k]
+                            let piece = d.text.trimmingCharacters(in: .whitespaces).count <= 2
+                                || (kind == "name" && plausible(kind, d.text) && c.text.count <= 3)
+                                || (kind == "number" && has(IDRx.numberPiece, d.text))
+                            guard d.x - (c.x + c.width) < 0.12, piece else { break }
+                            add(k, kind); c = d
+                        }
+                        if kind == "address" { continuation(got, anchor: blocks[got].x) }
+                    } else {
+                        // …or the line or two under it.
+                        let bottom = b.y + b.height
+                        let below = blocks.indices.filter { j in
+                            let c = blocks[j], gap = c.y - bottom
+                            return j != i && gap >= -0.5 * b.height && gap < 2 * max(b.height, c.height) && c.x >= b.x - 0.05 && c.x < b.x + b.width
+                        }.sorted { blocks[$0].y < blocks[$1].y }
+                        let take = kind == "name" || kind == "address" ? 2 : 1
+                        var last = b, taken = 0
+                        for j in below {
+                            let c = blocks[j]
+                            if taken >= take || isLabel(j) || !plausible(kind, c.text) { break }
+                            if taken > 0, c.y - (last.y + last.height) > max(c.height, last.height) { break }
+                            add(j, kind); last = c; taken += 1
+                        }
+                    }
+                }
+            }
+            if strong {
+                // Licence and document numbers: long letter-digit runs that aren't dates.
+                for m in IDRx.token.matches(in: t, range: full(t)) {
+                    let s = ns.substring(with: m.range)
+                    if m.range.location > 0, ns.substring(with: NSRange(location: m.range.location - 1, length: 1)) == "*" { continue }
+                    if digits(s) >= 5, s.filter({ $0 != "-" }).count <= 18, !has(IDRx.shortDate, s), !compactDate(s) { out.append(("ID number", span(b, m.range.location, m.range.upperBound))) }
+                }
+            }
+            for m in IDRx.spaced.matches(in: t, range: full(t)) { out.append(("ID number", span(b, m.range.location, m.range.upperBound))) }
+            // US and Canadian licences number their fields: 1 family name, 2 given names, 8 address.
+            if label == nil, let m = IDRx.aamva.firstMatch(in: t, range: full(t)) {
+                let field = ns.substring(with: m.range(at: 1))
+                out.append((field == "8" ? "Address" : "Name", span(b, m.range(at: 2).location, n)))
+                if field == "8" { continuation(i, anchor: b.x) }
+            }
+            if has(IDRx.street, t.uppercased()) { add(i, "address"); continuation(i, anchor: b.x) }
+            if has(IDRx.postal, t.uppercased()) { add(i, "address") }
+            if has(IDRx.cjkAddress, t) { add(i, "address") }
+            // Korean resident cards: the name sits right above the registration number.
+            if has(IDRx.rrnLoose, t) {
+                for (k, d) in blocks.enumerated() where b.y - (d.y + d.height) >= 0 && b.y - (d.y + d.height) < 1.5 * b.height && abs(d.x - b.x) < 0.05 && has(IDRx.hangulName, d.text) { add(k, "name") }
+            }
+            if strong, label == nil, b.width > b.height, capsName(t) { add(i, "name") }
+            // Numbers printed sideways along the edge (ghost licence number or birth date).
+            if strong, b.height > 3 * b.width, digits(t) >= 6 { add(i, "number") }
+            if has(IDRx.bornSuffix, t) { add(i, "dob") }
+        }
+        // The date of birth is the earliest date on the card. A date can be split over two or three blocks on a row.
+        if strong {
+            var found: [(year: Int, blocks: [Int], range: NSRange?)] = []
+            for (i, b) in blocks.enumerated() {
+                found += dates(b.text).map { ($0.year, [i], $0.range) }
+                var chain = [i], text = b.text
+                for _ in 0..<2 {
+                    let last = blocks[chain.last!]
+                    let next = blocks.indices.filter { k in
+                        let gap = blocks[k].x - (last.x + last.width)
+                        return !chain.contains(k) && gap >= 0 && gap < 0.06 && overlapY(last, blocks[k]) > 0.5 * min(last.height, blocks[k].height)
+                    }.min { blocks[$0].x < blocks[$1].x }
+                    guard let k = next else { break }
+                    let head = (text as NSString).length
+                    text += " " + blocks[k].text
+                    for d in dates(text) where d.range.upperBound > head + 1 && d.range.location < head { found.append((d.year, chain + [k], nil)) }
+                    chain.append(k)
+                }
+            }
+            let thisYear = Calendar(identifier: .gregorian).component(.year, from: Date())
+            if let first = found.map(\.year).min(), first <= thisYear - 12 {
+                for d in found where d.year == first {
+                    if let r = d.range { out.append(("Date of birth", span(blocks[d.blocks[0]], r.location, r.upperBound))) } else { for k in d.blocks { add(k, "dob") } }
+                }
+            }
+        }
+        return out
     }
 }
 
@@ -1912,7 +2398,7 @@ struct RedactTool: View {
         work.run("Looking for personal info…") {
             for i in 0..<count {
                 work.busy = count > 1 ? "Looking for personal info… page \(i + 1) of \(count)" : "Looking for personal info…"
-                let found = try await OfflineWork.perform { try Redaction.detect(ExtractRender.page(url, index: i, maxSide: 2000)) }
+                let found = try await OfflineWork.perform { try Redaction.detect(ExtractRender.page(url, index: i, maxSide: 3000)) }
                 boxes[i] = found
             }
             forward = true; step = 1

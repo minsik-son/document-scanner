@@ -156,3 +156,161 @@ final class ScreenshotFixesTests: XCTestCase {
         XCTAssertTrue(FoundingOffer.applies(price: 54.99, regular: nil), "CAD and other currencies: ribbon without strikethrough")
     }
 }
+
+/// Hide personal info on ID cards and licences from the US, Canada, Korea, Japan
+/// and China (Verification/private/testimg/ids: official specimens, public-domain
+/// samples and made-up cards, plus each card on a page and as a phone photo).
+/// expected.json is the answer key: the name, number, date of birth, address and
+/// passport lines that must end up covered. Writes ids/report.txt and an overlay
+/// picture per sample (green: must hide, red: what was hidden).
+final class IDRedactionSampleTests: XCTestCase {
+    struct Field: Codable { let kind: String; let text: String }
+    struct Entry: Codable { let negative: Bool; let fields: [Field]; let source: [String]? }
+
+    private func root() throws -> URL {
+        guard ProcessInfo.processInfo.environment["SIMULATOR_HOST_HOME"] != nil else { throw XCTSkip("Private samples are only on the developer Mac.") }
+        return URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Verification/private")
+    }
+
+    /// Letters and digits only, upper-cased: OCR spacing and punctuation don't matter.
+    static func squeeze(_ s: String) -> (String, [Int]) {
+        var out = "", map: [Int] = []
+        for (i, ch) in Array(s).enumerated() where ch.isLetter || ch.isNumber || ch == "<" {
+            out += String(ch).uppercased(); map.append(i)
+        }
+        return (out, map)
+    }
+    /// Where `text` is on the page, from recognized lines (several lines for a long address).
+    static func locate(_ text: String, in blocks: [TextBlock]) -> [CGRect] {
+        let target = squeeze(text).0
+        guard !target.isEmpty else { return [] }
+        func span(_ block: TextBlock, _ lo: Int, _ hi: Int) -> CGRect {
+            let chars = Array(block.text)
+            let words = block.words ?? []
+            var cursor = 0, rects: [CGRect] = []
+            for w in words {
+                let wc = Array(w.text)
+                guard let start = (cursor...max(cursor, chars.count - wc.count)).first(where: { i in i + wc.count <= chars.count && Array(chars[i..<(i + wc.count)]) == wc }) else { continue }
+                let end = start + wc.count; cursor = end
+                if end > lo && start <= hi { rects.append(CGRect(x: w.x, y: w.y, width: w.width, height: w.height)) }
+            }
+            if let first = rects.first { return rects.dropFirst().reduce(first) { $0.union($1) } }
+            let n = Double(max(1, chars.count))
+            return CGRect(x: block.x + block.width * Double(lo) / n, y: block.y, width: block.width * Double(hi - lo + 1) / n, height: block.height)
+        }
+        for b in blocks {
+            let (s, map) = squeeze(b.text)
+            if let r = s.range(of: target) {
+                let lo = s.distance(from: s.startIndex, to: r.lowerBound), hi = lo + target.count - 1
+                return [span(b, map[lo], map[hi])]
+            }
+        }
+        // Split over lines or words: every part must be found.
+        let parts = text.split(whereSeparator: { $0 == " " || $0 == "\u{3000}" || $0 == "," }).map(String.init).filter { !squeeze($0).0.isEmpty }
+        guard parts.count > 1 else { return [] }
+        var found: [CGRect] = []
+        for p in parts {
+            let r = locate(p, in: blocks)
+            if r.isEmpty { return [] }
+            found += r
+        }
+        return found
+    }
+    /// The share of `rect` under the hidden boxes (sampled on a grid).
+    static func covered(_ rect: CGRect, by boxes: [CGRect]) -> Double {
+        var hit = 0, total = 0
+        for i in 0..<12 { for j in 0..<6 {
+            let p = CGPoint(x: rect.minX + rect.width * (Double(i) + 0.5) / 12, y: rect.minY + rect.height * (Double(j) + 0.5) / 6)
+            total += 1; if boxes.contains(where: { $0.contains(p) }) { hit += 1 }
+        } }
+        return Double(hit) / Double(total)
+    }
+
+    /// Ordinary pages (letters, forms, photos) must not be read as ID cards.
+    @MainActor func testOrdinaryPagesAreNotTreatedAsCards() throws {
+        let dir = try root().appendingPathComponent("testimg")
+        var report: [String] = []
+        for name in ["erase_doc.jpg", "marked_doc.jpg", "mega_1.jpg", "mega_2.jpg", "mega_3.jpg", "book_spread.jpg", "old_photo.jpg", "coins.jpg"] {
+            guard let image = UIImage(contentsOfFile: dir.appendingPathComponent(name).path) else { continue }
+            let parts = try Redaction.readParts(image)
+            let fields = parts.flatMap { Redaction.cardFields($0.blocks, card: $0.card) }
+            report.append("\(name): parts \(parts.count), cards \(parts.filter(\.card).count), card fields \(fields.count) \(fields.map(\.0))")
+            XCTAssertFalse(parts.contains(where: \.card), "\(name) was taken for a card")
+        }
+        print("IDORDINARY " + report.joined(separator: " | "))
+    }
+
+    @MainActor func testIDCardsHideTheirPersonalDetails() throws {
+        let base = try root()
+        let dir = base.appendingPathComponent("testimg/ids")
+        guard let data = try? Data(contentsOf: dir.appendingPathComponent("expected.json")) else { throw XCTSkip("No ID samples.") }
+        let entries = try JSONDecoder().decode([String: Entry].self, from: data)
+        let out = base.appendingPathComponent("ids")
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        let onlyText = (try? String(contentsOf: out.appendingPathComponent("only.txt"), encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let only: String? = onlyText.isEmpty ? nil : onlyText
+        var lines: [String] = [], total = 0, hidden = 0, unlocated = 0, negBoxes = 0
+        var byKind: [String: (Int, Int)] = [:]
+        for name in entries.keys.sorted() where only == nil || name.contains(only!) {
+            let entry = entries[name]!
+            let file = ["png", "jpg"].map { dir.appendingPathComponent("\(name).\($0)") }.first { FileManager.default.fileExists(atPath: $0.path) }
+            guard let file, var image = UIImage(contentsOfFile: file.path) else { lines.append("\(name): missing"); continue }
+            if name.hasPrefix("photo_") {
+                let cg = try XCTUnwrap(image.cgImage)
+                guard let crop = CaptureStyle.card.detect(image, capturedPhoto: true) else { lines.append("\(name): card edges not found"); continue }
+                let ci = try DocumentProcessing.render(CIImage(cgImage: cg), crop: crop, turns: 0, enhancement: .original, flatten: FlattenRequest(key: nil))
+                image = UIImage(cgImage: try XCTUnwrap(DocumentProcessing.context.createCGImage(ci, from: ci.extent)))
+            }
+            let start = Date()
+            let parts = try Redaction.readParts(image)
+            let read = parts.flatMap { part in part.blocks.map(part.place) }
+            let boxes = parts.flatMap { part in Redaction.boxes(in: part.blocks, card: part.card).map { var b = $0; b.rect = part.place($0.rect); return b } }
+            let seconds = Date().timeIntervalSince(start)
+            try FileManager.default.createDirectory(at: out.appendingPathComponent("ocr"), withIntermediateDirectories: true)
+            try JSONEncoder().encode(read).write(to: out.appendingPathComponent("ocr/\(name).json"))
+            let rects = boxes.filter(\.on).map(\.rect)
+            if entry.negative {
+                negBoxes += rects.count
+                lines.append(String(format: "%@: blank sample, %d boxes (%.1fs)", name, rects.count, seconds))
+                continue
+            }
+            // Ground truth: read at twice the size so small print is found.
+            let big = UIGraphicsImageRenderer(size: CGSize(width: image.size.width * 2, height: image.size.height * 2), format: { let f = UIGraphicsImageRendererFormat(); f.scale = 1; return f }()).image { _ in image.draw(in: CGRect(origin: .zero, size: CGSize(width: image.size.width * 2, height: image.size.height * 2))) }
+            let truth = try Imaging.recognize(big)
+            var row: [String] = [], misses: [String] = []
+            var fieldRects: [CGRect] = []
+            for f in entry.fields {
+                let where_ = Self.locate(f.text, in: truth)
+                guard !where_.isEmpty else { unlocated += 1; misses.append("?" + f.text); continue }
+                total += 1
+                fieldRects += where_
+                let share = where_.map { Self.covered($0, by: rects) }.min() ?? 0
+                var k = byKind[f.kind] ?? (0, 0); k.1 += 1
+                if share >= 0.8 { hidden += 1; k.0 += 1 } else { misses.append(String(format: "%@ %.0f%%", f.text, share * 100)) }
+                byKind[f.kind] = k
+                row.append(f.text)
+            }
+            let found = entry.fields.count - misses.filter { $0.hasPrefix("?") }.count
+            let ok = found - misses.filter { !$0.hasPrefix("?") }.count
+            lines.append(String(format: "%@: %d/%d hidden, %d boxes (%.1fs)%@", name, ok, found, rects.count, seconds, misses.isEmpty ? "" : " — missed: " + misses.joined(separator: " | ")))
+            // Overlay for checking by eye.
+            let overlay = UIGraphicsImageRenderer(size: image.size, format: { let f = UIGraphicsImageRendererFormat(); f.scale = 1; return f }()).image { c in
+                image.draw(at: .zero)
+                let full = CGRect(origin: .zero, size: image.size)
+                UIColor.systemGreen.setStroke()
+                for r in fieldRects { let p = UIBezierPath(rect: Redaction.place(r, in: full)); p.lineWidth = 3; p.stroke() }
+                UIColor.red.withAlphaComponent(0.45).setFill()
+                for r in rects { c.fill(Redaction.place(r, in: full)) }
+            }
+            try overlay.jpegData(compressionQuality: 0.8)?.write(to: out.appendingPathComponent(name + ".jpg"))
+            try FileManager.default.createDirectory(at: out.appendingPathComponent("truth"), withIntermediateDirectories: true)
+            var truthOut: [String: [[Double]]] = [:]
+            for f in entry.fields { truthOut[f.kind + "|" + f.text] = Self.locate(f.text, in: truth).map { [$0.minX, $0.minY, $0.width, $0.height] } }
+            try JSONSerialization.data(withJSONObject: truthOut).write(to: out.appendingPathComponent("truth/\(name).json"))
+        }
+        let kinds = byKind.keys.sorted().map { "\($0) \(byKind[$0]!.0)/\(byKind[$0]!.1)" }.joined(separator: ", ")
+        let head = String(format: "Hidden %d/%d fields (%.0f%%); not readable by OCR: %d; boxes on blank samples: %d\nBy kind: %@", hidden, total, total == 0 ? 0 : 100.0 * Double(hidden) / Double(total), unlocated, negBoxes, kinds)
+        try ([head, ""] + lines).joined(separator: "\n").write(to: out.appendingPathComponent("report.txt"), atomically: true, encoding: .utf8)
+        print("IDREDACT " + head.replacingOccurrences(of: "\n", with: " | "))
+    }
+}

@@ -249,8 +249,15 @@ final class OfficeLayoutTests: XCTestCase {
             .filter { ["jpg", "jpeg", "png"].contains(($0 as NSString).pathExtension.lowercased()) }.sorted()
         guard !files.isEmpty else { throw XCTSkip("No online samples.") }
         let only = (try? String(contentsOf: root.appendingPathComponent("online/only.txt"), encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
-        // A long run (24 pages): only when asked for (online/run.txt or only.txt).
-        guard only != nil || FileManager.default.fileExists(atPath: root.appendingPathComponent("online/run.txt").path) else { throw XCTSkip("Online samples run only on request.") }
+        // Each page's accepted result is locked in testimg/online/expected.json:
+        // a later change may not lose a table, a picture or the words it read.
+        // online/record.txt writes the current results as the new reference
+        // (after a deliberate improvement). Runs whenever a reference exists.
+        let expectedURL = dir.appendingPathComponent("expected.json")
+        let recording = FileManager.default.fileExists(atPath: root.appendingPathComponent("online/record.txt").path)
+        var expected: [String: OnlineSnapshot] = (try? JSONDecoder().decode([String: OnlineSnapshot].self, from: Data(contentsOf: expectedURL))) ?? [:]
+        guard only != nil || recording || !expected.isEmpty || FileManager.default.fileExists(atPath: root.appendingPathComponent("online/run.txt").path) else { throw XCTSkip("No online reference yet.") }
+        var regressions: [String] = []
         var summary: [String] = []
         for file in files where only == nil || file.contains(only!) {
             guard let original = UIImage(contentsOfFile: dir.appendingPathComponent(file).path) else { continue }
@@ -287,10 +294,22 @@ final class OfficeLayoutTests: XCTestCase {
             let tables = page.items.compactMap { item -> LayoutTable? in if case .table(let t) = item { return t }; return nil }
             report.append(String(format: "page form=%@ positioned=%@ frame=%@ items=%d tables=%d graphics=%d %.1fs", "\(page.form)", "\(page.positioned)", "\(page.frame != nil)", page.items.count, tables.count, page.graphics.count, Date().timeIntervalSince(start)))
             for t in tables { report.append("  table \(t.rowCount)x\(t.columnCount) ruled=\(t.ruled) cells=\(t.cells.count) box=\(Int(t.box.x0)),\(Int(t.box.y0)),\(Int(t.box.x1)),\(Int(t.box.y1))") }
+            let now = OnlineSnapshot(page)
+            if recording { expected[stem] = now }
+            else if let was = expected[stem] {
+                let problems = now.regressions(from: was)
+                if !problems.isEmpty { regressions.append(stem + ": " + problems.joined(separator: "; ")); report.append("REGRESSION " + problems.joined(separator: "; ")) }
+                else { report.append(String(format: "matches reference (words %.0f%%)", now.recall(of: was) * 100)) }
+            } else { report.append("no reference yet") }
             summary.append(stem + ": " + report.joined(separator: "\n  "))
         }
         try summary.joined(separator: "\n").write(to: root.appendingPathComponent(only == nil ? "online/report.txt" : "online/report-only.txt"), atomically: true, encoding: .utf8)
         print("ONLINE\n" + summary.joined(separator: "\n"))
+        if recording {
+            let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
+            try encoder.encode(expected).write(to: expectedURL)
+        }
+        for r in regressions { XCTFail(r) }
     }
 
     @MainActor private func packingDump(_ photo: UIImage, to folder: URL) throws -> [String] {
@@ -489,3 +508,36 @@ final class OfficeLayoutTests: XCTestCase {
 }
 
 private extension String { var nilIfEmpty: String? { isEmpty ? nil : self } }
+
+/// What a page's accepted reading must keep: its tables (rows × columns,
+/// ruled, coloured rules), its pictures and the words it read.
+struct OnlineSnapshot: Codable {
+    var tables: [String]
+    var graphics: Int
+    var words: [String]
+    init(_ page: PageLayout) {
+        tables = page.items.compactMap { item -> String? in
+            guard case .table(let t) = item else { return nil }
+            return "\(t.rowCount)x\(t.columnCount)" + (t.ruled ? " ruled" : "") + (t.lineColor != nil ? " coloured" : "")
+        }
+        graphics = page.graphics.count
+        words = Array(Set(LayoutText.text([page]).lowercased().components(separatedBy: CharacterSet.alphanumerics.inverted).filter { $0.count >= 2 })).sorted()
+    }
+    /// Share of the reference's words still read.
+    func recall(of reference: OnlineSnapshot) -> Double {
+        guard !reference.words.isEmpty else { return 1 }
+        let mine = Set(words)
+        return Double(reference.words.filter { mine.contains($0) }.count) / Double(reference.words.count)
+    }
+    func regressions(from reference: OnlineSnapshot) -> [String] {
+        var out: [String] = []
+        if tables != reference.tables { out.append("tables \(reference.tables) → \(tables)") }
+        if graphics != reference.graphics { out.append("pictures \(reference.graphics) → \(graphics)") }
+        let r = recall(of: reference)
+        if r < 0.97 {
+            let mine = Set(words)
+            out.append(String(format: "words %.0f%%, lost ", r * 100) + reference.words.filter { !mine.contains($0) }.prefix(12).joined(separator: " "))
+        }
+        return out
+    }
+}

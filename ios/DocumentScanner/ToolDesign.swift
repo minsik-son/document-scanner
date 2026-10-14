@@ -9,8 +9,8 @@ struct ToolArtwork: View {
             if name == "all-tools" {
                 // Light 2x2 grid on the same whisper tile as the tool icons.
                 let cell = size * 0.19, gap = size * 0.07
-                RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
-                    .fill(ToolHue.blue.container)
+                RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
+                    .fill(Self.tints["scan"]!)
                     .overlay {
                         VStack(spacing: gap) {
                             HStack(spacing: gap) {
@@ -23,6 +23,11 @@ struct ToolArtwork: View {
                             }
                         }
                     }
+            } else if let tint = Self.tints[name], UIImage(named: "glyph-" + name) != nil {
+                // v3 set: soft tinted squircle, the flat picture fills three quarters of it.
+                RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
+                    .fill(tint)
+                    .overlay(Image("glyph-" + name).resizable().interpolation(.high).scaledToFit().frame(width: size * 0.75, height: size * 0.75))
             } else if UIImage(named: "glyph-" + name) != nil {
                 // v2 set: same soft squircle for every tool, each in its own hue.
                 RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
@@ -70,6 +75,16 @@ extension ToolArtwork {
         "extract": .blue, "reorder": .purple, "compress": .orange, "protect": .teal, "images": .blue, "long-image": .purple,
         "print": .orange, "measure": .blue, "mesh": .teal,
     ]
+    /// v3 tiles: four soft tints (blue, purple, green, orange), one per tool.
+    static let tints: [String: Color] = {
+        let blue = Color(hex: 0xEAF2FF), purple = Color(hex: 0xF0EAFB), green = Color(hex: 0xE7F7EF), orange = Color(hex: 0xFFF1E4)
+        var t: [String: Color] = [:]
+        for n in ["scan", "translate", "ocr", "fill-form", "redact", "restore", "word", "images", "portrait", "card-contact", "measure"] { t[n] = blue }
+        for n in ["merge", "split", "eraser", "marks", "reorder", "math", "long-image", "stitch"] { t[n] = purple }
+        for n in ["compress", "protect", "extract", "excel", "qr", "whiteboard", "mega", "mesh"] { t[n] = green }
+        for n in ["signature", "watermark", "timestamp", "book", "slides", "print", "identity"] { t[n] = orange }
+        return t
+    }()
     static let fallback: [String: String] = [
         "card-contact": "person.crop.rectangle.badge.plus", "ask-document": "sparkles",
         "remove-fingers": "hand.raised.fill", "auto-save": "folder.badge.plus",

@@ -1989,3 +1989,5 @@
 "Opening the files…" = "Đang mở các tệp…";
 "Putting them in your order…" = "Đang xếp theo thứ tự bạn chọn…";
 "Joining them into one…" = "Đang gộp thành một…";
+"Resize" = "Đổi kích thước";
+"Defaults to the current time. You can change it; this is a label, not a certified capture time." = "Mặc định là thời gian hiện tại. Bạn có thể đổi; đây là nhãn, không phải thời gian chụp được chứng nhận.";

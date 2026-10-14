@@ -1989,3 +1989,5 @@
 "Opening the files…" = "正在打开文件…";
 "Putting them in your order…" = "正在按你的顺序排列…";
 "Joining them into one…" = "正在合并为一个…";
+"Resize" = "调整大小";
+"Defaults to the current time. You can change it; this is a label, not a certified capture time." = "默认是当前时间。你可以更改；这只是标签，不是经认证的拍摄时间。";

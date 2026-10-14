@@ -1989,3 +1989,5 @@
 "Opening the files…" = "ファイルを開いています…";
 "Putting them in your order…" = "選んだ順に並べています…";
 "Joining them into one…" = "1つにまとめています…";
+"Resize" = "サイズを変更";
+"Defaults to the current time. You can change it; this is a label, not a certified capture time." = "初期値は現在の時刻です。変更できます。証明された撮影時刻ではなく、表示用のラベルです。";

@@ -645,7 +645,8 @@ private struct TimestampToolStep: View {
             else { stylePage.transition(.move(edge: .leading).combined(with: .opacity)) }
         }
         .animation(.snappy(duration: 0.3), value: detailsShown)
-        .onAppear { stamp.date = document.createdAt }
+        // The label shows the time the user stamps it, not when the scan was made.
+        .onAppear { stamp.date = Date() }
         .task(id: key) { await render() }
     }
     private var stylePage: some View {
@@ -1712,6 +1713,8 @@ struct RedactTool: View {
     @State private var draft: CGRect?
     @State private var result: PDFToolResult?
     @State private var paywall = false
+    @State private var scanning = false
+    @State private var importing = false
     private var documents: [ScanDocument] { store.active.filter { $0.pdfFile != nil } }
     private var total: Int { boxes.values.reduce(0) { $0 + $1.filter(\.on).count } }
     var body: some View {
@@ -1722,12 +1725,31 @@ struct RedactTool: View {
         }
         .stepChrome(step: $step, forward: $forward, last: 2, work: work)
         .sheet(isPresented: $paywall) { PaywallView() }
+        .fullScreenCover(isPresented: $scanning) {
+            ToolScanCamera { draft in
+                guard let draft else { return }
+                work.run("Saving your scan…") { openNew(try await ToolScanCamera.save(draft, store: store)) }
+            }
+        }
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.pdf]) { response in
+            guard case .success(let url) = response else { return }
+            work.run("Adding your PDF…") { openNew(try await store.importNativePDF(url)) }
+        }
     }
     private var choosePage: some View {
         ToolPage(title: "Hide personal info", subtitle: "ID, card and account numbers, phone numbers and emails are found and blacked out in a new copy.") {
             ToolHero(art: .redact)
+            // Like the other PDF tools: scan a page now, or bring a PDF from Files.
+            VStack(alignment: .leading, spacing: 4) {
+                Button { scanning = true } label: {
+                    ChoiceRow(symbol: "camera.fill", title: "Scan with the camera", detail: "Saved as a new PDF, then opened here", tint: TK.blue, soft: TK.blueSoft)
+                }.buttonStyle(.plain).accessibilityIdentifier("redact-scan")
+                Button { importing = true } label: {
+                    ChoiceRow(symbol: "folder.fill", title: "Choose a PDF from Files", detail: "It's added to your documents", tint: TK.orange, soft: TK.orangeSoft)
+                }.buttonStyle(.plain).accessibilityIdentifier("redact-import")
+            }
             VStack(alignment: .leading, spacing: 8) {
-                SectionLabel(text: "Choose a document")
+                SectionLabel(text: "From your documents")
                 if documents.isEmpty { Text("No saved documents yet. Scan or import one first.").foregroundStyle(TK.grey500) }
                 else { DocumentChoiceList(documents: documents) { start($0) } }
             }
@@ -1793,6 +1815,8 @@ struct RedactTool: View {
         if list[i].kind == "Added" { list.remove(at: i) } else { list[i].on.toggle() }
         boxes[page] = list
     }
+    /// A page just scanned or a PDF just added: open it here.
+    private func openNew(_ id: UUID) { if let added = store.document(id) { start(added) } }
     private func start(_ chosen: ScanDocument) {
         guard let file = chosen.pdfFile else { return }
         let url = store.url(file), count = chosen.pages.count

@@ -1989,3 +1989,5 @@
 "Opening the files…" = "파일을 여는 중…";
 "Putting them in your order…" = "고른 순서대로 놓는 중…";
 "Joining them into one…" = "하나로 합치는 중…";
+"Resize" = "크기 조절";
+"Defaults to the current time. You can change it; this is a label, not a certified capture time." = "기본값은 현재 시각이에요. 바꿀 수 있어요. 인증된 촬영 시각이 아니라 표시용 라벨이에요.";

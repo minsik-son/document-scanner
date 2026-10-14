@@ -82,7 +82,7 @@ struct LocalDocumentToolsView: View {
             .interactiveDismissDisabled(busy)
             .sheet(item: $share) { files in ShareSheet(items: files.urls) }
             .onAppear {
-                date = doc?.createdAt ?? Date(); bothSides = (doc?.pages.count ?? 0) > 1
+                date = Date(); bothSides = (doc?.pages.count ?? 0) > 1
                 if tool == .timestamp { stamp.opacity = 0.9; stamp.angle = 0; stamp.width = 0.5; stamp.position = .bottomRight }
             }
             .onChange(of: logo) { _, item in
@@ -105,7 +105,7 @@ struct LocalDocumentToolsView: View {
             if tool == .timestamp {
                 DatePicker("Date", selection: $date, displayedComponents: includeTime ? [.date, .hourAndMinute] : [.date])
                 Toggle("Include time", isOn: $includeTime)
-                Text("Defaults to the document date. You can change it; this is a label, not a certified capture time.").font(.caption)
+                Text("Defaults to the current time. You can change it; this is a label, not a certified capture time.").font(.caption)
             } else {
                 TextField("Watermark text", text: $stamp.text).accessibilityIdentifier("watermark-text")
                 PhotosPicker("Choose logo", selection: $logo, matching: .images)

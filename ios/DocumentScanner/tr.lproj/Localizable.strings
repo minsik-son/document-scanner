@@ -1989,3 +1989,5 @@
 "Opening the files…" = "Dosyalar açılıyor…";
 "Putting them in your order…" = "Senin sırana diziliyor…";
 "Joining them into one…" = "Tek dosyada birleştiriliyor…";
+"Resize" = "Yeniden boyutlandır";
+"Defaults to the current time. You can change it; this is a label, not a certified capture time." = "Varsayılan şu anki saattir. Değiştirebilirsin; bu bir etikettir, onaylı bir çekim zamanı değildir.";

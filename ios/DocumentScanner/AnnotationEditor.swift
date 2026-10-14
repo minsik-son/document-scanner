@@ -30,6 +30,11 @@ struct AnnotationEditor: View {
   @State private var busy = false
   @State private var error: String?
   @State private var dragOrigin: CGPoint?
+  /// The box of a signature or text box when a corner handle started moving.
+  @State private var resizeOrigin: CGRect?
+  /// How far the page is zoomed in (1 = whole page).
+  @State private var zoom: CGFloat = 1
+  @State private var zoomStart: CGFloat?
   @State private var drawing: UUID?
   @State private var history: [[PageAnnotation]] = []
   private var marks: [PageAnnotation] { document?.pages[index].annotations ?? [] }
@@ -55,30 +60,62 @@ struct AnnotationEditor: View {
           }
           Group {
             if let preview {
+              // The page, pinch or double-tap to zoom. Zoomed in, a drag on the page
+              // scrolls it; the selected box moves by dragging the box itself and
+              // resizes by its corners; pen and highlight draw wherever they touch.
               GeometryReader { geometry in
-                let size = geometry.size
-                ZStack {
-                  Image(uiImage: preview).resizable().scaledToFit()
-                  Canvas { context, _ in
-                    context.withCGContext { cg in
-                      cg.saveGState()
-                      cg.scaleBy(
-                        x: size.width / previewPageSize.width,
-                        y: size.height / previewPageSize.height)
-                      DocumentPDF.draw(marks, size: previewPageSize, context: cg)
-                      cg.restoreGState()
+                let size = CGSize(width: geometry.size.width * zoom, height: geometry.size.height * zoom)
+                let drawingMode = mode == .pen || mode == .highlight
+                ScrollView([.horizontal, .vertical], showsIndicators: false) {
+                  ZStack {
+                    Image(uiImage: preview).resizable().scaledToFit()
+                    Canvas { context, _ in
+                      context.withCGContext { cg in
+                        cg.saveGState()
+                        cg.scaleBy(
+                          x: size.width / previewPageSize.width,
+                          y: size.height / previewPageSize.height)
+                        DocumentPDF.draw(marks, size: previewPageSize, context: cg)
+                        cg.restoreGState()
+                      }
+                    }
+                    if let item = marks.first(where: { $0.id == selected }) {
+                      Rectangle().stroke(.blue, style: StrokeStyle(lineWidth: 1, dash: [4]))
+                        .frame(width: item.width * size.width, height: item.height * size.height)
+                        .contentShape(Rectangle())
+                        .gesture(
+                          DragGesture(minimumDistance: 0, coordinateSpace: .named("annotate-page"))
+                            .onChanged { value in move(item.id, by: value.translation, in: size) }
+                            .onEnded { _ in dragOrigin = nil },
+                          including: drawingMode ? .subviews : .all)
+                        .position(
+                          x: (item.x + item.width / 2) * size.width,
+                          y: (item.y + item.height / 2) * size.height)
+                      // Corner handles: drag one to resize; the opposite corner stays put.
+                      // A signature keeps its shape; a text box can change either side.
+                      if item.kind == .signature || item.kind == .text {
+                        ForEach(0..<4, id: \.self) { corner in
+                          Circle().fill(.white).frame(width: 14, height: 14)
+                            .overlay(Circle().strokeBorder(.blue, lineWidth: 2))
+                            .frame(width: 44, height: 44).contentShape(Rectangle())
+                            .position(
+                              x: (item.x + (corner % 2 == 0 ? 0 : item.width)) * size.width,
+                              y: (item.y + (corner < 2 ? 0 : item.height)) * size.height)
+                            .gesture(
+                              DragGesture(minimumDistance: 0, coordinateSpace: .named("annotate-page"))
+                                .onChanged { value in resize(item.id, corner: corner, to: value.location, in: size, keepShape: item.kind == .signature) }
+                                .onEnded { _ in resizeOrigin = nil })
+                            .accessibilityLabel("Resize")
+                            .accessibilityIdentifier("annotation-handle-\(corner)")
+                        }
+                      }
                     }
                   }
-                  if let item = marks.first(where: { $0.id == selected }) {
-                    Rectangle().stroke(.blue, style: StrokeStyle(lineWidth: 1, dash: [4]))
-                      .frame(width: item.width * size.width, height: item.height * size.height)
-                      .position(
-                        x: (item.x + item.width / 2) * size.width,
-                        y: (item.y + item.height / 2) * size.height)
-                  }
-                }.contentShape(Rectangle()).gesture(
-                  DragGesture(minimumDistance: 0).onChanged { value in
-                    if mode == .pen || mode == .highlight {
+                  .frame(width: size.width, height: size.height)
+                  .coordinateSpace(name: "annotate-page")
+                  .contentShape(Rectangle())
+                  .gesture(
+                    DragGesture(minimumDistance: 0).onChanged { value in
                       if drawing == nil {
                         remember()
                         var item = PageAnnotation(kind: mode)
@@ -99,32 +136,39 @@ struct AnnotationEditor: View {
                           x: min(1, max(0, value.location.x / size.width)),
                           y: min(1, max(0, value.location.y / size.height))))
                       setMarks(items)
-                    } else if let i = marks.firstIndex(where: { $0.id == selected }) {
-                      if dragOrigin == nil {
-                        remember()
-                        dragOrigin = CGPoint(x: marks[i].x, y: marks[i].y)
-                      }
-                      var items = marks
-                      items[i].x = min(
-                        1 - items[i].width,
-                        max(0, dragOrigin!.x + value.translation.width / size.width))
-                      items[i].y = min(
-                        1 - items[i].height,
-                        max(0, dragOrigin!.y + value.translation.height / size.height))
-                      setMarks(items)
+                    }.onEnded { _ in drawing = nil },
+                    including: drawingMode ? .all : .subviews)
+                  .onTapGesture(count: 2) { withAnimation(.snappy) { zoom = zoom > 1.05 ? 1 : 2.5 } }
+                }
+                .scrollDisabled(zoom <= 1.01)
+                .simultaneousGesture(
+                  MagnifyGesture()
+                    .onChanged { value in
+                      if zoomStart == nil { zoomStart = zoom }
+                      zoom = min(4, max(1, (zoomStart ?? 1) * value.magnification))
                     }
-                  }.onEnded { _ in
-                    dragOrigin = nil
-                    drawing = nil
-                  })
+                    .onEnded { _ in zoomStart = nil })
+                .overlay(alignment: .topTrailing) {
+                  if zoom > 1.05 {
+                    Button { withAnimation(.snappy) { zoom = 1 } } label: {
+                      Image(systemName: "arrow.down.right.and.arrow.up.left").font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.white).frame(width: 36, height: 36).background(.black.opacity(0.55), in: Circle())
+                    }
+                    .padding(8).accessibilityLabel("Fit page").accessibilityIdentifier("annotate-zoom-reset")
+                  }
+                }
               }.aspectRatio(preview.size.width / preview.size.height, contentMode: .fit)
             } else {
               ProgressView().frame(height: 300)
             }
           }
-          .frame(maxHeight: 360)
+          .frame(maxHeight: 440)
           .padding(12).frame(maxWidth: .infinity)
           .background(TK.grey100, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+          if preview != nil {
+            Text("Pinch to zoom · Double-tap to zoom or reset").font(.system(size: 13)).foregroundStyle(TK.grey600)
+              .frame(maxWidth: .infinity)
+          }
           // Tools: one row of chips; Pro tools show a crown.
           ScrollView(.horizontal, showsIndicators: false) {
           HStack(spacing: 8) {
@@ -291,6 +335,52 @@ struct AnnotationEditor: View {
       setMarks(items)
       fillNote = spots.count == 1 ? "Filled 1 field. Drag to adjust." : "Filled \(spots.count) fields. Drag to adjust."
     }
+  }
+  /// Moves the selected box with a drag, keeping it on the page.
+  private func move(_ id: UUID, by translation: CGSize, in size: CGSize) {
+    guard size.width > 0, size.height > 0, let i = marks.firstIndex(where: { $0.id == id }) else { return }
+    if dragOrigin == nil {
+      remember()
+      dragOrigin = CGPoint(x: marks[i].x, y: marks[i].y)
+    }
+    guard let origin = dragOrigin else { return }
+    var items = marks
+    items[i].x = min(1 - items[i].width, max(0, origin.x + translation.width / size.width))
+    items[i].y = min(1 - items[i].height, max(0, origin.y + translation.height / size.height))
+    setMarks(items)
+  }
+  /// Moves one corner of a signature or text box to `point` (in the page view),
+  /// keeping the opposite corner where it was and the box on the page.
+  private func resize(_ id: UUID, corner: Int, to point: CGPoint, in size: CGSize, keepShape: Bool) {
+    guard size.width > 0, size.height > 0, let i = marks.firstIndex(where: { $0.id == id }) else { return }
+    if resizeOrigin == nil {
+      remember()
+      resizeOrigin = CGRect(x: marks[i].x, y: marks[i].y, width: marks[i].width, height: marks[i].height)
+    }
+    guard let origin = resizeOrigin else { return }
+    let left = corner % 2 == 0, top = corner < 2
+    let fixedX = left ? origin.maxX : origin.minX, fixedY = top ? origin.maxY : origin.minY
+    let px = min(1, max(0, point.x / size.width)), py = min(1, max(0, point.y / size.height))
+    var w = max(0.05, left ? fixedX - px : px - fixedX)
+    var h = max(0.03, top ? fixedY - py : py - fixedY)
+    if keepShape, origin.height > 0 {
+      // The same shape on screen: follow whichever side was dragged further.
+      let ratio = (origin.width * size.width) / (origin.height * size.height)
+      if w * size.width / ratio > h * size.height { h = w * size.width / ratio / size.height } else { w = h * size.height * ratio / size.width }
+    }
+    let roomW = left ? fixedX : 1 - fixedX, roomH = top ? fixedY : 1 - fixedY
+    if keepShape {
+      let fit = min(1, roomW / w, roomH / h)
+      w *= fit; h *= fit
+    } else {
+      w = min(w, roomW); h = min(h, roomH)
+    }
+    var items = marks
+    items[i].x = left ? fixedX - w : fixedX
+    items[i].y = top ? fixedY - h : fixedY
+    items[i].width = w
+    items[i].height = h
+    setMarks(items)
   }
   private func setMarks(_ values: [PageAnnotation]) { document?.pages[index].annotations = values }
   private func remember() {

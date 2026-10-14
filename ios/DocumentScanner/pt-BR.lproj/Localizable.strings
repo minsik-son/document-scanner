@@ -1989,3 +1989,5 @@
 "Opening the files…" = "Abrindo os arquivos…";
 "Putting them in your order…" = "Colocando na sua ordem…";
 "Joining them into one…" = "Juntando em um só…";
+"Resize" = "Redimensionar";
+"Defaults to the current time. You can change it; this is a label, not a certified capture time." = "O padrão é a hora atual. Você pode mudar; é um rótulo, não um horário de captura certificado.";

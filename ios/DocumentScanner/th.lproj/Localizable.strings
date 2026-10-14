@@ -1989,3 +1989,5 @@
 "Opening the files…" = "กำลังเปิดไฟล์…";
 "Putting them in your order…" = "กำลังเรียงตามลำดับที่เลือก…";
 "Joining them into one…" = "กำลังรวมเป็นหนึ่งเดียว…";
+"Resize" = "ปรับขนาด";
+"Defaults to the current time. You can change it; this is a label, not a certified capture time." = "ค่าเริ่มต้นคือเวลาปัจจุบัน เปลี่ยนได้ นี่เป็นป้ายกำกับ ไม่ใช่เวลาถ่ายที่รับรองแล้ว";

@@ -177,7 +177,7 @@ final class ScannerFlowTests: HushUITestCase {
         for _ in 0..<4 where !app.buttons["trim-reset"].isHittable { app.swipeUp() }
         app.buttons["trim-reset"].tap();app.buttons["trim-apply"].tap()
         waitEnabled(app.buttons["Apply"]);app.buttons["Apply"].tap();savePDF(in: app)
-        XCTAssertTrue(app.staticTexts["Saved on this iPhone"].waitForExistence(timeout:40))
+        XCTAssertTrue(app.staticTexts["Saved as PDF"].waitForExistence(timeout:40))
     }
 
     @MainActor
@@ -232,7 +232,7 @@ final class ScannerFlowTests: HushUITestCase {
         app.buttons["Undo"].tap(); XCTAssertFalse(app.buttons["Edit page 3"].exists)
         app.buttons["Redo"].tap(); XCTAssertTrue(app.buttons["Edit page 3"].exists)
         savePDF(in: app)
-        XCTAssertTrue(app.staticTexts["Saved on this iPhone"].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.staticTexts["Saved as PDF"].waitForExistence(timeout: 30))
         app.buttons["saved-done"].tap()
         let search = app.textFields["Search documents"]
         XCTAssertTrue(search.waitForExistence(timeout: 5)); search.tap(); search.typeText("SCANNER")
@@ -268,7 +268,7 @@ final class ScannerFlowTests: HushUITestCase {
         waitEnabled(app.buttons["review-done"]);app.buttons["review-done"].tap()
         XCTAssertTrue(app.buttons["Edit page 2"].waitForExistence(timeout:5));XCTAssertFalse(app.buttons["Edit page 3"].exists)
         app.buttons["Save changes"].tap()
-        XCTAssertTrue(app.staticTexts["Saved on this iPhone"].waitForExistence(timeout:40))
+        XCTAssertTrue(app.staticTexts["Saved as PDF"].waitForExistence(timeout:40))
         app.buttons["saved-done"].tap();app.buttons["document-edit"].tap()
         XCTAssertTrue(app.buttons["Edit page 2"].waitForExistence(timeout:5));XCTAssertFalse(app.buttons["Edit page 3"].exists)
     }
@@ -281,13 +281,14 @@ final class ScannerFlowTests: HushUITestCase {
         resumeFirstUnfinishedScan(in: app)
         savePDF(in: app)
         XCTAssertTrue(app.staticTexts["Page edges weren't found. Confirm all four corners before saving."].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["Saved on this iPhone"].exists)
+        XCTAssertFalse(app.staticTexts["Saved as PDF"].exists)
         app.buttons["Cancel"].tap()
         XCTAssertTrue(app.buttons["review-save"].waitForExistence(timeout: 5))
         savePDF(in: app)
         XCTAssertTrue(app.navigationBars["Crop"].waitForExistence(timeout: 5))
         app.buttons["Apply"].tap()
-        XCTAssertTrue(app.staticTexts["Saved on this iPhone"].waitForExistence(timeout: 15))
+        confirmSave(in: app)
+        XCTAssertTrue(app.staticTexts["Saved as PDF"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "text can be copied")).firstMatch.exists)
     }
     @MainActor
@@ -302,7 +303,7 @@ final class ScannerFlowTests: HushUITestCase {
         waitEnabled(app.buttons["Apply"])
         app.buttons["Apply"].tap()
         savePDF(in: app)
-        XCTAssertTrue(app.staticTexts["Saved on this iPhone"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Saved as PDF"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.buttons["Share PDF"].exists)
         app.buttons["saved-done"].tap()
         XCTAssertTrue(reveal(savedDocumentRow(in: app), in: app))
@@ -334,6 +335,15 @@ final class ScannerFlowTests: HushUITestCase {
         let pdf = app.buttons["review-format-pdf"]
         if pdf.exists { pdf.tap() }
         save.tap()
+        confirmSave(in: app)
+    }
+
+    /// A new scan's Next opens the save settings; Save there makes the PDF.
+    /// An edited document (Save changes) or a page check that opens first has no such page.
+    @MainActor
+    private func confirmSave(in app: XCUIApplication) {
+        let confirm = app.buttons["save-confirm"]
+        if confirm.waitForExistence(timeout: 5) { confirm.tap() }
     }
 
     @MainActor
@@ -625,7 +635,7 @@ final class ScannerFlowTests: HushUITestCase {
         XCTAssertEqual(app.staticTexts["adjustment-value"].label, editedValue)
         app.buttons["Cancel"].tap()
         savePDF(in: app)
-        XCTAssertTrue(app.staticTexts["Saved on this iPhone"].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.staticTexts["Saved as PDF"].waitForExistence(timeout: 30))
     }
 
     @MainActor
@@ -666,7 +676,7 @@ final class ScannerFlowTests: HushUITestCase {
         app.launch()
         resumeFirstUnfinishedScan(in: app)
         savePDF(in: app)
-        XCTAssertTrue(app.staticTexts["Saved on this iPhone"].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.staticTexts["Saved as PDF"].waitForExistence(timeout: 30))
         XCTAssertTrue(app.buttons["saved-done"].exists)
         app.buttons["saved-done"].tap()
         XCTAssertTrue(app.buttons["nav-home"].waitForExistence(timeout: 5))
@@ -739,30 +749,69 @@ final class ScannerFlowTests: HushUITestCase {
     }
 
     @MainActor
-    func testFormatRowConvertsToWordAndReviewShowsWholePage() throws {
+    func testFileTypeThenSettingsThenWordAfterSaving() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-session", UUID().uuidString, "-app-language", "en", "--seed-draft"]
         app.launch()
         resumeFirstUnfinishedScan(in: app)
         for id in ["review-tool-crop", "review-tool-filter", "review-tool-adjust", "review-tool-rotate", "review-tool-hide", "review-name",
-                   "review-format-pdf", "review-format-word", "review-format-excel", "review-format-slides", "review-format-images", "review-add-pages"] {
+                   "review-format-pdf", "review-format-png", "review-format-jpg", "review-add-pages"] {
             XCTAssertTrue(app.descendants(matching: .any)[id].waitForExistence(timeout: 5), id)
         }
-        XCTAssertEqual(app.buttons["review-save"].label, "Save as PDF", "PDF is the default")
+        XCTAssertFalse(app.buttons["review-format-word"].exists, "Word, Excel and PowerPoint come after the save")
+        XCTAssertEqual(app.buttons["review-save"].label, "Next")
         designShot(app, "save-1-review")
-        app.buttons["review-format-word"].tap()
-        XCTAssertTrue(app.buttons["review-save"].label.hasPrefix("Convert to Word"), app.buttons["review-save"].label)
-        designShot(app, "save-2-word-chosen")
         app.buttons["review-save"].tap()
-        // The PDF is saved first, then Word reads the pages and opens its review.
+        // Every PDF setting is in view, with one Save button.
+        let confirm = app.buttons["save-confirm"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        XCTAssertEqual(confirm.label, "Save as PDF", "PDF is the default")
+        for text in ["Saving as PDF", "File name", "Folder", "Paper", "Orientation", "Margins"] {
+            XCTAssertTrue(app.staticTexts[text].exists, text)
+        }
+        XCTAssertTrue(app.textFields["save-name"].exists)
+        designShot(app, "save-2-settings")
+        confirm.tap()
+        XCTAssertTrue(app.staticTexts["Saved as PDF"].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.buttons["Share PDF"].exists)
+        XCTAssertTrue(app.buttons["saved-convert-excel"].exists && app.buttons["saved-convert-slides"].exists)
+        designShot(app, "save-3-saved")
+        app.buttons["saved-convert-word"].tap()
+        let start = app.buttons["convert-start"]
+        XCTAssertTrue(start.waitForExistence(timeout: 5), "Converting asks first")
+        designShot(app, "save-4-convert")
+        start.tap()
+        // Word reads the saved pages and opens its review.
         let preview = app.descendants(matching: .any)["office-page-preview"].firstMatch
         XCTAssertTrue(preview.waitForExistence(timeout: 90), "Word review opens with the whole page")
-        designShot(app, "save-3-word-review")
         preview.tap()
         XCTAssertTrue(app.buttons["office-page-editor-done"].waitForExistence(timeout: 10), "Tapping the page opens the corrections")
         app.buttons["office-page-editor-done"].tap()
         app.buttons["export-close"].tap()
-        XCTAssertTrue(app.staticTexts["Saved on this iPhone"].waitForExistence(timeout: 10), "The PDF was saved too")
+        XCTAssertTrue(app.staticTexts["Saved as PDF"].waitForExistence(timeout: 10), "Back on the saved page")
+    }
+
+    @MainActor
+    func testPNGSavesEveryPageAsAPicture() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-test-session", UUID().uuidString, "-app-language", "en", "--seed-draft"]
+        app.launch()
+        resumeFirstUnfinishedScan(in: app)
+        let png = app.buttons["review-format-png"]
+        XCTAssertTrue(png.waitForExistence(timeout: 10)); png.tap()
+        app.buttons["review-save"].tap()
+        let confirm = app.buttons["save-confirm"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        XCTAssertEqual(confirm.label, "Save as PNG")
+        XCTAssertTrue(app.staticTexts["Size"].exists)
+        XCTAssertFalse(app.staticTexts["Margins"].exists, "Pictures have no paper or margins")
+        designShot(app, "save-5-png-settings")
+        confirm.tap()
+        XCTAssertTrue(app.staticTexts["PNG images are ready"].waitForExistence(timeout: 60))
+        XCTAssertTrue(app.buttons["saved-photos"].exists)
+        XCTAssertTrue(app.buttons["Share images"].exists)
+        XCTAssertTrue(app.buttons["saved-convert-word"].exists)
+        designShot(app, "save-6-png-saved")
     }
 
     /// Hide on the review page: found numbers are covered, a dragged box is added,
@@ -794,7 +843,7 @@ final class ScannerFlowTests: HushUITestCase {
         XCTAssertTrue(app.descendants(matching: .any)["review-hidden-badge"].firstMatch.waitForExistence(timeout: 10))
         designShot(app, "hide-3-review")
         savePDF(in: app)
-        XCTAssertTrue(app.staticTexts["Saved on this iPhone"].waitForExistence(timeout: 60))
+        XCTAssertTrue(app.staticTexts["Saved as PDF"].waitForExistence(timeout: 60))
     }
 
     /// Startup logo smoothness: main-thread hitches from launch until the cover is gone

@@ -1,4 +1,5 @@
 import SwiftUI
+import PDFKit
 
 /// Runs a state change without animation, so a full-screen camera appears at once.
 enum Instant {
@@ -65,13 +66,22 @@ struct ReviewView: View {
     @State private var officePaywall = false
     /// Hide personal info on a page of this review.
     @State private var hiding: HideRoute?
-    /// Chosen in the format row; opened once the PDF is saved.
-    @State private var pendingConversion: ConversionRoute?
     @State private var conversion: ConversionRoute?
     @State private var renaming = false
     @State private var renameText = ""
     @State private var editTool: String?
-    @State private var pdfOptions = false
+    /// The save settings page, opened by Next on a new scan's review.
+    @State private var settingsOpen = false
+    /// Long side of each picture when a new scan is saved as PNG or JPEG.
+    @State private var imagePixels = 2400
+    /// Pictures made after a PNG or JPEG save, ready to share or keep in Photos.
+    @State private var imageFiles: ExportedFiles?
+    @State private var sharingImages: ExportedFiles?
+    @State private var savedToPhotos = false
+    @State private var openingPDF = false
+    /// Conversion asked about in the sheet; it opens once the sheet has closed.
+    @State private var confirmConvert: ConversionRoute?
+    @State private var startConversion: ConversionRoute?
 
     var body: some View {
         NavigationStack {
@@ -80,41 +90,7 @@ struct ReviewView: View {
                     Color.black.ignoresSafeArea().toolbar(.hidden, for: .navigationBar)
                 } else if let doc = document {
                     if saved {
-                        // The finished PDF itself; back returns to the home screen.
-                        VStack(spacing: 0) {
-                            HStack(spacing: 12) {
-                                Image(systemName: "checkmark.circle.fill").font(.system(size: 26)).foregroundStyle(TK.blue)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Saved on this iPhone").font(.system(size: 16, weight: .bold)).foregroundStyle(TK.grey900)
-                                    Text(doc.searchable ? "\(doc.title) · text can be copied" : doc.title)
-                                        .font(.system(size: 13)).foregroundStyle(TK.grey600).lineLimit(1)
-                                }
-                                Spacer(minLength: 8)
-                                if let saved = store.document(documentID), let file = saved.pdfFile {
-                                    ShareLink(item: SharedPDF.url(for: store.url(file), title: saved.title)) {
-                                        Label("Share", systemImage: "square.and.arrow.up").font(.system(size: 15, weight: .semibold))
-                                            .padding(.horizontal, 14).frame(height: 36).background(TK.blueSoft, in: Capsule()).foregroundStyle(TK.blue)
-                                    }.accessibilityLabel("Share PDF")
-                                }
-                            }
-                            .padding(.horizontal, 20).padding(.vertical, 12)
-                            if textNotice != nil || textRetryNeeded || saving || error != nil || doc.captureStyle == .card {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    if let textNotice { Text(L(textNotice)).font(.system(size: 13)).foregroundStyle(TK.grey600) }
-                                    if textRetryNeeded { Button("Retry text recognition") { save(forceText: false) }.font(.system(size: 14, weight: .semibold)).disabled(saving) }
-                                    if saving { ProgressView(saveProgress).font(.system(size: 13)) }
-                                    if let error { Text(L(error)).font(.system(size: 13)).foregroundStyle(TK.red) }
-                                    if doc.captureStyle == .card {
-                                        Button("Arrange ID card on one page") { identityLayout = true }.buttonStyle(ChipStyle(selected: false))
-                                    }
-                                }.frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 20).padding(.bottom, 12)
-                            }
-                            if let file = store.document(documentID)?.pdfFile {
-                                PDFPreview(url: store.url(file))
-                                    .accessibilityIdentifier("saved-pdf")
-                            } else { Spacer() }
-                        }
-                        .background(TK.paper)
+                        savedScreen(doc)
                     } else {
                         List {
                             if reordering {
@@ -162,8 +138,9 @@ struct ReviewView: View {
                     }
                 } else { ProgressView() }
             }
-            .navigationTitle(saved ? "PDF" : "Review")
+            .navigationTitle(saved ? "" : "Review")
             .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(isPresented: $settingsOpen) { if let doc = document { saveSettings(doc) } }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     if saved {
@@ -252,7 +229,8 @@ struct ReviewView: View {
             .sheet(item: $cropReviewPage, onDismiss: {
                 if resumeSaveAfterCrop && cropWasConfirmed {
                     cropWasConfirmed = false
-                    save()
+                    // A new scan goes on to its save settings; an edited document saves.
+                    if let doc = document, doc.isDraft, !settingsOpen { saveTapped(doc) } else { save() }
                 } else { resumeSaveAfterCrop = false }
             }) { page in
                 CropView(page: page, confirmationRequired: true, detect: { [style = document?.captureStyle ?? .document] in style.detect($0, capturedPhoto: true) }) { quad in
@@ -296,101 +274,319 @@ struct ReviewView: View {
                     }
                 }
             }
-            .sheet(isPresented: $pdfOptions) {
-                if let doc = document {
-                    NavigationStack {
-                        Form { pdfOptionFields(doc) }
-                            .navigationTitle("PDF options").navigationBarTitleDisplayMode(.inline)
-                            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { pdfOptions = false } } }
-                    }.presentationDetents([.medium, .large])
-                }
-            }
-            // The format chosen in the save sheet opens as soon as the PDF is saved.
-            .onChange(of: saved) { _, isSaved in
-                if isSaved, let route = pendingConversion { pendingConversion = nil; conversion = route }
-            }
-            .onChange(of: saving) { _, isSaving in if !isSaving && !saved { pendingConversion = nil } }
+            .sheet(item: $confirmConvert, onDismiss: {
+                if let route = startConversion { startConversion = nil; conversion = route }
+            }) { route in convertSheet(route) }
+            .sheet(item: $sharingImages) { files in ShareSheet(items: files.urls) }
+            .fullScreenCover(isPresented: $openingPDF) { pdfViewer }
+            .onDisappear { if let files = imageFiles { ExportFiles.remove(files.directory) } }
             .sheet(item: $conversion) { route in ConversionDestination(route: route, documentID: documentID) { conversion = nil } }
     }
-    /// Format row (new scans), Add pages and the save button.
+    /// Format row (new scans), Add pages and Next. An edited document saves its changes here.
     @ViewBuilder private func saveBar(_ doc: ScanDocument) -> some View {
-        VStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 10) {
             if doc.isDraft {
+                // One row, label beside the choices, so the page above keeps its room.
+                HStack(spacing: 12) {
+                Text("File type").font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey800).lineLimit(1).fixedSize()
                 HStack(spacing: 0) {
                     ForEach(Self.formats, id: \.key) { format in
+                        let chosen = currentFormat.key == format.key
                         Button { outputFormat = format.key } label: {
-                            VStack(spacing: 5) {
-                                HStack(spacing: 2) {
-                                    Text(L(format.title)).font(.system(size: 15, weight: outputFormat == format.key ? .bold : .semibold))
-                                    if format.office && !subscription.isPro {
-                                        Image(systemName: officeLocked ? "lock.fill" : "crown.fill").font(.system(size: 8, weight: .bold)).foregroundStyle(TK.orange)
-                                    }
-                                }
-                                .foregroundStyle(outputFormat == format.key ? TK.grey900 : TK.grey500)
-                                Capsule().fill(outputFormat == format.key ? format.tint : .clear).frame(height: 3).padding(.horizontal, 6)
-                            }.frame(maxWidth: .infinity).contentShape(Rectangle())
+                            Text(verbatim: format.title).font(.system(size: 15, weight: chosen ? .bold : .semibold))
+                                .foregroundStyle(chosen ? TK.grey900 : TK.grey600)
+                                .frame(maxWidth: .infinity, minHeight: 34)
+                                .background(chosen ? Color.white : Color.clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("review-format-\(format.key)")
-                        .accessibilityAddTraits(outputFormat == format.key ? .isSelected : [])
+                        .accessibilityAddTraits(chosen ? .isSelected : [])
                     }
-                }.disabled(saving)
+                }
+                .padding(3).background(TK.grey100, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                .animation(.easeOut(duration: 0.15), value: outputFormat)
+                .disabled(saving)
+                }
             }
-            if saving { Text(L(saveProgress)).font(.subheadline).foregroundStyle(.secondary).accessibilityIdentifier("save-progress") }
+            if saving && !doc.isDraft { Text(L(saveProgress)).font(.subheadline).foregroundStyle(.secondary).accessibilityIdentifier("save-progress") }
             HStack(spacing: 10) {
                 Button { openCamera(retaking: nil) } label: { Label("Add pages", systemImage: "camera").lineLimit(1).minimumScaleFactor(0.8) }
                     .buttonStyle(SecondaryButton()).frame(width: 132).disabled(saving)
                     .accessibilityIdentifier("review-add-pages")
                 Button { saveTapped(doc) } label: {
-                    if saving { ProgressView().tint(Design.blueInk).frame(maxWidth: .infinity) }
-                    else {
-                        VStack(spacing: 1) {
-                            Text(saveTitle(doc)).lineLimit(1).minimumScaleFactor(0.8)
-                            if let note = trialNote(doc) { Text(note).font(.system(size: 11, weight: .semibold)).opacity(0.8) }
-                        }
-                    }
+                    if saving && !doc.isDraft { ProgressView().tint(Design.blueInk).frame(maxWidth: .infinity) }
+                    else { Text(doc.isDraft ? L("Next") : L("Save changes")).lineLimit(1).minimumScaleFactor(0.8) }
                 }
-                .buttonStyle(FormatSaveButton(fill: doc.isDraft ? currentFormat.fill : nil))
+                .buttonStyle(FormatSaveButton(fill: nil))
                 .disabled(saving || doc.pages.isEmpty)
-                .animation(.easeOut(duration: 0.2), value: outputFormat)
                 .accessibilityIdentifier("review-save")
             }
         }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8).background(.white)
     }
-    private struct OutputFormat {
-        let key: String; let title: String; let office: Bool
-        /// Save button colour for this format; nil keeps the app's own button.
-        let fill: Color?
-        var tint: Color { fill ?? TK.blue }
-    }
-    /// Word blue, Excel green, PowerPoint orange, images purple: the colours people know these files by.
-    private static let formats = [OutputFormat(key: "pdf", title: "PDF", office: false, fill: nil),
-                                  OutputFormat(key: "word", title: "Word", office: true, fill: Color(red: 0.169, green: 0.341, blue: 0.604)),
-                                  OutputFormat(key: "excel", title: "Excel", office: true, fill: Color(red: 0.129, green: 0.451, blue: 0.275)),
-                                  OutputFormat(key: "slides", title: "PPT", office: true, fill: Color(red: 0.824, green: 0.278, blue: 0.149)),
-                                  OutputFormat(key: "images", title: "Images", office: false, fill: Color(red: 0.486, green: 0.227, blue: 0.929))]
+    private struct OutputFormat { let key: String; let title: String }
+    /// What a new scan is saved as. Word, Excel and PowerPoint are offered after the save.
+    private static let formats = [OutputFormat(key: "pdf", title: "PDF"), OutputFormat(key: "png", title: "PNG"), OutputFormat(key: "jpg", title: "JPEG")]
+    /// The chosen format; a choice remembered from the older row (Word, Images…) reads as PDF.
     private var currentFormat: OutputFormat { Self.formats.first { $0.key == outputFormat } ?? Self.formats[0] }
-    private var route: ConversionRoute? { ConversionRoute(rawValue: outputFormat) }
+    /// PNG or JPEG: every page is also made into a picture after the PDF is saved.
+    private var imageFormat: ImageExportFormat? { currentFormat.key == "pdf" ? nil : ImageExportFormat(rawValue: currentFormat.key) }
     private var officeLocked: Bool { !subscription.isPro && !trials.bypassed && trials.remaining(.office) == 0 }
-    private func saveTitle(_ doc: ScanDocument) -> String {
-        guard doc.isDraft else { return L("Save changes") }
-        switch route {
-        case .word: return L("Convert to Word")
-        case .excel: return L("Convert to Excel")
-        case .slides: return L("Convert to PowerPoint")
-        case .images: return L("Save as images")
-        case nil: return L("Save as PDF")
-        }
-    }
-    private func trialNote(_ doc: ScanDocument) -> String? {
-        guard doc.isDraft, let route, route.tool != nil, !subscription.isPro, !trials.bypassed else { return nil }
+    private var officeBadge: String? {
+        guard !subscription.isPro, !trials.bypassed else { return nil }
         return officeLocked ? L("Pro") : String(format: L("%lld free left"), trials.remaining(.office))
     }
+    /// Next on a new scan: pages are checked first, then the save settings open.
     private func saveTapped(_ doc: ScanDocument) {
         guard doc.isDraft else { save(); return }
-        if route?.tool != nil && officeLocked { officePaywall = true; return }
-        pendingConversion = route
-        save()
+        guard pagesReady() else { return }
+        settingsOpen = true
+    }
+    /// Pages to check before saving: hidden areas on a page changed since, and unconfirmed edges.
+    private func pagesReady() -> Bool {
+        guard let doc = document else { return false }
+        // A page cropped or retoned after hiding: check its hidden areas first.
+        if let stale = doc.pages.firstIndex(where: \.redactionNeedsCheck) {
+            hiding = HideRoute(page: stale, notice: "This page changed after you hid parts of it. Check the boxes, then save.")
+            return false
+        }
+        if let unchecked = doc.pages.first(where: { $0.cropReviewNeeded == true }) {
+            resumeSaveAfterCrop = true; cropWasConfirmed = false
+            cropReviewPage = unchecked
+            return false
+        }
+        resumeSaveAfterCrop = false
+        return true
+    }
+    /// The second step of a new scan: the file's name and every PDF setting in view, then one Save button.
+    @ViewBuilder private func saveSettings(_ doc: ScanDocument) -> some View {
+        let image = imageFormat
+        let name = Binding(get: { document?.title ?? "" }, set: { document?.title = $0; document?.autoTitled = false; persistDraft() })
+        let folder = Binding(get: { document?.folder ?? "Scans" }, set: { document?.folder = $0; persistDraft() })
+        let paper = Binding(get: { document?.paper ?? .letter }, set: { document?.paper = $0; persistDraft() })
+        let landscape = Binding(get: { document?.landscape ?? false }, set: { value in change { $0.landscape = value } })
+        let margin = Binding(get: { document?.margin ?? .small }, set: { document?.margin = $0; persistDraft() })
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(Array(doc.pages.enumerated()), id: \.element.id) { _, page in
+                                PageThumbnail(page: page).frame(width: 84, height: 112).padding(6)
+                                    .background(TK.grey50, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(TK.grey200))
+                            }
+                        }.padding(.horizontal, 20).padding(.vertical, 2)
+                    }
+                    .padding(.top, 8).accessibilityHidden(true)
+                    Text(L(image == nil ? "Saving as PDF" : image == .png ? "Saving as PNG" : "Saving as JPEG"))
+                        .font(.system(size: 24, weight: .bold)).foregroundStyle(TK.grey900).padding(.top, 24)
+                        .padding(.horizontal, 20).accessibilityAddTraits(.isHeader)
+                    Text(L(image == nil ? "You can turn it into Word, Excel or PowerPoint after saving." : "Each page becomes one picture. The PDF is kept too."))
+                        .font(.system(size: 15)).foregroundStyle(TK.grey600).padding(.top, 6).padding(.horizontal, 20)
+                        .fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("File name").font(.system(size: 13)).foregroundStyle(TK.grey600).padding(.top, 20)
+                        TextField("Document name", text: name).font(.system(size: 16)).foregroundStyle(TK.grey900)
+                            .padding(.horizontal, 14).frame(height: 48)
+                            .background(TK.grey100, in: RoundedRectangle(cornerRadius: 12, style: .continuous)).padding(.top, 6)
+                            .accessibilityIdentifier("save-name")
+                        if document?.autoTitled == true {
+                            Label("Named automatically from the text when you save", systemImage: "sparkles").font(.footnote).foregroundStyle(TK.grey600).padding(.top, 6)
+                        }
+                        settingRow("Folder") {
+                            Picker("Folder", selection: folder) { ForEach(store.manifest.folders, id: \.self) { Text(L($0)).tag($0) } }.labelsHidden().tint(TK.grey700)
+                        }
+                        if image == nil {
+                            settingRow("Paper") {
+                                Picker("Paper", selection: paper) { ForEach(PaperSize.allCases, id: \.self) { Text(L($0.rawValue)).tag($0) } }
+                                    .pickerStyle(.segmented).frame(maxWidth: 230)
+                            }
+                            settingRow("Orientation") {
+                                Picker("Orientation", selection: landscape) { Text("Portrait").tag(false); Text("Landscape").tag(true) }
+                                    .pickerStyle(.segmented).frame(maxWidth: 160)
+                            }
+                            settingRow("Margins", last: true) {
+                                Picker("Margins", selection: margin) { ForEach(PageMargin.allCases, id: \.self) { Text(L($0.rawValue)).tag($0) } }
+                                    .pickerStyle(.segmented).frame(maxWidth: 210)
+                            }
+                            if doc.pages.contains(where: { $0.trimming != .zero }) { Text("For no added white space, choose Original paper and None margins. A4 and US Letter keep their shape and may add white space.").font(.caption).foregroundStyle(TK.grey600) }
+                            if doc.pages.contains(where: { $0.sourcePDF != nil }) { Text("Changing PDF paper or margins keeps text and links but flattens interactive forms. The imported original is retained.").font(.caption).foregroundStyle(TK.grey600) }
+                        } else {
+                            settingRow("Size", last: true) {
+                                Picker("Size", selection: $imagePixels) { Text("Standard").tag(1600); Text("High").tag(2400); Text("Maximum").tag(3600) }
+                                    .pickerStyle(.segmented).frame(maxWidth: 220)
+                            }
+                        }
+                        if let error { Text(L(error)).font(.system(size: 14)).foregroundStyle(TK.red).padding(.top, 12) }
+                    }.padding(.horizontal, 20)
+                }.padding(.bottom, 20)
+            }
+            VStack(spacing: 4) {
+                Button { save() } label: {
+                    if saving {
+                        HStack(spacing: 10) { ProgressView().tint(.white); Text(L(saveProgress)).lineLimit(1).minimumScaleFactor(0.8) }
+                    } else {
+                        Text(L(image == nil ? "Save as PDF" : image == .png ? "Save as PNG" : "Save as JPEG"))
+                    }
+                }
+                .buttonStyle(CTAButtonStyle()).allowsHitTesting(!saving)
+                .accessibilityIdentifier("save-confirm")
+                if saving {
+                    Button("Cancel export") { saveTask?.cancel() }.font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey700).frame(height: 40)
+                }
+            }.padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 8).background(TK.paper)
+        }
+        .background(TK.paper)
+        .navigationTitle(L(image == nil ? "PDF settings" : "Image settings"))
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(saving)
+    }
+    private func settingRow<Content: View>(_ title: String, last: Bool = false, @ViewBuilder _ content: () -> Content) -> some View {
+        HStack(spacing: 12) { Text(L(title)).font(.system(size: 16)).foregroundStyle(TK.grey900); Spacer(minLength: 8); content() }
+            .frame(minHeight: 56)
+            .overlay(alignment: .bottom) { if !last { Rectangle().fill(TK.grey100).frame(height: 1) } }
+    }
+    /// After saving: what was saved and how to share it, then the conversions that can follow.
+    @ViewBuilder private func savedScreen(_ doc: ScanDocument) -> some View {
+        let savedDoc = store.document(documentID) ?? doc
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(spacing: 0) {
+                    VStack(spacing: 6) {
+                        ZStack {
+                            Circle().fill(TK.blueSoft)
+                            Image(systemName: "checkmark").font(.system(size: 28, weight: .bold)).foregroundStyle(TK.blue)
+                        }.frame(width: 64, height: 64).accessibilityHidden(true)
+                        Text(L(imageFiles == nil ? "Saved as PDF" : imageFormat == .png ? "PNG images are ready" : "JPEG images are ready"))
+                            .font(.system(size: 24, weight: .bold)).foregroundStyle(TK.grey900).padding(.top, 10)
+                            .accessibilityAddTraits(.isHeader)
+                        Text(savedDetail(savedDoc)).font(.system(size: 14)).foregroundStyle(TK.grey600)
+                            .multilineTextAlignment(.center).lineLimit(2)
+                    }.padding(.top, 12).padding(.horizontal, 20)
+                    HStack(spacing: 8) {
+                        if let files = imageFiles {
+                            Button { saveImagesToPhotos(files) } label: {
+                                savedAction(savedToPhotos ? "Saved to Photos" : "Save to Photos", icon: savedToPhotos ? "checkmark" : "photo.on.rectangle", primary: true)
+                            }.buttonStyle(.plain).disabled(savedToPhotos).accessibilityIdentifier("saved-photos")
+                            Button { sharingImages = files } label: { savedAction("Share", icon: "square.and.arrow.up", primary: false) }
+                                .buttonStyle(.plain).accessibilityLabel("Share images")
+                        } else if let file = savedDoc.pdfFile {
+                            ShareLink(item: SharedPDF.url(for: store.url(file), title: savedDoc.title)) {
+                                savedAction("Share", icon: "square.and.arrow.up", primary: true)
+                            }.buttonStyle(.plain).accessibilityLabel("Share PDF")
+                            Button { openingPDF = true } label: { savedAction("Open", icon: "doc.text.magnifyingglass", primary: false) }
+                                .buttonStyle(.plain).accessibilityIdentifier("saved-open")
+                        }
+                    }.padding(.horizontal, 20).padding(.top, 18)
+                    if textNotice != nil || textRetryNeeded || saving || error != nil || doc.captureStyle == .card {
+                        VStack(alignment: .leading, spacing: 8) {
+                            if let textNotice { Text(L(textNotice)).font(.system(size: 13)).foregroundStyle(TK.grey600) }
+                            if textRetryNeeded { Button("Retry text recognition") { save(forceText: false) }.font(.system(size: 14, weight: .semibold)).disabled(saving) }
+                            if saving { ProgressView(L(saveProgress)).font(.system(size: 13)) }
+                            if let error { Text(L(error)).font(.system(size: 13)).foregroundStyle(TK.red) }
+                            if doc.captureStyle == .card {
+                                Button("Arrange ID card on one page") { identityLayout = true }.buttonStyle(ChipStyle(selected: false))
+                            }
+                        }.frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 20).padding(.top, 14)
+                    }
+                    Rectangle().fill(TK.grey100).frame(height: 10).padding(.top, 24)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("Turn this scan into another format?").font(.system(size: 18, weight: .bold)).foregroundStyle(TK.grey900)
+                            .accessibilityAddTraits(.isHeader)
+                        Text("Text and tables are read into a file you can edit.").font(.system(size: 14)).foregroundStyle(TK.grey600)
+                            .padding(.top, 4).padding(.bottom, 6)
+                        ForEach(Self.conversions, id: \.route) { item in convertRow(item) }
+                    }.padding(.horizontal, 20).padding(.top, 20)
+                }.padding(.bottom, 16)
+            }
+            Button("Done") { finishSaved() }.buttonStyle(SecondaryCTAStyle())
+                .disabled(saving || finishing).accessibilityIdentifier("saved-finish")
+                .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 8)
+        }
+        .background(TK.paper)
+    }
+    private func savedDetail(_ doc: ScanDocument) -> String {
+        let pages = doc.pages.count == 1 ? L("1 page") : String(format: L("%lld pages"), doc.pages.count)
+        let base = [L(doc.folder), doc.title, pages].joined(separator: " · ")
+        return doc.searchable ? String(format: L("%@ · text can be copied"), base) : base
+    }
+    private func savedAction(_ title: String, icon: String, primary: Bool) -> some View {
+        Label(L(title), systemImage: icon).font(.system(size: 15, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.8)
+            .foregroundStyle(primary ? TK.blueDeep : TK.grey800)
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .background(primary ? TK.blueSoft : TK.grey100, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .contentShape(Rectangle())
+    }
+    private func saveImagesToPhotos(_ files: ExportedFiles) {
+        for url in files.urls { if let image = UIImage(contentsOfFile: url.path) { UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil) } }
+        savedToPhotos = true
+    }
+    private struct Conversion { let route: ConversionRoute; let letter: String; let title: String; let detail: String; let fill: Color }
+    /// Word blue, Excel green, PowerPoint orange: the colours people know these files by.
+    private static let conversions = [
+        Conversion(route: .word, letter: "W", title: "Convert to Word", detail: "For letters and contracts with lots of text", fill: Color(red: 0.169, green: 0.341, blue: 0.604)),
+        Conversion(route: .excel, letter: "X", title: "Convert to Excel", detail: "For receipts and statements with tables", fill: Color(red: 0.129, green: 0.451, blue: 0.275)),
+        Conversion(route: .slides, letter: "P", title: "Convert to PowerPoint", detail: "One page becomes one slide", fill: Color(red: 0.824, green: 0.278, blue: 0.149)),
+    ]
+    private func letterTile(_ item: Conversion, size: CGFloat) -> some View {
+        Text(verbatim: item.letter).font(.system(size: size * 0.42, weight: .bold)).foregroundStyle(.white)
+            .frame(width: size, height: size).background(item.fill, in: RoundedRectangle(cornerRadius: size / 4, style: .continuous))
+            .accessibilityHidden(true)
+    }
+    private func convertRow(_ item: Conversion) -> some View {
+        Button { if officeLocked { officePaywall = true } else { confirmConvert = item.route } } label: {
+            HStack(spacing: 14) {
+                letterTile(item, size: 40)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L(item.title)).font(.system(size: 16, weight: .semibold)).foregroundStyle(TK.grey900)
+                    Text(L(item.detail)).font(.system(size: 13)).foregroundStyle(TK.grey600)
+                }
+                Spacer(minLength: 8)
+                if let badge = officeBadge {
+                    Text(badge).font(.system(size: 12, weight: .semibold)).foregroundStyle(officeLocked ? Color.white : TK.blueDeep)
+                        .padding(.horizontal, 7).padding(.vertical, 4)
+                        .background(officeLocked ? TK.grey800 : TK.blueSoft, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                }
+                Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(TK.grey400).accessibilityHidden(true)
+            }.frame(minHeight: 64).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain).accessibilityIdentifier("saved-convert-\(item.route.rawValue)")
+    }
+    /// Asks once before a conversion starts: what it makes, and that the PDF stays.
+    private func convertSheet(_ route: ConversionRoute) -> some View {
+        let item = Self.conversions.first { $0.route == route } ?? Self.conversions[0]
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 12) {
+                letterTile(item, size: 44)
+                Text(L(item.title + "?")).font(.system(size: 22, weight: .bold)).foregroundStyle(TK.grey900).accessibilityAddTraits(.isHeader)
+            }
+            Text("Text and tables are read into a file you can edit. Your saved PDF stays as it is.")
+                .font(.system(size: 15)).foregroundStyle(TK.grey700).padding(.top, 12).fixedSize(horizontal: false, vertical: true)
+            if let badge = officeBadge {
+                Label(badge, systemImage: "gift").font(.system(size: 14, weight: .semibold)).foregroundStyle(TK.blueDeep)
+                    .padding(.horizontal, 14).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .background(TK.blueSoft, in: RoundedRectangle(cornerRadius: 12, style: .continuous)).padding(.top, 16)
+            }
+            Spacer(minLength: 16)
+            Button(L(item.title)) { startConversion = route; confirmConvert = nil }
+                .buttonStyle(CTAButtonStyle()).accessibilityIdentifier("convert-start")
+            Button("Not now") { confirmConvert = nil }
+                .font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey700).frame(maxWidth: .infinity, minHeight: 48)
+        }
+        .padding(.horizontal, 20).padding(.top, 28).padding(.bottom, 8)
+        .presentationDetents([.height(380)]).presentationDragIndicator(.visible)
+    }
+    /// The saved PDF, full screen, from Open on the saved page.
+    private var pdfViewer: some View {
+        NavigationStack {
+            Group {
+                if let file = store.document(documentID)?.pdfFile { PDFPreview(url: store.url(file)).accessibilityIdentifier("saved-pdf") }
+                else { Color.clear }
+            }
+            .navigationTitle(store.document(documentID)?.title ?? "").navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { openingPDF = false } } }
+        }
     }
     /// Stores the editor's areas on their pages. The first hide spends the free try.
     private func applyHiding(_ result: [UUID: (hidden: [CGRect], visible: [CGRect])], style: RedactionStyle) {
@@ -468,7 +664,6 @@ struct ReviewView: View {
                     .accessibilityIdentifier("review-tool-hide")
                 Menu {
                     Button("Reorder pages") { withAnimation { reordering = true } }.disabled(doc.pages.count < 2)
-                    if doc.isDraft { Button("PDF options") { pdfOptions = true } }
                     Button("Duplicate page") { change { value in var copy = page; copy.id = UUID(); value.pages.insert(copy, at: index+1) } }
                     if page.sourcePDF == nil, page.crop != .full, page.identityBackgroundCleanup != true {
                         Toggle(isOn: Binding(get: { page.flatten == true }, set: { on in
@@ -614,18 +809,11 @@ struct ReviewView: View {
         doc.title = doc.title.trimmingCharacters(in: .whitespacesAndNewlines)
         if doc.title.isEmpty { doc.title = ScanDocument.defaultTitle(); doc.autoTitled = true }
         document = doc
-        // A page cropped or retoned after hiding: check its hidden areas first.
-        if let stale = doc.pages.firstIndex(where: \.redactionNeedsCheck) {
-            hiding = HideRoute(page: stale, notice: "This page changed after you hid parts of it. Check the boxes, then save.")
-            return
-        }
-        if let unchecked = doc.pages.first(where: { $0.cropReviewNeeded == true }) {
-            resumeSaveAfterCrop = true; cropWasConfirmed = false
-            cropReviewPage = unchecked
-            return
-        }
-        resumeSaveAfterCrop = false; saving = true; error = nil; saveProgress = "Preparing PDF…"
+        guard pagesReady() else { return }
+        saving = true; error = nil; saveProgress = "Preparing PDF…"
         let root = store.root
+        // PNG or JPEG: only a new scan saved from its settings page makes pictures.
+        let pictures = doc.isDraft ? imageFormat : nil, pixels = imagePixels
         saveTask = Task {
             do {
                 let result = try await PDFExport.prepare(doc, root: root, forceText: forceText) { saveProgress = $0 }
@@ -638,7 +826,19 @@ struct ReviewView: View {
                 workingDraftID = nil
                 document = store.document(documentID)
                 textNotice = result.textNotice; textRetryNeeded = !result.failedTextPages.isEmpty
-                saved = true
+                if let pictures, let file = store.document(documentID)?.pdfFile {
+                    saveProgress = "Making images…"
+                    let url = store.url(file)
+                    if let old = imageFiles { ExportFiles.remove(old.directory); imageFiles = nil }
+                    do {
+                        imageFiles = try await OfflineWork.perform { () throws -> ExportedFiles in
+                            guard let pdf = PDFDocument(url: url) else { throw ScannerError.message("This PDF can't be opened.") }
+                            return try ExportFiles.images(pdf, indices: Array(0..<pdf.pageCount), pixels: pixels, format: pictures)
+                        }
+                        savedToPhotos = false
+                    } catch { self.error = "The images couldn't be made. The PDF is saved. \(error.localizedDescription)" }
+                }
+                Instant.run { saved = true; settingsOpen = false }
             } catch is CancellationError { self.error = "Export canceled. Your pages and existing PDF are unchanged." }
             catch { self.error = "PDF wasn't saved. Your previously saved pages are still available. \(error.localizedDescription)" }
             saving = false

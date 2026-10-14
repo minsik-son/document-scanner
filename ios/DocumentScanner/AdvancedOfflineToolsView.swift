@@ -7,6 +7,25 @@ import VisionKit
 import UniformTypeIdentifiers
 
 enum AdvancedTool:String,Identifiable,CaseIterable {
+    /// What the tool is doing while it works, shown under the spinner.
+    var workingLabel: String {
+        switch self {
+        case .word: "Making the Word file…"
+        case .excel: "Making the Excel file…"
+        case .slides: "Making the PowerPoint file…"
+        case .translate: "Translating…"
+        case .book: "Splitting the pages…"
+        case .portrait: "Making the ID photo…"
+        case .erase: "Erasing spots…"
+        case .marks: "Removing colored marks…"
+        case .restore: "Restoring the photo…"
+        case .mega: "Joining the photos…"
+        case .count: "Counting objects…"
+        case .measure: "Measuring…"
+        case .mesh: "Building the 3D model…"
+        case .math: "Solving…"
+        }
+    }
     case word = "Word export", excel = "Excel export", slides = "PowerPoint export", translate = "Photo translation"
     case book = "Book pages", portrait = "ID photo", erase = "Spot eraser", marks = "Remove colored marks", restore = "Restore photo"
     case mega = "Mega scan", count = "Count objects", measure = "Measure", mesh = "3D scan", math = "Math scan"
@@ -78,7 +97,7 @@ struct AdvancedOfflineHub: View {
                             Text("PRO").font(.system(size: 10, weight: .black)).foregroundStyle(ProTheme.goldInk)
                                 .padding(.horizontal, 7).padding(.vertical, 3).background(ProTheme.goldPill, in: Capsule())
                         }
-                        .foregroundStyle(.white).padding(.horizontal, 4).padding(.top, -8)
+                        .foregroundStyle(Color(red: 0.31, green: 0.22, blue: 0.72)).padding(.horizontal, 4).padding(.top, -8)
                     }
                     // Sections follow what the user is trying to get done.
                     ForEach(Array(ToolSection.all.enumerated()), id: \.offset) { index, section in
@@ -406,7 +425,13 @@ struct AdvancedOfflineToolContent:View {
                 }
             }
         }
-        .overlay { if busy { BusyOverlay(text: phase) { cancelWork() } } }
+        .overlay {
+            if busy {
+                // Reading pages and making the file: the page turning into a Word page.
+                if tool == .word && !phase.hasPrefix("Opening") { OfficeConversionProgress(kind: .word, phase: phase) { cancelWork() } }
+                else { BusyOverlay(text: phase) { cancelWork() } }
+            }
+        }
         .sheet(isPresented: $sharing) { if let files { ShareSheet(items: files.urls) } }
         .fullScreenCover(isPresented: $quickLook) { if let url = files?.urls.first { OfficeQuickLook(url: url) } }
         .fullScreenCover(isPresented: $wordCamera) {
@@ -551,6 +576,11 @@ struct AdvancedOfflineToolContent:View {
             }
             if let message { ToastMessage(text: message).accessibilityIdentifier("offline-status") }
         } actions: {
+            // The page opens the corrections too; this is the same thing as a button.
+            if showsWordLayout {
+                Button("Correct") { correctingWord = true }.buttonStyle(SecondaryCTAStyle())
+                    .accessibilityIdentifier("office-correct")
+            }
             Button("Create Word file") { run() }.buttonStyle(CTAButtonStyle())
                 .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .accessibilityIdentifier("offline-run")
@@ -626,7 +656,7 @@ struct AdvancedOfflineToolContent:View {
     private func align() {
         guard current > 0,inputs.indices.contains(current),offsets.count == inputs.count else { return }
         let index = current,reference = inputs[index-1],floating = inputs[index],origin = offsets[index-1]
-        busy = true;message = nil;phase = "Processing on this iPhone…"
+        busy = true;message = nil;phase = "Matching the photos…"
         job = Task { defer { finishWork() };do {
             let p = try await OfflineWork.perform { try OfflineImageEngine.alignment(reference:reference,floating:floating) }
             try Task.checkCancellation();offsets[index] = CGPoint(x:origin.x+p.x,y:origin.y+p.y)
@@ -698,7 +728,7 @@ struct AdvancedOfflineToolContent:View {
         let pdfURL = tool == .word ? wordPDF : nil
         let pdfIndices = allPages ? Array(0..<wordPDFPages) : [pageIndex]
         let cameraPages = tool == .word && allPages && doc == nil && wordPDF == nil ? inputs : []
-        busy = true;message = nil;phase = "Processing on this iPhone…"
+        busy = true;message = nil;phase = tool.office ? "Reading the tables and text…" : "Reading the text…"
         job = Task { defer { finishWork() };do {
             let word = tool == .word
             let (value, layouts) = try await OfflineWork.perform { () throws -> (String, [PageLayout]) in
@@ -736,7 +766,7 @@ struct AdvancedOfflineToolContent:View {
     private var portraitDimensions:CGSize { photoSize == "35 × 45 mm" ? CGSize(width:35,height:45) : CGSize(width:50.8,height:50.8) }
     private func run() {
         editingText = false
-        clearOutput();busy = true;phase = tool.office ? "Creating Office file…" : "Processing image…"
+        clearOutput();busy = true;phase = tool.workingLabel
         let source = input,images = inputs,positions = offsets,body = text,layouts = wordLayouts,layoutText = wordLayoutText,amount = strength,rect = selection,curve = curve,split = split,two = twoPages,blue = blue,size = portraitDimensions,threshold = threshold,minimum = minimumArea,light = lightObjects,editable = editableSlides,pages = allPages ? doc?.pages : nil,root = store.root,from = from,to = to
         job = Task { defer { finishWork() };do {
             if tool == .translate {

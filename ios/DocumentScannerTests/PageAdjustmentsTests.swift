@@ -7,6 +7,24 @@ import Combine
 
 @MainActor
 final class PageAdjustmentsTests: XCTestCase {
+    /// While an edited page re-renders, the preview says what it is doing.
+    func testPreviewNamesTheWorkAfterAnEdit() {
+        let page = ScanPage(imageFile: "page.jpg")
+        var erased = page; erased.erasures = [PageErasure(strokes: [.init(points: [CGPoint(x: 0.2, y: 0.2), CGPoint(x: 0.3, y: 0.3)], width: 0.02)], crop: page.crop, turns: page.turns)]
+        XCTAssertEqual(ScanPreview.workLabel(from: page, to: erased), "Erasing spots…")
+        var turned = page; turned.turns = 1
+        XCTAssertEqual(ScanPreview.workLabel(from: page, to: turned), "Rotating the page…")
+        var filtered = page; filtered.enhancement = .document
+        XCTAssertEqual(ScanPreview.workLabel(from: page, to: filtered), "Applying the filter…")
+        // The first render and another page's image have their own indicator.
+        XCTAssertNil(ScanPreview.workLabel(from: nil, to: page))
+        XCTAssertNil(ScanPreview.workLabel(from: page, to: ScanPage(imageFile: "other.jpg")))
+        // Every label is translated into Korean.
+        let ko = Bundle(for: LibraryStore.self).path(forResource: "ko", ofType: "lproj").flatMap(Bundle.init(path:))
+        for key in ["Erasing spots…", "Rotating the page…", "Applying the filter…", "Making the Word file…", "Joining the screenshots…"] {
+            XCTAssertNotEqual(ko?.localizedString(forKey: key, value: nil, table: nil), key, key)
+        }
+    }
     private func fixture() -> UIImage {
         let format = UIGraphicsImageRendererFormat(); format.scale = 1
         return UIGraphicsImageRenderer(size: CGSize(width: 400, height: 500), format: format).image { r in

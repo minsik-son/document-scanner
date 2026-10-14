@@ -17,6 +17,7 @@ struct MathDocumentView: View {
     @State private var previewing = false
     @State private var files: ExportedFiles?
     @State private var busy = false
+    @State private var phase = "Reading the math…"
     @State private var error: String?
     @State private var job: Task<Void,Never>?
     @FocusState private var editing: Bool
@@ -56,7 +57,7 @@ struct MathDocumentView: View {
             if step == .scan { ToolbarItem(placement:.topBarTrailing) { Button("Close") { dismiss() }.disabled(busy) } }
             ToolbarItemGroup(placement:.keyboard) { Spacer();Button("Done") { editing = false } }
         }
-        .overlay { if busy { BusyOverlay(text: "Processing on this iPhone…") { job?.cancel() } } }
+        .overlay { if busy { BusyOverlay(text: phase) { job?.cancel() } } }
         .sheet(isPresented:$cropping) {
             NavigationStack {
                 CropView(page:ScanPage(imageFile:"",crop:scan.crop),temporaryImage:scan.original) { quad in
@@ -171,7 +172,7 @@ struct MathDocumentView: View {
     }
     private func clearFiles() { if let files { ExportFiles.remove(files.directory) };files = nil }
     private func reprocess(_ quad:ScanQuad) {
-        work {
+        work("Cropping the page…") {
             let source = scan.original, notice = scan.notice
             let updated = try await OfflineWork.perform { try MathDocumentEngine.prepare(source,crop:quad) }
             try Task.checkCancellation();scan = updated;scan.notice = notice;text = "";original = false;clearFiles()
@@ -182,7 +183,7 @@ struct MathDocumentView: View {
         switch step {
         case .scan:
             if !text.isEmpty { original = false;forward = true;step = .text;return }
-            work {
+            work("Reading the math…") {
                 let image = scan.image
                 let recognized = try await OfflineWork.perform { try MathDocumentEngine.recognize(image) }
                 try Task.checkCancellation();text = recognized;original = false;forward = true;step = .text
@@ -190,7 +191,7 @@ struct MathDocumentView: View {
             }
         case .text:forward = true;step = .format
         case .format:
-            work {
+            work("Making the file…") {
                 let body = text, selected = format, reference = includeScan && format == .pdf ? scan.image : nil
                 let data = try await OfflineWork.perform { try MathDocumentEngine.export(body,format:selected,reference:reference) }
                 try Task.checkCancellation();clearFiles()
@@ -199,8 +200,8 @@ struct MathDocumentView: View {
         case .ready:sharing = true
         }
     }
-    private func work(_ action:@escaping @MainActor () async throws -> Void) {
-        job?.cancel();busy = true;error = nil
+    private func work(_ label:String, _ action:@escaping @MainActor () async throws -> Void) {
+        job?.cancel();busy = true;error = nil;phase = label
         job = Task { @MainActor in
             defer { busy = false }
             do { try await action() } catch { self.error = error is CancellationError ? "Canceled. Your scan is still here." : error.localizedDescription }

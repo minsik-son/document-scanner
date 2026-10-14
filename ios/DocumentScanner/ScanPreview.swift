@@ -211,6 +211,24 @@ struct ScanPreview: View {
         let root: URL
     }
     private struct Request: Equatable { let page: ScanPage; let retry: Int }
+    /// The page last asked for, to name what the next render is doing.
+    @State private var shown: ScanPage?
+    @State private var working: String?
+    @State private var showWorking = false
+    /// What a re-render after an edit is doing, in the user's words.
+    static func workLabel(from old: ScanPage?, to new: ScanPage) -> String? {
+        guard let old, old.imageFile == new.imageFile else { return nil }
+        if (old.erasures ?? []) != (new.erasures ?? []) { return "Erasing spots…" }
+        if old.redaction != new.redaction { return "Hiding personal info…" }
+        if old.crop != new.crop { return "Cropping the page…" }
+        if old.turns != new.turns { return "Rotating the page…" }
+        if old.flatten != new.flatten { return "Flattening the paper…" }
+        if old.enhancement != new.enhancement || old.enhancementAmount != new.enhancementAmount { return "Applying the filter…" }
+        if old.adjustments != new.adjustments { return "Adjusting brightness and color…" }
+        if old.trimming != new.trimming { return "Trimming the margins…" }
+        if old.identityBackgroundCleanup != new.identityBackgroundCleanup { return "Cleaning the background…" }
+        return nil
+    }
     var body: some View {
         ZStack {
             Design.muted
@@ -232,13 +250,41 @@ struct ScanPreview: View {
             if model.image == nil && model.problem == nil {
                 ProgressView("Enhancing your scan…").padding(12).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
             }
+            // A re-render after an edit (erasing spots, cropping, a filter) keeps the
+            // last frame and says what it is doing, once it takes noticeably long.
+            if model.image != nil && model.problem == nil && !model.isReady && showWorking, let working {
+                VStack {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text(L(working)).font(.system(size: 14, weight: .semibold)).foregroundStyle(TK.grey900)
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 9)
+                    .background(.regularMaterial, in: Capsule())
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("preview-working")
+                    .padding(.top, 12)
+                    Spacer()
+                }
+                .transition(.opacity)
+            }
             if let problem = model.problem {
                 VStack(spacing: 12) { Text(L(problem)).multilineTextAlignment(.center); Button("Retry preview") { retry += 1 } }
                     .padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
             }
         }
-        .task(id: Request(page: page, retry: retry)) { model.request(page, root: store.root) }
+        .task(id: Request(page: page, retry: retry)) {
+            working = Self.workLabel(from: shown, to: page) ?? "Updating the preview…"
+            shown = page
+            model.request(page, root: store.root)
+        }
         .onChange(of: model.isReady, initial: true) { _, ready in onReady(ready) }
+        .task(id: model.isReady) {
+            // Quick frames (a slider) don't flash a label.
+            showWorking = false
+            guard !model.isReady else { return }
+            try? await Task.sleep(for: .milliseconds(350))
+            if !Task.isCancelled && !model.isReady { withAnimation(.easeOut(duration: 0.2)) { showWorking = true } }
+        }
 
         .fullScreenCover(item: $enlarged) { selection in
             EnlargedScanPreview(initialImage: selection.image) {

@@ -22,6 +22,7 @@ struct LocalDocumentToolsView: View {
     @State private var share: ExportedFiles?
     @State private var pdfData: Data?
     @State private var busy = false
+    @State private var working = "Preparing the file…"
     @State private var message: String?
     @State private var saved = false
     @State private var job: Task<Void, Never>?
@@ -72,7 +73,7 @@ struct LocalDocumentToolsView: View {
                         }
                         Section { Button("Preview") { prepare() }.disabled(busy || (tool == .identity && bothSides && front == back)).accessibilityIdentifier("local-tool-prepare") }
                     }
-                    if busy { Section { ProgressView("Preparing on this iPhone…"); Button("Cancel operation") { job?.cancel() } } }
+                    if busy { Section { ProgressView(L(working)); Button("Cancel operation") { job?.cancel() } } }
                     if let message { Section { Text(L(message)).accessibilityIdentifier("local-tool-result") } }
                 }
             }
@@ -86,7 +87,7 @@ struct LocalDocumentToolsView: View {
             }
             .onChange(of: logo) { _, item in
                 guard let item else { return }
-                busy = true
+                busy = true; working = "Opening the logo…"
                 job = Task {
                     defer { busy = false }
                     do {
@@ -127,6 +128,13 @@ struct LocalDocumentToolsView: View {
     private func prepare() {
         guard let doc, let file = doc.pdfFile else { message = "Save the PDF before using this tool."; return }
         busy = true; message = nil
+        switch tool {
+        case .watermark: working = "Adding the watermark…"
+        case .timestamp: working = "Adding the timestamp…"
+        case .identity: working = "Laying out the ID card…"
+        case .longImage: working = "Joining the pages…"
+        default: working = "Preparing the file…"
+        }
         let source = store.url(file), root = store.root, range = pageRange, tool = tool, f = front, b: Int? = bothSides ? back : nil, sheet = paper, w = width, spacing = gap
         var settings = stamp
         if tool == .timestamp {
@@ -156,7 +164,7 @@ struct LocalDocumentToolsView: View {
     }
     private func saveCopy() {
         guard let pdfData, let doc else { return }
-        busy = true; message = nil
+        busy = true; message = nil; working = "Saving a copy…"
         job = Task {
             defer { busy = false }
             do {

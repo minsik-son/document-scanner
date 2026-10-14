@@ -16,8 +16,7 @@ enum ProStyle {
     static let violet = Color(red: 0.48, green: 0.36, blue: 1)
 }
 
-/// Pro look: a dusk band behind the top of Home, All tools and Settings over a soft
-/// lavender page. Screens where a document is being worked on keep the plain page.
+/// Pro look: a soft lavender page behind Home, All tools and Settings. Screens where a document is being worked on keep the plain page.
 enum ProTheme {
     static let page = Color(red: 0.945, green: 0.941, blue: 0.98)
     static let dusk = LinearGradient(colors: [Color(red: 0.129, green: 0.110, blue: 0.333), Color(red: 0.180, green: 0.153, blue: 0.439), Color(red: 0.231, green: 0.196, blue: 0.565)],
@@ -27,21 +26,12 @@ enum ProTheme {
     static let goldInk = Color(red: 0.35, green: 0.23, blue: 0)
 }
 
-/// Dusk band (status bar plus `band` points) fading into the lavender page.
+/// The Pro page: soft lavender, no dark band behind the header. `band` is kept
+/// so callers need not change.
 struct ProPageBackground: View {
     let band: CGFloat
     var body: some View {
-        GeometryReader { proxy in
-            VStack(spacing: 0) {
-                ProTheme.dusk.frame(height: proxy.safeAreaInsets.top + band)
-                    .overlay(alignment: .bottom) {
-                        LinearGradient(colors: [ProTheme.page.opacity(0), ProTheme.page], startPoint: .top, endPoint: .bottom).frame(height: 22)
-                    }
-                ProTheme.page
-            }
-            .ignoresSafeArea()
-        }
-        .accessibilityHidden(true)
+        ProTheme.page.ignoresSafeArea().accessibilityHidden(true)
     }
 }
 

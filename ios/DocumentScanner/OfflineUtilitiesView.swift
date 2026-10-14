@@ -38,7 +38,7 @@ struct QRCodeView: View {
                         }.accessibilityIdentifier("qr-share")
                     }
                 }
-                if busy { ProgressView("Reading on this iPhone…") }
+                if busy { ProgressView("Reading the QR code…") }
                 if let message { Text(L(message)).accessibilityIdentifier("qr-result") }
             }
             .disabled(busy)
@@ -102,6 +102,7 @@ struct ScreenshotStitchView: View {
     @State private var output: ExportedFiles?
     @State private var share: ExportedFiles?
     @State private var busy = false
+    @State private var working = "Opening screenshots…"
     @State private var message: String?
     @State private var job: Task<Void, Never>?
     var body: some View {
@@ -149,7 +150,7 @@ struct ScreenshotStitchView: View {
 
                     }
                 }
-                if busy { ProgressView("Preparing on this iPhone…") }
+                if busy { ProgressView(L(working)) }
             }.disabled(busy)
                 .safeAreaInset(edge: .bottom) {
                     VStack(spacing: 8) {
@@ -196,7 +197,7 @@ struct ScreenshotStitchView: View {
     private func resetSeams() { for i in pages.indices { pages[i].overlap = 0 } }
     private func load(_ items: [PhotosPickerItem]) {
         guard !items.isEmpty else { return }
-        busy = true; message = nil
+        busy = true; message = nil; working = "Opening screenshots…"
         job = Task {
             defer { busy = false }
             do {
@@ -212,7 +213,7 @@ struct ScreenshotStitchView: View {
     }
     private func detectOverlap() {
         guard selected > 0 else { return }
-        busy = true; message = nil
+        busy = true; message = nil; working = "Finding the overlap…"
         let index = selected, before = pages[index-1], after = pages[index]
         job = Task {
             defer { busy = false }
@@ -225,7 +226,7 @@ struct ScreenshotStitchView: View {
         }
     }
     private func export() {
-        busy = true; message = nil; let snapshot = pages
+        busy = true; message = nil; working = "Joining the screenshots…"; let snapshot = pages
         job = Task {
             defer { busy = false }
             do {

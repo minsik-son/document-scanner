@@ -90,7 +90,13 @@ struct PowerPointExportView: View {
                     }
                 }
             }
-            .overlay { if busy { BusyOverlay(text: phase) { job?.cancel() } } }
+            .overlay {
+                if busy {
+                    // Reading pages and making the file: the page turning into a sheet or slides.
+                    if phase.hasPrefix("Opening") { BusyOverlay(text: phase) { job?.cancel() } }
+                    else { OfficeConversionProgress(kind: excel ? .excel : .slides, phase: phase) { job?.cancel() } }
+                }
+            }
             .photosPicker(isPresented:$photoPicker,selection:$photos,maxSelectionCount:max(1,30-pages.count),selectionBehavior:.ordered,matching:.images)
             .onChange(of:photos) { _,items in if !items.isEmpty { addPhotos(items) } }
             .fileImporter(isPresented:$filePicker,allowedContentTypes:[.pdf,.image],allowsMultipleSelection:true) { result in
@@ -244,6 +250,11 @@ struct PowerPointExportView: View {
             }
             statusRow
         } actions: {
+            // The page opens the corrections too; this is the same thing as a button.
+            if excel && excelPreviewPage != nil {
+                Button("Correct") { correcting = true }.buttonStyle(SecondaryCTAStyle()).disabled(busy)
+                    .accessibilityIdentifier("office-correct")
+            }
             Button("Create \(formatName)") { create() }.buttonStyle(CTAButtonStyle())
                 .disabled(busy || (!excel && slideTexts.allSatisfy { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }))
                 .accessibilityIdentifier("ppt-create")

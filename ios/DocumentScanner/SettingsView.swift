@@ -134,8 +134,7 @@ struct SettingsView: View {
             .scrollContentBackground(subscription.isPro ? .hidden : .automatic)
             .background { if subscription.isPro { ProPageBackground(band: 50) } }
             .toolbarBackground(subscription.isPro ? .hidden : .automatic, for: .navigationBar)
-            .toolbarColorScheme(subscription.isPro ? .dark : nil, for: .navigationBar)
-            .navigationTitle("Settings").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.disabled(backupBusy).tint(subscription.isPro ? .white : nil) } }
+            .navigationTitle("Settings").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.disabled(backupBusy) } }
             .interactiveDismissDisabled(backupBusy)
             .fullScreenCover(isPresented: $showingTour) { OnboardingView(onFinish: { _ in showingTour = false }, replay: true) }
             .alert("New folder", isPresented: $addingFolder) { TextField("Folder name", text: $folder); Button("Create") { store.perform { try store.addFolder(folder) }; folder = "" }; Button("Cancel", role: .cancel) {} }

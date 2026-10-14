@@ -358,9 +358,11 @@ enum OfficeLayoutExport {
             if let i = borderIndex[xml] { return i }
             borders.append(xml); borderIndex[xml] = borders.count - 1; return borders.count - 1
         }
-        func xf(font: Int, fill: Int, border: Int, horizontal: LayoutAlignment, wrap: Bool) -> Int {
+        /// `shrink`: a label wider in the spreadsheet's font than in print shrinks
+        /// to its cell instead of spilling past (and being cut at) the cell's edges.
+        func xf(font: Int, fill: Int, border: Int, horizontal: LayoutAlignment, wrap: Bool, shrink: Bool = false) -> Int {
             let h = horizontal == .left ? "left" : (horizontal == .center ? "center" : "right")
-            let xml = "<xf numFmtId=\"49\" fontId=\"\(font)\" fillId=\"\(fill)\" borderId=\"\(border)\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"\(h)\" vertical=\"center\"\(wrap ? " wrapText=\"1\"" : "")/></xf>"
+            let xml = "<xf numFmtId=\"49\" fontId=\"\(font)\" fillId=\"\(fill)\" borderId=\"\(border)\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"\(h)\" vertical=\"center\"\(wrap ? " wrapText=\"1\"" : (shrink ? " shrinkToFit=\"1\"" : ""))/></xf>"
             if let i = xfIndex[xml] { return i }
             xfs.append(xml); xfIndex[xml] = xfs.count - 1; return xfs.count - 1
         }
@@ -432,13 +434,15 @@ enum OfficeLayoutExport {
         var merged: [Double] = []
         for v in xs.sorted() { if let last = merged.last, v - last < tolerance { continue }; merged.append(v) }
         if merged.count < 2 { merged = [content.x0, content.x1] }
-        // Rows: bands in order; overlapping bands share rows, gaps become spacer rows.
+        // Rows: every band edge is a row line (boxes side by side keep their own
+        // rows; the cells of each span the lines of the other), gaps become
+        // spacer rows. Lines closer than a few pixels are one.
         bands.sort { $0.0 < $1.0 }
-        var ys: [Double] = [min(content.y0, bands.first?.0 ?? content.y0)]
-        for band in bands {
-            let last = ys.last!
-            if band.0 > last + 2 { ys.append(band.0) }
-            if band.1 > ys.last! + 2 { ys.append(band.1) }
+        let rowTolerance = max(2.5, Double(page.height) * 0.003)
+        var ys: [Double] = []
+        for v in ([min(content.y0, bands.first?.0 ?? content.y0)] + bands.flatMap { [$0.0, $0.1] }).sorted() {
+            if let last = ys.last, v - last < rowTolerance { continue }
+            ys.append(v)
         }
         if ys.count < 2 { ys.append(ys[0] + 20) }
         return SheetGrid(xs: merged, ys: ys)
@@ -489,7 +493,7 @@ enum OfficeLayoutExport {
                         let text = cell.text
                         let firstRun = cell.lines.first?.first
                         let font = styles.font(size: cell.fontSize, bold: firstRun?.bold ?? false, underline: firstRun?.underline ?? false, color: firstRun?.color, wide: hasWide(text))
-                        let style = styles.xf(font: font, fill: styles.fill(cell.fill), border: styles.border(top: cell.top, left: cell.left, bottom: cell.bottom, right: cell.right), horizontal: cell.alignment, wrap: cell.lines.count > 1)
+                        let style = styles.xf(font: font, fill: styles.fill(cell.fill), border: styles.border(top: cell.top, left: cell.left, bottom: cell.bottom, right: cell.right), horizontal: cell.alignment, wrap: cell.lines.count > 1, shrink: true)
                         let runs = cell.lines.enumerated().flatMap { k, line -> [LayoutRun] in
                             k == 0 ? line : [LayoutRun(text: "\n", bold: line.first?.bold ?? false)] + line
                         }

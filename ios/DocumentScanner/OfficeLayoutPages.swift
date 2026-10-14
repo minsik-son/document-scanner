@@ -287,6 +287,56 @@ enum OfficeLayoutPages {
         for index in page.items.indices {
             switch page.items[index] {
             case .table(var table):
+                // An empty cell in a column where nearly every cell has text (a
+                // row number the first reading skipped) is read on its own.
+                for column in 0..<table.columnCount {
+                    let cells = table.cells.indices.filter { table.cells[$0].column == column && table.cells[$0].columnSpan == 1 }
+                    let filled = cells.filter { !table.cells[$0].text.isEmpty }
+                    // Or one numbered down the rows (44, 45 … 50 read, 26 … 43 missed).
+                    // (A heading above the numbers is allowed.)
+                    let numbers = filled.filter { Int(table.cells[$0].text) != nil }
+                    let counts = Dictionary(numbers.map { (Int(table.cells[$0].text)! - table.cells[$0].row, 1) }, uniquingKeysWith: +)
+                    let common = counts.max { $0.value < $1.value }
+                    let offsets: Set<Int> = common.map { [$0.key] } ?? []
+                    let numbered = numbers.count >= 3 && (common?.value ?? 0) * 10 >= numbers.count * 8 && numbers.count + 1 >= filled.count
+                    // A number read one digit off from its place in the sequence ("23"
+                    // between 27 and 29) is that place's number.
+                    if numbered, let offset = common?.key {
+                        for i in numbers {
+                            let expected = String(table.cells[i].row + offset), text = table.cells[i].text
+                            guard text != expected, text.count == expected.count, zip(text, expected).filter({ $0 != $1 }).count == 1 else { continue }
+                            refineLog?("~ \(text) → \(expected) (sequence)")
+                            let like = table.cells[i].lines.flatMap { $0 }
+                            table.cells[i].lines = [LayoutText.styled(expected, like: like.isEmpty ? [LayoutRun(text: "")] : like)]
+                        }
+                    }
+                    guard cells.count >= 6, filled.count * 10 >= cells.count * 7 || numbered, filled.count < cells.count else { continue }
+                    let numeric = numbered || filled.allSatisfy { table.cells[$0].text.allSatisfy(\.isNumber) }
+                    let like = filled.first.map { table.cells[$0].lines.flatMap { $0 } } ?? []
+                    for i in cells where table.cells[i].text.isEmpty {
+                        let cell = table.cells[i]
+                        let inset = max(3, min(cell.box.width, cell.box.height) * 0.06)
+                        let box = LBox(cell.box.x0 + inset, cell.box.y0 + inset, cell.box.x1 - inset, cell.box.y1 - inset)
+                        let got = read(box, in: image, scale: scale, script: like.first?.text ?? "")
+                        // A row number the reader can't make out, printed between the
+                        // numbers around it, is the number the sequence gives.
+                        // (A clear reading of a different number is a misreading of it too.)
+                        if numbered, let offset = offsets.first, got?.0 != String(cell.row + offset),
+                           inkCoverage(box, in: image, scale: scale) > 0.004 {
+                            let expected = String(cell.row + offset)
+                            refineLog?("= \(expected) (sequence)")
+                            table.cells[i].lines = [LayoutText.styled(expected, like: like.isEmpty ? [LayoutRun(text: "")] : like)]
+                            continue
+                        }
+                        guard let (text, confidence) = got, confidence >= 0.8,
+                              !text.isEmpty, text.count <= 12, !numeric || text.allSatisfy(\.isNumber) else {
+                            refineLog?("- r\(cell.row)c\(column) \(got.map { "\($0.0) \(String(format: "%.2f", $0.1))" } ?? "nothing")")
+                            continue
+                        }
+                        refineLog?("+ \(text) (\(String(format: "%.2f", confidence)))")
+                        table.cells[i].lines = [LayoutText.styled(text, like: like.isEmpty ? [LayoutRun(text: "")] : like)]
+                    }
+                }
                 for i in table.cells.indices where !table.cells[i].lines.isEmpty {
                     let cell = table.cells[i]
                     let inset = table.ruled ? max(5, min(cell.box.width, cell.box.height) * 0.08) : 2
@@ -340,6 +390,41 @@ enum OfficeLayoutPages {
                 return plausible(segment.text)
             }
         }
+    }
+    /// Share of dark pixels in a region (is anything printed there at all).
+    static func inkCoverage(_ box: LBox, in image: CGImage, scale: CGFloat) -> Double {
+        let rect = CGRect(x: box.x0 * scale, y: box.y0 * scale, width: box.width * scale, height: box.height * scale).integral
+            .intersection(CGRect(x: 0, y: 0, width: image.width, height: image.height))
+        guard rect.width > 2, rect.height > 2, let crop = image.cropping(to: rect),
+              let context = CGContext(data: nil, width: Int(rect.width), height: Int(rect.height), bitsPerComponent: 8, bytesPerRow: Int(rect.width), space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue),
+              let data = context.data else { return 0 }
+        context.draw(crop, in: CGRect(x: 0, y: 0, width: rect.width, height: rect.height))
+        let n = Int(rect.width) * Int(rect.height)
+        let pixels = data.bindMemory(to: UInt8.self, capacity: n)
+        var dark = 0
+        for k in 0..<n where pixels[k] < 110 { dark += 1 }
+        return Double(dark) / Double(n)
+    }
+    /// Reads one region on its own: its text and the lowest word confidence.
+    static func read(_ box: LBox, in image: CGImage, scale: CGFloat, script: String) -> (String, Float)? {
+        let rect = CGRect(x: box.x0 * scale, y: box.y0 * scale, width: box.width * scale, height: box.height * scale).integral
+            .intersection(CGRect(x: 0, y: 0, width: image.width, height: image.height))
+        guard rect.width > 8, rect.height > 8, var crop = image.cropping(to: rect) else { return nil }
+        let enlarge = min(3, max(1, 64 / rect.height))
+        if enlarge > 1.15, let space = CGColorSpace(name: CGColorSpace.sRGB),
+           let context = CGContext(data: nil, width: Int(rect.width * enlarge), height: Int(rect.height * enlarge), bitsPerComponent: 8, bytesPerRow: 0, space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) {
+            context.interpolationQuality = .high
+            context.draw(crop, in: CGRect(x: 0, y: 0, width: context.width, height: context.height))
+            if let big = context.makeImage() { crop = big }
+        }
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        request.usesLanguageCorrection = false
+        request.recognitionLanguages = TextRecognition.languages(forScriptOf: script)
+        guard (try? VNImageRequestHandler(cgImage: crop, options: [:]).perform([request])) != nil else { return nil }
+        let candidates = (request.results ?? []).sorted { $0.boundingBox.minX < $1.boundingBox.minX }.compactMap { $0.topCandidates(1).first }
+        guard !candidates.isEmpty else { return nil }
+        return (candidates.map(\.string).joined(separator: " ").trimmingCharacters(in: .whitespaces), candidates.map(\.confidence).min() ?? 0)
     }
     /// Reads one region again, enlarged when the text is small. Returns the new
     /// text only when it is a confident, plausible correction of `old`.
@@ -414,7 +499,14 @@ enum OfficeLayoutPages {
             // In running text 0/O and 1/l are the usual confusions either way.
             let lookalike = prose && ((a == "0" && b == "O") || (a == "1" && (b == "l" || b == "I")))
             if a.isNumber && !b.isNumber && !lookalike { return false }
-            if a.isLetter && !b.isLetter && !b.isNumber { return false }
+            // ("order t and" → "order # and" is a fix: a lone letter read for a sign.)
+            if a.isLetter && !b.isLetter && !b.isNumber && !(b == "#" && loneLetter(old, a)) { return false }
+            // Nor does a printed sign turn into a letter: "CTN #" → "CTN E". (A closing
+            // bracket nothing opened is a misread letter: "HS)" → "HSJ".)
+            let strayBracket = ")]}".contains(a) && old.filter({ "([{".contains($0) }).count < old.filter({ ")]}".contains($0) }).count
+            if !a.isLetter && !a.isNumber && !a.isWhitespace && a != "|" && b.isLetter && !strayBracket { return false }
+            // A capital never becomes its own small letter: "Vanouver" → "vanouver".
+            if a.isUppercase && b.isLowercase && a.lowercased() == String(b) { return false }
         }
         // Correctly spelled words in the first reading must survive unchanged.
         let newWords = Set(new.split { !$0.isLetter }.map(String.init))
@@ -424,6 +516,10 @@ enum OfficeLayoutPages {
         }
         if !kept.isEmpty, misspellings(kept.joined(separator: " ")) < kept.count { return false }
         return misspellings(new) <= misspellings(old)
+    }
+    /// True when `letter` stands alone as a word in `text` ("order t and").
+    static func loneLetter(_ text: String, _ letter: Character) -> Bool {
+        text.split(separator: " ").contains { $0.count == 1 && $0.first == letter }
     }
     /// Character substitutions in an optimal alignment of two strings.
     static func substitutions(_ a: [Character], _ b: [Character]) -> [(Character, Character)] {

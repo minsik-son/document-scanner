@@ -217,18 +217,35 @@ final class OfficeLayoutTests: XCTestCase {
         XCTAssertGreaterThan(page.items.count, 30)
     }
 
-    /// A photographed packing list (ruled form with a long item table). Dumps
-    /// the app's scan and the Office reconstruction for review; no pass bar yet.
+    /// A photographed packing list (ruled form with a long item table): the
+    /// chat copy and the camera originals in Verification/private/testimg.
+    /// Dumps the app's scan and the Office reconstruction of each for review.
     @MainActor func testPackingListDiagnostics() throws {
-        let (photo, root) = try privateSample("PackingList.jpg")
-        let folder = root.appendingPathComponent("packing")
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let (_, root) = try privateSample("PackingList.jpg")
+        let originals = (try? FileManager.default.contentsOfDirectory(atPath: root.appendingPathComponent("testimg").path)) ?? []
+        let names = ["PackingList.jpg"] + originals.filter { $0.hasPrefix("IMG_") && $0.uppercased().hasSuffix(".HEIC") }.sorted().map { "testimg/" + $0 }
+        // packing/only.txt (one name part) limits the run while tuning.
+        let only = (try? String(contentsOf: root.appendingPathComponent("packing/only.txt"), encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        var summary: [String] = []
+        for name in names where only == nil || name.contains(only!) {
+            guard let photo = UIImage(contentsOfFile: root.appendingPathComponent(name).path) else { continue }
+            let stem = (name as NSString).lastPathComponent.components(separatedBy: ".")[0]
+            let folder = root.appendingPathComponent("packing/" + stem)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            summary.append(stem + ": " + (try packingDump(photo, to: folder)).joined(separator: "\n  "))
+        }
+        try summary.joined(separator: "\n").write(to: root.appendingPathComponent(only == nil ? "packing/report.txt" : "packing/report-only.txt"), atomically: true, encoding: .utf8)
+        print("PACKING\n" + summary.joined(separator: "\n"))
+    }
+
+    @MainActor private func packingDump(_ photo: UIImage, to folder: URL) throws -> [String] {
         var report: [String] = []
         // 1. The scan as the camera makes it: found edges, flattened, Document tone.
-        let cg = try XCTUnwrap(photo.cgImage), source = CIImage(cgImage: cg)
-        let crop = try XCTUnwrap(CaptureStyle.document.detect(photo, capturedPhoto: true), "page edges")
-        report.append("crop " + crop.points.map { String(format: "(%.3f,%.3f)", $0.x, $0.y) }.joined())
-        for (name, flat, tone) in [("scan", true, Enhancement.document), ("scan-plain", false, Enhancement.document), ("scan-original", true, Enhancement.original)] {
+        let upright = UIGraphicsImageRenderer(size: photo.size, format: { let f = UIGraphicsImageRendererFormat(); f.scale = photo.scale; return f }()).image { _ in photo.draw(at: .zero) }
+        let cg = try XCTUnwrap(upright.cgImage), source = CIImage(cgImage: cg)
+        let crop = try XCTUnwrap(CaptureStyle.document.detect(upright, capturedPhoto: true), "page edges")
+        report.append("photo \(cg.width)x\(cg.height) crop " + crop.points.map { String(format: "(%.3f,%.3f)", $0.x, $0.y) }.joined())
+        for (name, flat, tone) in [("scan", true, Enhancement.document), ("scan-original", true, Enhancement.original), ("scan-plain", false, Enhancement.document)] {
             let ci = try DocumentProcessing.render(source, crop: crop, turns: 0, enhancement: tone, flatten: flat ? FlattenRequest(key: nil) : nil)
             let out = try XCTUnwrap(DocumentProcessing.context.createCGImage(ci, from: ci.extent))
             try UIImage(cgImage: out).jpegData(compressionQuality: 0.92)?.write(to: folder.appendingPathComponent("\(name).jpg"))
@@ -236,13 +253,14 @@ final class OfficeLayoutTests: XCTestCase {
             report.append(String(format: "%@ %dx%d bend median %.1f p90 %.1f lines %d", name, out.width, out.height, b.median, b.worst, b.lines))
         }
         // 2. Word / Excel reconstruction.
-        var log: [String] = []
+        var log: [String] = [], analysis: [String] = []
         OfficeLayoutPages.refineLog = { log.append($0) }
-        defer { OfficeLayoutPages.refineLog = nil }
-        let page = try OfficeLayoutPages.analyze(photo)
+        DocumentLayoutAnalyzer.debugLog = { line in if !line.hasPrefix("block") && !line.hasPrefix("wordlines") && !line.hasPrefix("group") { analysis.append(line) } }
+        defer { OfficeLayoutPages.refineLog = nil; DocumentLayoutAnalyzer.debugLog = nil }
+        let page = try OfficeLayoutPages.analyze(upright)
         try log.joined(separator: "\n").write(to: folder.appendingPathComponent("reread.txt"), atomically: true, encoding: .utf8)
-        let flat = try OfficeLayoutPages.flattenedIfPhoto(photo)
-        try UIImage(cgImage: try OfficeLayoutPages.prepare(flat).image).pngData()?.write(to: folder.appendingPathComponent("layout-input.png"))
+        try analysis.joined(separator: "\n").write(to: folder.appendingPathComponent("analysis.txt"), atomically: true, encoding: .utf8)
+        try UIImage(cgImage: try OfficeLayoutPages.prepare(OfficeLayoutPages.flattenedIfPhoto(upright)).image).pngData()?.write(to: folder.appendingPathComponent("layout-input.png"))
         var copy = page; for i in copy.graphics.indices { copy.graphics[i].png = nil }
         let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
         try encoder.encode(copy).write(to: folder.appendingPathComponent("layout.json"))
@@ -251,10 +269,23 @@ final class OfficeLayoutTests: XCTestCase {
         for (i, g) in page.graphics.enumerated() { try g.png?.write(to: folder.appendingPathComponent("graphic-\(i).png")) }
         if let preview = OfficePagePreview.image(page) { try preview.pngData()?.write(to: folder.appendingPathComponent("preview.png")) }
         let tables = page.items.compactMap { item -> LayoutTable? in if case .table(let t) = item { return t }; return nil }
-        report.append("page form=\(page.form) positioned=\(page.positioned) items=\(page.items.count) tables=\(tables.count) graphics=\(page.graphics.count)")
-        for t in tables { report.append("  table \(t.rowCount)x\(t.columnCount) cells=\(t.cells.count) ruled=\(t.ruled) box=\(Int(t.box.x0)),\(Int(t.box.y0)),\(Int(t.box.x1)),\(Int(t.box.y1))") }
-        try report.joined(separator: "\n").write(to: folder.appendingPathComponent("report.txt"), atomically: true, encoding: .utf8)
-        print("PACKING\n" + report.joined(separator: "\n"))
+        report.append("page form=\(page.form) positioned=\(page.positioned) frame=\(page.frame != nil) items=\(page.items.count) tables=\(tables.count) graphics=\(page.graphics.count)")
+        for t in tables { report.append("  table \(t.rowCount)x\(t.columnCount) cells=\(t.cells.count) box=\(Int(t.box.x0)),\(Int(t.box.y0)),\(Int(t.box.x1)),\(Int(t.box.y1))") }
+        // What a correct reading must contain.
+        let text = LayoutText.text([page])
+        let missing = (["PACKING LIST", "SHIPPED TO", "NAME", "ADDRESS", "ORDER#", "DATE ORDERED", "CUSTOMER ORDER NUMBER", "DATE SHIPPED", "ATTENTION", "SHIPPED VIA", "CONTAINER NUMBER", "CTN #", "ITEM", "QUANTITY", "DESCRIPTION", "UNIT WEIGHT", "TOTAL WEIGHT", "REMARK", "Comments", "PACKED BY", "order # and shipping date"] + (26...50).map(String.init))
+            .filter { !text.contains($0) }
+        report.append("missing: " + missing.joined(separator: ", "))
+        // Pass bars: the border is a frame, the boxes are tables of their own and
+        // the item list keeps its 26 rows; only labels with a "#" (which the
+        // reader often loses) may be missing.
+        let name = folder.lastPathComponent
+        XCTAssertNotNil(page.frame, name)
+        XCTAssertFalse(page.form, name)
+        XCTAssertGreaterThanOrEqual(tables.count, 6, name)
+        XCTAssertTrue(tables.contains { $0.rowCount == 26 && $0.columnCount >= 7 }, name)
+        XCTAssertEqual(Set(missing).subtracting(["ORDER#", "CTN #", "order # and shipping date"]), [], name)
+        return report
     }
 
     func testReviewedTextKeepsFormatting() throws {
@@ -401,3 +432,5 @@ final class OfficeLayoutTests: XCTestCase {
         XCTAssertEqual(prose.cells[0].text, "Total (see note", "A single open bracket is not guessed")
     }
 }
+
+private extension String { var nilIfEmpty: String? { isEmpty ? nil : self } }

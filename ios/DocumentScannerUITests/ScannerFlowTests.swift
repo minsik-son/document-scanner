@@ -338,6 +338,7 @@ final class ScannerFlowTests: HushUITestCase {
 
     @MainActor
     private func openTestDocument(_ app: XCUIApplication) {
+        settle(app)
         let row = savedDocumentRow(in: app)
         XCTAssertTrue(reveal(row, in: app))
         row.tap()

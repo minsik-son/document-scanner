@@ -36,6 +36,10 @@ enum DocumentClarity {
         float dark = 1.0-smoothstep(0.35, 0.65, high);
         float ink = stroke*max(neutral,dark);
         float target = sharpened*(1.0-min(0.94,0.86*amount)*ink);
+        // Light, stroke-free paper texture (show-through, grain, faint smudges)
+        // goes to white; a printed grey fill (darker and even) is barely touched.
+        float lift = surface*smoothstep(0.82, 0.95, baseY)*min(1.0, amount);
+        target = mix(target, max(target, 1.0), lift);
         vec3 enhancedRGB = base*target/max(0.001,baseY);
         return vec4(clamp(enhancedRGB,0.0,1.0),source.a);
     }

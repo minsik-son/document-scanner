@@ -638,14 +638,65 @@ enum DocumentLayoutAnalyzer {
                 if v.c >= h.a0 - tol && v.c <= h.a1 + tol && h.c >= v.a0 - tol && h.c <= v.a1 + tol { parent[find(i)] = find(vi) }
             }
         }
+        // Pieces of one rule (found apart where the line is faint or bends) belong together.
+        for (list, offset) in [(horizontal, 0), (vertical, horizontal.count)] {
+            let order = list.indices.sorted { list[$0].a0 < list[$1].a0 }
+            for (k, i) in order.enumerated() {
+                for j in order[(k + 1)...] {
+                    if list[j].a0 > list[i].a1 + tol * 3 { break }
+                    if abs(list[j].c - list[i].c) <= tol * 0.75 { parent[find(i + offset)] = find(j + offset) }
+                }
+            }
+        }
         var groups: [Int: [Int]] = [:]
         for i in items.indices { groups[find(i), default: []].append(i) }
+        // A box photographed a little askew is found in two halves whose rules
+        // don't meet (each with one side wall): halves with rules at the same
+        // heights, side by side and close, are one box.
+        func rowsOf(_ k: Int) -> [Double] { cluster(groups[k]!.filter { items[$0].1 }.map { items[$0].0.c }, tolerance: tol) }
+        func across(_ k: Int) -> (Double, Double) {
+            let hs = groups[k]!.filter { items[$0].1 }.map { items[$0].0 }
+            return (hs.map(\.a0).min() ?? 0, hs.map(\.a1).max() ?? 0)
+        }
+        var keys = groups.keys.sorted()
+        var joinedHalves = true
+        while joinedHalves {
+            joinedHalves = false
+            search: for i in keys.indices {
+                for j in keys.indices where j > i {
+                    let a = keys[i], b = keys[j], ra = rowsOf(a), rb = rowsOf(b)
+                    guard ra.count >= 2, ra.count == rb.count, zip(ra, rb).allSatisfy({ abs($0 - $1) <= tol * 1.5 }) else { continue }
+                    let xa = across(a), xb = across(b), gap = max(xb.0 - xa.1, xa.0 - xb.1)
+                    guard gap > -tol, gap < max(xa.1 - xa.0, xb.1 - xb.0) else { continue }
+                    // Halves are open where they face each other; two boxes side by
+                    // side (Comments, Packed by) each have their own wall there.
+                    let (left, right) = xa.0 <= xb.0 ? (a, b) : (b, a)
+                    let leftEnd = across(left).1, rightStart = across(right).0
+                    func hasWall(_ k: Int, at x: Double) -> Bool { groups[k]!.contains { !items[$0].1 && abs(items[$0].0.c - x) <= tol * 2 } }
+                    guard !hasWall(left, at: leftEnd), !hasWall(right, at: rightStart) else { continue }
+                    groups[a]! += groups[b]!; groups[b] = nil; keys.remove(at: j); joinedHalves = true
+                    break search
+                }
+            }
+        }
         var tables: [LayoutTable] = []
+        // Rules that belong to some table: never a free rule closing another one.
+        var tableRules = Set<Int>()
+        for members in groups.values where members.filter({ items[$0].1 }).count >= 2 && members.filter({ !items[$0].1 }).count >= 2 {
+            for m in members where items[m].1 { tableRules.insert(m) }
+        }
         for members in groups.values {
             let hs = members.filter { items[$0].1 }.map { items[$0].0 }, vs = members.filter { !items[$0].1 }.map { items[$0].0 }
             guard hs.count >= 2, vs.count >= 2 else { continue }
-            let rows = cluster(hs.map(\.c), tolerance: tol)
-            var cols = cluster(vs.map(\.c), tolerance: tol)
+            // A rule photographed double (two strokes a few pixels apart) is one
+            // line, not a sliver of a row no text could fit in.
+            func thinMerged(_ v: [Double]) -> [Double] {
+                var out: [Double] = []
+                for x in v { if let last = out.last, x - last < textHeight * 0.55 { out[out.count - 1] = (last + x) / 2 } else { out.append(x) } }
+                return out
+            }
+            let rows = thinMerged(cluster(hs.map(\.c), tolerance: tol))
+            var cols = thinMerged(cluster(vs.map(\.c), tolerance: tol))
             guard rows.count >= 2, cols.count >= 2 else { continue }
             // Open-sided tables (rules across, walls only between columns): the
             // ends of the row rules are the table's outer edges.
@@ -673,7 +724,7 @@ enum DocumentLayoutAnalyzer {
             // above or below the table is one more row across the table.
             var rowsOut = rows
             let width = cols[cols.count - 1] - cols[0]
-            let others = horizontal.filter { h in !hs.contains { $0.c == h.c && $0.a0 == h.a0 } }
+            let others = horizontal.enumerated().filter { k, h in !tableRules.contains(k) && !hs.contains { $0.c == h.c && $0.a0 == h.a0 } }.map(\.element)
             func ruleAt(_ y: Double) -> Bool {
                 let pieces = others.filter { abs($0.c - y) <= tol }.map { (max($0.a0, cols[0]), min($0.a1, cols[cols.count - 1])) }.filter { $0.1 > $0.0 }.sorted { $0.0 < $1.0 }
                 var covered = 0.0, end = cols[0]
@@ -686,6 +737,99 @@ enum DocumentLayoutAnalyzer {
             if let table = buildRuledTable(ink, rows: rowsOut, columns: cols, tolerance: Int(max(3, tol / 2))) { tables.append(table) }
         }
         return tables.sorted { $0.box.y0 < $1.box.y0 }
+    }
+    /// A grid whose column walls change from one block of rows to the next (an
+    /// order details band over an item list) is separate tables, one per block:
+    /// otherwise the walls of one block are drawn through the cells of the other.
+    /// A block ends at a rule across the whole table; rows without inner walls
+    /// join the block above them.
+    static func splitBands(_ t: LayoutTable) -> [LayoutTable] {
+        let R = t.rowCount, C = t.columnCount
+        guard R >= 2, C >= 2 else { return [t] }
+        var walls = Array(repeating: Set<Int>(), count: R)
+        for cell in t.cells where cell.column > 0 {
+            for r in cell.row..<min(R, cell.row + cell.rowSpan) { walls[r].insert(cell.column) }
+        }
+        // Rows a cell spans can't be separated.
+        var joined = Array(repeating: false, count: R) // joined[r]: rows r-1 and r share a cell
+        for cell in t.cells where cell.rowSpan > 1 { for r in (cell.row + 1)..<min(R, cell.row + cell.rowSpan) { joined[r] = true } }
+        // Each block is compared with its first row that has walls (its
+        // pattern), not with everything gathered so far, which would soon
+        // contain any row.
+        var bands: [(Int, Int, Set<Int>)] = []
+        var pattern: [Set<Int>] = []
+        for r in 0..<R {
+            if var last = bands.last {
+                let p = pattern[pattern.count - 1], w = walls[r]
+                // (A stray wall or two — a shadow, a crease — doesn't start a new block.)
+                let alike = !p.isEmpty && !w.isEmpty && Double(p.intersection(w).count) >= Double(p.union(w).count) * 0.6
+                if joined[r] || w.isSubset(of: p) || p.isSubset(of: w) || alike {
+                    last.1 = r; last.2.formUnion(w); bands[bands.count - 1] = last
+                    if p.isEmpty { pattern[pattern.count - 1] = w }
+                    continue
+                }
+            }
+            bands.append((r, r, walls[r])); pattern.append(walls[r])
+        }
+        // A block of one or two rows (a strip, a second line of labels) stays with
+        // the block above it, or below when it comes first: only blocks of
+        // several rows each are tables of their own.
+        while bands.count > 1, let k = bands.indices.first(where: { bands[$0].1 - bands[$0].0 + 1 < 3 }) {
+            let into = k > 0 ? k - 1 : k + 1, lo = min(k, into)
+            bands[lo] = (bands[lo].0, bands[lo + 1].1, bands[lo].2.union(bands[lo + 1].2))
+            bands.remove(at: lo + 1)
+        }
+        guard bands.count > 1 else { return [t] }
+        return bands.map { band in
+            let keep = [0] + band.2.sorted() + [C]
+            let index = Dictionary(uniqueKeysWithValues: keep.enumerated().map { ($1, $0) })
+            var cells: [LayoutCell] = []
+            for cell in t.cells where cell.row >= band.0 && cell.row <= band.1 {
+                guard let c0 = index[cell.column], let c1 = index[min(C, cell.column + cell.columnSpan)] else { continue }
+                var out = cell
+                out.row = cell.row - band.0; out.column = c0; out.columnSpan = max(1, c1 - c0)
+                out.rowSpan = min(cell.rowSpan, band.1 - cell.row + 1)
+                cells.append(out)
+            }
+            return LayoutTable(columns: keep.map { t.columns[$0] }, rows: Array(t.rows[band.0...(band.1 + 1)]), cells: cells, ruled: t.ruled)
+        }
+    }
+    /// A list of many rows is a regular grid: an empty cell found spanning a
+    /// rule that nearly every other column has (a faint stretch of the line in
+    /// the photo) is split along it.
+    static func regularizedList(_ t: LayoutTable) -> LayoutTable {
+        let R = t.rowCount, C = t.columnCount
+        guard R >= 8, C >= 2 else { return t }
+        // Columns that have a wall at each row boundary / rows with a wall at each column boundary.
+        var rowRule = Array(repeating: 0, count: R + 1), colRule = Array(repeating: 0, count: C + 1)
+        for cell in t.cells {
+            rowRule[cell.row] += cell.columnSpan; rowRule[min(R, cell.row + cell.rowSpan)] += cell.columnSpan
+            colRule[cell.column] += cell.rowSpan; colRule[min(C, cell.column + cell.columnSpan)] += cell.rowSpan
+        }
+        // (Both sides of a cell count; a boundary all cells share scores twice the width.)
+        func firmRow(_ k: Int) -> Bool { Double(rowRule[k]) >= Double(2 * C) * 0.8 }
+        func firmColumn(_ k: Int) -> Bool { Double(colRule[k]) >= Double(2 * R) * 0.8 }
+        var out = t
+        out.cells = []
+        for cell in t.cells {
+            guard cell.text.isEmpty, cell.rowSpan > 1 || cell.columnSpan > 1 else { out.cells.append(cell); continue }
+            var rowCuts = [cell.row], colCuts = [cell.column]
+            for k in (cell.row + 1)..<(cell.row + cell.rowSpan) where firmRow(k) { rowCuts.append(k) }
+            for k in (cell.column + 1)..<(cell.column + cell.columnSpan) where firmColumn(k) { colCuts.append(k) }
+            rowCuts.append(cell.row + cell.rowSpan); colCuts.append(cell.column + cell.columnSpan)
+            guard rowCuts.count > 2 || colCuts.count > 2 else { out.cells.append(cell); continue }
+            for (r0, r1) in zip(rowCuts, rowCuts.dropFirst()) {
+                for (c0, c1) in zip(colCuts, colCuts.dropFirst()) {
+                    var piece = cell
+                    piece.row = r0; piece.rowSpan = r1 - r0; piece.column = c0; piece.columnSpan = c1 - c0
+                    piece.box = LBox(t.columns[c0], t.rows[r0], t.columns[c1], t.rows[r1])
+                    piece.top = r0 == cell.row ? cell.top : true; piece.bottom = r1 == cell.row + cell.rowSpan ? cell.bottom : true
+                    piece.left = c0 == cell.column ? cell.left : true; piece.right = c1 == cell.column + cell.columnSpan ? cell.right : true
+                    out.cells.append(piece)
+                }
+            }
+        }
+        return out
     }
     static func cluster(_ values: [Double], tolerance: Double) -> [Double] {
         var groups: [[Double]] = []
@@ -1009,24 +1153,72 @@ enum DocumentLayoutAnalyzer {
         // frame, not a one-cell table: it becomes a page border, and the boxes
         // and tables inside it are found without its sides.
         var pageFrame: LBox?
-        if let fi = tables.firstIndex(where: { t in
-            let b = t.box
-            let lines = wordLines.filter { l in l.contains { b.contains(x: $0.box.midX, y: $0.box.midY) } }.count
-            return t.cells.count <= 2 && b.width > Double(W) * 0.6 && b.height > Double(H) * 0.45 && lines >= 8
-        }) {
-            let f = tables[fi].box
+        // The tables inside a border around the page, found without its sides;
+        // nil when the border is a table's own outline instead (a grid filling it).
+        func insideFrame(_ t: LayoutTable) -> [LayoutTable]? {
+            let f = t.box
+            let lines = wordLines.filter { l in l.contains { f.contains(x: $0.box.midX, y: $0.box.midY) } }.count
+            guard f.width > Double(W) * 0.6, f.height > Double(H) * 0.45, lines >= 8 else { return nil }
             let tol = max(8.0, textHeight * 0.4)
             let innerH = hSegments.filter { !(abs($0.c - f.y0) <= tol || abs($0.c - f.y1) <= tol) }
-            let innerV = vSegments.filter { !(abs($0.c - f.x0) <= tol || abs($0.c - f.x1) <= tol) }
-            tables.remove(at: fi)
+            var innerV = vSegments.filter { !(abs($0.c - f.x0) <= tol || abs($0.c - f.x1) <= tol) }
+            // Boxes drawn against the border share its side as their own wall
+            // (a note box at the right edge, a comments box at the left). The
+            // side between two rules that close a box, or that both cross the
+            // whole frame, is given back as that box's wall.
+            // Rules at one height, joined only where their pieces nearly touch
+            // (two boxes side by side have two rules at the same height).
+            let rules: [(c: Double, a0: Double, a1: Double)] = cluster(innerH.map(\.c), tolerance: tol).flatMap { y -> [(c: Double, a0: Double, a1: Double)] in
+                var runs: [(c: Double, a0: Double, a1: Double)] = []
+                for p in innerH.filter({ abs($0.c - y) <= tol }).sorted(by: { $0.a0 < $1.a0 }) {
+                    if let last = runs.last, p.a0 <= last.a1 + max(tol * 3, textHeight * 2.5) { runs[runs.count - 1].a1 = max(last.a1, p.a1) } else { runs.append((y, p.a0, p.a1)) }
+                }
+                return runs
+            }
+            let reach = tol * 2
+            func wall(at x: Double, from y0: Double, to y1: Double) -> Bool {
+                let pieces = innerV.filter { abs($0.c - x) <= reach }.map { (max($0.a0, y0), min($0.a1, y1)) }.filter { $0.1 > $0.0 }
+                return pieces.reduce(0.0) { $0 + $1.1 - $1.0 } >= (y1 - y0) * 0.6
+            }
+            var sides: [Segment] = []
+            for left in [true, false] {
+                let x = left ? f.x0 : f.x1
+                let touching = rules.filter { left ? $0.a0 <= f.x0 + reach : $0.a1 >= f.x1 - reach }.sorted { $0.c < $1.c }
+                for (a, b) in zip(touching, touching.dropFirst()) {
+                    let farA = left ? a.a1 : a.a0, farB = left ? b.a1 : b.a0
+                    let across = left ? (farA >= f.x1 - reach && farB >= f.x1 - reach) : (farA <= f.x0 + reach && farB <= f.x0 + reach)
+                    // A box whose far wall stands on the other rule (a box sitting on a longer line).
+                    func covers(_ r: (c: Double, a0: Double, a1: Double), _ x: Double) -> Bool { r.a0 <= x + reach && r.a1 >= x - reach }
+                    let closed = (covers(b, farA) && wall(at: farA, from: a.c, to: b.c)) || (covers(a, farB) && wall(at: farB, from: a.c, to: b.c))
+                    if across || closed { sides.append(Segment(a0: a.c, a1: b.c, c: x, thickness: 2)) }
+                }
+            }
+            innerV += sides
             // Tables already found inside the frame are not added twice.
-            let existing = tables.map(\.box)
-            tables += ruledTables(ink, horizontal: innerH, vertical: innerV, textHeight: textHeight).filter { t in
+            let existing = tables.map(\.box).filter { $0 != f }
+            let raw = ruledTables(ink, horizontal: innerH, vertical: innerV, textHeight: textHeight)
+            let inner = raw.flatMap(splitBands).map(regularizedList).filter { t in
                 (t.box.width < f.width * 0.98 || t.box.height < f.height * 0.9)
                     && !existing.contains { $0.overlapX(t.box) * $0.overlapY(t.box) > t.box.width * t.box.height * 0.8 }
             }
+            if t.cells.count <= 2 { return inner }
+            // A form drawn inside one border (boxes, a header block and a list
+            // side by side): the border joins everything into one grid, which
+            // invents walls through every box. Separate boxes inside it, with
+            // room left that no box covers, mean the border is a frame.
+            let covered = inner.reduce(0.0) { $0 + $1.box.width * $1.box.height }
+            debugLog?(String(format: "frame candidate %.0f,%.0f,%.0f,%.0f sides %d inner %d covered %.2f: ", f.x0, f.y0, f.x1, f.y1, sides.count, inner.count, covered / (f.width * f.height)) + inner.map { String(format: "%dx%d@%.0f,%.0f,%.0f,%.0f", $0.rowCount, $0.columnCount, $0.box.x0, $0.box.y0, $0.box.x1, $0.box.y1) }.joined(separator: " "))
+            guard inner.count >= 2, covered < f.width * f.height * 0.93 else { return nil }
+            return inner
+        }
+        for fi in tables.indices.sorted(by: { tables[$0].box.width * tables[$0].box.height > tables[$1].box.width * tables[$1].box.height }) {
+            guard let inner = insideFrame(tables[fi]) else { continue }
+            let f = tables[fi].box
+            tables.remove(at: fi)
+            tables += inner
             pageFrame = f
-            debugLog?(String(format: "page frame %.0f %.0f %.0f %.0f", f.x0, f.y0, f.x1, f.y1))
+            debugLog?(String(format: "page frame %.0f %.0f %.0f %.0f, %d tables inside", f.x0, f.y0, f.x1, f.y1, inner.count))
+            break
         }
         // Text is measured without ruling lines so borders never inflate sizes.
         var textInk = ink
@@ -1062,11 +1254,41 @@ enum DocumentLayoutAnalyzer {
             textInk.boldThreshold = max(1.15, min(1.6, scores[scores.count / 2] * 1.15))
         }
 
+        // A logo drawn inside a box (light letters on a small dark bar, the name
+        // in large letters over it) is a picture: its words are drawn, not typed,
+        // and read as nonsense. Its bar is found as a tiny table of its own.
+        var cellPictures: [LBox] = []
+        if !tables.isEmpty {
+            let allWords = wordLines.flatMap { $0 }
+            // A small dark bar inside another box (light letters on a solid band,
+            // as logos draw a company name) is found as a tiny table of its own.
+            var seeds: [LBox] = []
+            for (k, t) in tables.enumerated() where t.cells.count <= 2 && t.box.width < Double(W) * 0.3 && t.box.height < textHeight * 4 {
+                guard tables.indices.contains(where: { $0 != k && tables[$0].box.width * tables[$0].box.height > t.box.width * t.box.height * 4
+                    && tables[$0].box.inset(-2).contains(x: t.box.x0, y: t.box.y0) && tables[$0].box.inset(-2).contains(x: t.box.x1, y: t.box.y1) }),
+                      ink.darkFraction(t.box) > 0.45 else { continue }
+                seeds.append(t.box)
+            }
+            for g in seeds {
+                // The drawing's words: those touching the bar (the name over it).
+                let reach = g.inset(-textHeight * 1.2)
+                let inside = allWords.filter { reach.overlapX($0.box) > $0.box.width * 0.5 && reach.overlapY($0.box) > 0 }
+                cellPictures.append(inside.reduce(g) { $0.union($1.box) }.inset(-2))
+            }
+            if !cellPictures.isEmpty {
+                wordLines = wordLines.map { $0.filter { w in !cellPictures.contains { $0.contains(x: w.box.midX, y: w.box.midY) } } }.filter { !$0.isEmpty }
+                // Bars and outlines drawn in the picture are not boxes of the form.
+                tables.removeAll { t in cellPictures.contains { $0.inset(-4).contains(x: t.box.x0, y: t.box.y0) && $0.inset(-4).contains(x: t.box.x1, y: t.box.y1) } }
+                for c in cellPictures { debugLog?(String(format: "cell picture %.0f %.0f %.0f %.0f", c.x0, c.y0, c.x1, c.y1)) }
+            }
+        }
         var free: [Word] = []
         var tableWords: [[Word]] = Array(repeating: [], count: tables.count)
         // A page with many separate boxes is a form: its line art becomes one
         // picture behind the page and every line of text is placed exactly.
-        let form = tables.count >= 5
+        // A list table with many rows among a few boxes (a packing list, an
+        // order form) stays editable tables; a sheet of only small boxes is the picture.
+        let form = tables.count >= 5 && !(tables.count <= 10 && tables.contains { $0.rowCount >= 8 && $0.cells.count >= 24 })
         if form {
             let walls = vSegments
             let splitter: (Word, Word) -> Bool = { a, b in
@@ -1231,10 +1453,15 @@ enum DocumentLayoutAnalyzer {
         }
         var graphics = findGraphics(ink, excluding: textBoxes + underlineBoxes + drawn, textHeight: textHeight)
         for g in graphics { debugLog?("graphic \(Int(g.box.x0)) \(Int(g.box.y0)) \(Int(g.box.x1)) \(Int(g.box.y1)) cutout \(g.cutout)") }
-        // Slivers along the photo's edge are shadow or background, not art.
+        // Slivers along the photo's edge are shadow or background, not art; so is
+        // a wedge of desk in a corner the paper doesn't reach.
+        let wordsOnPage = wordLines.flatMap { $0.map(\.box) }
         graphics.removeAll { g in
-            let edge = g.box.x0 <= 2 || g.box.y0 <= 2 || g.box.x1 >= Double(W) - 2 || g.box.y1 >= Double(H) - 2
-            return edge && min(g.box.width, g.box.height) < textHeight
+            let left = g.box.x0 <= 2, right = g.box.x1 >= Double(W) - 2, top = g.box.y0 <= 2, bottom = g.box.y1 >= Double(H) - 2
+            let edge = left || right || top || bottom
+            let corner = (left || right) && (top || bottom)
+            let bare = !wordsOnPage.contains { g.box.contains(x: $0.midX, y: $0.midY) }
+            return (edge && min(g.box.width, g.box.height) < textHeight) || (corner && bare && g.box.width < Double(W) * 0.25 && g.box.height < Double(H) * 0.25)
         }
         // A page frame (a thin border drawn around the text) is not a picture:
         // a picture of it would carry every word inside it a second time.
@@ -1266,6 +1493,7 @@ enum DocumentLayoutAnalyzer {
             if covered >= 0.3 { graphics[g].masks = inside.map { $0.inset(-halo) } }
         }
 
+        graphics += cellPictures.map { LayoutGraphic(box: $0, cutout: false) }
         var items: [LayoutItem] = paragraphs.map { .paragraph($0) } + tables.map { .table($0) }
         items.sort { $0.box.y0 < $1.box.y0 }
         var page = PageLayout(width: W, height: H, pageWidth: size.0, pageHeight: size.1, items: items, graphics: graphics)

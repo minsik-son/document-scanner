@@ -1958,3 +1958,34 @@
 "Looking over the page…" = "Sayfa inceleniyor…";
 "Sorting titles and text…" = "Başlık ve metin ayrılıyor…";
 "Moving it onto slides…" = "Slaytlara aktarılıyor…";
+
+/* Animated waits */
+"Saving your scan as a PDF" = "Taraman PDF olarak kaydediliyor";
+"Saving the pages as pictures" = "Sayfalar resim olarak kaydediliyor";
+"Making the PDF smaller" = "PDF küçültülüyor";
+"Finding and hiding personal info" = "Kişisel bilgiler bulunup gizleniyor";
+"Translating the text in your photo" = "Fotoğraftaki metin çevriliyor";
+"Cleaning up your photo" = "Fotoğrafın temizleniyor";
+"Combining into one PDF" = "Tek bir PDF'de birleştiriliyor";
+"Gathering the pages…" = "Sayfalar toplanıyor…";
+"Reading the text so it can be searched…" = "Metin aranabilir olması için okunuyor…";
+"Binding it into one file…" = "Tek dosyada birleştiriliyor…";
+"Saving the PDF…" = "PDF kaydediliyor…";
+"Laying out the pages…" = "Sayfalar açılıyor…";
+"Turning pages into pictures…" = "Sayfalar resme dönüştürülüyor…";
+"Setting the picture quality…" = "Resim kalitesi ayarlanıyor…";
+"Saving the pictures…" = "Resimler kaydediliyor…";
+"Looking over the pages…" = "Sayfalar inceleniyor…";
+"Adjusting the picture quality…" = "Fotoğraf kalitesi ayarlanıyor…";
+"Making the file smaller…" = "Dosya küçültülüyor…";
+"Saving the new PDF…" = "Yeni PDF kaydediliyor…";
+"Finding numbers and contact details…" = "Numaralar ve iletişim bilgileri aranıyor…";
+"Hiding what was found…" = "Bulunanlar gizleniyor…";
+"Making the hidden copy…" = "Gizlenmiş kopya oluşturuluyor…";
+"Putting it back on the photo…" = "Fotoğrafa geri yerleştiriliyor…";
+"Looking over the photo…" = "Fotoğraf inceleniyor…";
+"Finding spots and creases…" = "Lekeler ve kırışıklar aranıyor…";
+"Saving the clean photo…" = "Temiz fotoğraf kaydediliyor…";
+"Opening the files…" = "Dosyalar açılıyor…";
+"Putting them in your order…" = "Senin sırana diziliyor…";
+"Joining them into one…" = "Tek dosyada birleştiriliyor…";

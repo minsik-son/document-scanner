@@ -1958,3 +1958,34 @@
 "Looking over the page…" = "Đang xem trang…";
 "Sorting titles and text…" = "Đang tách tiêu đề và nội dung…";
 "Moving it onto slides…" = "Đang đưa vào trang chiếu…";
+
+/* Animated waits */
+"Saving your scan as a PDF" = "Đang lưu bản quét thành PDF";
+"Saving the pages as pictures" = "Đang lưu các trang thành ảnh";
+"Making the PDF smaller" = "Đang giảm dung lượng PDF";
+"Finding and hiding personal info" = "Đang tìm và che thông tin cá nhân";
+"Translating the text in your photo" = "Đang dịch chữ trong ảnh";
+"Cleaning up your photo" = "Đang làm sạch ảnh";
+"Combining into one PDF" = "Đang gộp thành một PDF";
+"Gathering the pages…" = "Đang gom các trang…";
+"Reading the text so it can be searched…" = "Đang đọc chữ để có thể tìm kiếm…";
+"Binding it into one file…" = "Đang đóng thành một tệp…";
+"Saving the PDF…" = "Đang lưu PDF…";
+"Laying out the pages…" = "Đang trải các trang…";
+"Turning pages into pictures…" = "Đang chuyển trang thành ảnh…";
+"Setting the picture quality…" = "Đang chỉnh chất lượng ảnh…";
+"Saving the pictures…" = "Đang lưu ảnh…";
+"Looking over the pages…" = "Đang xem các trang…";
+"Adjusting the picture quality…" = "Đang điều chỉnh chất lượng ảnh…";
+"Making the file smaller…" = "Đang giảm dung lượng tệp…";
+"Saving the new PDF…" = "Đang lưu PDF mới…";
+"Finding numbers and contact details…" = "Đang tìm số và thông tin liên hệ…";
+"Hiding what was found…" = "Đang che những gì tìm thấy…";
+"Making the hidden copy…" = "Đang tạo bản sao đã che…";
+"Putting it back on the photo…" = "Đang đưa lại vào ảnh…";
+"Looking over the photo…" = "Đang xem ảnh…";
+"Finding spots and creases…" = "Đang tìm vết bẩn và nếp gấp…";
+"Saving the clean photo…" = "Đang lưu ảnh sạch…";
+"Opening the files…" = "Đang mở các tệp…";
+"Putting them in your order…" = "Đang xếp theo thứ tự bạn chọn…";
+"Joining them into one…" = "Đang gộp thành một…";

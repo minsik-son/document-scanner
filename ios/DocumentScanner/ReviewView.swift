@@ -82,6 +82,8 @@ struct ReviewView: View {
     /// Conversion asked about in the sheet; it opens once the sheet has closed.
     @State private var confirmConvert: ConversionRoute?
     @State private var startConversion: ConversionRoute?
+    /// The picture shown while saving: a PDF, or pictures for PNG and JPEG.
+    @State private var savingKind = WorkAnimation.save
 
     var body: some View {
         NavigationStack {
@@ -183,7 +185,6 @@ struct ReviewView: View {
                     }
                 }
             }
-            .overlay(alignment: .top) { if saving { Button("Cancel export") { saveTask?.cancel() }.padding(10).background(.regularMaterial, in: Capsule()) } }
             .background(saveFlow)
             .alert("Discard this scan?", isPresented: $confirmDiscard) {
                 Button("Discard", role: .destructive) { cancelEditing() }
@@ -245,6 +246,13 @@ struct ReviewView: View {
                         cropWasConfirmed = true
                     }
                 }
+            }
+        }
+        // Saving takes a few seconds (text is read on every page): show the work being done
+        // over every screen of the flow, and let it finish on its check once the file is saved.
+        .overlay {
+            FinishingOverlay(text: saving && !saved ? saveProgress : nil, failed: error != nil) { text, done, cancelled, finished in
+                WorkProgressView(kind: savingKind, phase: text, done: done, onFinished: finished) { cancelled(); saveTask?.cancel() }
             }
         }
     }
@@ -814,6 +822,7 @@ struct ReviewView: View {
         let root = store.root
         // PNG or JPEG: only a new scan saved from its settings page makes pictures.
         let pictures = doc.isDraft ? imageFormat : nil, pixels = imagePixels
+        savingKind = pictures == nil ? .save : .images
         saveTask = Task {
             do {
                 let result = try await PDFExport.prepare(doc, root: root, forceText: forceText) { saveProgress = $0 }

@@ -1958,3 +1958,34 @@
 "Looking over the page…" = "正在查看页面…";
 "Sorting titles and text…" = "正在区分标题和正文…";
 "Moving it onto slides…" = "正在移到幻灯片上…";
+
+/* Animated waits */
+"Saving your scan as a PDF" = "正在把扫描存储为 PDF";
+"Saving the pages as pictures" = "正在把页面存储为图片";
+"Making the PDF smaller" = "正在缩小 PDF";
+"Finding and hiding personal info" = "正在查找并遮盖个人信息";
+"Translating the text in your photo" = "正在翻译照片中的文字";
+"Cleaning up your photo" = "正在清理照片";
+"Combining into one PDF" = "正在合并为一个 PDF";
+"Gathering the pages…" = "正在收集页面…";
+"Reading the text so it can be searched…" = "正在读取文字以便搜索…";
+"Binding it into one file…" = "正在装订成一个文件…";
+"Saving the PDF…" = "正在存储 PDF…";
+"Laying out the pages…" = "正在展开页面…";
+"Turning pages into pictures…" = "正在把页面变成图片…";
+"Setting the picture quality…" = "正在调整画质…";
+"Saving the pictures…" = "正在存储图片…";
+"Looking over the pages…" = "正在查看页面…";
+"Adjusting the picture quality…" = "正在调整照片画质…";
+"Making the file smaller…" = "正在缩小文件…";
+"Saving the new PDF…" = "正在存储新的 PDF…";
+"Finding numbers and contact details…" = "正在查找号码和联系方式…";
+"Hiding what was found…" = "正在遮盖找到的内容…";
+"Making the hidden copy…" = "正在生成遮盖后的副本…";
+"Putting it back on the photo…" = "正在放回照片中…";
+"Looking over the photo…" = "正在查看照片…";
+"Finding spots and creases…" = "正在查找污渍和折痕…";
+"Saving the clean photo…" = "正在存储干净的照片…";
+"Opening the files…" = "正在打开文件…";
+"Putting them in your order…" = "正在按你的顺序排列…";
+"Joining them into one…" = "正在合并为一个…";

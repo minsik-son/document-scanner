@@ -66,7 +66,11 @@ struct StepChrome: ViewModifier {
                     }
                 }
             }
-            .overlay { if let busy = work.busy { BusyOverlay(text: busy, progress: work.progress) { work.cancel() } } }
+            .overlay {
+                FinishingOverlay(text: work.busy, failed: work.message != nil) { text, done, cancelled, finished in
+                    BusyOverlay(text: text, progress: work.progress, done: done, onFinished: finished) { cancelled(); work.cancel() }
+                }
+            }
             .interactiveDismissDisabled(work.busy != nil)
     }
 }

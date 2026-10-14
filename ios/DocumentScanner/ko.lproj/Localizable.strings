@@ -1958,3 +1958,34 @@
 "Looking over the page…" = "페이지를 살펴보는 중…";
 "Sorting titles and text…" = "제목과 내용을 나누는 중…";
 "Moving it onto slides…" = "슬라이드에 옮기는 중…";
+
+/* Animated waits */
+"Saving your scan as a PDF" = "스캔을 PDF로 저장하고 있어요";
+"Saving the pages as pictures" = "페이지를 이미지로 저장하고 있어요";
+"Making the PDF smaller" = "PDF 용량을 줄이고 있어요";
+"Finding and hiding personal info" = "개인정보를 찾아서 가리고 있어요";
+"Translating the text in your photo" = "사진 속 글자를 번역하고 있어요";
+"Cleaning up your photo" = "사진을 깨끗하게 다듬고 있어요";
+"Combining into one PDF" = "하나의 PDF로 합치고 있어요";
+"Gathering the pages…" = "페이지를 모으는 중…";
+"Reading the text so it can be searched…" = "글자를 읽어 검색되게 하는 중…";
+"Binding it into one file…" = "한 권으로 묶는 중…";
+"Saving the PDF…" = "PDF로 저장하는 중…";
+"Laying out the pages…" = "페이지를 펼치는 중…";
+"Turning pages into pictures…" = "페이지를 사진으로 바꾸는 중…";
+"Setting the picture quality…" = "화질을 맞추는 중…";
+"Saving the pictures…" = "이미지로 저장하는 중…";
+"Looking over the pages…" = "페이지를 살펴보는 중…";
+"Adjusting the picture quality…" = "사진 화질을 맞추는 중…";
+"Making the file smaller…" = "용량을 줄이는 중…";
+"Saving the new PDF…" = "새 PDF로 저장하는 중…";
+"Finding numbers and contact details…" = "번호와 연락처를 찾는 중…";
+"Hiding what was found…" = "찾은 곳을 가리는 중…";
+"Making the hidden copy…" = "가린 사본을 만드는 중…";
+"Putting it back on the photo…" = "사진에 다시 넣는 중…";
+"Looking over the photo…" = "사진을 살펴보는 중…";
+"Finding spots and creases…" = "얼룩과 접힌 자국을 찾는 중…";
+"Saving the clean photo…" = "깨끗한 사진을 저장하는 중…";
+"Opening the files…" = "파일을 여는 중…";
+"Putting them in your order…" = "고른 순서대로 놓는 중…";
+"Joining them into one…" = "하나로 합치는 중…";

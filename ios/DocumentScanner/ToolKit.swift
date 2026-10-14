@@ -235,8 +235,29 @@ struct ToolHero: View {
 struct BusyOverlay: View {
     let text: String
     var progress: Double? = nil
+    /// The job ended well: an animated wait plays to its check, then calls `onFinished`.
+    var done = false
+    var onFinished: (() -> Void)? = nil
     var cancel: (() -> Void)? = nil
+    /// A long job gets its own picture; kept for the rest of the job once chosen.
+    @State private var animation: WorkAnimation?
+    init(text: String, progress: Double? = nil, done: Bool = false, onFinished: (() -> Void)? = nil, cancel: (() -> Void)? = nil) {
+        self.text = text; self.progress = progress; self.done = done; self.onFinished = onFinished; self.cancel = cancel
+        _animation = State(initialValue: WorkAnimation(phase: text))
+    }
     var body: some View {
+        Group {
+            if let animation {
+                WorkProgressView(kind: animation, phase: text, progress: progress, done: done, onFinished: onFinished, cancel: cancel)
+            } else {
+                card
+                    .onAppear { if done { onFinished?() } }
+                    .onChange(of: done) { _, value in if value { onFinished?() } }
+            }
+        }
+        .onChange(of: text) { _, value in if animation == nil, let kind = WorkAnimation(phase: value) { animation = kind } }
+    }
+    private var card: some View {
         ZStack {
             Color.black.opacity(0.28).ignoresSafeArea()
             VStack(spacing: 18) {
@@ -765,5 +786,561 @@ struct SavedPagePicker: View {
             let image = try? await OfflineWork.perform { try Imaging.render(page, root: root) }
             picked(image)
         }
+    }
+}
+
+// MARK: - Animated waits
+
+/// Eased value between keyframes; `t` and the stops are fractions of one loop.
+func loopValue(_ t: Double, _ stops: [(Double, Double)]) -> Double {
+    guard let first = stops.first, let last = stops.last else { return 0 }
+    if t <= first.0 { return first.1 }
+    for (a, b) in zip(stops, stops.dropFirst()) where t <= b.0 {
+        let span = b.0 - a.0
+        guard span > 0 else { return b.1 }
+        let x = (t - a.0) / span
+        return a.1 + (b.1 - a.1) * x * x * (3 - 2 * x)
+    }
+    return last.1
+}
+
+/// The loop position `seconds` later in an 8-second loop, wrapped into 0…1.
+func loopLater(_ t: Double, _ seconds: Double) -> Double { let x = t - seconds / 8; return x < 0 ? x + 1 : x }
+
+/// A full-screen wait that shows the work being done: a title, the real progress
+/// line, a picture that loops every 8 seconds with four step labels under it, and
+/// Cancel. With Reduce Motion the picture rests on its finished state.
+struct AnimatedWorkPage<Stage: View>: View {
+    let title: String
+    let steps: [String]
+    let tint: Color
+    /// The real progress line ("Reading page 1 of 2…").
+    let phase: String
+    var progress: Double? = nil
+    /// The job ended well: the picture plays on to its check, then `onFinished` runs.
+    var done = false
+    var onFinished: (() -> Void)? = nil
+    var cancel: (() -> Void)? = nil
+    @ViewBuilder let stage: (Double) -> Stage
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var start = Date()
+    /// The job has reached its last stage (making or saving the file).
+    @State private var finished = false
+    /// The job began at its last stage (the pages were read earlier): start the picture there too.
+    @State private var startsAtFile = false
+    /// When the job ended, and where the picture was then.
+    @State private var doneAt: Date?
+    @State private var doneFrom = 0.0
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(L(title)).font(.system(size: 26, weight: .bold)).foregroundStyle(TK.grey900)
+                .fixedSize(horizontal: false, vertical: true).padding(.top, 24)
+                .accessibilityAddTraits(.isHeader)
+            Text(L(phase)).font(.system(size: 15)).foregroundStyle(TK.grey600).padding(.top, 8)
+                .accessibilityIdentifier("tool-busy-text")
+                .onAppear { if workPhaseIsFinal(phase) { finished = true; startsAtFile = true } }
+                .onChange(of: phase) { _, value in if workPhaseIsFinal(value) { finished = true } }
+            if let progress {
+                ProgressView(value: progress).tint(tint).padding(.top, 10)
+            }
+            Spacer(minLength: 12)
+            TimelineView(.animation(paused: reduceMotion)) { context in
+                let elapsed = context.date.timeIntervalSince(start)
+                let t = doneAt.map { Self.finishing(from: doneFrom, since: context.date.timeIntervalSince($0), reduceMotion: reduceMotion) }
+                    ?? Self.picture(elapsed, fromFile: startsAtFile, reduceMotion: reduceMotion)
+                let once = doneAt != nil ? 0.9 : Self.labels(elapsed, fromFile: startsAtFile, finished: finished)
+                VStack(spacing: 14) {
+                    stage(t).frame(width: 320, height: 260, alignment: .topLeading)
+                    ZStack {
+                        ForEach(steps.indices, id: \.self) { i in
+                            Text(L(steps[i])).font(.system(size: 18, weight: .bold)).foregroundStyle(TK.grey900)
+                                .lineLimit(1).minimumScaleFactor(0.7)
+                                .opacity(Self.labelOpacity(i, once))
+                        }
+                    }.frame(height: 26)
+                    HStack(spacing: 6) {
+                        ForEach(0..<4, id: \.self) { i in
+                            Capsule().fill(i <= Self.step(once) ? tint : TK.grey200).frame(width: 28, height: 4)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .accessibilityHidden(true)
+            }
+            Spacer(minLength: 12)
+            if let cancel {
+                Button("Cancel", action: cancel).buttonStyle(SecondaryCTAStyle()).accessibilityIdentifier("tool-cancel")
+                    .opacity(doneAt == nil ? 1 : 0).disabled(doneAt != nil)
+            }
+        }
+        .padding(.horizontal, 24).padding(.bottom, 8)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(TK.paper.ignoresSafeArea())
+        .transition(.opacity)
+        .onAppear { if done { finish() } }
+        .onChange(of: done) { _, value in if value { finish() } }
+    }
+
+    /// The job is done: carry the picture on from where it is to the check, then close.
+    private func finish() {
+        guard doneAt == nil else { return }
+        let from = Self.picture(Date().timeIntervalSince(start), fromFile: startsAtFile, reduceMotion: reduceMotion)
+        doneFrom = from; doneAt = Date(); finished = true
+        let wait = (reduceMotion ? 0 : Self.finishDuration(from)) + 0.5
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(wait))
+            onFinished?()
+        }
+    }
+    /// Seconds to play from `from` to the check: the rest of the picture at its own pace,
+    /// sped up when much is left so the user is not kept waiting.
+    static func finishDuration(_ from: Double) -> Double { min(max((0.95 - from) * 8, 0.8), 1.6) }
+    static func finishing(from: Double, since: Double, reduceMotion: Bool) -> Double {
+        if reduceMotion { return 0.95 }
+        let p = min(1, since / finishDuration(from))
+        return from + (0.95 - from) * p
+    }
+
+    /// Where the picture is: it plays once to the end of its third part (the work
+    /// itself), then repeats only that part until the job is done. Its last part
+    /// (the finished file and the check) is never shown, so it never looks done early.
+    static func picture(_ elapsed: Double, fromFile: Bool, reduceMotion: Bool) -> Double {
+        if reduceMotion { return 0.8 }
+        let raw = (fromFile ? 0.5 : 0) + elapsed / 8
+        return raw <= 0.8 ? raw : 0.58 + (raw - 0.8).truncatingRemainder(dividingBy: 0.22)
+    }
+    /// Where the step labels are: they move forward once with the picture, rest on the
+    /// third step while the work goes on, and show the last step only when the job
+    /// has reached it. They never start over.
+    static func labels(_ elapsed: Double, fromFile: Bool, finished: Bool) -> Double {
+        finished ? 0.9 : min((fromFile ? 0.5 : 0) + elapsed / 8, 0.6)
+    }
+    static func step(_ t: Double) -> Int { t < 0.25 ? 0 : t < 0.5 ? 1 : t < 0.82 ? 2 : 3 }
+    static func labelOpacity(_ i: Int, _ t: Double) -> Double {
+        switch i {
+        case 0: loopValue(t, [(0, 1), (0.22, 1), (0.25, 0), (1, 0)])
+        case 1: loopValue(t, [(0, 0), (0.23, 0), (0.26, 1), (0.47, 1), (0.5, 0), (1, 0)])
+        case 2: loopValue(t, [(0, 0), (0.48, 0), (0.51, 1), (0.8, 1), (0.83, 0), (1, 0)])
+        default: loopValue(t, [(0, 0), (0.81, 0), (0.84, 1), (0.97, 1), (1, 0)])
+        }
+    }
+}
+
+/// The check (or other mark) that pops when the work finishes.
+struct WorkDoneBadge: View {
+    let t: Double
+    var fill: Color
+    var symbol = "checkmark"
+    var body: some View {
+        Circle().fill(fill).frame(width: 40, height: 40)
+            .overlay(Image(systemName: symbol).font(.system(size: 19, weight: .heavy)).foregroundStyle(.white))
+            .padding(4).background(Circle().fill(.white))
+            .scaleEffect(loopValue(t, [(0, 0), (0.83, 0), (0.87, 1.15), (0.89, 1), (0.95, 1), (1, 0)]))
+    }
+}
+
+/// Shows a job's wait while `text` (its progress line) is set. When the job ends
+/// well (not `failed`, not canceled) the wait stays up a moment longer so its
+/// picture can play on to the check; a failed or canceled job closes it at once.
+/// `content` gets the line, whether the job is done, a call to make when the user
+/// cancels, and a call to make when the finish has played.
+struct FinishingOverlay<Content: View>: View {
+    let text: String?
+    var failed = false
+    @ViewBuilder let content: (String, Bool, @escaping () -> Void, @escaping () -> Void) -> Content
+    @State private var last = ""
+    @State private var finishing = false
+    @State private var cancelled = false
+    var body: some View {
+        ZStack {
+            if text != nil || finishing {
+                let done = finishing && text == nil
+                // While the finish plays, the screen underneath already works: a tap goes
+                // straight through, so nobody waits on the check.
+                content(text ?? last, done, { cancelled = true }, { finishing = false })
+                    .allowsHitTesting(!done)
+                    .accessibilityHidden(done)
+            }
+        }
+        .onAppear { if let text { last = text } }
+        .onChange(of: text) { old, new in
+            if let new {
+                last = new
+                if old == nil { cancelled = false; finishing = false }
+            } else if old != nil {
+                finishing = !failed && !cancelled
+            }
+        }
+    }
+}
+
+/// A progress line for a job's last stage: the file is being made or saved.
+func workPhaseIsFinal(_ phase: String) -> Bool {
+    ["Creating", "Making the", "Rebuilding", "Preparing translated"].contains { phase.hasPrefix($0) }
+        || ["Saving PDF…", "Saving…"].contains(phase)
+}
+
+/// Long jobs that get their own picture while the user waits.
+enum WorkAnimation: Equatable {
+    case save, images, compress, redact, translate, restore, merge
+
+    /// The picture for a job's first progress line, or nil for short jobs.
+    init?(phase: String) {
+        if phase.hasPrefix("Looking for personal info") { self = .redact; return }
+        switch phase {
+        case "Saving your scan…", "Preparing PDF…", "Saving PDF…": self = .save
+        case "Making images…", "Preparing image export…": self = .images
+        case "Compressing…": self = .compress
+        case "Reading the source language…", "Translating text areas…", "Rebuilding your page…": self = .translate
+        case "Restoring at full size…", "Erasing…", "Cleaning the full page…": self = .restore
+        case "Merging…", "Joining pages…": self = .merge
+        default: return nil
+        }
+    }
+    var title: String {
+        switch self {
+        case .save: "Saving your scan as a PDF"
+        case .images: "Saving the pages as pictures"
+        case .compress: "Making the PDF smaller"
+        case .redact: "Finding and hiding personal info"
+        case .translate: "Translating the text in your photo"
+        case .restore: "Cleaning up your photo"
+        case .merge: "Combining into one PDF"
+        }
+    }
+    var steps: [String] {
+        switch self {
+        case .save: ["Gathering the pages…", "Reading the text so it can be searched…", "Binding it into one file…", "Saving the PDF…"]
+        case .images: ["Laying out the pages…", "Turning pages into pictures…", "Setting the picture quality…", "Saving the pictures…"]
+        case .compress: ["Looking over the pages…", "Adjusting the picture quality…", "Making the file smaller…", "Saving the new PDF…"]
+        case .redact: ["Reading the text…", "Finding numbers and contact details…", "Hiding what was found…", "Making the hidden copy…"]
+        case .translate: ["Finding the text…", "Reading the text…", "Translating…", "Putting it back on the photo…"]
+        case .restore: ["Looking over the photo…", "Finding spots and creases…", "Erasing spots…", "Saving the clean photo…"]
+        case .merge: ["Opening the files…", "Putting them in your order…", "Joining them into one…", "Saving the PDF…"]
+        }
+    }
+    var tint: Color {
+        switch self {
+        case .save, .translate: TK.blue
+        case .images: Color(hex: 0x7C3AED)
+        case .compress: TK.teal
+        case .redact: TK.red
+        case .restore: TK.orange
+        case .merge: TK.blueDeep
+        }
+    }
+}
+
+/// The animated wait for a long job (see `WorkAnimation`).
+struct WorkProgressView: View {
+    let kind: WorkAnimation
+    let phase: String
+    var progress: Double? = nil
+    var done = false
+    var onFinished: (() -> Void)? = nil
+    var cancel: (() -> Void)? = nil
+
+    var body: some View {
+        AnimatedWorkPage(title: kind.title, steps: kind.steps, tint: kind.tint, phase: phase, progress: progress,
+                         done: done, onFinished: onFinished, cancel: cancel) { t in
+            stage(t)
+        }
+    }
+
+    private func kf(_ t: Double, _ stops: [(Double, Double)]) -> Double { loopValue(t, stops) }
+    private var tint: Color { kind.tint }
+
+    @ViewBuilder private func stage(_ t: Double) -> some View {
+        ZStack(alignment: .topLeading) {
+            switch kind {
+            case .save: saveStage(t)
+            case .images: imagesStage(t)
+            case .compress: compressStage(t)
+            case .redact: redactStage(t)
+            case .translate: translateStage(t)
+            case .restore: restoreStage(t)
+            case .merge: mergeStage(t)
+            }
+        }
+        .frame(width: 320, height: 260, alignment: .topLeading)
+    }
+
+    // MARK: Pieces
+
+    private func sheet(_ width: CGFloat, _ height: CGFloat, radius: CGFloat = 6) -> some View {
+        RoundedRectangle(cornerRadius: radius, style: .continuous).fill(.white)
+            .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(TK.grey300))
+            .frame(width: width, height: height)
+    }
+    private func bar(_ width: CGFloat, _ height: CGFloat = 4, _ color: Color = TK.grey300) -> some View {
+        Capsule().fill(color).frame(width: max(0, width), height: height)
+    }
+    private func pdfTag() -> some View {
+        Text(verbatim: "PDF").font(.system(size: 11, weight: .heavy)).foregroundStyle(.white)
+            .padding(.horizontal, 7).padding(.vertical, 3).background(TK.red, in: RoundedRectangle(cornerRadius: 6))
+    }
+    private func fade(_ t: Double, from: Double = 0, in duration: Double = 0.06) -> Double {
+        kf(t, [(0, 0), (from, 0), (from + duration, 1), (0.95, 1), (1, 0)])
+    }
+
+    // MARK: 1 · Saving a scan: pages fly in and stack, the text is read, the stack is bound into a PDF.
+
+    @ViewBuilder private func saveStage(_ t: Double) -> some View {
+        sheet(120, 160)
+            .rotationEffect(.degrees(kf(t, [(0, -14), (0.2, -4), (0.48, -4), (0.58, 0), (1, 0)])))
+            .offset(x: 100 + kf(t, [(0, -110), (0.2, -12), (0.48, -12), (0.58, -4), (1, -4)]),
+                    y: 50 + kf(t, [(0, 30), (0.2, -12), (0.48, -12), (0.58, -4), (1, -4)]))
+            .opacity(fade(t, from: 0, in: 0.08))
+        sheet(120, 160)
+            .rotationEffect(.degrees(kf(t, [(0, 14), (0.03, 14), (0.22, 3), (0.48, 3), (0.58, 0), (1, 0)])))
+            .offset(x: 100 + kf(t, [(0, 110), (0.03, 110), (0.22, -6), (0.48, -6), (0.58, -2), (1, -2)]),
+                    y: 50 + kf(t, [(0, 30), (0.03, 30), (0.22, -6), (0.48, -6), (0.58, -2), (1, -2)]))
+            .opacity(fade(t, from: 0.03, in: 0.08))
+        ZStack(alignment: .topLeading) {
+            sheet(120, 160)
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(Array([0.6, 1, 0.92, 0.96, 0.7, 1, 0.84, 0.5].enumerated()), id: \.offset) { i, w in
+                    let read = kf(loopLater(t, Double(i) * 0.1), [(0, 0), (0.28, 0), (0.36, 1), (0.95, 1), (1, 0)])
+                    bar(88 * w, i == 0 ? 7 : 4, TK.grey300).overlay(Capsule().fill(tint).opacity(read))
+                }
+            }
+            .padding(.leading, 18).padding(.top, 16)
+            Rectangle().fill(TK.red).frame(width: 6, height: 160 * kf(t, [(0, 0), (0.52, 0), (0.62, 1), (0.95, 1), (1, 0)]))
+            Rectangle().fill(tint).frame(width: 120, height: 3)
+                .offset(y: kf(t, [(0, 0), (0.25, 0), (0.46, 156), (1, 156)]))
+                .opacity(kf(t, [(0, 0), (0.25, 0), (0.27, 1), (0.46, 1), (0.48, 0), (1, 0)]))
+            pdfTag().scaleEffect(kf(t, [(0, 0), (0.6, 0), (0.64, 1.15), (0.66, 1), (0.95, 1), (1, 0)]))
+                .offset(x: 72, y: 130)
+        }
+        .frame(width: 120, height: 160, alignment: .topLeading)
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .offset(x: 100, y: 50 + kf(t, [(0, 70), (0.06, 70), (0.24, 0), (1, 0)]))
+        .opacity(fade(t, from: 0.06, in: 0.08))
+        WorkDoneBadge(t: t, fill: tint).offset(x: 196, y: 24)
+    }
+
+    // MARK: 2 · Pictures: each page flashes and comes out of the PDF as a photo, then sharpens.
+
+    @ViewBuilder private func imagesStage(_ t: Double) -> some View {
+        let sharp = kf(t, [(0, 0), (0.52, 0), (0.66, 1), (1, 1)])
+        ZStack(alignment: .topLeading) {
+            sheet(120, 160)
+            VStack(alignment: .leading, spacing: 8) {
+                bar(72, 7, TK.grey500); bar(92); bar(84)
+                RoundedRectangle(cornerRadius: 3).fill(TK.grey100).frame(width: 92, height: 40)
+                bar(88); bar(60)
+            }.padding(14)
+            pdfTag().offset(x: 72, y: 130)
+            Color.white.opacity(kf(t, [(0, 0), (0.26, 0), (0.27, 0.85), (0.3, 0), (0.36, 0), (0.37, 0.85), (0.4, 0), (0.46, 0), (0.47, 0.85), (0.5, 0), (1, 0)]))
+        }
+        .frame(width: 120, height: 160, alignment: .topLeading)
+        .offset(x: 50 + kf(t, [(0, 0), (0.8, 0), (0.9, -20), (1, -20)]), y: 50 + kf(t, [(0, 16), (0.06, 0), (1, 0)]))
+        .opacity(kf(t, [(0, 0), (0.06, 1), (0.8, 1), (0.9, 0), (1, 0)]))
+        ForEach(0..<3, id: \.self) { i in
+            let s = 0.26 + 0.1 * Double(i)
+            let to: [(Double, Double, Double)] = [(126, -44, 7), (138, 16, -3), (118, 74, 5)]
+            let end: [(Double, Double, Double)] = [(70, -44, -6), (82, 16, 0), (94, 76, 6)]
+            VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: 5) {
+                    bar(54, 5, TK.grey600); bar(70, 3, TK.grey400); bar(60, 3, TK.grey400); bar(64, 3, TK.grey400)
+                }
+                .padding(8).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .background(Color(hex: 0xF0EDFF), in: RoundedRectangle(cornerRadius: 4))
+                .blur(radius: 1.5 * (1 - sharp))
+                Image(systemName: "photo").font(.system(size: 10, weight: .semibold)).foregroundStyle(tint)
+            }
+            .padding(6).frame(width: 96, height: 120)
+            .background(.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(TK.grey300))
+            .scaleEffect(kf(t, [(0, 0.9), (s, 0.9), (s + 0.1, 1), (1, 1)]))
+            .rotationEffect(.degrees(kf(t, [(0, 0), (s, 0), (s + 0.1, to[i].2), (0.8, to[i].2), (0.88, end[i].2), (1, end[i].2)])))
+            .offset(x: 60 + kf(t, [(0, 0), (s, 0), (s + 0.1, to[i].0), (0.8, to[i].0), (0.88, end[i].0), (1, end[i].0)]),
+                    y: 70 + kf(t, [(0, 0), (s, 0), (s + 0.1, to[i].1), (0.8, to[i].1), (0.88, end[i].1), (1, end[i].1)]))
+            .opacity(fade(t, from: s, in: 0.02))
+        }
+        WorkDoneBadge(t: t, fill: tint).offset(x: 236, y: 0)
+    }
+
+    // MARK: 3 · Smaller: a press comes down on the file and the size bar shrinks.
+
+    @ViewBuilder private func compressStage(_ t: Double) -> some View {
+        let press = kf(t, [(0, 0), (0.26, 0), (0.4, 0.35), (0.56, 0.65), (0.72, 1), (0.95, 1), (1, 0)])
+        let dark = Color(hex: 0x0E8A72)
+        Capsule().fill(dark).frame(width: 172, height: 8).offset(x: 74, y: 6 + 50 * press)
+        ZStack(alignment: .topLeading) {
+            sheet(120, 150, radius: 8)
+            VStack(alignment: .leading, spacing: 7) {
+                bar(72, 7, TK.grey500)
+                RoundedRectangle(cornerRadius: 4).fill(Color(hex: 0xE3F8F3)).frame(width: 96, height: 48)
+                    .overlay(Image(systemName: "photo").font(.system(size: 18)).foregroundStyle(dark))
+                    .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(tint, lineWidth: 2)
+                        .opacity(kf(t, [(0, 0), (0.24, 0), (0.28, 1), (0.48, 1), (0.52, 0), (1, 0)])))
+                bar(96); bar(80)
+            }.padding(12)
+            pdfTag().offset(x: 72, y: 120)
+        }
+        .frame(width: 120, height: 150, alignment: .topLeading)
+        .scaleEffect(1 - 0.32 * press, anchor: .bottom)
+        .offset(x: 100, y: 26)
+        .opacity(fade(t, in: 0.05))
+        ZStack(alignment: .leading) {
+            Capsule().fill(TK.grey100).frame(width: 220, height: 8)
+            Capsule().fill(tint).frame(width: 220 * (1 - 0.74 * press), height: 8)
+        }
+        .offset(x: 50, y: 206)
+        WorkDoneBadge(t: t, fill: dark).offset(x: 236, y: 20)
+    }
+
+    // MARK: 4 · Personal info: the page is read, numbers are found, black bars cover them.
+
+    @ViewBuilder private func redactStage(_ t: Double) -> some View {
+        ZStack(alignment: .topLeading) {
+            sheet(260, 170, radius: 10)
+            VStack(alignment: .leading, spacing: 14) {
+                bar(100, 8, TK.grey500)
+                ForEach(Array([(0.52, false, 0.0), (0.64, true, 0.0), (0.72, true, 0.25), (0.58, true, 0.5)].enumerated()), id: \.offset) { _, row in
+                    let found = kf(loopLater(t, row.2), [(0, 0), (0.26, 0), (0.32, 1), (0.52, 1), (0.58, 0), (1, 0)])
+                    let cover = kf(loopLater(t, row.2), [(0, 0), (0.5, 0), (0.6, 1), (0.95, 1), (1, 0)])
+                    HStack(spacing: 12) {
+                        bar(36, 5, TK.grey400)
+                        bar(170 * row.0, 6, TK.grey700)
+                            .overlay {
+                                if row.1 {
+                                    RoundedRectangle(cornerRadius: 4).strokeBorder(tint, lineWidth: 2)
+                                        .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 4))
+                                        .padding(-6).opacity(found)
+                                }
+                            }
+                            .overlay(alignment: .leading) {
+                                if row.1 {
+                                    RoundedRectangle(cornerRadius: 2).fill(TK.grey900)
+                                        .frame(width: (170 * row.0 + 6) * cover, height: 14).offset(x: -3)
+                                }
+                            }
+                    }
+                    .frame(height: 12)
+                }
+            }
+            .padding(18)
+            Rectangle().fill(TK.blue).frame(width: 260, height: 3)
+                .offset(y: kf(t, [(0, 0), (0.03, 0), (0.23, 166), (1, 166)]))
+                .opacity(kf(t, [(0, 0), (0.03, 0), (0.05, 1), (0.23, 1), (0.25, 0), (1, 0)]))
+        }
+        .frame(width: 260, height: 170, alignment: .topLeading)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .offset(x: 30, y: 46 + kf(t, [(0, 14), (0.05, 0), (1, 0)]))
+        .opacity(fade(t, in: 0.05))
+        WorkDoneBadge(t: t, fill: TK.grey900, symbol: "checkmark.shield.fill").offset(x: 256, y: 22)
+    }
+
+    // MARK: 5 · Photo translation: the sign's text is found, read and replaced with the translation.
+
+    @ViewBuilder private func translateStage(_ t: Double) -> some View {
+        ZStack(alignment: .topLeading) {
+            Color(hex: 0xDCE3EA)
+            Rectangle().fill(Color(hex: 0xC5CED8)).frame(width: 260, height: 52).offset(y: 128)
+            VStack(alignment: .leading, spacing: 14) {
+                ForEach(Array([(10.0, 0.78, 0.58, 0.0), (6.0, 1.0, 0.86, 0.2), (6.0, 0.64, 0.74, 0.4)].enumerated()), id: \.offset) { _, line in
+                    let box = kf(loopLater(t, line.3), [(0, 0), (0.26, 0), (0.32, 1), (0.58, 1), (0.64, 0), (1, 0)])
+                    let old = kf(t, [(0, 1), (0.52, 1), (0.6, 0), (0.96, 0), (1, 1)])
+                    let new = kf(loopLater(t, line.3), [(0, 0), (0.56, 0), (0.68, 1), (0.95, 1), (1, 0)])
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 4).strokeBorder(tint, lineWidth: 2)
+                            .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 4))
+                            .frame(width: 140 * line.1 + 12, height: line.0 + 10).offset(x: -6).opacity(box)
+                        bar(140 * line.1, line.0, TK.grey800).opacity(old)
+                        bar(140 * line.2 * new, line.0, TK.blueDeep).opacity(new > 0 ? 1 : 0)
+                    }
+                    .frame(height: line.0)
+                }
+            }
+            .padding(.horizontal, 16).padding(.vertical, 18)
+            .frame(width: 172, height: 112, alignment: .topLeading)
+            .background(.white, in: RoundedRectangle(cornerRadius: 8))
+            .rotationEffect(.degrees(-3))
+            .offset(x: 44, y: 30)
+            Rectangle().fill(TK.blue).frame(width: 3, height: 180)
+                .offset(x: kf(t, [(0, 0), (0.03, 0), (0.23, 260), (1, 260)]))
+                .opacity(kf(t, [(0, 0), (0.03, 0), (0.05, 1), (0.23, 1), (0.25, 0), (1, 0)]))
+        }
+        .frame(width: 260, height: 180, alignment: .topLeading)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .offset(x: 30, y: 40)
+        Image(systemName: "translate").font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
+            .padding(.horizontal, 12).padding(.vertical, 6).background(TK.blueDeep, in: Capsule())
+            .scaleEffect(kf(t, [(0, 0), (0.5, 0), (0.54, 1.15), (0.56, 1), (0.95, 1), (1, 0)]))
+            .offset(x: 40, y: 18)
+        WorkDoneBadge(t: t, fill: tint).offset(x: 254, y: 16)
+    }
+
+    // MARK: 6 · Clean-up: spots are circled, then a line sweeps across leaving a clean photo.
+
+    @ViewBuilder private func restoreStage(_ t: Double) -> some View {
+        let wipe = kf(t, [(0, 0), (0.52, 0), (0.8, 1), (0.96, 1), (1, 0)])
+        let rings = kf(t, [(0, 0), (0.26, 0), (0.32, 1), (0.52, 1), (0.56, 0), (1, 0)])
+        let spots: [(CGFloat, CGFloat, CGFloat, CGFloat)] = [(30, 30, 30, 26), (124, 98, 22, 20), (180, 70, 16, 14)]
+        ZStack(alignment: .topLeading) {
+            Color(hex: 0xCFE3FF)
+            Circle().fill(TK.yellow).frame(width: 40, height: 40).offset(x: 150, y: 22)
+            Ellipse().fill(Color(hex: 0x7BC79A)).frame(width: 200, height: 140).offset(x: -40, y: 92)
+            Ellipse().fill(Color(hex: 0x5DAE80)).frame(width: 220, height: 150).offset(x: 90, y: 108)
+            ZStack(alignment: .topLeading) {
+                Color(red: 0.545, green: 0.431, blue: 0.275).opacity(0.32)
+                ForEach(spots.indices, id: \.self) { i in
+                    Ellipse().fill(Color(red: 0.43, green: 0.31, blue: 0.16).opacity(0.55))
+                        .frame(width: spots[i].2, height: spots[i].3).offset(x: spots[i].0, y: spots[i].1)
+                }
+                Rectangle().fill(.white.opacity(0.75)).frame(width: 240, height: 2).rotationEffect(.degrees(-8)).offset(y: 76)
+            }
+            .mask(alignment: .trailing) { Rectangle().frame(width: 228 * (1 - wipe)) }
+            ForEach(spots.indices, id: \.self) { i in
+                Ellipse().strokeBorder(TK.orange, style: StrokeStyle(lineWidth: 2, dash: [4, 3]))
+                    .frame(width: spots[i].2 + 12, height: spots[i].3 + 12)
+                    .offset(x: spots[i].0 - 6, y: spots[i].1 - 6).opacity(rings)
+            }
+            Rectangle().fill(.white).frame(width: 3, height: 160).offset(x: 228 * wipe)
+                .opacity(kf(t, [(0, 0), (0.51, 0), (0.53, 1), (0.8, 1), (0.82, 0), (1, 0)]))
+        }
+        .frame(width: 228, height: 160, alignment: .topLeading)
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .padding(6).background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(TK.grey300))
+        .scaleEffect(kf(t, [(0, 1), (0.04, 1), (0.12, 1.04), (0.18, 1.04), (0.24, 1), (1, 1)]))
+        .offset(x: 40, y: 44)
+        let sparks: [(x: CGFloat, y: CGFloat, size: CGFloat)] = [(34, 30, 24), (238, 196, 18)]
+        ForEach(sparks.indices, id: \.self) { i in
+            Image(systemName: "sparkle").font(.system(size: sparks[i].size, weight: .bold)).foregroundStyle(TK.yellow)
+                .scaleEffect(kf(t, [(0, 0), (0.8, 0), (0.86, 1), (0.94, 1), (1, 0)]))
+                .offset(x: sparks[i].x, y: sparks[i].y)
+        }
+        WorkDoneBadge(t: t, fill: Color(hex: 0xE8701F)).offset(x: 252, y: 18)
+    }
+
+    // MARK: 7 · Combining: the files take their order and slide into one stack.
+
+    @ViewBuilder private func mergeStage(_ t: Double) -> some View {
+        let files: [(left: Double, color: Color, x: [(Double, Double)], y: [(Double, Double)], from: Double)] = [
+            (20, TK.blue, [(0, 0), (0.5, 0), (0.66, 90), (1, 90)], [(0, 16), (0.06, 0), (0.5, 0), (0.66, -10), (1, -10)], 0),
+            (118, TK.teal, [(0, 0), (0.28, 0), (0.36, 49), (0.44, 98), (0.5, 98), (0.66, 0), (1, 0)],
+             [(0, 16), (0.02, 16), (0.08, 0), (0.28, 0), (0.36, -26), (0.44, 0), (0.5, 0), (0.66, -5), (1, -5)], 0.02),
+            (216, TK.orange, [(0, 0), (0.28, 0), (0.36, -49), (0.44, -98), (0.5, -98), (0.66, -90), (1, -90)],
+             [(0, 16), (0.04, 16), (0.1, 0), (0.28, 0), (0.36, 22), (0.44, 0), (1, 0)], 0.04),
+        ]
+        ForEach(files.indices, id: \.self) { i in
+            let file = files[i]
+            VStack(alignment: .leading, spacing: 0) {
+                Rectangle().fill(file.color).frame(height: 6)
+                VStack(alignment: .leading, spacing: 6) { bar(46, 6, TK.grey500); bar(70, 3); bar(62, 3); bar(66, 3) }.padding(9)
+                Spacer(minLength: 0)
+            }
+            .frame(width: 88, height: 116)
+            .background(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(TK.grey300))
+            .offset(x: file.left + kf(t, file.x), y: 70 + kf(t, file.y))
+            .opacity(fade(t, from: file.from, in: 0.06))
+        }
+        WorkDoneBadge(t: t, fill: tint).offset(x: 196, y: 36)
     }
 }

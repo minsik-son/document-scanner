@@ -1958,3 +1958,34 @@
 "Looking over the page…" = "Seite wird angesehen…";
 "Sorting titles and text…" = "Titel und Text werden sortiert…";
 "Moving it onto slides…" = "Inhalt kommt auf die Folien…";
+
+/* Animated waits */
+"Saving your scan as a PDF" = "Dein Scan wird als PDF gespeichert";
+"Saving the pages as pictures" = "Die Seiten werden als Bilder gespeichert";
+"Making the PDF smaller" = "Das PDF wird verkleinert";
+"Finding and hiding personal info" = "Persönliche Daten werden gesucht und verdeckt";
+"Translating the text in your photo" = "Der Text im Foto wird übersetzt";
+"Cleaning up your photo" = "Dein Foto wird bereinigt";
+"Combining into one PDF" = "Alles wird zu einem PDF";
+"Gathering the pages…" = "Seiten werden gesammelt…";
+"Reading the text so it can be searched…" = "Text wird für die Suche gelesen…";
+"Binding it into one file…" = "Alles wird zu einer Datei gebunden…";
+"Saving the PDF…" = "PDF wird gespeichert…";
+"Laying out the pages…" = "Seiten werden ausgelegt…";
+"Turning pages into pictures…" = "Seiten werden zu Bildern…";
+"Setting the picture quality…" = "Bildqualität wird eingestellt…";
+"Saving the pictures…" = "Bilder werden gespeichert…";
+"Looking over the pages…" = "Seiten werden angesehen…";
+"Adjusting the picture quality…" = "Bildqualität wird angepasst…";
+"Making the file smaller…" = "Datei wird verkleinert…";
+"Saving the new PDF…" = "Neues PDF wird gespeichert…";
+"Finding numbers and contact details…" = "Nummern und Kontaktdaten werden gesucht…";
+"Hiding what was found…" = "Gefundenes wird verdeckt…";
+"Making the hidden copy…" = "Verdeckte Kopie wird erstellt…";
+"Putting it back on the photo…" = "Text kommt zurück ins Foto…";
+"Looking over the photo…" = "Foto wird angesehen…";
+"Finding spots and creases…" = "Flecken und Knicke werden gesucht…";
+"Saving the clean photo…" = "Sauberes Foto wird gespeichert…";
+"Opening the files…" = "Dateien werden geöffnet…";
+"Putting them in your order…" = "Reihenfolge wird übernommen…";
+"Joining them into one…" = "Alles wird zusammengefügt…";

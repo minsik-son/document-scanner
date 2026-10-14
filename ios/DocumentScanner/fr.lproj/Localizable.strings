@@ -1958,3 +1958,34 @@
 "Looking over the page…" = "Examen de la page…";
 "Sorting titles and text…" = "Tri des titres et du texte…";
 "Moving it onto slides…" = "Passage sur les diapositives…";
+
+/* Animated waits */
+"Saving your scan as a PDF" = "Enregistrement de votre scan en PDF";
+"Saving the pages as pictures" = "Enregistrement des pages en images";
+"Making the PDF smaller" = "Réduction de la taille du PDF";
+"Finding and hiding personal info" = "Recherche et masquage des données personnelles";
+"Translating the text in your photo" = "Traduction du texte de votre photo";
+"Cleaning up your photo" = "Nettoyage de votre photo";
+"Combining into one PDF" = "Fusion en un seul PDF";
+"Gathering the pages…" = "Rassemblement des pages…";
+"Reading the text so it can be searched…" = "Lecture du texte pour la recherche…";
+"Binding it into one file…" = "Reliure en un seul fichier…";
+"Saving the PDF…" = "Enregistrement du PDF…";
+"Laying out the pages…" = "Mise à plat des pages…";
+"Turning pages into pictures…" = "Conversion des pages en images…";
+"Setting the picture quality…" = "Réglage de la qualité d’image…";
+"Saving the pictures…" = "Enregistrement des images…";
+"Looking over the pages…" = "Examen des pages…";
+"Adjusting the picture quality…" = "Ajustement de la qualité des photos…";
+"Making the file smaller…" = "Réduction du fichier…";
+"Saving the new PDF…" = "Enregistrement du nouveau PDF…";
+"Finding numbers and contact details…" = "Recherche des numéros et coordonnées…";
+"Hiding what was found…" = "Masquage des éléments trouvés…";
+"Making the hidden copy…" = "Création de la copie masquée…";
+"Putting it back on the photo…" = "Remise du texte sur la photo…";
+"Looking over the photo…" = "Examen de la photo…";
+"Finding spots and creases…" = "Recherche des taches et des plis…";
+"Saving the clean photo…" = "Enregistrement de la photo nettoyée…";
+"Opening the files…" = "Ouverture des fichiers…";
+"Putting them in your order…" = "Mise dans votre ordre…";
+"Joining them into one…" = "Fusion en un seul…";

@@ -1958,3 +1958,34 @@
 "Looking over the page…" = "กำลังดูหน้า…";
 "Sorting titles and text…" = "กำลังแยกหัวข้อและเนื้อหา…";
 "Moving it onto slides…" = "กำลังย้ายลงสไลด์…";
+
+/* Animated waits */
+"Saving your scan as a PDF" = "กำลังบันทึกสแกนเป็น PDF";
+"Saving the pages as pictures" = "กำลังบันทึกหน้าเป็นรูปภาพ";
+"Making the PDF smaller" = "กำลังลดขนาด PDF";
+"Finding and hiding personal info" = "กำลังค้นหาและซ่อนข้อมูลส่วนตัว";
+"Translating the text in your photo" = "กำลังแปลข้อความในรูป";
+"Cleaning up your photo" = "กำลังทำความสะอาดรูป";
+"Combining into one PDF" = "กำลังรวมเป็น PDF เดียว";
+"Gathering the pages…" = "กำลังรวบรวมหน้า…";
+"Reading the text so it can be searched…" = "กำลังอ่านข้อความให้ค้นหาได้…";
+"Binding it into one file…" = "กำลังรวมเป็นไฟล์เดียว…";
+"Saving the PDF…" = "กำลังบันทึก PDF…";
+"Laying out the pages…" = "กำลังกางหน้า…";
+"Turning pages into pictures…" = "กำลังเปลี่ยนหน้าเป็นรูปภาพ…";
+"Setting the picture quality…" = "กำลังปรับคุณภาพภาพ…";
+"Saving the pictures…" = "กำลังบันทึกรูปภาพ…";
+"Looking over the pages…" = "กำลังดูหน้า…";
+"Adjusting the picture quality…" = "กำลังปรับคุณภาพรูป…";
+"Making the file smaller…" = "กำลังลดขนาดไฟล์…";
+"Saving the new PDF…" = "กำลังบันทึก PDF ใหม่…";
+"Finding numbers and contact details…" = "กำลังหาหมายเลขและข้อมูลติดต่อ…";
+"Hiding what was found…" = "กำลังซ่อนสิ่งที่พบ…";
+"Making the hidden copy…" = "กำลังสร้างสำเนาที่ซ่อนแล้ว…";
+"Putting it back on the photo…" = "กำลังใส่กลับลงในรูป…";
+"Looking over the photo…" = "กำลังดูรูป…";
+"Finding spots and creases…" = "กำลังหาคราบและรอยพับ…";
+"Saving the clean photo…" = "กำลังบันทึกรูปที่สะอาด…";
+"Opening the files…" = "กำลังเปิดไฟล์…";
+"Putting them in your order…" = "กำลังเรียงตามลำดับที่เลือก…";
+"Joining them into one…" = "กำลังรวมเป็นหนึ่งเดียว…";

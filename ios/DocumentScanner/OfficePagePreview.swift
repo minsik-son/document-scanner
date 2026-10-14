@@ -134,17 +134,16 @@ struct OfficePageOverview: View {
 }
 
 /// Full-screen wait while scanned pages become an Office file: the page is read,
-/// its parts are found, and they fill a sheet, a Word page or a slide. The picture
-/// loops every 8 seconds; the line under the title is the real progress. With
-/// Reduce Motion the finished file is shown, still.
+/// its parts are found, and they fill a sheet, a Word page or a slide (timing in
+/// `AnimatedWorkPage`); the line under the title is the real progress.
 struct OfficeConversionProgress: View {
     enum Kind { case excel, word, slides }
     let kind: Kind
     /// The real progress line ("Reading page 1 of 2…").
     let phase: String
+    var done = false
+    var onFinished: (() -> Void)? = nil
     var cancel: (() -> Void)? = nil
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var start = Date()
 
     private var tint: Color {
         switch kind {
@@ -169,42 +168,7 @@ struct OfficeConversionProgress: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(L(title)).font(.system(size: 26, weight: .bold)).foregroundStyle(TK.grey900)
-                .fixedSize(horizontal: false, vertical: true).padding(.top, 24)
-                .accessibilityAddTraits(.isHeader)
-            Text(L(phase)).font(.system(size: 15)).foregroundStyle(TK.grey600).padding(.top, 8)
-                .accessibilityIdentifier("tool-busy-text")
-            Spacer(minLength: 12)
-            TimelineView(.animation(paused: reduceMotion)) { context in
-                let t = reduceMotion ? 0.92 : context.date.timeIntervalSince(start).truncatingRemainder(dividingBy: 8) / 8
-                VStack(spacing: 14) {
-                    stage(t).frame(width: 320, height: 260)
-                    ZStack {
-                        ForEach(0..<4, id: \.self) { i in
-                            Text(L(steps[i])).font(.system(size: 18, weight: .bold)).foregroundStyle(TK.grey900)
-                                .lineLimit(1).minimumScaleFactor(0.7)
-                                .opacity(labelOpacity(i, t))
-                        }
-                    }.frame(height: 26)
-                    HStack(spacing: 6) {
-                        ForEach(0..<4, id: \.self) { i in
-                            Capsule().fill(i <= step(t) ? tint : TK.grey200).frame(width: 28, height: 4)
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .accessibilityHidden(true)
-            }
-            Spacer(minLength: 12)
-            if let cancel {
-                Button("Cancel", action: cancel).buttonStyle(SecondaryCTAStyle()).accessibilityIdentifier("tool-cancel")
-            }
-        }
-        .padding(.horizontal, 24).padding(.bottom, 8)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(TK.paper.ignoresSafeArea())
-        .transition(.opacity)
+        AnimatedWorkPage(title: title, steps: steps, tint: tint, phase: phase, done: done, onFinished: onFinished, cancel: cancel) { t in stage(t) }
     }
 
     // MARK: Timing (fractions of the 8-second loop, as in the design mockup)
@@ -223,15 +187,6 @@ struct OfficeConversionProgress: View {
     }
     /// The loop position `seconds` later, wrapped into 0…1.
     private func later(_ t: Double, _ seconds: Double) -> Double { let x = t - seconds / 8; return x < 0 ? x + 1 : x }
-    private func step(_ t: Double) -> Int { t < 0.25 ? 0 : t < 0.5 ? 1 : t < 0.82 ? 2 : 3 }
-    private func labelOpacity(_ i: Int, _ t: Double) -> Double {
-        switch i {
-        case 0: kf(t, [(0, 1), (0.22, 1), (0.25, 0), (1, 0)])
-        case 1: kf(t, [(0, 0), (0.23, 0), (0.26, 1), (0.47, 1), (0.5, 0), (1, 0)])
-        case 2: kf(t, [(0, 0), (0.48, 0), (0.51, 1), (0.8, 1), (0.83, 0), (1, 0)])
-        default: kf(t, [(0, 0), (0.81, 0), (0.84, 1), (0.97, 1), (1, 0)])
-        }
-    }
     /// 0 → 1 while the found parts are marked in the brand colour.
     private func found(_ t: Double) -> Double { kf(t, [(0, 0), (0.23, 0), (0.28, 1), (0.8, 1), (0.88, 0), (1, 0)]) }
     /// 0 → 1 as a part of the new file fills in, `delay` seconds after the others start.

@@ -1958,3 +1958,34 @@
 "Looking over the page…" = "ページを確認しています…";
 "Sorting titles and text…" = "タイトルと本文を分けています…";
 "Moving it onto slides…" = "スライドに移しています…";
+
+/* Animated waits */
+"Saving your scan as a PDF" = "スキャンをPDFで保存しています";
+"Saving the pages as pictures" = "ページを画像で保存しています";
+"Making the PDF smaller" = "PDFのサイズを小さくしています";
+"Finding and hiding personal info" = "個人情報を探して隠しています";
+"Translating the text in your photo" = "写真の文字を翻訳しています";
+"Cleaning up your photo" = "写真をきれいにしています";
+"Combining into one PDF" = "1つのPDFにまとめています";
+"Gathering the pages…" = "ページを集めています…";
+"Reading the text so it can be searched…" = "文字を読み取って検索できるようにしています…";
+"Binding it into one file…" = "1つのファイルに綴じています…";
+"Saving the PDF…" = "PDFを保存しています…";
+"Laying out the pages…" = "ページを広げています…";
+"Turning pages into pictures…" = "ページを画像にしています…";
+"Setting the picture quality…" = "画質を整えています…";
+"Saving the pictures…" = "画像を保存しています…";
+"Looking over the pages…" = "ページを確認しています…";
+"Adjusting the picture quality…" = "写真の画質を調整しています…";
+"Making the file smaller…" = "ファイルを小さくしています…";
+"Saving the new PDF…" = "新しいPDFを保存しています…";
+"Finding numbers and contact details…" = "番号や連絡先を探しています…";
+"Hiding what was found…" = "見つかった所を隠しています…";
+"Making the hidden copy…" = "隠したコピーを作成しています…";
+"Putting it back on the photo…" = "写真に戻しています…";
+"Looking over the photo…" = "写真を確認しています…";
+"Finding spots and creases…" = "汚れや折り目を探しています…";
+"Saving the clean photo…" = "きれいな写真を保存しています…";
+"Opening the files…" = "ファイルを開いています…";
+"Putting them in your order…" = "選んだ順に並べています…";
+"Joining them into one…" = "1つにまとめています…";

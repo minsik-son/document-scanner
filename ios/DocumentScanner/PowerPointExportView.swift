@@ -91,10 +91,13 @@ struct PowerPointExportView: View {
                 }
             }
             .overlay {
-                if busy {
-                    // Reading pages and making the file: the page turning into a sheet or slides.
-                    if phase.hasPrefix("Opening") { BusyOverlay(text: phase) { job?.cancel() } }
-                    else { OfficeConversionProgress(kind: excel ? .excel : .slides, phase: phase) { job?.cancel() } }
+                // Reading pages and making the file: the page turning into a sheet or slides.
+                FinishingOverlay(text: busy ? phase : nil, failed: message != nil) { text, done, cancelled, finished in
+                    if text.hasPrefix("Opening") {
+                        BusyOverlay(text: text, done: done, onFinished: finished) { cancelled(); job?.cancel() }
+                    } else {
+                        OfficeConversionProgress(kind: excel ? .excel : .slides, phase: text, done: done, onFinished: finished) { cancelled(); job?.cancel() }
+                    }
                 }
             }
             .photosPicker(isPresented:$photoPicker,selection:$photos,maxSelectionCount:max(1,30-pages.count),selectionBehavior:.ordered,matching:.images)

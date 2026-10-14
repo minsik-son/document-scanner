@@ -60,7 +60,11 @@ struct PhotoTranslationView: View {
             }
             if !ready { ToolbarItem(placement: .topBarTrailing) { Button("Close") { dismiss() }.disabled(busy) } }
         }
-        .overlay { if busy { BusyOverlay(text: phase) { job?.cancel() } } }
+        .overlay {
+            FinishingOverlay(text: busy ? phase : nil, failed: error != nil) { text, done, cancelled, finished in
+                BusyOverlay(text: text, done: done, onFinished: finished) { cancelled(); job?.cancel() }
+            }
+        }
         .sheet(isPresented: $editAreas) {
             TranslationAreasEditor(regions: scan.regions, image: scan.image, issues: composition?.issues ?? [:], issuesOnly: reviewIssuesOnly) { changed in
                 scan.regions = changed; invalidate(); error = nil

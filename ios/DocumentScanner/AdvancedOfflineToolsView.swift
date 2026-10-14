@@ -426,10 +426,13 @@ struct AdvancedOfflineToolContent:View {
             }
         }
         .overlay {
-            if busy {
-                // Reading pages and making the file: the page turning into a Word page.
-                if tool == .word && !phase.hasPrefix("Opening") { OfficeConversionProgress(kind: .word, phase: phase) { cancelWork() } }
-                else { BusyOverlay(text: phase) { cancelWork() } }
+            // Reading pages and making the file: the page turning into a Word page.
+            FinishingOverlay(text: busy ? phase : nil, failed: message != nil) { text, done, cancelled, finished in
+                if tool == .word && !text.hasPrefix("Opening") {
+                    OfficeConversionProgress(kind: .word, phase: text, done: done, onFinished: finished) { cancelled(); cancelWork() }
+                } else {
+                    BusyOverlay(text: text, done: done, onFinished: finished) { cancelled(); cancelWork() }
+                }
             }
         }
         .sheet(isPresented: $sharing) { if let files { ShareSheet(items: files.urls) } }

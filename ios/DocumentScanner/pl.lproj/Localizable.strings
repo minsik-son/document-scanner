@@ -1999,3 +1999,27 @@
 "Card number" = "Numer karty";
 "Account number" = "Numer konta";
 "Date of birth" = "Data urodzenia";
+
+/* Contact support, rate and share */
+"What can we help with?" = "W czym możemy pomóc?";
+"Write to us and we usually reply within 2 business days." = "Napisz do nas – zwykle odpowiadamy w ciągu 2 dni roboczych.";
+"Topic" = "Temat";
+"Subscription & billing" = "Subskrypcja i płatności";
+"Scan quality" = "Jakość skanu";
+"A tool isn't working" = "Narzędzie nie działa";
+"Feature idea" = "Pomysł na funkcję";
+"Something else" = "Coś innego";
+"Message" = "Wiadomość";
+"What happened, and what did you expect?" = "Co się stało i czego się spodziewałeś?";
+"Include app and device info" = "Dołącz informacje o aplikacji i urządzeniu";
+"Only the app version, iOS version, iPhone model, language and plan. No documents or their text." = "Tylko wersja aplikacji, wersja iOS, model iPhone’a, język i plan. Bez dokumentów i ich treści.";
+"Send by email" = "Wyślij e-mailem";
+"Read common questions" = "Przeczytaj częste pytania";
+"Thanks. Your message is on its way." = "Dziękujemy. Wiadomość została wysłana.";
+"No email app is set up" = "Brak skonfigurowanej aplikacji poczty";
+"Copy the address and your message, then send them from any email app." = "Skopiuj adres i wiadomość, a potem wyślij je z dowolnej aplikacji poczty.";
+"Copy email address" = "Kopiuj adres e-mail";
+"Copy message" = "Kopiuj wiadomość";
+"Rate the app" = "Oceń aplikację";
+"Share the app" = "Udostępnij aplikację";
+"HushScan scans documents and keeps them on your iPhone." = "HushScan skanuje dokumenty i trzyma je na Twoim iPhonie.";

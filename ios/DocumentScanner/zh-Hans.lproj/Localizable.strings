@@ -1999,3 +1999,27 @@
 "Card number" = "卡号";
 "Account number" = "账号";
 "Date of birth" = "出生日期";
+
+/* Contact support, rate and share */
+"What can we help with?" = "需要什么帮助？";
+"Write to us and we usually reply within 2 business days." = "给我们留言，我们通常会在2个工作日内回复。";
+"Topic" = "主题";
+"Subscription & billing" = "订阅与付款";
+"Scan quality" = "扫描质量";
+"A tool isn't working" = "工具无法正常使用";
+"Feature idea" = "功能建议";
+"Something else" = "其他";
+"Message" = "内容";
+"What happened, and what did you expect?" = "发生了什么？您原本希望看到什么？";
+"Include app and device info" = "附上应用和设备信息";
+"Only the app version, iOS version, iPhone model, language and plan. No documents or their text." = "仅包含应用版本、iOS 版本、iPhone 型号、语言和方案，不包含任何文档或其中的文字。";
+"Send by email" = "通过邮件发送";
+"Read common questions" = "查看常见问题";
+"Thanks. Your message is on its way." = "谢谢！您的消息已发送。";
+"No email app is set up" = "未设置邮件应用";
+"Copy the address and your message, then send them from any email app." = "请复制地址和内容，然后用任意邮件应用发送。";
+"Copy email address" = "复制邮箱地址";
+"Copy message" = "复制内容";
+"Rate the app" = "给应用评分";
+"Share the app" = "分享应用";
+"HushScan scans documents and keeps them on your iPhone." = "HushScan 扫描文档，并只保存在你的 iPhone 上。";

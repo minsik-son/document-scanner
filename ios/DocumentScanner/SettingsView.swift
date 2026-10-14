@@ -1,6 +1,7 @@
 import SwiftUI
 import StoreKit
 import UniformTypeIdentifiers
+import MessageUI
 
 struct SettingsView: View {
     @EnvironmentObject var store: LibraryStore
@@ -23,6 +24,7 @@ struct SettingsView: View {
     @State private var pendingDelete: ScanDocument?
     @State private var showingTour = false
     @State private var manageSubscription = false
+    @Environment(\.openURL) private var openURL
     var body: some View {
         NavigationStack {
             List {
@@ -126,7 +128,13 @@ struct SettingsView: View {
                 #endif
                 Section("About") {
                     LabeledContent(AppInfo.name, value: "\(AppInfo.version) (\(AppInfo.build))").accessibilityIdentifier("settings-version")
-                    Link("Contact support", destination: AppInfo.supportURL).accessibilityIdentifier("settings-support")
+                    NavigationLink { SupportView() } label: {
+                        Label { Text(L("Contact support")).foregroundStyle(.primary) } icon: { Image(systemName: "envelope").foregroundStyle(TK.blue) }
+                    }.accessibilityIdentifier("settings-support")
+                    Button { openURL(AppInfo.reviewURL) } label: { SettingsLinkRow(title: "Rate the app", symbol: "star") }.buttonStyle(.plain).accessibilityIdentifier("settings-rate")
+                    ShareLink(item: AppInfo.storeURL, message: Text(L("HushScan scans documents and keeps them on your iPhone."))) {
+                        SettingsLinkRow(title: "Share the app", symbol: "square.and.arrow.up")
+                    }.buttonStyle(.plain).accessibilityIdentifier("settings-share")
                     Link("Terms of Use", destination: AppInfo.termsURL)
                 }
                 if let feedback { Section { Text(L(feedback)) } }
@@ -313,5 +321,172 @@ enum AutoExport {
             wrote = (try? data.write(to: url, options: .atomic)) != nil
         }
         return wrote
+    }
+}
+
+// MARK: - Contact support
+
+/// What a support message is about. The raw value is the English label.
+enum SupportTopic: String, CaseIterable, Identifiable {
+    case billing = "Subscription & billing", scan = "Scan quality", tool = "A tool isn't working", idea = "Feature idea", other = "Something else"
+    var id: String { rawValue }
+}
+
+/// Contact support: pick a topic, write the message, send it from the iPhone's mail app.
+/// Nothing is sent from the app itself, so no address or message is stored anywhere but the person's own mail.
+struct SupportView: View {
+    @EnvironmentObject private var subscription: SubscriptionStore
+    @Environment(\.openURL) private var openURL
+    @State private var topic: SupportTopic?
+    @State private var message = ""
+    @State private var includeInfo = true
+    @State private var composing = false
+    @State private var noMail = false
+    @State private var sent = false
+    @FocusState private var typing: Bool
+    private var ready: Bool { topic != nil && !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    var body: some View {
+        ToolPage(title: "What can we help with?", subtitle: "Write to us and we usually reply within 2 business days.") {
+            VStack(alignment: .leading, spacing: 10) {
+                SectionLabel(text: "Topic")
+                VStack(spacing: 8) {
+                    ForEach(SupportTopic.allCases) { item in
+                        Button { topic = item } label: {
+                            HStack {
+                                Text(L(item.rawValue)).font(.system(size: 16, weight: .medium)).foregroundStyle(TK.grey900)
+                                Spacer()
+                                Image(systemName: topic == item ? "checkmark.circle.fill" : "circle")
+                                    .font(.system(size: 20)).foregroundStyle(topic == item ? TK.blue : TK.grey300)
+                            }
+                            .padding(.horizontal, 16).frame(minHeight: 52)
+                            .background(topic == item ? TK.blueSoft : TK.grey50, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(topic == item ? .isSelected : [])
+                        .accessibilityIdentifier("support-topic-\(item)")
+                    }
+                }
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                SectionLabel(text: "Message")
+                ZStack(alignment: .topLeading) {
+                    if message.isEmpty {
+                        Text(L("What happened, and what did you expect?")).font(.system(size: 16)).foregroundStyle(TK.grey400)
+                            .padding(.horizontal, 16).padding(.vertical, 14).allowsHitTesting(false)
+                    }
+                    TextEditor(text: $message).focused($typing)
+                        .font(.system(size: 16)).foregroundStyle(TK.grey900)
+                        .scrollContentBackground(.hidden)
+                        .padding(.horizontal, 11).padding(.vertical, 6)
+                        .frame(minHeight: 150)
+                        .accessibilityIdentifier("support-message")
+                }
+                .background(TK.grey50, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(typing ? TK.blue : TK.grey200, lineWidth: 1))
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle(isOn: $includeInfo) { Text(L("Include app and device info")).font(.system(size: 16, weight: .medium)).foregroundStyle(TK.grey900) }
+                    .tint(TK.blue).accessibilityIdentifier("support-include-info")
+                Text(L("Only the app version, iOS version, iPhone model, language and plan. No documents or their text."))
+                    .font(.system(size: 13)).foregroundStyle(TK.grey600).fixedSize(horizontal: false, vertical: true)
+                if includeInfo {
+                    Text(verbatim: Self.deviceInfo(pro: subscription.isPro)).font(.system(size: 13, design: .monospaced)).foregroundStyle(TK.grey500)
+                }
+            }
+            if sent { ToastMessage(text: "Thanks. Your message is on its way.", symbol: "checkmark.circle.fill", tint: TK.teal) }
+            Button { openURL(AppInfo.supportURL) } label: {
+                Label(L("Read common questions"), systemImage: "questionmark.circle").font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.blue)
+            }
+            .accessibilityIdentifier("support-faq")
+        } actions: {
+            Button(L("Send by email")) { typing = false; send() }
+                .buttonStyle(CTAButtonStyle()).disabled(!ready)
+                .accessibilityIdentifier("support-send")
+        }
+        .navigationTitle(L("Contact support"))
+        .sheet(isPresented: $composing) {
+            MailComposer(to: AppInfo.supportEmail, subject: subject, body: mailBody) { result in
+                composing = false
+                if result == .sent { sent = true; message = ""; topic = nil }
+            }
+            .ignoresSafeArea()
+        }
+        .sheet(isPresented: $noMail) { NoMailSheet(message: mailBody).presentationDetents([.medium]) }
+    }
+    private var subject: String { "\(AppInfo.name) · \(L(topic?.rawValue ?? SupportTopic.other.rawValue))" }
+    private var mailBody: String {
+        let text = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        return includeInfo ? text + "\n\n—\n" + Self.deviceInfo(pro: subscription.isPro) : text
+    }
+    private func send() {
+        if MFMailComposeViewController.canSendMail() { composing = true; return }
+        // Another mail app (Gmail, Outlook) may be the default; otherwise copy and paste.
+        var parts = URLComponents()
+        parts.scheme = "mailto"; parts.path = AppInfo.supportEmail
+        parts.queryItems = [URLQueryItem(name: "subject", value: subject), URLQueryItem(name: "body", value: mailBody)]
+        guard let url = parts.url else { noMail = true; return }
+        openURL(url) { accepted in if !accepted { noMail = true } }
+    }
+    /// One line a person can read before sending: app, iOS, iPhone model, language, plan.
+    static func deviceInfo(pro: Bool) -> String {
+        var system = utsname(); uname(&system)
+        let model = withUnsafeBytes(of: &system.machine) { raw in String(decoding: raw.prefix { $0 != 0 }, as: UTF8.self) }
+        return "\(AppInfo.name) \(AppInfo.version) (\(AppInfo.build)) · iOS \(UIDevice.current.systemVersion) · \(model) · \(Locale.preferredLanguages.first ?? "-") · \(pro ? "Pro" : "Free")"
+    }
+}
+
+/// No mail account on this iPhone: copy the address and the message instead.
+private struct NoMailSheet: View {
+    let message: String
+    @Environment(\.dismiss) private var dismiss
+    @State private var copied: String?
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(L("No email app is set up")).font(.system(size: 22, weight: .bold)).foregroundStyle(TK.grey900)
+            Text(L("Copy the address and your message, then send them from any email app.")).font(.system(size: 15)).foregroundStyle(TK.grey600)
+            Text(verbatim: AppInfo.supportEmail).font(.system(size: 17, weight: .semibold)).foregroundStyle(TK.grey900).textSelection(.enabled)
+            if let copied { ToastMessage(text: copied, symbol: "checkmark.circle.fill", tint: TK.teal) }
+            Spacer(minLength: 0)
+            Button(L("Copy email address")) { UIPasteboard.general.string = AppInfo.supportEmail; copied = "Copied" }.buttonStyle(CTAButtonStyle())
+            Button(L("Copy message")) { UIPasteboard.general.string = message; copied = "Copied" }.buttonStyle(SecondaryCTAStyle())
+            Button(L("Close")) { dismiss() }.font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey600).frame(maxWidth: .infinity)
+        }
+        .padding(24)
+    }
+}
+
+/// The system mail composer, filled in.
+struct MailComposer: UIViewControllerRepresentable {
+    let to: String
+    let subject: String
+    let body: String
+    let done: (MFMailComposeResult) -> Void
+    func makeCoordinator() -> Coordinator { Coordinator(done: done) }
+    func makeUIViewController(context: Context) -> MFMailComposeViewController {
+        let mail = MFMailComposeViewController()
+        mail.mailComposeDelegate = context.coordinator
+        mail.setToRecipients([to]); mail.setSubject(subject); mail.setMessageBody(body, isHTML: false)
+        return mail
+    }
+    func updateUIViewController(_ controller: MFMailComposeViewController, context: Context) {}
+    final class Coordinator: NSObject, MFMailComposeViewControllerDelegate {
+        let done: (MFMailComposeResult) -> Void
+        init(done: @escaping (MFMailComposeResult) -> Void) { self.done = done }
+        func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) { done(result) }
+    }
+}
+
+/// A plain settings row with a chevron, for rows that open something.
+struct SettingsLinkRow: View {
+    let title: String
+    let symbol: String
+    var body: some View {
+        HStack {
+            Label { Text(L(title)).foregroundStyle(.primary) } icon: { Image(systemName: symbol).foregroundStyle(TK.blue) }
+            Spacer()
+            Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(TK.grey400)
+        }
+        .contentShape(Rectangle())
     }
 }

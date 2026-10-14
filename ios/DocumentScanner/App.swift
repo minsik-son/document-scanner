@@ -142,6 +142,12 @@ enum AppInfo {
     static let support = "https://minsik-son.github.io/document-scanner/support.html"
     /// Apple's standard licensed application end user license agreement.
     static let terms = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
+    /// Support mail, the same address as on the support page.
+    static let supportEmail = "minsik.son@gmail.com"
+    /// App Store listing (App Store Connect app ID) and its write-a-review page.
+    static let appStoreID = "6820689054"
+    static var storeURL: URL { URL(string: "https://apps.apple.com/app/id\(appStoreID)")! }
+    static var reviewURL: URL { URL(string: "https://apps.apple.com/app/id\(appStoreID)?action=write-review")! }
     static var privacyPolicyURL: URL { URL(string: privacyPolicy)! }
     static var supportURL: URL { URL(string: support)! }
     static var termsURL: URL { URL(string: terms)! }

@@ -1999,3 +1999,27 @@
 "Card number" = "Nomor kartu";
 "Account number" = "Nomor rekening";
 "Date of birth" = "Tanggal lahir";
+
+/* Contact support, rate and share */
+"What can we help with?" = "Ada yang bisa kami bantu?";
+"Write to us and we usually reply within 2 business days." = "Tulis pesan, biasanya kami membalas dalam 2 hari kerja.";
+"Topic" = "Topik";
+"Subscription & billing" = "Langganan & pembayaran";
+"Scan quality" = "Kualitas pindaian";
+"A tool isn't working" = "Alat tidak berfungsi";
+"Feature idea" = "Ide fitur";
+"Something else" = "Lainnya";
+"Message" = "Pesan";
+"What happened, and what did you expect?" = "Apa yang terjadi, dan apa yang Anda harapkan?";
+"Include app and device info" = "Sertakan info aplikasi dan perangkat";
+"Only the app version, iOS version, iPhone model, language and plan. No documents or their text." = "Hanya versi aplikasi, versi iOS, model iPhone, bahasa, dan paket. Tanpa dokumen atau isinya.";
+"Send by email" = "Kirim lewat email";
+"Read common questions" = "Baca pertanyaan umum";
+"Thanks. Your message is on its way." = "Terima kasih. Pesan Anda sudah terkirim.";
+"No email app is set up" = "Belum ada aplikasi email yang diatur";
+"Copy the address and your message, then send them from any email app." = "Salin alamat dan pesan Anda, lalu kirim dari aplikasi email mana pun.";
+"Copy email address" = "Salin alamat email";
+"Copy message" = "Salin pesan";
+"Rate the app" = "Beri nilai aplikasi";
+"Share the app" = "Bagikan aplikasi";
+"HushScan scans documents and keeps them on your iPhone." = "HushScan memindai dokumen dan menyimpannya di iPhone Anda.";

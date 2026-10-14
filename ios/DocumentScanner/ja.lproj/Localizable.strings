@@ -1999,3 +1999,27 @@
 "Card number" = "カード番号";
 "Account number" = "口座番号";
 "Date of birth" = "生年月日";
+
+/* Contact support, rate and share */
+"What can we help with?" = "どのようなご用件ですか？";
+"Write to us and we usually reply within 2 business days." = "お問い合わせには通常2営業日以内にご返信します。";
+"Topic" = "トピック";
+"Subscription & billing" = "サブスクリプションと支払い";
+"Scan quality" = "スキャンの品質";
+"A tool isn't working" = "ツールがうまく動かない";
+"Feature idea" = "機能のご提案";
+"Something else" = "その他";
+"Message" = "内容";
+"What happened, and what did you expect?" = "何が起きて、どうなることを期待していましたか？";
+"Include app and device info" = "アプリと端末の情報を含める";
+"Only the app version, iOS version, iPhone model, language and plan. No documents or their text." = "アプリのバージョン、iOSのバージョン、iPhoneの機種、言語、プランのみです。書類やその文字は含まれません。";
+"Send by email" = "メールで送信";
+"Read common questions" = "よくある質問を見る";
+"Thanks. Your message is on its way." = "ありがとうございます。メッセージを送信しました。";
+"No email app is set up" = "メールアプリが設定されていません";
+"Copy the address and your message, then send them from any email app." = "アドレスと内容をコピーして、お使いのメールアプリから送信してください。";
+"Copy email address" = "メールアドレスをコピー";
+"Copy message" = "内容をコピー";
+"Rate the app" = "アプリを評価";
+"Share the app" = "アプリを共有";
+"HushScan scans documents and keeps them on your iPhone." = "HushScanは書類をスキャンし、iPhoneの中だけに保管します。";

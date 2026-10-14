@@ -1999,3 +1999,27 @@
 "Card number" = "หมายเลขบัตร";
 "Account number" = "เลขที่บัญชี";
 "Date of birth" = "วันเกิด";
+
+/* Contact support, rate and share */
+"What can we help with?" = "ให้เราช่วยอะไรดี?";
+"Write to us and we usually reply within 2 business days." = "เขียนถึงเรา โดยปกติเราจะตอบภายใน 2 วันทำการ";
+"Topic" = "หัวข้อ";
+"Subscription & billing" = "การสมัครสมาชิกและการชำระเงิน";
+"Scan quality" = "คุณภาพการสแกน";
+"A tool isn't working" = "เครื่องมือใช้งานไม่ได้";
+"Feature idea" = "เสนอฟีเจอร์";
+"Something else" = "เรื่องอื่น";
+"Message" = "ข้อความ";
+"What happened, and what did you expect?" = "เกิดอะไรขึ้น และคุณคาดว่าจะเป็นอย่างไร?";
+"Include app and device info" = "แนบข้อมูลแอปและอุปกรณ์";
+"Only the app version, iOS version, iPhone model, language and plan. No documents or their text." = "เฉพาะเวอร์ชันแอป เวอร์ชัน iOS รุ่น iPhone ภาษา และแพ็กเกจ ไม่มีเอกสารหรือข้อความในเอกสาร";
+"Send by email" = "ส่งทางอีเมล";
+"Read common questions" = "อ่านคำถามที่พบบ่อย";
+"Thanks. Your message is on its way." = "ขอบคุณ ข้อความของคุณถูกส่งแล้ว";
+"No email app is set up" = "ยังไม่ได้ตั้งค่าแอปอีเมล";
+"Copy the address and your message, then send them from any email app." = "คัดลอกที่อยู่และข้อความ แล้วส่งจากแอปอีเมลใดก็ได้";
+"Copy email address" = "คัดลอกที่อยู่อีเมล";
+"Copy message" = "คัดลอกข้อความ";
+"Rate the app" = "ให้คะแนนแอป";
+"Share the app" = "แชร์แอป";
+"HushScan scans documents and keeps them on your iPhone." = "HushScan สแกนเอกสารและเก็บไว้ใน iPhone ของคุณเท่านั้น";

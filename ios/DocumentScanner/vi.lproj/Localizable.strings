@@ -1999,3 +1999,27 @@
 "Card number" = "Số thẻ";
 "Account number" = "Số tài khoản";
 "Date of birth" = "Ngày sinh";
+
+/* Contact support, rate and share */
+"What can we help with?" = "Chúng tôi có thể giúp gì?";
+"Write to us and we usually reply within 2 business days." = "Hãy viết cho chúng tôi, thường chúng tôi trả lời trong 2 ngày làm việc.";
+"Topic" = "Chủ đề";
+"Subscription & billing" = "Gói đăng ký và thanh toán";
+"Scan quality" = "Chất lượng quét";
+"A tool isn't working" = "Một công cụ không hoạt động";
+"Feature idea" = "Ý tưởng tính năng";
+"Something else" = "Vấn đề khác";
+"Message" = "Nội dung";
+"What happened, and what did you expect?" = "Chuyện gì đã xảy ra và bạn mong đợi điều gì?";
+"Include app and device info" = "Gửi kèm thông tin ứng dụng và thiết bị";
+"Only the app version, iOS version, iPhone model, language and plan. No documents or their text." = "Chỉ gồm phiên bản ứng dụng, phiên bản iOS, mẫu iPhone, ngôn ngữ và gói. Không có tài liệu hay chữ trong tài liệu.";
+"Send by email" = "Gửi qua email";
+"Read common questions" = "Xem câu hỏi thường gặp";
+"Thanks. Your message is on its way." = "Cảm ơn bạn. Tin nhắn đã được gửi.";
+"No email app is set up" = "Chưa thiết lập ứng dụng email";
+"Copy the address and your message, then send them from any email app." = "Sao chép địa chỉ và nội dung, rồi gửi từ bất kỳ ứng dụng email nào.";
+"Copy email address" = "Sao chép địa chỉ email";
+"Copy message" = "Sao chép nội dung";
+"Rate the app" = "Đánh giá ứng dụng";
+"Share the app" = "Chia sẻ ứng dụng";
+"HushScan scans documents and keeps them on your iPhone." = "HushScan quét tài liệu và chỉ lưu trên iPhone của bạn.";

@@ -30,6 +30,28 @@ final class ToolDirectoryDesignTests: HushUITestCase {
         search.tap(); search.typeText("not-a-tool")
         XCTAssertTrue(app.staticTexts["No tools found"].waitForExistence(timeout: 5))
     }
+    @MainActor func testContactSupportRateAndShare() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-test-session", UUID().uuidString, "-app-language", "ko", "-AppleLanguages", "(ko)"]
+        app.launch()
+        XCTAssertTrue(app.buttons["nav-settings"].waitForExistence(timeout: 5))
+        app.buttons["nav-settings"].tap()
+        let support = app.buttons["settings-support"]
+        for _ in 0..<12 where !support.isHittable { app.swipeUp() }
+        XCTAssertTrue(support.isHittable)
+        XCTAssertTrue(app.buttons["settings-rate"].exists)
+        XCTAssertTrue(app.buttons["settings-share"].exists)
+        capture(app, "Settings about rows")
+        support.tap()
+        XCTAssertTrue(app.buttons["support-send"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["support-send"].isEnabled)
+        capture(app, "Support empty")
+        app.buttons["support-topic-scan"].tap()
+        let box = app.textViews["support-message"]
+        box.tap(); box.typeText("Receipts come out blurry on the second page.")
+        XCTAssertTrue(app.buttons["support-send"].isEnabled)
+        capture(app, "Support filled")
+    }
     @MainActor func testBottomNavigationAndCenterCamera() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-saved", "--simulate-camera", "-AppleLanguages", "(en)"]

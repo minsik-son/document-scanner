@@ -1,5 +1,6 @@
 import XCTest
 import PDFKit
+import SwiftUI
 @testable import DocumentScanner
 
 /// Problems found while capturing store screenshots (2026-10-08), checked on the
@@ -312,5 +313,19 @@ final class IDRedactionSampleTests: XCTestCase {
         let head = String(format: "Hidden %d/%d fields (%.0f%%); not readable by OCR: %d; boxes on blank samples: %d\nBy kind: %@", hidden, total, total == 0 ? 0 : 100.0 * Double(hidden) / Double(total), unlocated, negBoxes, kinds)
         try ([head, ""] + lines).joined(separator: "\n").write(to: out.appendingPathComponent("report.txt"), atomically: true, encoding: .utf8)
         print("IDREDACT " + head.replacingOccurrences(of: "\n", with: " | "))
+    }
+}
+
+/// Renders single frames of the wait animations so their look can be checked by eye.
+final class WorkAnimationFrameTests: XCTestCase {
+    @MainActor func testSaveAnimationFrames() throws {
+        let out = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Verification/private/anim")
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        for t in [0.12, 0.3, 0.42, 0.5, 0.54, 0.58, 0.68, 0.8, 0.9] {
+            let view = WorkProgressView(kind: .save, phase: "Saving PDF…").stage(t).background(TK.paper)
+            let renderer = ImageRenderer(content: view); renderer.scale = 2
+            let image = try XCTUnwrap(renderer.uiImage)
+            try XCTUnwrap(image.pngData()).write(to: out.appendingPathComponent(String(format: "save_%02d.png", Int(t * 100))))
+        }
     }
 }

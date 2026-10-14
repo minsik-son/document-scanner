@@ -1051,7 +1051,8 @@ struct WorkProgressView: View {
     private func kf(_ t: Double, _ stops: [(Double, Double)]) -> Double { loopValue(t, stops) }
     private var tint: Color { kind.tint }
 
-    @ViewBuilder private func stage(_ t: Double) -> some View {
+    /// The picture at loop position `t` (0…1). Internal so tests can render single frames.
+    @ViewBuilder func stage(_ t: Double) -> some View {
         ZStack(alignment: .topLeading) {
             switch kind {
             case .save: saveStage(t)
@@ -1091,33 +1092,55 @@ struct WorkProgressView: View {
             .rotationEffect(.degrees(kf(t, [(0, -14), (0.2, -4), (0.48, -4), (0.58, 0), (1, 0)])))
             .offset(x: 100 + kf(t, [(0, -110), (0.2, -12), (0.48, -12), (0.58, -4), (1, -4)]),
                     y: 50 + kf(t, [(0, 30), (0.2, -12), (0.48, -12), (0.58, -4), (1, -4)]))
-            .opacity(fade(t, from: 0, in: 0.08))
+            .opacity(fade(t, from: 0, in: 0.08) * kf(t, [(0, 1), (0.5, 1), (0.58, 0), (1, 0)]))
         sheet(120, 160)
             .rotationEffect(.degrees(kf(t, [(0, 14), (0.03, 14), (0.22, 3), (0.48, 3), (0.58, 0), (1, 0)])))
             .offset(x: 100 + kf(t, [(0, 110), (0.03, 110), (0.22, -6), (0.48, -6), (0.58, -2), (1, -2)]),
                     y: 50 + kf(t, [(0, 30), (0.03, 30), (0.22, -6), (0.48, -6), (0.58, -2), (1, -2)]))
-            .opacity(fade(t, from: 0.03, in: 0.08))
+            .opacity(fade(t, from: 0.03, in: 0.08) * kf(t, [(0, 1), (0.5, 1), (0.58, 0), (1, 0)]))
+        // The front page turns into a PDF file: its corner folds over while the text is read,
+        // then a red PDF label slides across it and a light sweeps over the label while saving.
+        let fold = 30 * kf(t, [(0, 0), (0.3, 0), (0.5, 1), (0.95, 1), (1, 0)])
+        let label = kf(t, [(0, 0), (0.48, 0), (0.55, 1.06), (0.58, 1), (0.95, 1), (1, 0)])
         ZStack(alignment: .topLeading) {
             sheet(120, 160)
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(Array([0.6, 1, 0.92, 0.96, 0.7, 1, 0.84, 0.5].enumerated()), id: \.offset) { i, w in
                     let read = kf(loopLater(t, Double(i) * 0.1), [(0, 0), (0.28, 0), (0.36, 1), (0.95, 1), (1, 0)])
-                    bar(88 * w, i == 0 ? 7 : 4, TK.grey300).overlay(Capsule().fill(tint).opacity(read))
+                    bar(min(88 * w, 84 - fold * 0.6), i == 0 ? 7 : 4, TK.grey300).overlay(Capsule().fill(tint).opacity(read * (1 - label * 0.55)))
                 }
             }
             .padding(.leading, 18).padding(.top, 16)
-            Rectangle().fill(TK.red).frame(width: 6, height: 160 * kf(t, [(0, 0), (0.52, 0), (0.62, 1), (0.95, 1), (1, 0)]))
             Rectangle().fill(tint).frame(width: 120, height: 3)
                 .offset(y: kf(t, [(0, 0), (0.25, 0), (0.46, 156), (1, 156)]))
                 .opacity(kf(t, [(0, 0), (0.25, 0), (0.27, 1), (0.46, 1), (0.48, 0), (1, 0)]))
-            pdfTag().scaleEffect(kf(t, [(0, 0), (0.6, 0), (0.64, 1.15), (0.66, 1), (0.95, 1), (1, 0)]))
-                .offset(x: 72, y: 130)
+            // Folded corner: the page behind is cut away and the flap lies on top.
+            Path { p in p.move(to: CGPoint(x: 120 - fold, y: 0)); p.addLine(to: CGPoint(x: 121, y: -1)); p.addLine(to: CGPoint(x: 121, y: fold)); p.closeSubpath() }
+                .fill(TK.paper).opacity(fold > 1 ? 1 : 0)
+            Path { p in p.move(to: CGPoint(x: 120 - fold, y: 0)); p.addLine(to: CGPoint(x: 120 - fold, y: fold - 4)); p.addQuadCurve(to: CGPoint(x: 120 - fold + 4, y: fold), control: CGPoint(x: 120 - fold, y: fold)); p.addLine(to: CGPoint(x: 120, y: fold)); p.closeSubpath() }
+                .fill(Color(hex: 0xFFD6D2))
+                .overlay(Path { p in p.move(to: CGPoint(x: 120 - fold, y: 0)); p.addLine(to: CGPoint(x: 120, y: fold)) }.stroke(TK.grey300, lineWidth: 1))
+                .opacity(fold > 1 ? 1 : 0)
         }
         .frame(width: 120, height: 160, alignment: .topLeading)
-        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         .offset(x: 100, y: 50 + kf(t, [(0, 70), (0.06, 70), (0.24, 0), (1, 0)]))
         .opacity(fade(t, from: 0.06, in: 0.08))
-        WorkDoneBadge(t: t, fill: tint).offset(x: 196, y: 24)
+        // The red PDF label, a little wider than the page on both sides.
+        ZStack {
+            RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color(hex: 0xE5484D))
+            LinearGradient(colors: [.white.opacity(0), .white.opacity(0.45), .white.opacity(0)], startPoint: .leading, endPoint: .trailing)
+                .frame(width: 36).rotationEffect(.degrees(18))
+                .offset(x: kf(t, [(0, -110), (0.6, -110), (0.76, 110), (1, 110)]))
+            Text(verbatim: "PDF").font(.system(size: 27, weight: .heavy, design: .rounded)).foregroundStyle(.white)
+                .scaleEffect(kf(t, [(0, 0.4), (0.5, 0.4), (0.56, 1.1), (0.59, 1), (1, 1)]))
+                .opacity(kf(t, [(0, 0), (0.5, 0), (0.54, 1), (0.95, 1), (1, 0)]))
+        }
+        .frame(width: 136, height: 48)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .scaleEffect(x: label, y: 1, anchor: .leading)
+        .offset(x: 92, y: 136)
+        .opacity(label > 0.01 ? 1 : 0)
+        WorkDoneBadge(t: t, fill: tint).offset(x: 200, y: 182)
     }
 
     // MARK: 2 · Pictures: each page flashes and comes out of the PDF as a photo, then sharpens.

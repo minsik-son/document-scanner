@@ -1999,3 +1999,27 @@
 "Card number" = "Kart numarası";
 "Account number" = "Hesap numarası";
 "Date of birth" = "Doğum tarihi";
+
+/* Contact support, rate and share */
+"What can we help with?" = "Nasıl yardımcı olabiliriz?";
+"Write to us and we usually reply within 2 business days." = "Bize yazın, genellikle 2 iş günü içinde yanıt veririz.";
+"Topic" = "Konu";
+"Subscription & billing" = "Abonelik ve ödeme";
+"Scan quality" = "Tarama kalitesi";
+"A tool isn't working" = "Bir araç çalışmıyor";
+"Feature idea" = "Özellik önerisi";
+"Something else" = "Başka bir şey";
+"Message" = "Mesaj";
+"What happened, and what did you expect?" = "Ne oldu ve ne olmasını bekliyordunuz?";
+"Include app and device info" = "Uygulama ve cihaz bilgisini ekle";
+"Only the app version, iOS version, iPhone model, language and plan. No documents or their text." = "Yalnızca uygulama sürümü, iOS sürümü, iPhone modeli, dil ve plan. Belge veya içindeki metin yok.";
+"Send by email" = "E-postayla gönder";
+"Read common questions" = "Sık sorulan soruları oku";
+"Thanks. Your message is on its way." = "Teşekkürler. Mesajınız gönderildi.";
+"No email app is set up" = "Ayarlı bir e-posta uygulaması yok";
+"Copy the address and your message, then send them from any email app." = "Adresi ve mesajınızı kopyalayıp herhangi bir e-posta uygulamasından gönderin.";
+"Copy email address" = "E-posta adresini kopyala";
+"Copy message" = "Mesajı kopyala";
+"Rate the app" = "Uygulamayı değerlendir";
+"Share the app" = "Uygulamayı paylaş";
+"HushScan scans documents and keeps them on your iPhone." = "HushScan belgeleri tarar ve iPhone’unuzda saklar.";

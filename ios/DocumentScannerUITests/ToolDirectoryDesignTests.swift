@@ -5,6 +5,10 @@ final class ToolDirectoryDesignTests: HushUITestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en"] + (saved ? ["--seed-saved"] : [])
         app.launch()
+        // The branded startup screen covers Home until the library has opened.
+        let splash = app.otherElements["startup-screen"]
+        let deadline = Date().addingTimeInterval(10)
+        while splash.exists && Date() < deadline { usleep(200_000) }
         return app
     }
     @MainActor private func capture(_ app: XCUIApplication, _ name: String) {
@@ -29,6 +33,15 @@ final class ToolDirectoryDesignTests: HushUITestCase {
         app.buttons["Clear search"].tap()
         search.tap(); search.typeText("not-a-tool")
         XCTAssertTrue(app.staticTexts["No tools found"].waitForExistence(timeout: 5))
+    }
+    @MainActor func testFreeTriesBadgeOnToolGrid() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-test-session", UUID().uuidString, "--test-pro-gate", "-app-language", "ko", "-AppleLanguages", "(ko)"]
+        app.launch()
+        XCTAssertTrue(app.buttons["nav-tools"].waitForExistence(timeout: 5))
+        app.buttons["nav-tools"].tap()
+        XCTAssertTrue(app.textFields["tool-search"].waitForExistence(timeout: 5))
+        capture(app, "Free tries badges")
     }
     @MainActor func testContactSupportRateAndShare() {
         let app = XCUIApplication()

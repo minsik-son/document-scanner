@@ -278,9 +278,10 @@ struct ProTrialBadge: View {
         Group {
             if subscription.isPro { EmptyView() }
             else if let feature, ProTrials().remaining(feature) > 0, !ProTrials().bypassed {
-                Text("\(ProTrials().remaining(feature)) free").font(.system(size: 9, weight: .heavy)).foregroundStyle(TK.blue)
+                // Dark pill: stands apart from every tile tint (blue, purple, green, orange) and from the PRO gradient.
+                Text("\(ProTrials().remaining(feature)) free").font(.system(size: 9, weight: .heavy)).foregroundStyle(.white)
                     .padding(.horizontal, 6).padding(.vertical, 3)
-                    .background(TK.blueSoft, in: Capsule())
+                    .background(TK.grey900, in: Capsule())
                     .overlay(Capsule().strokeBorder(.white, lineWidth: 1.5))
                     .accessibilityHidden(true)
             } else { ProBadge() }

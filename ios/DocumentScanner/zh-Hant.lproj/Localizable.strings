@@ -1991,3 +1991,5 @@
 "Joining them into one…" = "正在合併為一個…";
 "Resize" = "調整大小";
 "Defaults to the current time. You can change it; this is a label, not a certified capture time." = "預設是目前時間。你可以更改；這只是標籤，不是經認證的拍攝時間。";
+"Drag on the page to add a black box. Tap a box to move it, resize it from its corners, show it or delete it." = "在頁面上拖曳可新增黑框。點一下黑框可移動、拖曳角落調整大小、顯示或刪除。";
+"Drag to add a box. Tap a box to change it." = "拖曳新增黑框 · 點一下黑框進行編輯";

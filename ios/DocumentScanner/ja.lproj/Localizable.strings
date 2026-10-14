@@ -1991,3 +1991,5 @@
 "Joining them into one…" = "1つにまとめています…";
 "Resize" = "サイズを変更";
 "Defaults to the current time. You can change it; this is a label, not a certified capture time." = "初期値は現在の時刻です。変更できます。証明された撮影時刻ではなく、表示用のラベルです。";
+"Drag on the page to add a black box. Tap a box to move it, resize it from its corners, show it or delete it." = "ページをドラッグすると黒い枠が追加されます。枠をタップすると、移動、角でのサイズ変更、表示、削除ができます。";
+"Drag to add a box. Tap a box to change it." = "ドラッグで枠を追加 · 枠をタップして編集";

@@ -1991,3 +1991,5 @@
 "Joining them into one…" = "Menggabungkan jadi satu…";
 "Resize" = "Ubah ukuran";
 "Defaults to the current time. You can change it; this is a label, not a certified capture time." = "Bawaannya waktu saat ini. Kamu bisa mengubahnya; ini label, bukan waktu pengambilan yang tersertifikasi.";
+"Drag on the page to add a black box. Tap a box to move it, resize it from its corners, show it or delete it." = "Seret di halaman untuk menambah kotak hitam. Ketuk kotak untuk memindahkan, mengubah ukuran dari sudutnya, menampilkan, atau menghapusnya.";
+"Drag to add a box. Tap a box to change it." = "Seret untuk menambah kotak. Ketuk kotak untuk mengubahnya.";

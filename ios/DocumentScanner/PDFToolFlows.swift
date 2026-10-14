@@ -1715,6 +1715,11 @@ struct RedactTool: View {
     @State private var paywall = false
     @State private var scanning = false
     @State private var importing = false
+    /// The box being edited: corner handles resize it, and the bar above the page shows or deletes it.
+    @State private var selectedBox: UUID?
+    /// A box's place when a move or resize began.
+    @State private var boxOrigin: CGRect?
+    @State private var history: [[Int: [Redaction.Box]]] = []
     private var documents: [ScanDocument] { store.active.filter { $0.pdfFile != nil } }
     private var total: Int { boxes.values.reduce(0) { $0 + $1.filter(\.on).count } }
     var body: some View {
@@ -1759,7 +1764,7 @@ struct RedactTool: View {
     }
     private var editPage: some View {
         ToolPage(title: total == 0 ? "Nothing found yet" : total == 1 ? "1 item to hide" : "\(total) items to hide",
-                 subtitle: "Tap a box to keep it visible. Drag on the page to hide anything else.", scrolls: false) {
+                 subtitle: "Drag on the page to add a black box. Tap a box to move it, resize it from its corners, show it or delete it.", scrolls: false) {
             if let doc, doc.pages.count > 1 {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -1771,32 +1776,63 @@ struct RedactTool: View {
                 }
             }
             if let image {
+                editBar
                 GeometryReader { geo in
                     let fit = FitRect.rect(image.size, in: geo.size)
                     ZStack(alignment: .topLeading) {
                         Image(uiImage: image).resizable().frame(width: fit.width, height: fit.height).position(x: fit.midX, y: fit.midY)
                         ForEach(boxes[page] ?? []) { box in
                             let r = Redaction.place(box.rect, in: fit)
+                            let chosen = box.id == selectedBox
                             Group {
                                 if box.on { Rectangle().fill(.black) }
                                 else { Rectangle().strokeBorder(TK.red, style: StrokeStyle(lineWidth: 1.5, dash: [4])) }
                             }
-                            .frame(width: max(8, r.width), height: max(8, r.height)).position(x: r.midX, y: r.midY)
-                            .onTapGesture { toggle(box.id) }
-                            .accessibilityLabel(box.kind + (box.on ? ", hidden" : ", visible"))
+                            .overlay { if chosen { Rectangle().strokeBorder(TK.blue, lineWidth: 2).padding(-3) } }
+                            .frame(width: max(8, r.width), height: max(8, r.height))
+                            .contentShape(Rectangle())
+                            // Tap a box to pick it; drag a box to move it.
+                            .onTapGesture { selectedBox = box.id }
+                            .gesture(DragGesture(minimumDistance: 4)
+                                .onChanged { v in moveBox(box.id, by: v.translation, in: fit) }
+                                .onEnded { _ in boxOrigin = nil })
+                            .position(x: r.midX, y: r.midY)
+                            .accessibilityLabel(L(box.kind) + (box.on ? ", hidden" : ", visible"))
+                            .accessibilityAddTraits(chosen ? [.isButton, .isSelected] : .isButton)
+                        }
+                        // The picked box: a handle on each corner resizes it; the opposite corner stays put.
+                        if let box = boxes[page]?.first(where: { $0.id == selectedBox }) {
+                            let r = Redaction.place(box.rect, in: fit)
+                            ForEach(0..<4, id: \.self) { corner in
+                                Circle().fill(.white).frame(width: 16, height: 16)
+                                    .overlay(Circle().strokeBorder(TK.blue, lineWidth: 2))
+                                    .frame(width: 44, height: 44).contentShape(Rectangle())
+                                    .position(x: corner % 2 == 0 ? r.minX : r.maxX, y: corner < 2 ? r.minY : r.maxY)
+                                    .gesture(DragGesture(minimumDistance: 0, coordinateSpace: .named("redact-page"))
+                                        .onChanged { v in resizeBox(box.id, corner: corner, to: v.location, in: fit) }
+                                        .onEnded { _ in boxOrigin = nil })
+                                    .accessibilityLabel("Resize")
+                                    .accessibilityIdentifier("redact-handle-\(corner)")
+                            }
                         }
                         if let draft {
                             Rectangle().fill(.black.opacity(0.6)).frame(width: draft.width, height: draft.height).position(x: draft.midX, y: draft.midY)
                         }
                     }
+                    .coordinateSpace(name: "redact-page")
                     .contentShape(Rectangle())
+                    .onTapGesture { selectedBox = nil }
+                    // Drag on the page (not on a box) to add a black box; it is picked right away.
                     .gesture(DragGesture(minimumDistance: 10).onChanged { v in
                         draft = CGRect(x: min(v.startLocation.x, v.location.x), y: min(v.startLocation.y, v.location.y),
                                        width: abs(v.location.x - v.startLocation.x), height: abs(v.location.y - v.startLocation.y))
                     }.onEnded { _ in
                         if let d = draft?.intersection(fit), !d.isNull, d.width > 4, d.height > 4 {
                             let n = CGRect(x: (d.minX - fit.minX) / fit.width, y: (d.minY - fit.minY) / fit.height, width: d.width / fit.width, height: d.height / fit.height)
-                            boxes[page, default: []].append(Redaction.Box(rect: n, kind: "Added"))
+                            remember()
+                            let added = Redaction.Box(rect: n, kind: "Added")
+                            boxes[page, default: []].append(added)
+                            selectedBox = added.id
                         }
                         draft = nil
                     })
@@ -1810,17 +1846,69 @@ struct RedactTool: View {
                 .buttonStyle(CTAButtonStyle()).disabled(total == 0).accessibilityIdentifier("redact-save")
         }
     }
-    private func toggle(_ id: UUID) {
+    /// Above the page: what can be done with the picked box, and Undo.
+    private var editBar: some View {
+        HStack(spacing: 8) {
+            if let box = boxes[page]?.first(where: { $0.id == selectedBox }) {
+                Button { remember(); updateBox(box.id) { $0.on.toggle() } } label: {
+                    Label(box.on ? "Show" : "Hide", systemImage: box.on ? "eye" : "eye.slash")
+                }
+                .buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("redact-toggle")
+                Button(role: .destructive) {
+                    remember(); boxes[page]?.removeAll { $0.id == box.id }; selectedBox = nil
+                } label: { Label("Delete", systemImage: "trash") }
+                .buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("redact-delete")
+            } else {
+                Text("Drag to add a box. Tap a box to change it.").font(.system(size: 13)).foregroundStyle(TK.grey600)
+                    .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+            Button { undoBoxes() } label: { Image(systemName: "arrow.uturn.backward").frame(width: 20) }
+                .buttonStyle(ChipStyle(selected: false)).disabled(history.isEmpty)
+                .accessibilityLabel("Undo").accessibilityIdentifier("redact-undo-box")
+        }
+        .frame(minHeight: 40)
+    }
+    private func remember() {
+        history.append(boxes); if history.count > 40 { history.removeFirst() }
+    }
+    private func undoBoxes() {
+        guard let last = history.popLast() else { return }
+        boxes = last
+        if boxes[page]?.contains(where: { $0.id == selectedBox }) != true { selectedBox = nil }
+    }
+    private func updateBox(_ id: UUID, _ change: (inout Redaction.Box) -> Void) {
         guard var list = boxes[page], let i = list.firstIndex(where: { $0.id == id }) else { return }
-        if list[i].kind == "Added" { list.remove(at: i) } else { list[i].on.toggle() }
-        boxes[page] = list
+        change(&list[i]); boxes[page] = list
+    }
+    /// Drags a box by `translation`, keeping it on the page.
+    private func moveBox(_ id: UUID, by translation: CGSize, in fit: CGRect) {
+        guard fit.width > 0, fit.height > 0, let rect = boxes[page]?.first(where: { $0.id == id })?.rect else { return }
+        if boxOrigin == nil { remember(); boxOrigin = rect; selectedBox = id }
+        guard let origin = boxOrigin else { return }
+        updateBox(id) {
+            $0.rect.origin.x = min(1 - origin.width, max(0, origin.minX + translation.width / fit.width))
+            $0.rect.origin.y = min(1 - origin.height, max(0, origin.minY + translation.height / fit.height))
+        }
+    }
+    /// Moves one corner of a box to `point`; the opposite corner stays where it was.
+    private func resizeBox(_ id: UUID, corner: Int, to point: CGPoint, in fit: CGRect) {
+        guard fit.width > 0, fit.height > 0, let rect = boxes[page]?.first(where: { $0.id == id })?.rect else { return }
+        if boxOrigin == nil { remember(); boxOrigin = rect }
+        guard let origin = boxOrigin else { return }
+        let left = corner % 2 == 0, top = corner < 2
+        let fixedX = left ? origin.maxX : origin.minX, fixedY = top ? origin.maxY : origin.minY
+        let px = min(1, max(0, (point.x - fit.minX) / fit.width)), py = min(1, max(0, (point.y - fit.minY) / fit.height))
+        let w = max(8 / fit.width, left ? fixedX - px : px - fixedX)
+        let h = max(8 / fit.height, top ? fixedY - py : py - fixedY)
+        updateBox(id) { $0.rect = CGRect(x: left ? fixedX - w : fixedX, y: top ? fixedY - h : fixedY, width: w, height: h) }
     }
     /// A page just scanned or a PDF just added: open it here.
     private func openNew(_ id: UUID) { if let added = store.document(id) { start(added) } }
     private func start(_ chosen: ScanDocument) {
         guard let file = chosen.pdfFile else { return }
         let url = store.url(file), count = chosen.pages.count
-        doc = chosen; boxes = [:]; page = 0; image = nil
+        doc = chosen; boxes = [:]; page = 0; image = nil; history = []; selectedBox = nil
         work.run("Looking for personal info…") {
             for i in 0..<count {
                 work.busy = count > 1 ? "Looking for personal info… page \(i + 1) of \(count)" : "Looking for personal info…"
@@ -1833,7 +1921,7 @@ struct RedactTool: View {
     }
     private func show(_ index: Int) {
         guard let file = doc?.pdfFile else { return }
-        page = index; image = nil
+        page = index; image = nil; selectedBox = nil
         let url = store.url(file)
         Task { image = try? await OfflineWork.perform { try ExtractRender.page(url, index: index, maxSide: 1400) } }
     }

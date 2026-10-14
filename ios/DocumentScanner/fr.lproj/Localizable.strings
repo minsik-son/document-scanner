@@ -1991,3 +1991,5 @@
 "Joining them into one…" = "Fusion en un seul…";
 "Resize" = "Redimensionner";
 "Defaults to the current time. You can change it; this is a label, not a certified capture time." = "Par défaut, l’heure actuelle. Vous pouvez la modifier ; c’est une étiquette, pas une heure de capture certifiée.";
+"Drag on the page to add a black box. Tap a box to move it, resize it from its corners, show it or delete it." = "Faites glisser sur la page pour ajouter un cadre noir. Touchez un cadre pour le déplacer, le redimensionner par ses coins, l’afficher ou le supprimer.";
+"Drag to add a box. Tap a box to change it." = "Glissez pour ajouter un cadre. Touchez-en un pour le modifier.";

@@ -1991,3 +1991,5 @@
 "Joining them into one…" = "Tek dosyada birleştiriliyor…";
 "Resize" = "Yeniden boyutlandır";
 "Defaults to the current time. You can change it; this is a label, not a certified capture time." = "Varsayılan şu anki saattir. Değiştirebilirsin; bu bir etikettir, onaylı bir çekim zamanı değildir.";
+"Drag on the page to add a black box. Tap a box to move it, resize it from its corners, show it or delete it." = "Siyah kutu eklemek için sayfada sürükle. Bir kutuya dokunarak taşıyabilir, köşelerinden boyutlandırabilir, gösterebilir veya silebilirsin.";
+"Drag to add a box. Tap a box to change it." = "Kutu eklemek için sürükle. Değiştirmek için kutuya dokun.";

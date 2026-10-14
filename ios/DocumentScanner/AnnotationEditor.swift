@@ -550,6 +550,8 @@ struct FormProfileEditor: View {
           ForEach(FormProfile.fields, id: \.key) { field in
             TextField(field.title, text: Binding(get: { values[field.key] ?? "" }, set: { values[field.key] = $0 }))
               .textContentType(field.key == "email" ? .emailAddress : field.key == "phone" ? .telephoneNumber : field.key == "name" ? .name : field.key == "postal" ? .postalCode : field.key == "address" ? .fullStreetAddress : nil)
+              // Phone numbers: the number pad (with + * #), not the full keyboard.
+              .keyboardType(field.key == "phone" ? .phonePad : .default)
           }
         } footer: { Text("Saved only on this iPhone. Dates are filled with today, and Signature uses your latest saved signature.") }
       }

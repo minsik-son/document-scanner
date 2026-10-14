@@ -73,7 +73,7 @@ struct OfficePageCanvas: View {
                     .padding(.horizontal, max(0.5, 2 * fontScale))
             }
             .frame(width: r.width, height: r.height)
-            .overlay(Rectangle().strokeBorder(Color.black.opacity(t.ruled ? 0.85 : 0.12), lineWidth: max(0.3, 0.6 * fontScale)))
+            .overlay(Rectangle().strokeBorder((t.ruled ? (color(t.lineColor) ?? .black) : .black).opacity(t.ruled ? 0.85 : 0.12), lineWidth: max(0.3, 0.6 * fontScale)))
             .offset(x: r.minX, y: r.minY)
         }
     }

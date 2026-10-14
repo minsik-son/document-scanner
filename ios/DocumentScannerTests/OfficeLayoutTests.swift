@@ -238,6 +238,61 @@ final class OfficeLayoutTests: XCTestCase {
         print("PACKING\n" + summary.joined(separator: "\n"))
     }
 
+    /// Invoices, VAT invoices and forms from public datasets (testimg/online, see
+    /// SOURCES.txt). photo-* files are camera photos: they are scanned first, as
+    /// the app does, and the scan is converted. Writes online/<name>/ and
+    /// online/report.txt; no pass bars, the outputs are compared by eye.
+    @MainActor func testOnlineSamplesDiagnostics() throws {
+        let (_, root) = try privateSample("PackingList.jpg")
+        let dir = root.appendingPathComponent("testimg/online")
+        let files = ((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? [])
+            .filter { ["jpg", "jpeg", "png"].contains(($0 as NSString).pathExtension.lowercased()) }.sorted()
+        guard !files.isEmpty else { throw XCTSkip("No online samples.") }
+        let only = (try? String(contentsOf: root.appendingPathComponent("online/only.txt"), encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        // A long run (24 pages): only when asked for (online/run.txt or only.txt).
+        guard only != nil || FileManager.default.fileExists(atPath: root.appendingPathComponent("online/run.txt").path) else { throw XCTSkip("Online samples run only on request.") }
+        var summary: [String] = []
+        for file in files where only == nil || file.contains(only!) {
+            guard let original = UIImage(contentsOfFile: dir.appendingPathComponent(file).path) else { continue }
+            let stem = (file as NSString).deletingPathExtension
+            let folder = root.appendingPathComponent("online/" + stem)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            var report: [String] = []
+            let start = Date()
+            var image = UIGraphicsImageRenderer(size: original.size, format: { let f = UIGraphicsImageRendererFormat(); f.scale = original.scale; return f }()).image { _ in original.draw(at: .zero) }
+            if stem.hasPrefix("photo-") {
+                let cg = try XCTUnwrap(image.cgImage)
+                guard let crop = CaptureStyle.document.detect(image, capturedPhoto: true) else { summary.append(stem + ": no page edges"); continue }
+                let ci = try DocumentProcessing.render(CIImage(cgImage: cg), crop: crop, turns: 0, enhancement: .document, flatten: FlattenRequest(key: nil))
+                let out = try XCTUnwrap(DocumentProcessing.context.createCGImage(ci, from: ci.extent))
+                try UIImage(cgImage: out).jpegData(compressionQuality: 0.92)?.write(to: folder.appendingPathComponent("scan.jpg"))
+                let b = FlattenTests.bend(out)
+                report.append(String(format: "scan %dx%d bend median %.1f p90 %.1f lines %d", out.width, out.height, b.median, b.worst, b.lines))
+                image = UIImage(cgImage: out)
+            }
+            var log: [String] = [], analysis: [String] = []
+            OfficeLayoutPages.refineLog = { log.append($0) }
+            DocumentLayoutAnalyzer.debugLog = { line in if !line.hasPrefix("block") && !line.hasPrefix("wordlines") && !line.hasPrefix("group") { analysis.append(line) } }
+            defer { OfficeLayoutPages.refineLog = nil; DocumentLayoutAnalyzer.debugLog = nil }
+            let page = try OfficeLayoutPages.analyze(image)
+            try log.joined(separator: "\n").write(to: folder.appendingPathComponent("reread.txt"), atomically: true, encoding: .utf8)
+            try analysis.joined(separator: "\n").write(to: folder.appendingPathComponent("analysis.txt"), atomically: true, encoding: .utf8)
+            var copy = page; for i in copy.graphics.indices { copy.graphics[i].png = nil }
+            let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
+            try encoder.encode(copy).write(to: folder.appendingPathComponent("layout.json"))
+            try OfficeLayoutExport.word([page], image: OfficeLayoutPages.missingPicture).write(to: folder.appendingPathComponent(stem + ".docx"))
+            try OfficeLayoutExport.excel([page], image: OfficeLayoutPages.missingPicture).write(to: folder.appendingPathComponent(stem + ".xlsx"))
+            if let preview = OfficePagePreview.image(page) { try preview.pngData()?.write(to: folder.appendingPathComponent("preview.png")) }
+            try LayoutText.text([page]).write(to: folder.appendingPathComponent("text.txt"), atomically: true, encoding: .utf8)
+            let tables = page.items.compactMap { item -> LayoutTable? in if case .table(let t) = item { return t }; return nil }
+            report.append(String(format: "page form=%@ positioned=%@ frame=%@ items=%d tables=%d graphics=%d %.1fs", "\(page.form)", "\(page.positioned)", "\(page.frame != nil)", page.items.count, tables.count, page.graphics.count, Date().timeIntervalSince(start)))
+            for t in tables { report.append("  table \(t.rowCount)x\(t.columnCount) ruled=\(t.ruled) cells=\(t.cells.count) box=\(Int(t.box.x0)),\(Int(t.box.y0)),\(Int(t.box.x1)),\(Int(t.box.y1))") }
+            summary.append(stem + ": " + report.joined(separator: "\n  "))
+        }
+        try summary.joined(separator: "\n").write(to: root.appendingPathComponent(only == nil ? "online/report.txt" : "online/report-only.txt"), atomically: true, encoding: .utf8)
+        print("ONLINE\n" + summary.joined(separator: "\n"))
+    }
+
     @MainActor private func packingDump(_ photo: UIImage, to folder: URL) throws -> [String] {
         var report: [String] = []
         // 1. The scan as the camera makes it: found edges, flattened, Document tone.

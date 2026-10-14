@@ -69,6 +69,8 @@ struct LayoutParagraph: Codable, Equatable {
     var linePitch: Double
     /// Band of color behind a heading (a shaded or dark title bar).
     var fill: LayoutColor? = nil
+    /// How far that band runs, when it reaches well past the words.
+    var fillBox: LBox? = nil
 }
 
 struct LayoutCell: Codable, Equatable {
@@ -89,6 +91,8 @@ struct LayoutTable: Codable, Equatable {
     var rows: [Double]      // y boundaries, count = rowCount + 1
     var cells: [LayoutCell]
     var ruled: Bool
+    /// Color of the printed rules when they are not black (a red or blue form grid).
+    var lineColor: LayoutColor? = nil
     var box: LBox { LBox(columns.first ?? 0, rows.first ?? 0, columns.last ?? 0, rows.last ?? 0) }
     var rowCount: Int { rows.count - 1 }
     var columnCount: Int { columns.count - 1 }
@@ -201,6 +205,9 @@ enum DocumentLayoutAnalyzer {
     nonisolated(unsafe) static var readsDarkFills = true
     nonisolated(unsafe) static var keepsRecognizedLines = true
     nonisolated(unsafe) static var splitsAlignedColumns = true
+    nonisolated(unsafe) static var detectsFaintRules = true
+    nonisolated(unsafe) static var detectsLogos = true
+    nonisolated(unsafe) static var fillsFromBrightHalf = true
     // MARK: Words
     struct Word {
         var text: String
@@ -295,22 +302,61 @@ enum DocumentLayoutAnalyzer {
             // Clipped to the page: a box may reach past its edge.
             let b = LBox(max(0, i.x0), max(0, i.y0), min(Double(raster.width), i.x1), min(Double(raster.height), i.y1))
             guard b.width > 2, b.height > 2 else { return nil }
-            var r = 0.0, g = 0.0, bl = 0.0, n = 0.0
+            var light: [(Int, Int, Int, Int)] = []
             var dr = 0.0, dg = 0.0, db = 0.0, dn = 0.0
             let sx = max(1, Int(b.width / 40)), sy = max(1, Int(b.height / 20))
             for y in stride(from: Int(b.y0), to: Int(b.y1), by: sy) {
                 for x in stride(from: Int(b.x0), to: Int(b.x1), by: sx) {
                     let c = raster.color(x, y)
                     if isDark(x, y) { dr += Double(c.0); dg += Double(c.1); db += Double(c.2); dn += 1 }
-                    else { r += Double(c.0); g += Double(c.1); bl += Double(c.2); n += 1 }
+                    else { light.append((c.0 * 299 + c.1 * 587 + c.2 * 114, c.0, c.1, c.2)) }
                 }
             }
+            let n = Double(light.count)
             // A cell filled with a dark color (a header band with white text):
             // the dark pixels are the fill, the light ones the letters.
             if DocumentLayoutAnalyzer.readsDarkFills, dn > 8, dn > (n + dn) * 0.6 { return normalized((dr / dn, dg / dn, db / dn)) }
             guard n > 8 else { return nil }
-            let c = normalized((r / n, g / n, bl / n))
+            // The paper or fill is the typical light tone: blue writing, a red
+            // stamp or grey letter edges (clearly darker than it) must not tint it.
+            light.sort { $0.0 > $1.0 }
+            let median = light[light.count / 2].0
+            let top = DocumentLayoutAnalyzer.fillsFromBrightHalf ? light.filter { $0.0 >= median - 25_000 } : light
+            let k = Double(top.count)
+            let c = normalized((top.reduce(0.0) { $0 + Double($1.1) } / k, top.reduce(0.0) { $0 + Double($1.2) } / k, top.reduce(0.0) { $0 + Double($1.3) } / k))
             return c
+        }
+        /// The printed color of a ruled table's lines; nil when they are black or grey-black.
+        func ruleColor(_ t: LayoutTable) -> LayoutColor? {
+            var r = 0.0, g = 0.0, b = 0.0, n = 0.0
+            func take(_ x: Int, _ y: Int) {
+                let c = raster.color(x, y); r += Double(c.0); g += Double(c.1); b += Double(c.2); n += 1
+            }
+            // Along each rule, the darkest ink pixel within a few pixels across it.
+            for y0 in t.rows {
+                for x in stride(from: Int(t.columns.first ?? 0) + 6, to: Int(t.columns.last ?? 0) - 6, by: 7) {
+                    var best: (Int, Int)? = nil, bestLum = 999
+                    for d in -4...4 { let y = Int(y0.rounded()) + d; if isDark(x, y) { let l = raster.lum(x, y); if l < bestLum { bestLum = l; best = (x, y) } } }
+                    if let p = best { take(p.0, p.1) }
+                }
+            }
+            for x0 in t.columns {
+                for y in stride(from: Int(t.rows.first ?? 0) + 6, to: Int(t.rows.last ?? 0) - 6, by: 7) {
+                    var best: (Int, Int)? = nil, bestLum = 999
+                    for d in -4...4 { let x = Int(x0.rounded()) + d; if isDark(x, y) { let l = raster.lum(x, y); if l < bestLum { bestLum = l; best = (x, y) } } }
+                    if let p = best { take(p.0, p.1) }
+                }
+            }
+            guard n >= 20 else { return nil }
+            let c = (r / n, g / n, b / n)
+            let chroma = max(c.0, c.1, c.2) - min(c.0, c.1, c.2)
+            let lum = c.0 * 0.299 + c.1 * 0.587 + c.2 * 0.114
+            let paperLum = paper.0 * 0.299 + paper.1 * 0.587 + paper.2 * 0.114
+            // Black and dark grey print as black; only a clear color or a light grey is kept.
+            guard chroma > 45 || lum > paperLum * 0.45 else { return nil }
+            // Printed rules are thin, so the camera lightens them: deepen toward the ink.
+            let k = chroma > 45 ? 0.85 : 0.9
+            return normalized((c.0 * k, c.1 * k, c.2 * k))
         }
         func darkFraction(_ box: LBox) -> Double {
             var dark = 0, total = 0
@@ -1138,6 +1184,7 @@ enum DocumentLayoutAnalyzer {
         for li in wordLines.indices { for wi in wordLines[li].indices { wordLines[li][wi].color = ink.inkColor(wordLines[li][wi].box) } }
 
         debugLog?("textHeight \(textHeight) words \(allHeights.count) vmin \(max(30, Int(textHeight * 1.4)))")
+        if detectsFaintRules { ink = ink.withFaintRules(minLength: max(40, Int(Double(W) * 0.035)), minHeight: max(30, Int(textHeight * 1.4)), maxStroke: max(4, textHeight * 0.3)) }
         let lineInk = hollowsSolidAreas ? ink.hollowed(textHeight: textHeight) : ink
         let hSegments = horizontalSegments(lineInk, minLength: max(40, Int(Double(W) * 0.035)))
         let vSegments = verticalSegments(lineInk, minLength: max(30, Int(textHeight * 1.4)))
@@ -1148,6 +1195,20 @@ enum DocumentLayoutAnalyzer {
             guard t.cells.count == 1, let c = t.cells.first else { return false }
             let words = wordLines.joined().contains { c.box.contains(x: $0.box.midX, y: $0.box.midY) }
             return !words && ink.darkFraction(c.box) > 0.5
+        }
+        // A dark band holding one line of headings ("# Description Qty Price")
+        // is the header row of the list below it, not a box of its own: its words
+        // go back to the page, where they line up with that list's columns.
+        tables.removeAll { t in
+            guard t.cells.count == 1, let c = t.cells.first, c.box.width > c.box.height * 8, c.box.height < textHeight * 2.6,
+                  ink.darkFraction(c.box) > 0.5 else { return false }
+            let inside = wordLines.joined().filter { c.box.contains(x: $0.box.midX, y: $0.box.midY) }
+            guard inside.count >= 3, let top = inside.map(\.box.midY).min(), let bottom = inside.map(\.box.midY).max(), bottom - top < textHeight * 0.8 else { return false }
+            // Several separate headings across the band, not one title.
+            let sorted = inside.sorted { $0.box.x0 < $1.box.x0 }
+            let wide = zip(sorted, sorted.dropFirst()).filter { $1.box.x0 - $0.box.x1 > textHeight * 1.6 }.count
+            if wide >= 2 { debugLog?("header band \(Int(c.box.y0))-\(Int(c.box.y1)) returned to the page"); return true }
+            return false
         }
         // A border around the whole page's text (a notice, a form sheet) is a
         // frame, not a one-cell table: it becomes a page border, and the boxes
@@ -1280,6 +1341,59 @@ enum DocumentLayoutAnalyzer {
                 // Bars and outlines drawn in the picture are not boxes of the form.
                 tables.removeAll { t in cellPictures.contains { $0.inset(-4).contains(x: t.box.x0, y: t.box.y0) && $0.inset(-4).contains(x: t.box.x1, y: t.box.y1) } }
                 for c in cellPictures { debugLog?(String(format: "cell picture %.0f %.0f %.0f %.0f", c.x0, c.y0, c.x1, c.y1)) }
+            }
+        }
+        // A logo or badge (a filled square, a round seal, letters drawn over a
+        // tint, a QR code) is a picture even where the reader finds letters in it.
+        if detectsLogos {
+            let step = max(2, Int(textHeight / 6))
+            let gw = W / step, gh = H / step
+            let pl = ink.paper.0 * 0.299 + ink.paper.1 * 0.587 + ink.paper.2 * 0.114
+            let pc = max(ink.paper.0, ink.paper.1, ink.paper.2) - min(ink.paper.0, ink.paper.1, ink.paper.2)
+            var mask = [Bool](repeating: false, count: gw * gh)
+            for gy in 0..<gh { for gx in 0..<gw {
+                let (r, g, b) = raster.color(min(W - 1, gx * step + step / 2), min(H - 1, gy * step + step / 2))
+                let l = Double(r * 299 + g * 587 + b * 114) / 1000, c = Double(max(r, g, b) - min(r, g, b))
+                if l < pl * 0.85 || c - pc > 40 { mask[gy * gw + gx] = true }
+            } }
+            var seen = [Bool](repeating: false, count: gw * gh)
+            let allWords = wordLines.flatMap { $0 }
+            for start in mask.indices where mask[start] && !seen[start] {
+                var stack = [start], n = 0
+                var x0 = gw, x1 = 0, y0 = gh, y1 = 0
+                seen[start] = true
+                while let q = stack.popLast() {
+                    n += 1
+                    let x = q % gw, y = q / gw
+                    x0 = min(x0, x); x1 = max(x1, x); y0 = min(y0, y); y1 = max(y1, y)
+                    for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
+                        let nx = x + dx, ny = y + dy
+                        guard nx >= 0, ny >= 0, nx < gw, ny < gh else { continue }
+                        let m = ny * gw + nx
+                        if mask[m] && !seen[m] { seen[m] = true; stack.append(m) }
+                    }
+                }
+                let box = LBox(Double(x0 * step), Double(y0 * step), Double((x1 + 1) * step), Double((y1 + 1) * step))
+                let density = Double(n) / Double((x1 - x0 + 1) * (y1 - y0 + 1))
+                // Never at the photo's edge: desk and shadow there are not art.
+                guard box.x0 > 2, box.y0 > 2, box.x1 < Double(W) - 2, box.y1 < Double(H) - 2,
+                      box.width >= textHeight * 2.2, box.height >= textHeight * 2.2,
+                      box.width <= Double(W) * 0.35, box.height <= Double(H) * 0.25,
+                      max(box.width, box.height) <= min(box.width, box.height) * 3.5, density >= 0.45 else { continue }
+                // Shaded cells and bands of a table are the table's.
+                guard !tables.contains(where: { $0.box.overlapX(box) * $0.box.overlapY(box) > box.width * box.height * 0.3 }) else { continue }
+                let inside = allWords.filter { box.contains(x: $0.box.midX, y: $0.box.midY) }
+                guard inside.count <= 6 else { continue }
+                // A shaded block of ordinary text has its words filling it; a logo's
+                // letters are drawn large.
+                let wordArea = inside.reduce(0.0) { $0 + $1.box.width * $1.box.height }
+                let wordH = inside.map(\.box.height).sorted()
+                if inside.count >= 2, wordH[wordH.count / 2] < textHeight * 1.5, wordArea > box.width * box.height * 0.4 { continue }
+                debugLog?(String(format: "logo %.0f %.0f %.0f %.0f density %.2f words %d", box.x0, box.y0, box.x1, box.y1, density, inside.count))
+                cellPictures.append(box.inset(-2))
+            }
+            if !cellPictures.isEmpty {
+                wordLines = wordLines.map { $0.filter { w in !cellPictures.contains { $0.contains(x: w.box.midX, y: w.box.midY) } } }.filter { !$0.isEmpty }
             }
         }
         var free: [Word] = []
@@ -1451,7 +1565,7 @@ enum DocumentLayoutAnalyzer {
             // A bar runs on past its words, often across the page.
             drawn.append(LBox(0, p.box.y0 - h * 0.45, Double(W), p.box.y1 + h * 0.45))
         }
-        var graphics = findGraphics(ink, excluding: textBoxes + underlineBoxes + drawn, textHeight: textHeight)
+        var graphics = findGraphics(ink, excluding: textBoxes + underlineBoxes + drawn + cellPictures, textHeight: textHeight)
         for g in graphics { debugLog?("graphic \(Int(g.box.x0)) \(Int(g.box.y0)) \(Int(g.box.x1)) \(Int(g.box.y1)) cutout \(g.cutout)") }
         // Slivers along the photo's edge are shadow or background, not art; so is
         // a wedge of desk in a corner the paper doesn't reach.
@@ -1494,6 +1608,7 @@ enum DocumentLayoutAnalyzer {
         }
 
         graphics += cellPictures.map { LayoutGraphic(box: $0, cutout: false) }
+        for t in tables.indices where tables[t].ruled { tables[t].lineColor = ink.ruleColor(tables[t]) }
         var items: [LayoutItem] = paragraphs.map { .paragraph($0) } + tables.map { .table($0) }
         items.sort { $0.box.y0 < $1.box.y0 }
         var page = PageLayout(width: W, height: H, pageWidth: size.0, pageHeight: size.1, items: items, graphics: graphics)
@@ -1737,9 +1852,12 @@ enum DocumentLayoutAnalyzer {
         let bracket = text.contains { "()[]{}|".contains($0) }
         let descender = text.contains { "gjpqyQ".contains($0) } || bracket
         let tall = text.contains { $0.isUppercase || $0.isNumber || "bdfhklt".contains($0) } || bracket
+        // "$" reaches above the capitals and below the baseline.
+        let dollar = text.contains("$")
         let ratio: Double
         if wide { ratio = bracket ? 1.02 : 0.9 }
         else if bracket { ratio = 1.0 }
+        else if dollar { ratio = descender ? 0.97 : 0.88 }
         else if descender && tall { ratio = 0.94 }
         else if tall { ratio = 0.73 }
         else if descender { ratio = 0.73 }
@@ -2309,79 +2427,188 @@ enum DocumentLayoutAnalyzer {
                 // A single segment may continue a row only when it starts in a non-first column.
                 let cols = columnsOf(current), b = LBox.around(line.segments[0].map(\.box))!
                 return cols.count >= 2 && b.x0 > cols[0].1
-            }() || wrappedLabel(i))
+            }() || wrappedLabel(i) || {
+                // Or when it wraps a first-column description, set as tight as its first line.
+                let cols = columnsOf(current), b = LBox.around(line.segments[0].map(\.box))!
+                return cols.count >= 3 && gap <= h * 0.6 && b.x0 >= cols[0].0 - h && b.x1 < cols[1].0
+            }())
             if fits { current.append(i) } else { flush(); if line.segments.count >= 2 { current = [i] } }
         }
         flush()
         return groups
     }
     static func borderlessTable(_ lines: [VisualLine], rows: [Int], ink: Ink, ptPerPx: Double) -> LayoutTable? {
-        var intervals = rows.flatMap { i in lines[i].segments.map { LBox.around($0.map(\.box))! } }.map { ($0.x0, $0.x1) }
+        var segsW: [[[Word]]] = rows.map { lines[$0].segments }
+        let hs = rows.flatMap { lines[$0].words.map(\.box.height) }.sorted()
+        let h = hs.isEmpty ? 10 : hs[hs.count / 2]
+        func spread(_ v: [Double]) -> Double { (v.max() ?? 0) - (v.min() ?? 0) }
+        // A row number set close to its description ("01 3M 570 Seam Sealer") is
+        // a column of its own, and so is the header's "#" above it.
+        let heads = segsW.indices.filter { k in
+            guard let f = segsW[k].first, f.count >= 2 else { return false }
+            let t = f[0].text
+            return t.count <= 3 && t.allSatisfy { $0.isNumber || $0 == "." }
+        }
+        if heads.count >= 3 {
+            let x0s = heads.map { segsW[$0][0][0].box.x0 }, starts = heads.map { segsW[$0][0][1].box.x0 }
+            let ends = heads.map { segsW[$0][0][0].box.x1 }
+            if spread(x0s) <= h, spread(starts) <= h * 1.5, let gapAt = starts.min(), let numberEnd = ends.max(), gapAt - numberEnd >= h * 0.3 {
+                for k in segsW.indices {
+                    guard let f = segsW[k].first, f.count >= 2, f[0].box.x1 <= gapAt - h * 0.2, f[1].box.x0 >= gapAt - h else { continue }
+                    segsW[k].replaceSubrange(0...0, with: [[f[0]], Array(f.dropFirst())])
+                }
+            }
+        }
+        let segBoxes: [[LBox]] = segsW.map { $0.map { LBox.around($0.map(\.box))! } }
+        // Columns come from the lines that fill the most of them (the header and
+        // the item rows); a total's label that runs across two of them spans
+        // them instead of joining the columns.
+        var freq: [Int: Int] = [:]
+        for b in segBoxes where b.count >= 2 { freq[b.count, default: 0] += 1 }
+        let multi = segBoxes.filter { $0.count >= 2 }.count
+        let need = max(2, Int((Double(multi) * 0.25).rounded(.up)))
+        let core = freq.filter { $0.value >= need }.keys.max() ?? (freq.max { $0.value < $1.value }?.key ?? 2)
+        var intervals = segBoxes.filter { $0.count >= core }.flatMap { $0 }.map { ($0.x0, $0.x1) }
         intervals.sort { $0.0 < $1.0 }
         var cols: [(Double, Double)] = []
         for iv in intervals {
             if let last = cols.last, iv.0 <= last.1 + 4 { cols[cols.count - 1].1 = max(last.1, iv.1) } else { cols.append(iv) }
         }
         guard cols.count >= 2 else { return nil }
+        // Where every other segment goes: one column (widening it up to its
+        // neighbours) or a span of several.
+        func overlapping(_ b: LBox) -> [Int] { cols.indices.filter { b.x1 > cols[$0].0 + 2 && b.x0 < cols[$0].1 - 2 } }
+        var place: [[(Int, Int)]] = segBoxes.map { _ in [] }
+        for k in segBoxes.indices {
+            for b in segBoxes[k] {
+                var hit = overlapping(b)
+                if hit.isEmpty {
+                    let nearest = cols.indices.min { c1, c2 in
+                        let d1 = b.x0 > cols[c1].1 ? b.x0 - cols[c1].1 : cols[c1].0 - b.x1
+                        let d2 = b.x0 > cols[c2].1 ? b.x0 - cols[c2].1 : cols[c2].0 - b.x1
+                        return d1 < d2
+                    }!
+                    hit = [nearest]
+                }
+                if hit.count == 1 {
+                    let c = hit[0]
+                    let lo = c > 0 ? cols[c - 1].1 + 4 : -Double.infinity, hi = c + 1 < cols.count ? cols[c + 1].0 - 4 : Double.infinity
+                    cols[c].0 = max(lo, min(cols[c].0, b.x0)); cols[c].1 = min(hi, max(cols[c].1, b.x1))
+                }
+                place[k].append((hit.first!, hit.last!))
+            }
+        }
         // Two columns of running text line up like a table; prose in most cells
         // (sentences, not values) means columns of text.
-        let pieces = rows.flatMap { lines[$0].segments }.map { seg in seg.filter { !$0.text.allSatisfy(\.isPunctuation) }.count }
+        let pieces = segsW.flatMap { $0 }.map { seg in seg.filter { !$0.text.allSatisfy(\.isPunctuation) }.count }
         if splitsAlignedColumns, pieces.count >= 6 {
             let wordy = pieces.filter { $0 >= 5 }.count
             if Double(wordy) >= Double(pieces.count) * 0.5 { return nil }
         }
-        // Rows of one or more lines: a lone first-column line joins the row below.
-        var groups: [[Int]] = []
-        var pending: [Int] = []
-        for (k, li) in rows.enumerated() {
-            let segs = lines[li].segments.map { LBox.around($0.map(\.box))! }
-            if segs.count == 1, segs[0].x1 < cols[1].0, k + 1 < rows.count { pending.append(li); continue }
-            groups.append(pending + [li]); pending = []
+        // Rows: lines with values in several columns start one. Values set
+        // centred beside a wrapped description fall between its lines and are
+        // read as lines of their own; lines that overlap and share no column
+        // are one row. A line of a single cell (the wrap, a label above its
+        // values) belongs to the nearest row.
+        func box(_ k: Int) -> LBox { lines[rows[k]].box }
+        func columnsOf(_ k: Int) -> Set<Int> { Set(place[k].flatMap { Array($0.0...$0.1) }) }
+        let anchors = rows.indices.filter { segBoxes[$0].count >= 2 }
+        guard !anchors.isEmpty else { return nil }
+        var anchorGroups: [[Int]] = []
+        for k in anchors {
+            if var g = anchorGroups.last, let last = g.last, box(k).y0 - box(last).y1 < h * 0.35,
+               columnsOf(k).isDisjoint(with: g.reduce(Set<Int>()) { $0.union(columnsOf($1)) }) {
+                g.append(k); anchorGroups[anchorGroups.count - 1] = g
+            } else { anchorGroups.append([k]) }
         }
-        if !pending.isEmpty { groups.append(pending) }
-        let rowLines = groups
+        func groupBox(_ g: [Int]) -> LBox { g.dropFirst().reduce(box(g[0])) { $0.union(box($1)) } }
+        var members = anchorGroups
+        var loose: [[Int]] = []
+        for k in rows.indices where segBoxes[k].count < 2 {
+            let b = box(k)
+            let prev = anchorGroups.indices.last { groupBox(anchorGroups[$0]).midY < b.midY }
+            let next = anchorGroups.indices.first { groupBox(anchorGroups[$0]).midY > b.midY }
+            func dist(_ a: Int) -> Double { let g = groupBox(anchorGroups[a]); return b.midY < g.y0 ? g.y0 - b.midY : (b.midY > g.y1 ? b.midY - g.y1 : 0) }
+            func edge(_ a: Int) -> Double { let g = groupBox(anchorGroups[a]); return g.midY < b.midY ? b.y0 - g.y1 : g.y0 - b.y1 }
+            let firstOnly = place[k].first?.0 == 0
+            var pick: Int?
+            switch (prev, next) {
+            case let (p?, n?):
+                let dp = dist(p), dn = dist(n)
+                if abs(dp - dn) < b.height * 0.3 {
+                    let ep = edge(p), en = edge(n)
+                    pick = abs(ep - en) < b.height * 0.2 ? (firstOnly ? n : p) : (ep < en ? p : n)
+                } else { pick = dp < dn ? p : n }
+            case let (p?, nil): pick = p
+            case let (nil, n?): pick = n
+            default: pick = nil
+            }
+            // Only a line set as tight as the row's own lines belongs to it; one a
+            // full row pitch away (a total's label) is a row of its own.
+            if let a = pick, dist(a) <= b.height * 2.5, edge(a) <= b.height * 0.8 { members[a].append(k) } else { loose.append([k]) }
+        }
+        let rowLines = (members + loose).map { $0.sorted { box($0).y0 < box($1).y0 } }.sorted { groupBox($0).midY < groupBox($1).midY }
+        let tops = rowLines.map { groupBox($0).y0 }
+        let bottoms = rowLines.map { groupBox($0).y1 }
         var xs = [cols[0].0 - 8]
         for c in 1..<cols.count { xs.append((cols[c - 1].1 + cols[c].0) / 2) }
         xs.append(cols.last!.1 + 8)
-        var ys = [lines[rowLines[0][0]].box.y0 - 6]
-        for r in 1..<rowLines.count { ys.append((lines[rowLines[r - 1].last!].box.y1 + lines[rowLines[r][0]].box.y0) / 2) }
-        ys.append(lines[rowLines.last!.last!].box.y1 + 6)
-        func words(_ li: Int, _ c: Int) -> [Word] {
-            lines[li].segments.filter { s in let b = LBox.around(s.map(\.box))!; return b.x1 > cols[c].0 && b.x0 < cols[c].1 }.flatMap { $0 }
-        }
+        var ys = [tops[0] - 6]
+        for r in 1..<rowLines.count { ys.append(max(ys[r - 1] + 2, (bottoms[r - 1] + tops[r]) / 2)) }
+        ys.append(max(ys.last! + 2, bottoms.last! + 6))
         var cells: [LayoutCell] = []
-        var sizes: [Double] = []
         var cellWords: [Int: [Word]] = [:]
         for (r, group) in rowLines.enumerated() {
-            for c in 0..<cols.count {
-                var cell = LayoutCell(row: r, column: c, box: LBox(xs[c], ys[r], xs[c + 1], ys[r + 1]))
+            // Spans first; a span that would cover another cell's text stays one column.
+            var spans: [Int: Int] = [:]
+            var used = Set<Int>()
+            for k in group { for p in place[k] { used.insert(p.0) } }
+            for k in group { for p in place[k] where p.1 > p.0 {
+                if !(p.0 + 1...p.1).contains(where: { used.contains($0) }) { spans[p.0] = max(spans[p.0] ?? 0, p.1) }
+            } }
+            var covered = Set<Int>()
+            for (c0, c1) in spans { for c in c0 + 1...c1 { covered.insert(c) } }
+            for c in 0..<cols.count where !covered.contains(c) {
+                let last = spans[c] ?? c
+                var cell = LayoutCell(row: r, column: c, columnSpan: last - c + 1, box: LBox(xs[c], ys[r], xs[last + 1], ys[r + 1]))
                 cell.top = false; cell.left = false; cell.bottom = false; cell.right = false
-                let perLine = group.map { words($0, c) }.filter { !$0.isEmpty }
+                let perLine = group.map { k in zip(segsW[k], place[k]).filter { $0.1.0 == c }.flatMap { $0.0 } }.filter { !$0.isEmpty }
                 let ws = perLine.flatMap { $0 }
+                // Shading: a dark header band or alternating row tints, measured
+                // over the row's own text height (a band can be lower than the row)
+                // and, where there is text, around it (the last column runs past the band).
+                let shadeBox = LBox.around(ws.map(\.box)).map { LBox(max(cell.box.x0, $0.x0 - h), tops[r], min(cell.box.x1, $0.x1 + h), bottoms[r]) }
+                    ?? LBox(cell.box.x0, tops[r], cell.box.x1, bottoms[r])
+                cell.fill = ink.fill(shadeBox).flatMap { Ink.printedFill($0, merged: false) }
                 if !ws.isEmpty {
-                    let size = fontSize(ws, ink: ink, ptPerPx: ptPerPx)
-                    sizes.append(size)
-                    cell.fontSize = size
+                    var size = fontSize(ws, ink: ink, ptPerPx: ptPerPx)
                     cell.lines = perLine.map { runs($0, ink: ink, fontPx: size / ptPerPx) }
+                    // Letters on a dark band are light: the ink measures the band,
+                    // not them, so size them from their boxes, with no underline.
+                    if let f = cell.fill, Double(f.r) * 0.299 + Double(f.g) * 0.587 + Double(f.b) * 0.114 < 110 {
+                        let heights = ws.map(\.box.height).sorted()
+                        size = max(6, (heights[heights.count / 2] * ptPerPx * 0.72 * 2).rounded() / 2)
+                        cell.lines = cell.lines.map { $0.map { var run = $0; run.color = LayoutColor(r: 255, g: 255, b: 255); run.underline = false; return run } }
+                    }
+                    cell.fontSize = size
                     cellWords[cells.count] = ws
+                    if last > c, let b = LBox.around(ws.map(\.box)) { cell.alignment = alignment(of: b, in: cell.box) }
                 }
                 cells.append(cell)
             }
         }
         // Column alignment from where the text sits inside each column.
         for c in 0..<cols.count {
-            let boxes = rowLines.compactMap { group -> LBox? in
-                LBox.around(group.flatMap { words($0, c) }.map(\.box))
-            }
+            let boxes = cells.indices.filter { cells[$0].column == c && cells[$0].columnSpan == 1 }.compactMap { i in cellWords[i].flatMap { LBox.around($0.map(\.box)) } }
+            guard !boxes.isEmpty else { continue }
             let lefts = boxes.map(\.x0), rights = boxes.map(\.x1), mids = boxes.map(\.midX)
-            func spread(_ v: [Double]) -> Double { (v.max() ?? 0) - (v.min() ?? 0) }
             let a: LayoutAlignment = spread(lefts) <= spread(rights) && spread(lefts) <= spread(mids) + 2 ? .left : (spread(rights) <= spread(mids) ? .right : .center)
-            for i in cells.indices where cells[i].column == c { cells[i].alignment = a }
+            for i in cells.indices where cells[i].column == c && cells[i].columnSpan == 1 { cells[i].alignment = a }
         }
+        unifyRowShades(&cells)
         var table = LayoutTable(columns: xs, rows: ys, cells: cells, ruled: false)
         harmonizeSizes(&table)
         fitCells(&table, words: cellWords, ptPerPx: ptPerPx)
-        _ = sizes
         return table
     }
 
@@ -2630,6 +2857,19 @@ enum DocumentLayoutAnalyzer {
             }
             guard let f = fill, lum(f) < 225 else { continue }
             paragraphs[i].fill = f
+            // How far the bar runs past its words (often across the page).
+            if paragraphs[i].lines.count == 1 {
+                let y = Int(b.midY), gapMax = Int(h)
+                func matches(_ x: Int) -> Bool {
+                    let c = ink.raster.color(x, y)
+                    return abs(0.3 * Double(c.0) + 0.59 * Double(c.1) + 0.11 * Double(c.2) - lum(f)) < 40
+                }
+                var x0 = Int(b.x0), x1 = Int(b.x1), miss = 0, x = Int(b.x0)
+                while x > 0 { x -= 1; if matches(x) { x0 = x; miss = 0 } else { miss += 1; if miss > gapMax { break } } }
+                miss = 0; x = Int(b.x1)
+                while x < ink.raster.width - 1 { x += 1; if matches(x) { x1 = x; miss = 0 } else { miss += 1; if miss > gapMax { break } } }
+                if Double(x1 - x0) > b.width + h * 2 { paragraphs[i].fillBox = LBox(Double(x0), b.y0, Double(x1 + 1), b.y1) }
+            }
             // The bar's own edges are not underlines, of its text or of the line
             // just above it.
             let barTop = b.y0 - h * 0.3
@@ -2933,6 +3173,77 @@ enum DocumentLayoutAnalyzer {
 }
 
 extension DocumentLayoutAnalyzer.Ink {
+    /// Rules printed lighter than the ink threshold (grey hairlines, or a form's
+    /// red, blue or orange grid, common on tax invoices) joined to the dark mask.
+    /// Only thin, long runs are added: fills, shading and coloured text stay out.
+    func withFaintRules(minLength: Int, minHeight: Int, maxStroke: Double) -> DocumentLayoutAnalyzer.Ink {
+        let w = raster.width, h = raster.height
+        let pl = paper.0 * 0.299 + paper.1 * 0.587 + paper.2 * 0.114
+        let pc = max(paper.0, paper.1, paper.2) - min(paper.0, paper.1, paper.2)
+        var faint = [Bool](repeating: false, count: w * h)
+        var combined = dark
+        var any = false
+        for y in 0..<h { for x in 0..<w where !dark[y * w + x] {
+            let (r, g, b) = raster.color(x, y)
+            let l = Double(r * 299 + g * 587 + b * 114) / 1000
+            let c = Double(max(r, g, b) - min(r, g, b))
+            if l < pl * 0.8 || (c - pc > 60 && l < pl - 20) { faint[y * w + x] = true; combined[y * w + x] = true; any = true }
+        } }
+        guard any else { return self }
+        let raw = combined
+        // Inside a filled area (a tinted cell, a shaded band) the light pixels
+        // are the fill, not a rule: drop those that sit in a mostly-filled window.
+        let r = max(3, Int(maxStroke))
+        var sum = [Int32](repeating: 0, count: (w + 1) * (h + 1))
+        for y in 0..<h {
+            var row: Int32 = 0
+            for x in 0..<w { if combined[y * w + x] { row += 1 }; sum[(y + 1) * (w + 1) + x + 1] = sum[y * (w + 1) + x + 1] + row }
+        }
+        for y in 0..<h { for x in 0..<w where faint[y * w + x] {
+            let x0 = max(0, x - r), y0 = max(0, y - r), x1 = min(w, x + r + 1), y1 = min(h, y + r + 1)
+            let n = sum[y1 * (w + 1) + x1] - sum[y0 * (w + 1) + x1] - sum[y1 * (w + 1) + x0] + sum[y0 * (w + 1) + x0]
+            if Int(n) * 10 > (x1 - x0) * (y1 - y0) * 6 { faint[y * w + x] = false; combined[y * w + x] = false }
+        } }
+        var probe = self; probe.dark = combined
+        var out = self
+        var added = 0
+        // A rule has paper on both sides along most of its length; the edge of a
+        // tinted area has the tint on one side.
+        func clear(_ x: Int, _ y: Int) -> Bool { x < 0 || y < 0 || x >= w || y >= h || !raw[y * w + x] }
+        // It is also unbroken and mostly light ink: a line of small grey-edged
+        // letters closes into a run too, but with gaps and dark letter cores.
+        func lineLike(_ s: DocumentLayoutAnalyzer.Segment, horizontal: Bool) -> Bool {
+            let off = Int(s.extent / 2) + 3
+            var ok = 0, n = 0, covered = 0, darkHits = 0
+            let c = Int(s.c)
+            for a in stride(from: Int(s.a0), to: Int(s.a1), by: 2) {
+                n += 1
+                if horizontal ? (clear(a, c - off) && clear(a, c + off)) : (clear(c - off, a) && clear(c + off, a)) { ok += 1 }
+                var hit = false, darkHit = false
+                for d in -1...1 {
+                    let (x, y) = horizontal ? (a, c + d) : (c + d, a)
+                    guard x >= 0, y >= 0, x < w, y < h else { continue }
+                    if combined[y * w + x] { hit = true }
+                    if dark[y * w + x] { darkHit = true }
+                }
+                if hit { covered += 1 }
+                if darkHit { darkHits += 1 }
+            }
+            return n > 0 && ok * 10 >= n * 6 && covered * 100 >= n * 85 && darkHits * 10 <= n * 3
+        }
+        for s in DocumentLayoutAnalyzer.horizontalSegments(probe, minLength: minLength) where s.thickness <= maxStroke && lineLike(s, horizontal: true) {
+            let y0 = max(0, Int(s.c - s.extent / 2 - 1)), y1 = min(h - 1, Int(s.c + s.extent / 2 + 1))
+            guard y1 >= y0 else { continue }
+            for y in y0...y1 { for x in max(0, Int(s.a0))..<min(w, Int(s.a1)) where faint[y * w + x] && !out.dark[y * w + x] { out.dark[y * w + x] = true; added += 1 } }
+        }
+        for s in DocumentLayoutAnalyzer.verticalSegments(probe, minLength: minHeight) where s.thickness <= maxStroke && lineLike(s, horizontal: false) {
+            let x0 = max(0, Int(s.c - s.extent / 2 - 1)), x1 = min(w - 1, Int(s.c + s.extent / 2 + 1))
+            guard x1 >= x0 else { continue }
+            for x in x0...x1 { for y in max(0, Int(s.a0))..<min(h, Int(s.a1)) where faint[y * w + x] && !out.dark[y * w + x] { out.dark[y * w + x] = true; added += 1 } }
+        }
+        DocumentLayoutAnalyzer.debugLog?("faint rules: \(added) px")
+        return out
+    }
     init(transposedFrom other: DocumentLayoutAnalyzer.Ink, mask: [Bool]) {
         self.raster = LayoutRaster(width: other.raster.height, height: other.raster.width, rgba: other.raster.rgba)
         self.dark = mask

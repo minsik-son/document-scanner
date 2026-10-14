@@ -63,7 +63,9 @@ enum OfficeLayoutExport {
             }
             // Writes items as flowing text between `l` and `r` (pixels), advancing `cursor`.
             func flow(_ items: [LayoutItem], _ l: Double, _ r: Double, rightMargin: Int) {
+                var afterTable = false
                 for item in items {
+                    defer { if case .table = item { afterTable = true } else { afterTable = false } }
                     switch item {
                     case .paragraph(let p):
                         let lineH = max(p.linePitch, p.fontSize / page.pointsPerPixel * 1.18)
@@ -79,7 +81,8 @@ enum OfficeLayoutExport {
                         cursor = lineTop + lineH * Double(p.lines.count)
                     case .table(let t):
                         let gap = (t.box.y0 - cursor) * 0.9
-                        if gap > 1 { body += "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"\(max(20, i(gap * scale)))\" w:lineRule=\"exact\"/><w:rPr><w:sz w:val=\"2\"/></w:rPr></w:pPr></w:p>" }
+                        // Two tables in a row need a paragraph between them, or Word joins them into one.
+                        if gap > 1 || afterTable { body += "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"\(max(20, i(gap * scale)))\" w:lineRule=\"exact\"/><w:rPr><w:sz w:val=\"2\"/></w:rPr></w:pPr></w:p>" }
                         body += wordTable(t, areaLeft: l, scale: scale, pointsPerPixel: page.pointsPerPixel)
                         cursor = max(cursor, t.box.y0) + t.box.height
                     }
@@ -187,8 +190,13 @@ enum OfficeLayoutExport {
             if let b = p.bullet { ppr += "<w:ind w:left=\"\(max(0, indent))\" \(slack) w:hanging=\"\(max(0, i((p.box.x0 - b.x0) * scale)))\"/>" }
             else { ppr += "<w:ind w:left=\"\(max(0, indent))\" \(slack)/>" }
         case .center:
-            let shift = (p.box.midX - (areaLeft + areaRight) / 2) * 2 * scale
-            if shift > 0 { ppr += "<w:ind w:left=\"\(i(shift))\"/>" } else if shift < 0 { ppr += "<w:ind w:right=\"\(i(-shift))\"/>" }
+            if let band = p.fillBox, p.fill != nil {
+                // The shading runs the bar's width, the words centred in it.
+                ppr += "<w:ind w:left=\"\(max(0, i((band.x0 - areaLeft) * scale)))\" w:right=\"\(max(0, i((areaRight - band.x1) * scale)))\"/>"
+            } else {
+                let shift = (p.box.midX - (areaLeft + areaRight) / 2) * 2 * scale
+                if shift > 0 { ppr += "<w:ind w:left=\"\(i(shift))\"/>" } else if shift < 0 { ppr += "<w:ind w:right=\"\(i(-shift))\"/>" }
+            }
             ppr += "<w:jc w:val=\"center\"/>"
         case .right:
             let indent = i((areaRight - p.box.x1) * scale)
@@ -267,7 +275,7 @@ enum OfficeLayoutExport {
 
     static func wordTable(_ t: LayoutTable, areaLeft: Double, scale: Double, pointsPerPixel: Double, floating: Bool = false) -> String {
         let widths = (0..<t.columnCount).map { max(60, i((t.columns[$0 + 1] - t.columns[$0]) * scale)) }
-        let border = "w:val=\"single\" w:sz=\"8\" w:space=\"0\" w:color=\"000000\""
+        let border = "w:val=\"single\" w:sz=\"8\" w:space=\"0\" w:color=\"\(t.lineColor?.hex ?? "000000")\""
         var xml = "<w:tbl><w:tblPr>"
         if floating {
             xml += "<w:tblpPr w:leftFromText=\"0\" w:rightFromText=\"0\" w:topFromText=\"0\" w:bottomFromText=\"0\" w:vertAnchor=\"page\" w:horzAnchor=\"page\" w:tblpX=\"\(i(t.columns[0] * scale))\" w:tblpY=\"\(i(t.rows[0] * scale))\"/><w:tblOverlap w:val=\"overlap\"/>"
@@ -351,9 +359,10 @@ enum OfficeLayoutExport {
             if let i = fillIndex[xml] { return i }
             fills.append(xml); fillIndex[xml] = fills.count - 1; return fills.count - 1
         }
-        func border(top: Bool, left: Bool, bottom: Bool, right: Bool) -> Int {
+        func border(top: Bool, left: Bool, bottom: Bool, right: Bool, color: LayoutColor? = nil) -> Int {
             guard top || left || bottom || right else { return 0 }
-            func side(_ n: String, _ on: Bool) -> String { on ? "<\(n) style=\"thin\"><color rgb=\"FF000000\"/></\(n)>" : "<\(n)/>" }
+            let rgb = "FF" + (color?.hex ?? "000000")
+            func side(_ n: String, _ on: Bool) -> String { on ? "<\(n) style=\"thin\"><color rgb=\"\(rgb)\"/></\(n)>" : "<\(n)/>" }
             let xml = "<border>\(side("left", left))\(side("right", right))\(side("top", top))\(side("bottom", bottom))<diagonal/></border>"
             if let i = borderIndex[xml] { return i }
             borders.append(xml); borderIndex[xml] = borders.count - 1; return borders.count - 1
@@ -493,7 +502,7 @@ enum OfficeLayoutExport {
                         let text = cell.text
                         let firstRun = cell.lines.first?.first
                         let font = styles.font(size: cell.fontSize, bold: firstRun?.bold ?? false, underline: firstRun?.underline ?? false, color: firstRun?.color, wide: hasWide(text))
-                        let style = styles.xf(font: font, fill: styles.fill(cell.fill), border: styles.border(top: cell.top, left: cell.left, bottom: cell.bottom, right: cell.right), horizontal: cell.alignment, wrap: cell.lines.count > 1, shrink: true)
+                        let style = styles.xf(font: font, fill: styles.fill(cell.fill), border: styles.border(top: cell.top, left: cell.left, bottom: cell.bottom, right: cell.right, color: t.lineColor), horizontal: cell.alignment, wrap: cell.lines.count > 1, shrink: true)
                         let runs = cell.lines.enumerated().flatMap { k, line -> [LayoutRun] in
                             k == 0 ? line : [LayoutRun(text: "\n", bold: line.first?.bold ?? false)] + line
                         }
@@ -512,7 +521,8 @@ enum OfficeLayoutExport {
                             let nextStart = k + 1 < line.segments.count ? grid.column(at: line.segments[k + 1].box.x0) - 1 : grid.xs.count - 2
                             switch p.alignment {
                             case .left: c0 = grid.column(at: k == 0 ? (p.bullet?.x0 ?? seg.box.x0) : seg.box.x0); c1 = max(c0, nextStart)
-                            case .center: c0 = 0; c1 = grid.xs.count - 2
+                            case .center:
+                                if let band = p.fillBox { c0 = grid.column(at: band.x0); c1 = max(c0, grid.columnEnding(at: band.x1)) } else { c0 = 0; c1 = grid.xs.count - 2 }
                             case .right: c0 = k == 0 ? 0 : grid.column(at: seg.box.x0); c1 = grid.columnEnding(at: seg.box.x1)
                             }
                             if line.segments.count > 1 && p.alignment != .left { c0 = grid.column(at: seg.box.x0); c1 = max(c0, nextStart) }
@@ -521,7 +531,7 @@ enum OfficeLayoutExport {
                             let size = seg.fontSize ?? p.fontSize
                             let first = seg.runs.first
                             let font = styles.font(size: size, bold: first?.bold ?? false, underline: first?.underline ?? false, color: first?.color, wide: hasWide(seg.text))
-                            let style = styles.xf(font: font, fill: 0, border: 0, horizontal: line.segments.count > 1 ? .left : p.alignment, wrap: false)
+                            let style = styles.xf(font: font, fill: styles.fill(p.fill), border: 0, horizontal: line.segments.count > 1 ? .left : p.alignment, wrap: false)
                             var runs = seg.runs
                             if k == 0 && p.bullet != nil { runs.insert(LayoutRun(text: (p.marker ?? "•") + "  "), at: 0) }
                             put(r, c0, "<c r=\"\(ref(r, c0))\" s=\"\(style)\" t=\"inlineStr\">\(inline(runs, size: size))</c>")
@@ -710,7 +720,7 @@ enum OfficeLayoutExport {
         let widths = (0..<t.columnCount).map { i((t.columns[$0 + 1] - t.columns[$0]) * emu) }
         let heights = (0..<t.rowCount).map { i((t.rows[$0 + 1] - t.rows[$0]) * emu) }
         func line(_ side: String, _ on: Bool) -> String {
-            on ? "<a:\(side) w=\"12700\" cap=\"flat\" cmpd=\"sng\" algn=\"ctr\"><a:solidFill><a:srgbClr val=\"000000\"/></a:solidFill><a:prstDash val=\"solid\"/></a:\(side)>" : "<a:\(side) w=\"0\"><a:noFill/></a:\(side)>"
+            on ? "<a:\(side) w=\"12700\" cap=\"flat\" cmpd=\"sng\" algn=\"ctr\"><a:solidFill><a:srgbClr val=\"\(t.lineColor?.hex ?? "000000")\"/></a:solidFill><a:prstDash val=\"solid\"/></a:\(side)>" : "<a:\(side) w=\"0\"><a:noFill/></a:\(side)>"
         }
         var rows = ""
         for r in 0..<t.rowCount {

@@ -293,3 +293,92 @@ final class ToolDirectoryDesignTests: HushUITestCase {
         XCTAssertTrue(app.navigationBars.buttons.element(boundBy: 0).isHittable)
     }
 }
+
+/// QA: every main screen in every app language, light and dark, for a visual review of
+/// truncation, overlap, untranslated text and contrast. Screenshots are named
+/// "<lang>|<mode>|<screen>". QA_LANGS (comma list) limits the languages; QA_LARGE_TEXT=1
+/// adds an Accessibility Large text pass in en and ko.
+final class QALocalizationMatrixTests: HushUITestCase {
+    @MainActor private func shot(_ app: XCUIApplication, _ name: String) {
+        let s = XCTAttachment(screenshot: app.screenshot()); s.name = name; s.lifetime = .keepAlways; add(s)
+    }
+    @MainActor private func back(_ app: XCUIApplication) {
+        let b = app.navigationBars.buttons.element(boundBy: 0)
+        if b.exists && b.isHittable { b.tap() } else { app.swipeRight() }
+        usleep(600_000)
+    }
+    @MainActor private func pass(_ lang: String, _ mode: String, size: String? = nil) {
+        let app = XCUIApplication()
+        var args = ["--ui-test-session", UUID().uuidString, "--seed-saved", "--simulate-camera", "-appAppearance", mode,
+                    "-app-language", lang, "-AppleLanguages", "(\(lang))"]
+        if let size { args += ["-UIPreferredContentSizeCategoryName", size] }
+        app.launchArguments = args
+        app.launch()
+        settle(app)
+        let tag = "\(lang)|\(mode)\(size == nil ? "" : "|large")|"
+        shot(app, tag + "01 home")
+        app.swipeUp(); usleep(500_000); shot(app, tag + "02 home lower"); app.swipeDown(); usleep(400_000)
+        if app.buttons["nav-tools"].exists {
+            app.buttons["nav-tools"].tap()
+            if app.textFields["tool-search"].waitForExistence(timeout: 5) {
+                shot(app, tag + "03 tools")
+                app.swipeUp(); usleep(500_000); shot(app, tag + "04 tools middle")
+                app.swipeUp(); usleep(500_000); shot(app, tag + "05 tools end")
+                let redact = app.buttons["smart-tool-redact"]
+                if !redact.isHittable { app.swipeDown(); usleep(400_000) }
+                if !redact.isHittable { app.swipeDown(); usleep(400_000) }
+                if redact.exists && redact.isHittable {
+                    redact.tap(); sleep(2); shot(app, tag + "06 tool intro")
+                    if app.buttons["tool-close"].exists { app.buttons["tool-close"].tap() } else { back(app) }
+                    usleep(600_000)
+                }
+                if app.buttons["tools-close"].exists { app.buttons["tools-close"].tap() }
+            }
+        }
+        if app.buttons["nav-settings"].exists {
+            app.buttons["nav-settings"].tap()
+            if app.buttons["settings-save-backup"].waitForExistence(timeout: 5) {
+                shot(app, tag + "10 settings")
+                app.swipeUp(); usleep(500_000); shot(app, tag + "11 settings lower"); app.swipeDown(); usleep(400_000)
+                app.buttons["settings-save-backup"].tap(); sleep(1); shot(app, tag + "12 save and backup"); back(app)
+                if app.buttons["settings-privacy"].exists { app.buttons["settings-privacy"].tap(); sleep(1); shot(app, tag + "13 privacy"); back(app) }
+                if app.buttons["settings-benefits"].exists { app.buttons["settings-benefits"].tap(); sleep(1); shot(app, tag + "14 benefits"); back(app) }
+            }
+        }
+        if app.buttons["nav-home"].exists {
+            app.buttons["nav-home"].tap(); usleep(600_000)
+            let scan = app.buttons["scan-document"]
+            if scan.exists && scan.isHittable {
+                scan.tap()
+                let shutter = app.buttons["capture-page"]
+                if shutter.waitForExistence(timeout: 6) {
+                    sleep(1); shot(app, tag + "15 camera")
+                    let enabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isEnabled == true"), object: shutter)
+                    _ = XCTWaiter.wait(for: [enabled], timeout: 8)
+                    shutter.tap()
+                    if app.buttons["review-done"].waitForExistence(timeout: 12) { sleep(2); shot(app, tag + "16 scan review") }
+                }
+            }
+        }
+        app.terminate(); app.launch(); settle(app)
+        if app.buttons["nav-documents"].exists {
+            app.buttons["nav-documents"].tap(); sleep(1); shot(app, tag + "07 documents")
+            let row = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "document-row-")).firstMatch
+            if row.waitForExistence(timeout: 4) {
+                row.tap(); sleep(2); shot(app, tag + "08 document")
+                if app.buttons["document-tools"].exists { app.buttons["document-tools"].tap(); sleep(1); shot(app, tag + "09 document tools menu"); app.tap() ; usleep(500_000) }
+                back(app)
+            }
+        }
+        app.terminate()
+    }
+    @MainActor func testScreensAllLanguages() {
+        let all = ["en", "ko", "ja", "es", "pt-BR", "de", "fr", "it", "pl", "tr", "id", "vi", "th", "zh-Hans", "zh-Hant"]
+        let env = ProcessInfo.processInfo.environment
+        let langs = env["QA_LANGS"].map { $0.split(separator: ",").map(String.init) } ?? all
+        for lang in langs { for mode in ["light", "dark"] { pass(lang, mode) } }
+        if env["QA_LARGE_TEXT"] == "1" || env["QA_LANGS"] == nil {
+            for lang in ["en", "ko", "de"] { pass(lang, "light", size: "UICTContentSizeCategoryAccessibilityL") }
+        }
+    }
+}

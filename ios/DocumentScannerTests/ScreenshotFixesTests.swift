@@ -537,3 +537,277 @@ extension ScanSpeedTests {
         try lines.joined(separator: "\n").write(to: base.appendingPathComponent("speed/mesh.txt"), atomically: true, encoding: .utf8)
     }
 }
+
+// MARK: - QA: answer-key scans
+//
+// Synthetic photos with known page corners and known text (Verification/private/qa,
+// made by gen_pages.py / gen_photos.py). For each photo: edge finding error, then the
+// full scan pipeline with the found corners and with the true ones, read back with
+// the app's own text recognition and scored against the page's text. Results go to
+// qa/results/scan.jsonl (one line per photo) and qa/results/scan/<photo>.jpg.
+enum QAText {
+    /// Compare text the way a reader would: case, spacing and width variants ignored.
+    static func normalize(_ s: String) -> [Character] {
+        let n = s.precomposedStringWithCompatibilityMapping.lowercased()
+            .replacingOccurrences(of: "–", with: "-").replacingOccurrences(of: "—", with: "-")
+            .replacingOccurrences(of: "’", with: "'").replacingOccurrences(of: "“", with: "\"").replacingOccurrences(of: "”", with: "\"")
+        // Dotted and dashed rules (a receipt's separators) are drawing, not text.
+        let joined = String(n.filter { !$0.isWhitespace })
+        return Array(joined.replacingOccurrences(of: "[-_.·•=*~]{3,}", with: "", options: .regularExpression))
+    }
+    static func levenshtein(_ a: [Character], _ b: [Character]) -> Int {
+        if a.isEmpty { return b.count }; if b.isEmpty { return a.count }
+        var prev = Array(0...b.count), cur = [Int](repeating: 0, count: b.count + 1)
+        for i in 1...a.count {
+            cur[0] = i
+            for j in 1...b.count { cur[j] = min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + (a[i-1] == b[j-1] ? 0 : 1)) }
+            swap(&prev, &cur)
+        }
+        return prev[b.count]
+    }
+    /// Character error rate of `read` against `truth` (0 = perfect).
+    static func cer(truth: String, read: String) -> Double {
+        let t = normalize(truth), r = normalize(read)
+        return t.isEmpty ? 0 : Double(levenshtein(t, r)) / Double(t.count)
+    }
+    /// Share of the truth's pieces (words; two-character runs for CJK) found anywhere
+    /// in the reading. Order-free, so table read order doesn't count against it.
+    static func recall(truth: String, read: String) -> Double {
+        let r = String(normalize(read))
+        var pieces: [String] = []
+        for word in truth.split(whereSeparator: { $0.isWhitespace }) {
+            let w = Array(String(word).precomposedStringWithCompatibilityMapping.lowercased())
+            if w.contains(where: { $0.unicodeScalars.first.map { $0.value >= 0x2E80 } ?? false }) {
+                if w.count < 2 { pieces.append(String(w)) } else { for i in 0..<(w.count - 1) { pieces.append(String(w[i...i+1])) } }
+            } else { pieces.append(String(w)) }
+        }
+        guard !pieces.isEmpty else { return 1 }
+        return Double(pieces.filter { r.contains(String(normalize($0))) }.count) / Double(pieces.count)
+    }
+}
+
+final class QAScanTests: XCTestCase {
+    struct PhotoTruth: Decodable { let page: String; let variant: String; let corners: [[Double]] }
+    struct PageTruth: Decodable { let id: String; let kind: String; let size: [Double]; let lines: [String]; let colors: [ColorTruth] }
+    struct ColorTruth: Decodable { let name: String; let box: [Double]; let rgb: [Double] }
+
+    static let qa = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Verification/private/qa")
+
+    func read(_ cg: CGImage) -> String {
+        ((try? TextRecognition.recognize(cg)) ?? []).map(\.text).joined(separator: "\n")
+    }
+    var lastFlattened = false
+    func render(_ photo: UIImage, crop: ScanQuad) throws -> CGImage {
+        let prepared = try DocumentProcessing.prepare(CIImage(cgImage: photo.cgImage!), crop: crop, turns: 0, enhancement: .document, flatten: FlattenRequest(key: nil))
+        lastFlattened = prepared.flattened
+        let finished = try DocumentProcessing.finish(prepared)
+        return DocumentProcessing.context.createCGImage(finished, from: finished.extent)!
+    }
+    /// Paper level and evenness: the bright 90th percentile of each of 6×8 tiles.
+    func paper(_ cg: CGImage) -> (median: Double, spread: Double) {
+        let w = 240, h = 320
+        var px = [UInt8](repeating: 0, count: w * h)
+        let ctx = CGContext(data: &px, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w, space: CGColorSpaceCreateDeviceGray(), bitmapInfo: 0)!
+        ctx.interpolationQuality = .medium; ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+        var tiles: [Double] = []
+        for ty in 0..<8 { for tx in 0..<6 {
+            var v: [UInt8] = []
+            for y in (ty*40)..<(ty*40+40) { for x in (tx*40)..<(tx*40+40) { v.append(px[y*w+x]) } }
+            v.sort(); tiles.append(Double(v[Int(Double(v.count) * 0.9)]))
+        } }
+        let s = tiles.sorted()
+        return (s[s.count/2], s[s.count - 1] - s[min(2, s.count - 1)])
+    }
+    /// Mean colour of a truth box (page pixel coordinates) found at the same place on the output.
+    func colour(_ cg: CGImage, box: [Double], page: [Double]) -> [Double] {
+        let w = cg.width, h = cg.height
+        var px = [UInt8](repeating: 0, count: w * h * 4)
+        let ctx = CGContext(data: &px, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+        // Inner 60 % of the box, so a few pixels of edge misplacement don't matter.
+        let x0 = Int((box[0] + box[2]*0.2) / page[0] * Double(w)), x1 = Int((box[0] + box[2]*0.8) / page[0] * Double(w))
+        let y0 = Int((box[1] + box[3]*0.2) / page[1] * Double(h)), y1 = Int((box[1] + box[3]*0.8) / page[1] * Double(h))
+        var sum = [0.0, 0.0, 0.0], n = 0.0
+        for y in stride(from: max(0, y0), to: min(h, y1), by: 2) { for x in stride(from: max(0, x0), to: min(w, x1), by: 2) {
+            let i = (y * w + x) * 4; sum[0] += Double(px[i]); sum[1] += Double(px[i+1]); sum[2] += Double(px[i+2]); n += 1 } }
+        return n > 0 ? sum.map { $0 / n } : [0, 0, 0]
+    }
+    /// CIE76 ΔE between two sRGB colours (0–255).
+    static func deltaE(_ a: [Double], _ b: [Double]) -> Double {
+        func lab(_ c: [Double]) -> [Double] {
+            let l = c.map { v -> Double in let s = v / 255; return s <= 0.04045 ? s / 12.92 : pow((s + 0.055) / 1.055, 2.4) }
+            var x = (l[0]*0.4124 + l[1]*0.3576 + l[2]*0.1805) / 0.95047, y = l[0]*0.2126 + l[1]*0.7152 + l[2]*0.0722, z = (l[0]*0.0193 + l[1]*0.1192 + l[2]*0.9505) / 1.08883
+            func f(_ t: Double) -> Double { t > 0.008856 ? pow(t, 1/3) : 7.787 * t + 16/116 }
+            x = f(x); y = f(y); z = f(z)
+            return [116*y - 16, 500*(x - y), 200*(y - z)]
+        }
+        let p = lab(a), q = lab(b)
+        return sqrt(pow(p[0]-q[0], 2) + pow(p[1]-q[1], 2) + pow(p[2]-q[2], 2))
+    }
+    /// Saved at the clean page's resolution (JPEG 0.95) so score_scan.py compares like with like.
+    func save(_ cg: CGImage, to url: URL, side: Double) {
+        let s = min(1, side / Double(max(cg.width, cg.height)))
+        let img = UIImage(cgImage: cg)
+        let size = CGSize(width: Double(cg.width) * s, height: Double(cg.height) * s)
+        let fmt = UIGraphicsImageRendererFormat(); fmt.scale = 1
+        let small = UIGraphicsImageRenderer(size: size, format: fmt).image { _ in img.draw(in: CGRect(origin: .zero, size: size)) }
+        try? small.jpegData(compressionQuality: 0.95)?.write(to: url)
+    }
+
+    func testScanAnswerKeys() throws {
+        let qa = Self.qa, photos = qa.appendingPathComponent("synth/photos"), pages = qa.appendingPathComponent("synth/pages")
+        let out = qa.appendingPathComponent("results/scan"); try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        let log = qa.appendingPathComponent("results/scan.jsonl"); try? FileManager.default.removeItem(at: log); FileManager.default.createFile(atPath: log.path, contents: nil)
+        let only = ProcessInfo.processInfo.environment["QA_ONLY"]
+        let names = try FileManager.default.contentsOfDirectory(atPath: photos.path).filter { $0.hasSuffix(".json") }.sorted()
+        var baseline: [String: (cer: Double, recall: Double)] = [:]
+        for name in names {
+            if let only, !name.contains(only) { continue }
+            try autoreleasepool {
+                let truth = try JSONDecoder().decode(PhotoTruth.self, from: Data(contentsOf: photos.appendingPathComponent(name)))
+                let page = try JSONDecoder().decode(PageTruth.self, from: Data(contentsOf: pages.appendingPathComponent(truth.page + ".json")))
+                let text = page.lines.joined(separator: "\n")
+                if baseline[truth.page] == nil, let clean = UIImage(contentsOfFile: pages.appendingPathComponent(truth.page + ".png").path)?.cgImage {
+                    let r = read(clean); baseline[truth.page] = (QAText.cer(truth: text, read: r), QAText.recall(truth: text, read: r))
+                }
+                let stem = String(name.dropLast(5))
+                guard let data = try? Data(contentsOf: photos.appendingPathComponent(stem + ".jpg")), let photo = CameraController.decode(data, maxPixels: 25_000_000) else { return }
+                let W = Double(photo.cgImage!.width), H = Double(photo.cgImage!.height), diag = hypot(W, H)
+                let t0 = CFAbsoluteTimeGetCurrent()
+                let found = CaptureStyle.document.detect(Imaging.limited(photo, maxPixels: 12_200_000), capturedPhoto: true)
+                let detectMs = (CFAbsoluteTimeGetCurrent() - t0) * 1000
+                var cornerErr: [Double] = []
+                if let found { for (p, q) in zip(found.points, truth.corners) { cornerErr.append(hypot((p.x - q[0]) * W, (p.y - q[1]) * H) / diag * 100) } }
+                let trueCrop = ScanQuad(points: truth.corners.map { ScanPoint(x: $0[0], y: $0[1]) })
+                var row: [String: Any] = ["photo": stem, "page": truth.page, "variant": truth.variant, "kind": page.kind,
+                                          "detected": found != nil, "detect_ms": Int(detectMs),
+                                          "corner_err_mean_pct": cornerErr.isEmpty ? NSNull() : cornerErr.reduce(0, +) / 4,
+                                          "corner_err_max_pct": cornerErr.max() ?? NSNull(),
+                                          "baseline_cer": baseline[truth.page]!.cer, "baseline_recall": baseline[truth.page]!.recall]
+                for (label, crop) in [("auto", found ?? .full), ("truecrop", trueCrop)] {
+                    let t1 = CFAbsoluteTimeGetCurrent()
+                    guard let cg = try? render(photo, crop: crop) else { row[label + "_error"] = true; continue }
+                    row[label + "_render_ms"] = Int((CFAbsoluteTimeGetCurrent() - t1) * 1000)
+                    row[label + "_flattened"] = lastFlattened
+                    let r = read(cg)
+                    row[label + "_cer"] = QAText.cer(truth: text, read: r)
+                    row[label + "_recall"] = QAText.recall(truth: text, read: r)
+                    let aspect = Double(cg.width) / Double(cg.height), want = page.size[0] / page.size[1]
+                    row[label + "_aspect_err_pct"] = abs(aspect / want - 1) * 100
+                    let p = paper(cg); row[label + "_paper_median"] = p.median; row[label + "_paper_spread"] = p.spread
+                    if !page.colors.isEmpty {
+                        row[label + "_color_de"] = page.colors.map { Self.deltaE(colour(cg, box: $0.box, page: page.size), $0.rgb) }
+                    }
+                    save(cg, to: out.appendingPathComponent("\(stem)__\(label).jpg"), side: page.size.max()!)
+                    if label == "auto" { try? r.write(to: out.appendingPathComponent("\(stem)__auto.txt"), atomically: true, encoding: .utf8) }
+                }
+                let line = try JSONSerialization.data(withJSONObject: row, options: [.sortedKeys])
+                let h = try FileHandle(forWritingTo: log); h.seekToEndOfFile(); h.write(line + Data("\n".utf8)); try h.close()
+            }
+        }
+    }
+}
+
+/// QA: what the saved PDF and the Compress PDF tool do to quality and size.
+/// Scanned document = the nine answer-key pages photographed (v1_ideal, true corners), saved
+/// the way the app saves; imported document = a vector text PDF of the same truth lines.
+/// For the saved file and every compression preset: bytes, text layer vs truth, OCR of the
+/// page rendered at the truth resolution, and the render itself (results/pdf/<doc>/<label>/)
+/// for score_pdf.py (SSIM against the saved render). One JSON line per page in results/pdf.jsonl.
+@MainActor
+final class QAPDFTests: XCTestCase {
+    func renderPage(_ page: PDFPage, width: Double) -> CGImage {
+        let box = page.bounds(for: .mediaBox)
+        let rotated = page.rotation % 180 != 0
+        let pw = rotated ? box.height : box.width, ph = rotated ? box.width : box.height
+        let s = width / pw
+        let size = CGSize(width: (pw * s).rounded(), height: (ph * s).rounded())
+        let fmt = UIGraphicsImageRendererFormat(); fmt.scale = 1; fmt.opaque = true
+        let img = UIGraphicsImageRenderer(size: size, format: fmt).image { c in
+            UIColor.white.setFill(); c.fill(CGRect(origin: .zero, size: size))
+            c.cgContext.translateBy(x: 0, y: size.height); c.cgContext.scaleBy(x: s, y: -s)
+            page.draw(with: .mediaBox, to: c.cgContext)
+        }
+        return img.cgImage!
+    }
+    func png(_ cg: CGImage, _ url: URL) {
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? UIImage(cgImage: cg).pngData()?.write(to: url)
+    }
+    func vectorPDF(_ pages: [QAScanTests.PageTruth]) -> Data {
+        UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: 595, height: 842)).pdfData { ctx in
+            for p in pages {
+                let w = p.size[0] / 200 * 72, h = p.size[1] / 200 * 72
+                ctx.beginPage(withBounds: CGRect(x: 0, y: 0, width: w, height: h), pageInfo: [:])
+                var y = 40.0
+                let size = p.id.contains("small") ? 7.5 : (p.id.contains("receipt") ? 8.0 : 11.0)
+                for line in p.lines {
+                    (line as NSString).draw(in: CGRect(x: 36, y: y, width: w - 72, height: size * 3),
+                                            withAttributes: [.font: UIFont.systemFont(ofSize: size)])
+                    y += size * 1.6
+                }
+            }
+        }
+    }
+
+    func testPDFQuality() async throws {
+        let qa = QAScanTests.qa, pagesDir = qa.appendingPathComponent("synth/pages"), photos = qa.appendingPathComponent("synth/photos")
+        let out = qa.appendingPathComponent("results/pdf")
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        let log = qa.appendingPathComponent("results/pdf.jsonl"); try? FileManager.default.removeItem(at: log); FileManager.default.createFile(atPath: log.path, contents: nil)
+        func write(_ row: [String: Any]) throws {
+            let line = try JSONSerialization.data(withJSONObject: row, options: [.sortedKeys])
+            let h = try FileHandle(forWritingTo: log); h.seekToEndOfFile(); h.write(line + Data("\n".utf8)); try h.close()
+        }
+        let ids = try FileManager.default.contentsOfDirectory(atPath: pagesDir.path).filter { $0.hasSuffix(".json") }.sorted().map { String($0.dropLast(5)) }
+        let truths = try ids.map { try JSONDecoder().decode(QAScanTests.PageTruth.self, from: Data(contentsOf: pagesDir.appendingPathComponent($0 + ".json"))) }
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let library = LibraryStore(root: root)
+
+        // Scanned document.
+        let scanID = try library.createDraft()
+        for t in truths {
+            let stem = t.id + "__v1_ideal"
+            let truth = try JSONDecoder().decode(QAScanTests.PhotoTruth.self, from: Data(contentsOf: photos.appendingPathComponent(stem + ".json")))
+            let photo = try XCTUnwrap(CameraController.decode(Data(contentsOf: photos.appendingPathComponent(stem + ".jpg")), maxPixels: 25_000_000))
+            try library.appendImage(photo, to: scanID, detectedCrop: ScanQuad(points: truth.corners.map { ScanPoint(x: $0[0], y: $0[1]) }), style: .document)
+        }
+        // Imported vector PDF.
+        let vector = root.appendingPathComponent("vector.pdf"); try vectorPDF(truths).write(to: vector)
+        let vectorID = try await library.importNativePDF(vector)
+
+        for (docName, id) in [("scan", scanID), ("vector", vectorID)] {
+            let doc = try XCTUnwrap(library.document(id))
+            let t0 = CFAbsoluteTimeGetCurrent()
+            let saved = try await PDFExport.prepare(doc, root: library.root)
+            let saveMs = Int((CFAbsoluteTimeGetCurrent() - t0) * 1000)
+            var outputs: [(String, Data, Int)] = [("saved", saved.data, saveMs)]
+            if docName == "vector" { let source = try Data(contentsOf: vector); outputs.insert(("source", source, 0), at: 0) }
+            for preset in CompressionPreset.allCases {
+                var copy = saved.document; copy.searchable = copy.pages.contains { !$0.textBlocks.isEmpty }
+                let t1 = CFAbsoluteTimeGetCurrent()
+                let data = try DocumentPDF.compose(copy, root: library.root, compression: preset)
+                outputs.append((preset.rawValue.replacingOccurrences(of: " ", with: "_").lowercased(), data, Int((CFAbsoluteTimeGetCurrent() - t1) * 1000)))
+            }
+            for (label, data, ms) in outputs {
+                let pdf = try XCTUnwrap(PDFDocument(data: data))
+                try data.write(to: out.appendingPathComponent("\(docName)__\(label).pdf"))
+                for (i, t) in truths.enumerated() where i < pdf.pageCount {
+                    try autoreleasepool {
+                        let page = pdf.page(at: i)!
+                        let text = t.lines.joined(separator: "\n")
+                        let layer = page.string ?? ""
+                        let render = renderPage(page, width: t.size[0])
+                        png(render, out.appendingPathComponent("\(docName)/\(label)/\(t.id).png"))
+                        let ocr = ((try? TextRecognition.recognize(render)) ?? []).map(\.text).joined(separator: "\n")
+                        try write(["doc": docName, "label": label, "page": t.id, "bytes": data.count, "pages": pdf.pageCount, "ms": ms,
+                                   "layer_cer": QAText.cer(truth: text, read: layer), "layer_recall": QAText.recall(truth: text, read: layer),
+                                   "ocr_cer": QAText.cer(truth: text, read: ocr), "ocr_recall": QAText.recall(truth: text, read: ocr),
+                                   "page_pt": [page.bounds(for: .mediaBox).width, page.bounds(for: .mediaBox).height]])
+                    }
+                }
+            }
+        }
+    }
+}

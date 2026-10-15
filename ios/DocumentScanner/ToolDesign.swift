@@ -79,7 +79,7 @@ extension ToolArtwork {
     static let tints: [String: Color] = {
         let blue = Color(hex: 0xEAF2FF), purple = Color(hex: 0xF0EAFB), green = Color(hex: 0xE7F7EF), orange = Color(hex: 0xFFF1E4)
         var t: [String: Color] = [:]
-        for n in ["scan", "translate", "ocr", "fill-form", "redact", "restore", "word", "images", "portrait", "card-contact", "measure"] { t[n] = blue }
+        for n in ["scan", "translate", "ocr", "fill-form", "redact", "restore", "word", "images", "portrait", "card-contact", "measure", "import-photo"] { t[n] = blue }
         for n in ["merge", "split", "eraser", "marks", "reorder", "math", "long-image", "stitch"] { t[n] = purple }
         for n in ["compress", "protect", "extract", "excel", "qr", "whiteboard", "mega", "mesh"] { t[n] = green }
         for n in ["signature", "watermark", "timestamp", "book", "slides", "print", "identity"] { t[n] = orange }

@@ -16,6 +16,7 @@ struct MathDocumentView: View {
     @State private var sharing = false
     @State private var previewing = false
     @State private var files: ExportedFiles?
+    @State private var filesSaved = false
     @State private var busy = false
     @State private var phase = "Reading the math…"
     @State private var error: String?
@@ -44,7 +45,7 @@ struct MathDocumentView: View {
             case .ready:
                 ToolPage(title: "") { readyContent } actions: {
                     Button("Preview") { previewing = true }.buttonStyle(SecondaryCTAStyle()).accessibilityIdentifier("math-preview-file")
-                    primaryButton
+                    SaveFirstButton(urls: files?.urls, saved: $filesSaved, shareTitle: "Share document", shareID: "math-primary") { sharing = true }
                 }
             }
         }
@@ -70,6 +71,7 @@ struct MathDocumentView: View {
         }
         .fullScreenCover(isPresented:$zoom) { EnlargedScanPreview(initialImage:displayed) { displayed } }
         .sheet(isPresented:$sharing) { if let files { ShareSheet(items:files.urls) } }
+        .onChange(of: files?.directory) { _, _ in filesSaved = false }
         .sheet(isPresented:$previewing) { if let url = files?.urls.first { OfficeQuickLook(url:url) } }
         .onChange(of:text) { _,_ in clearFiles() }
         .onDisappear {
@@ -158,6 +160,7 @@ struct MathDocumentView: View {
                 Text("Your document is ready").font(.system(size: 24, weight: .bold)).foregroundStyle(TK.grey900)
                 Text("Math transcription.\(format.extensionName)").font(.system(size: 16)).foregroundStyle(TK.grey600)
             }
+            SaveStatus(saved: filesSaved)
             Button("Scan another page") { clearFiles();onRetake() }.buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("math-another")
         }.frame(maxWidth: .infinity)
     }

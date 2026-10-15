@@ -63,6 +63,7 @@ struct PowerPointExportView: View {
     @State private var job: Task<Void,Never>?
     @State private var message: String?
     @State private var export: ExportedFiles?
+    @State private var exportSaved = false
     @State private var preview = false
     @State private var sharing = false
     @State private var editMode: EditMode = .inactive
@@ -124,6 +125,7 @@ struct PowerPointExportView: View {
             }
             .fullScreenCover(isPresented:$preview) { if let url = export?.urls.first { OfficeQuickLook(url:url) } }
             .sheet(isPresented:$sharing) { if let export { ShareSheet(items:export.urls) } }
+            .onChange(of: export?.directory) { _, _ in exportSaved = false }
             .task {
                 guard !initialized else { return }; initialized = true
                 if let documentID,let document = store.document(documentID) {
@@ -283,10 +285,11 @@ struct PowerPointExportView: View {
                         .font(.system(size: 24, weight: .bold)).foregroundStyle(TK.grey900).accessibilityIdentifier("ppt-ready")
                     Text(export?.urls.first?.lastPathComponent ?? (excel ? "Table.xlsx" : "Slides.pptx")).font(.system(size: 16)).foregroundStyle(TK.grey600)
                 }
+                SaveStatus(saved: exportSaved)
             }.frame(maxWidth: .infinity)
         } actions: {
             Button("Preview") { preview = true }.buttonStyle(SecondaryCTAStyle()).accessibilityIdentifier("ppt-preview")
-            Button("Share \(formatName)") { sharing = true }.buttonStyle(CTAButtonStyle()).accessibilityIdentifier("ppt-share")
+            SaveFirstButton(urls: export?.urls, saved: $exportSaved, shareTitle: "Share \(formatName)", shareID: "ppt-share") { sharing = true }
         }
     }
     private func slideRow(_ page:PresentationPage,index:Int) -> some View {

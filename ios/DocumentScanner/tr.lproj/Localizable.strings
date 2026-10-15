@@ -2073,3 +2073,10 @@
 "Join screenshots of a long chat or page into one tall picture." = "Uzun bir sohbetin ya da sayfanın ekran görüntülerini tek bir uzun görselde birleştirin.";
 "Point the camera at a code" = "Kamerayı bir koda doğrultun";
 "Joined on this iPhone. Nothing is uploaded." = "Bu iPhone’da birleştirilir. Hiçbir şey yüklenmez.";
+"Save to Files" = "Dosyalar’a Kaydet";
+"Saved to Files" = "Dosyalar’a kaydedildi";
+"Not saved yet" = "Henüz kaydedilmedi";
+"Couldn't save" = "Kaydedilemedi";
+"Allow HushScan to add photos in Settings, then try again." = "Ayarlar’da HushScan’in fotoğraf eklemesine izin verin ve tekrar deneyin.";
+"The picture couldn't be added to Photos." = "Görsel Fotoğraflar’a eklenemedi.";
+"Save it to Files, then share it. It isn't saved in your documents." = "Dosyalar’a kaydedin, sonra paylaşın. Belgelerinize kaydedilmez.";

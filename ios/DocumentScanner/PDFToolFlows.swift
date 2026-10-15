@@ -67,6 +67,8 @@ struct PDFToolResult {
     var detail: String
     var files: ExportedFiles?
     var shareTitle = "Share PDF"
+    /// Saved as a document in the app; otherwise the file is saved to Files (or Photos) first.
+    var inLibrary = true
 }
 
 /// A PDF tool: choose a document, do the one job, see the result.
@@ -244,15 +246,20 @@ private struct PDFToolDone: View {
         guard let urls = result.files?.urls, !urls.isEmpty else { return [] }
         return urls.allSatisfy { ["jpg", "jpeg", "png"].contains($0.pathExtension.lowercased()) } ? urls : []
     }
+    /// Pictures go to Photos, files outside the app's documents to Files; then sharing.
+    private var saveFirst: SaveFirst? {
+        guard let files = result.files else { return nil }
+        let share = { sharing = files }
+        if !imageURLs.isEmpty { return SaveFirst(urls: imageURLs, photos: true, shareTitle: result.shareTitle, share: share) }
+        if !result.inLibrary { return SaveFirst(urls: files.urls, shareTitle: result.shareTitle, share: share) }
+        return nil
+    }
     var body: some View {
         ToolDonePage(title: result.title, detail: result.detail,
-                     primaryTitle: imageURLs.isEmpty ? "Done" : "Save to Photos",
-                     primary: imageURLs.isEmpty ? close : {
-                         for url in imageURLs { if let image = UIImage(contentsOfFile: url.path) { UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil) } }
-                         close()
-                     },
+                     primaryTitle: "Done", primary: close,
                      secondaryTitle: result.files == nil ? nil : result.shareTitle,
-                     secondary: result.files == nil ? nil : { sharing = result.files }) {
+                     secondary: result.files == nil ? nil : { sharing = result.files },
+                     save: saveFirst) {
             if let urls = result.files?.urls, !urls.isEmpty { ResultReview(urls: urls).padding(.top, 6) }
         }
             .sheet(item: $sharing, onDismiss: { if proTool { ReviewPrompter.request(.firstProShare) } }) { files in ShareSheet(items: files.urls) }
@@ -996,7 +1003,7 @@ private struct ExtractToolStep: View {
             let title = kind == .images ? (files.count == 1 ? "Your image is ready" : "\(files.count) images are ready") : "\(kind.title) is ready"
             finish(PDFToolResult(title: title,
                                  detail: picks.count == 1 ? "Made from 1 page of \(doc.title). The original is unchanged." : "Made from \(picks.count) pages of \(doc.title). The original is unchanged.",
-                                 files: PDFTools.share(files), shareTitle: kind == .images ? "Share images" : "Share file"))
+                                 files: PDFTools.share(files), shareTitle: kind == .images ? "Share images" : "Share file", inLibrary: false))
         }
     }
 }
@@ -1106,7 +1113,7 @@ private struct ExportImagesToolStep: View {
             }
             finish(PDFToolResult(title: combined ? "Your TIFF file is ready" : picks.count == 1 ? "1 image is ready" : "\(picks.count) images are ready",
                                  detail: combined ? String(format: L("%lld pages in one file."), picks.count) : "Share them or save them to Photos.",
-                                 files: files, shareTitle: combined ? "Share file" : "Share images"))
+                                 files: files, shareTitle: combined ? "Share file" : "Share images", inLibrary: false))
         }
     }
 }
@@ -1504,7 +1511,7 @@ private struct ProtectToolStep: View {
             let bytes = try await OfflineWork.perform { try DocumentPDF.protect(source, password: secret) }
             password = ""; repeated = ""
             let files = try ExportFiles.write([(PDFTools.named(doc.title, "locked") + ".pdf", bytes)])
-            finish(PDFToolResult(title: "Locked copy is ready", detail: "Share it now. It isn't saved in your documents.", files: files, shareTitle: "Share locked PDF"))
+            finish(PDFToolResult(title: "Locked copy is ready", detail: "Save it to Files, then share it. It isn't saved in your documents.", files: files, shareTitle: "Share locked PDF", inLibrary: false))
         }
     }
 }

@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import Photos
 import UniformTypeIdentifiers
 import PDFKit
 
@@ -386,8 +387,11 @@ struct ToolDonePage<Extra: View>: View {
     let primary: () -> Void
     var secondaryTitle: String? = nil
     var secondary: (() -> Void)? = nil
+    /// A file that isn't in the app's documents: save it first, share after.
+    var save: SaveFirst? = nil
     @ViewBuilder var extra: () -> Extra
     @State private var appeared = false
+    @State private var saved = false
     var body: some View {
         ToolPage(title: "", scrolls: true) {
             VStack(spacing: 22) {
@@ -402,13 +406,16 @@ struct ToolDonePage<Extra: View>: View {
                         .accessibilityIdentifier("tool-done-title")
                     Text(L(detail)).font(.system(size: 16)).foregroundStyle(TK.grey600).multilineTextAlignment(.center)
                 }
+                if let save { SaveStatus(saved: saved, photos: save.photos) }
                 extra()
             }.frame(maxWidth: .infinity)
         } actions: {
-            if let secondaryTitle, let secondary {
-                Button(secondaryTitle, action: secondary).buttonStyle(SecondaryCTAStyle()).accessibilityIdentifier("tool-done-secondary")
+            if let save {
+                SaveFirstButton(urls: save.urls, saved: $saved, photos: save.photos,
+                                shareTitle: LocalizedStringKey(save.shareTitle), shareID: "tool-done-secondary", share: save.share)
+            } else {
+                doneActions
             }
-            Button(primaryTitle, action: primary).buttonStyle(CTAButtonStyle()).accessibilityIdentifier("tool-done-primary")
         }
         .onAppear {
             // A result exists: an open free try of a Pro tool is spent now.
@@ -416,12 +423,24 @@ struct ToolDonePage<Extra: View>: View {
             withAnimation(.spring(response: 0.45, dampingFraction: 0.62)) { appeared = true }
         }
     }
+    @ViewBuilder private var doneActions: some View {
+            if let secondaryTitle, let secondary {
+                Button(secondaryTitle, action: secondary).buttonStyle(SecondaryCTAStyle()).accessibilityIdentifier("tool-done-secondary")
+            }
+            Button(primaryTitle, action: primary).buttonStyle(CTAButtonStyle()).accessibilityIdentifier("tool-done-primary")
+    }
+}
+struct SaveFirst {
+    let urls: [URL]
+    var photos = false
+    var shareTitle = "Share"
+    let share: () -> Void
 }
 extension ToolDonePage where Extra == EmptyView {
     init(title: String, detail: String, primaryTitle: String = "Done", primary: @escaping () -> Void,
-         secondaryTitle: String? = nil, secondary: (() -> Void)? = nil) {
+         secondaryTitle: String? = nil, secondary: (() -> Void)? = nil, save: SaveFirst? = nil) {
         self.init(title: title, detail: detail, primaryTitle: primaryTitle, primary: primary,
-                  secondaryTitle: secondaryTitle, secondary: secondary) { EmptyView() }
+                  secondaryTitle: secondaryTitle, secondary: secondary, save: save) { EmptyView() }
     }
 }
 
@@ -1523,4 +1542,96 @@ struct ToastBanner: View {
     store.moveToTrash(doc)
     guard store.problem == nil else { return }
     AppToast.show("Moved to Trash", symbol: "trash.fill", tint: TK.grey600, action: "Undo") { store.restore(doc) }
+}
+
+// MARK: - Save first, then share
+
+/// Every tool that makes a file: the user saves it first and sees that it is saved;
+/// sharing comes after. Documents go to Files (the user picks the folder), pictures to Photos.
+enum FilesSave {
+    /// UI tests can't drive the system folder picker: there the save is taken as done.
+    static var simulated: Bool {
+#if DEBUG
+        ProcessInfo.processInfo.arguments.contains("--ui-test-session")
+#else
+        false
+#endif
+    }
+}
+struct FilesExporter: UIViewControllerRepresentable {
+    let urls: [URL]
+    let finished: (Bool) -> Void
+    func makeCoordinator() -> Coordinator { Coordinator(finished: finished) }
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let picker = UIDocumentPickerViewController(forExporting: urls, asCopy: true)
+        picker.delegate = context.coordinator
+        return picker
+    }
+    func updateUIViewController(_ controller: UIDocumentPickerViewController, context: Context) {}
+    final class Coordinator: NSObject, UIDocumentPickerDelegate {
+        let finished: (Bool) -> Void
+        init(finished: @escaping (Bool) -> Void) { self.finished = finished }
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) { finished(true) }
+        func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) { finished(false) }
+    }
+}
+/// Under a ready file's name: saved or not yet.
+struct SaveStatus: View {
+    let saved: Bool
+    var photos = false
+    var body: some View {
+        Label(L(saved ? (photos ? "Saved to Photos" : "Saved to Files") : "Not saved yet"),
+              systemImage: saved ? "checkmark.circle.fill" : "exclamationmark.circle")
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(saved ? TK.teal : TK.grey600)
+            .padding(.horizontal, 12).padding(.vertical, 7)
+            .background(saved ? TK.tealSoft : TK.grey100, in: Capsule())
+            .accessibilityIdentifier("save-status")
+            .animation(.spring(response: 0.35, dampingFraction: 0.7), value: saved)
+    }
+}
+/// The ready page's main button: "Save to Files" (or Photos) until saved, then the share button.
+struct SaveFirstButton: View {
+    let urls: [URL]?
+    @Binding var saved: Bool
+    var photos = false
+    let shareTitle: LocalizedStringKey
+    let shareID: String
+    let share: () -> Void
+    @State private var exporting = false
+    @State private var failed: String?
+    var body: some View {
+        Group {
+            if saved {
+                Button(shareTitle, action: share).buttonStyle(CTAButtonStyle()).accessibilityIdentifier(shareID)
+            } else {
+                Button(L(photos ? "Save to Photos" : "Save to Files"), action: save).buttonStyle(CTAButtonStyle())
+                    .disabled(urls?.isEmpty != false).accessibilityIdentifier("files-save")
+            }
+        }
+        .sheet(isPresented: $exporting) {
+            if let urls { FilesExporter(urls: urls) { ok in exporting = false; if ok { done() } }.ignoresSafeArea() }
+        }
+        .alert(L("Couldn't save"), isPresented: Binding(get: { failed != nil }, set: { if !$0 { failed = nil } })) {
+            Button("OK") { failed = nil }
+        } message: { Text(L(failed ?? "")) }
+    }
+    private func save() {
+        guard let urls, !urls.isEmpty else { return }
+        if FilesSave.simulated { done(); return }
+        guard photos else { exporting = true; return }
+        PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
+            guard status == .authorized || status == .limited else {
+                DispatchQueue.main.async { failed = "Allow HushScan to add photos in Settings, then try again." }
+                return
+            }
+            PHPhotoLibrary.shared().performChanges({
+                for url in urls { PHAssetCreationRequest.creationRequestForAssetFromImage(atFileURL: url) }
+            }) { ok, _ in DispatchQueue.main.async { if ok { done() } else { failed = "The picture couldn't be added to Photos." } } }
+        }
+    }
+    private func done() {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { saved = true }
+    }
 }

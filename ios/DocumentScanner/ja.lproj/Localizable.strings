@@ -2073,3 +2073,10 @@
 "Join screenshots of a long chat or page into one tall picture." = "長いチャットやページのスクリーンショットを1枚の縦長画像につなげます。";
 "Point the camera at a code" = "カメラをコードに向けてください";
 "Joined on this iPhone. Nothing is uploaded." = "このiPhone上でつなげます。何もアップロードされません。";
+"Save to Files" = "ファイルに保存";
+"Saved to Files" = "ファイルに保存しました";
+"Not saved yet" = "まだ保存されていません";
+"Couldn't save" = "保存できませんでした";
+"Allow HushScan to add photos in Settings, then try again." = "設定でHushScanに写真の追加を許可してから、もう一度お試しください。";
+"The picture couldn't be added to Photos." = "写真に画像を追加できませんでした。";
+"Save it to Files, then share it. It isn't saved in your documents." = "ファイルに保存してから共有してください。書類には保存されません。";

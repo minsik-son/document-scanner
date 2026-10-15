@@ -13,6 +13,8 @@ struct QRCodeView: View {
     @State private var message: String?
     @State private var share: ExportedFiles?
     @State private var job: Task<Void, Never>?
+    @State private var qrFile: ExportedFiles?
+    @State private var qrSaved = false
     var body: some View {
         NavigationStack {
             ToolPage(title: "QR code", subtitle: "Read a code with the camera or from a picture, or make your own.") {
@@ -58,18 +60,14 @@ struct QRCodeView: View {
                         Image(uiImage: image).interpolation(.none).resizable().scaledToFit().frame(maxWidth: 220, maxHeight: 220)
                             .padding(12).background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                             .frame(maxWidth: .infinity).accessibilityLabel("Generated QR code")
+                        SaveStatus(saved: qrSaved, photos: true).frame(maxWidth: .infinity)
                     }
                 }
                 Label("Codes are read on this iPhone. Links are not opened automatically.", systemImage: "lock.shield")
                     .font(.system(size: 13)).foregroundStyle(TK.grey500)
             } actions: {
                 if image != nil {
-                    Button("Share QR image") {
-                        do {
-                            guard let data = image?.pngData() else { return }
-                            share = try ExportFiles.write([("QR-code.png", data)])
-                        } catch { message = error.localizedDescription }
-                    }.buttonStyle(CTAButtonStyle()).accessibilityIdentifier("qr-share")
+                    SaveFirstButton(urls: qrFile?.urls, saved: $qrSaved, photos: true, shareTitle: "Share QR image", shareID: "qr-share") { share = qrFile }
                 } else if !text.isEmpty {
                     Button("Generate QR code") { generate() }.buttonStyle(CTAButtonStyle()).accessibilityIdentifier("qr-generate")
                 }
@@ -79,9 +77,9 @@ struct QRCodeView: View {
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() }.accessibilityIdentifier("tool-close") } }
             .sheet(isPresented: $camera) { LocalPhotoCamera { value in camera = false; if let value { read(value) } } }
             .sheet(item: $share, onDismiss: { ExportFiles.cleanExpired() }) { files in
-                ShareSheet(items: files.urls, completion: { _, _ in ExportFiles.remove(files.directory) })
+                ShareSheet(items: files.urls)
             }
-            .onChange(of: text) { _, _ in image = nil }
+            .onChange(of: text) { _, _ in image = nil; qrSaved = false; if let qrFile { ExportFiles.remove(qrFile.directory) }; qrFile = nil }
             .onChange(of: photo) { _, item in
                 guard let item else { return }
                 busy = true; message = nil
@@ -93,11 +91,17 @@ struct QRCodeView: View {
                     } catch { busy = false; message = error.localizedDescription }
                 }
             }
-            .onDisappear { job?.cancel() }
+            .onDisappear { job?.cancel(); if let qrFile { ExportFiles.remove(qrFile.directory) } }
         }
     }
     private func generate() {
-        do { image = try LocalDocumentTools.qrImage(text); message = nil }
+        do {
+            let made = try LocalDocumentTools.qrImage(text)
+            guard let data = made.pngData() else { throw ScannerError.message("Could not encode the result.") }
+            if let qrFile { ExportFiles.remove(qrFile.directory) }
+            qrFile = try ExportFiles.write([("QR-code.png", data)]); qrSaved = false
+            image = made; message = nil
+        }
         catch { image = nil; message = error.localizedDescription }
     }
     private func read(_ image: UIImage) {
@@ -136,6 +140,7 @@ struct ScreenshotStitchView: View {
     @State private var share: ExportedFiles?
     @State private var busy = false
     @State private var working = "Opening screenshots…"
+    @State private var outputSaved = false
     @State private var message: String?
     @State private var job: Task<Void, Never>?
     var body: some View {
@@ -216,9 +221,11 @@ struct ScreenshotStitchView: View {
                     VStack(spacing: 8) {
                         if let message { Text(L(message)).font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("stitch-status") }
                         if let output {
-                            HStack {
-                                Button("Change seams") { ExportFiles.remove(output.directory); self.output = nil; message = nil }.buttonStyle(.bordered)
-                                Button("Share long image") { share = output }.buttonStyle(PrimaryButton())
+                            SaveStatus(saved: outputSaved, photos: true)
+                            HStack(spacing: 10) {
+                                Button("Change seams") { ExportFiles.remove(output.directory); self.output = nil; message = nil; outputSaved = false }
+                                    .buttonStyle(SecondaryCTAStyle())
+                                SaveFirstButton(urls: output.urls, saved: $outputSaved, photos: true, shareTitle: "Share long image", shareID: "stitch-share") { share = output }
                             }
                         } else if !pages.isEmpty {
                             Button("Preview long image") { export() }.buttonStyle(PrimaryButton()).disabled(pages.count < 2)

@@ -45,7 +45,9 @@ final class ScannerFlowTests: HushUITestCase {
         let change = app.buttons["Change seams"]
         XCTAssertTrue(change.waitForExistence(timeout: 10))
         for _ in 0..<5 where !change.isHittable { app.swipeUp() }
-        XCTAssertTrue(app.buttons["Share long image"].exists)
+        XCTAssertTrue(app.buttons["files-save"].exists, "Save comes before share")
+        app.buttons["files-save"].tap()
+        XCTAssertTrue(app.buttons["Share long image"].waitForExistence(timeout: 5))
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = "Stitched screenshot preview"; shot.lifetime = .keepAlways; add(shot)
         change.tap()
         XCTAssertTrue(app.buttons["stitch-selected"].exists)
@@ -58,6 +60,8 @@ final class ScannerFlowTests: HushUITestCase {
         let field = app.textFields["qr-text"]
         XCTAssertTrue(field.waitForExistence(timeout: 5)); field.tap(); field.typeText("https://example.com/offline")
         app.buttons["qr-generate"].tap()
+        XCTAssertTrue(app.buttons["files-save"].waitForExistence(timeout: 5))
+        app.buttons["files-save"].tap()
         XCTAssertTrue(app.buttons["qr-share"].waitForExistence(timeout: 5))
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = "Offline QR code"; shot.lifetime = .keepAlways; add(shot)
         app.buttons["tool-close"].tap(); app.tool("Stitch screenshots").tap()
@@ -120,7 +124,9 @@ final class ScannerFlowTests: HushUITestCase {
         openDocumentTools(app); app.buttons["Long image · PRO"].tap()
         waitEnabled(app.buttons["long-image-next"]); app.buttons["long-image-next"].tap()
         waitEnabled(app.buttons["long-image-run"]); app.buttons["long-image-run"].tap()
-        finished("Long image"); XCTAssertTrue(app.buttons["tool-done-secondary"].exists)
+        finished("Long image"); XCTAssertFalse(app.buttons["tool-done-secondary"].exists, "Save comes before share")
+        app.buttons["files-save"].tap(); XCTAssertTrue(app.buttons["tool-done-secondary"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.descendants(matching: .any)["save-status"].label, "Saved to Photos")
         app.buttons["tool-close"].tap()
         app.terminate(); app.launch()
         // Newest first; the list builds rows lazily as it scrolls.

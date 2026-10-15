@@ -2073,3 +2073,10 @@
 "Join screenshots of a long chat or page into one tall picture." = "ต่อภาพหน้าจอของแชตหรือหน้าเว็บยาวๆ เป็นภาพยาวภาพเดียว";
 "Point the camera at a code" = "หันกล้องไปที่โค้ด";
 "Joined on this iPhone. Nothing is uploaded." = "ต่อภาพบน iPhone เครื่องนี้ ไม่มีการอัปโหลดใดๆ";
+"Save to Files" = "บันทึกไปยังไฟล์";
+"Saved to Files" = "บันทึกไปยังไฟล์แล้ว";
+"Not saved yet" = "ยังไม่ได้บันทึก";
+"Couldn't save" = "บันทึกไม่ได้";
+"Allow HushScan to add photos in Settings, then try again." = "อนุญาตให้ HushScan เพิ่มรูปภาพในการตั้งค่า แล้วลองอีกครั้ง";
+"The picture couldn't be added to Photos." = "เพิ่มภาพลงในรูปภาพไม่ได้";
+"Save it to Files, then share it. It isn't saved in your documents." = "บันทึกไปยังไฟล์ก่อน แล้วจึงแชร์ ไฟล์นี้จะไม่ถูกบันทึกในเอกสารของคุณ";

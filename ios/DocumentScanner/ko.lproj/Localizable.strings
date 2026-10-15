@@ -2073,3 +2073,10 @@
 "Join screenshots of a long chat or page into one tall picture." = "긴 대화나 페이지의 스크린샷을 한 장의 긴 이미지로 이어 붙여요.";
 "Point the camera at a code" = "카메라를 코드에 비춰 주세요";
 "Joined on this iPhone. Nothing is uploaded." = "이 iPhone에서 이어 붙여요. 아무것도 업로드되지 않아요.";
+"Save to Files" = "파일에 저장";
+"Saved to Files" = "파일에 저장했어요";
+"Not saved yet" = "아직 저장되지 않았어요";
+"Couldn't save" = "저장하지 못했어요";
+"Allow HushScan to add photos in Settings, then try again." = "설정에서 HushScan의 사진 추가를 허용한 뒤 다시 시도해 주세요.";
+"The picture couldn't be added to Photos." = "사진 앱에 이미지를 추가하지 못했어요.";
+"Save it to Files, then share it. It isn't saved in your documents." = "파일 앱에 저장한 뒤 공유하세요. 내 문서에는 저장되지 않아요.";

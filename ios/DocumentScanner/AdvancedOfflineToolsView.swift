@@ -349,6 +349,8 @@ struct AdvancedOfflineToolContent:View {
     @State private var message:String?
     @State private var job:Task<Void,Never>?
     @State private var files:ExportedFiles?
+    /// The ready file was saved (to Files) before sharing.
+    @State private var filesSaved = false
     @State private var sharing = false
     @State private var quickLook = false
     @State private var saved = false
@@ -413,6 +415,8 @@ struct AdvancedOfflineToolContent:View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(busy || wordStep != .source).interactiveDismissDisabled(busy)
+        // A new or cleared file is not saved yet (set here: the ready page isn't on screen then).
+        .onChange(of: files?.directory) { _, _ in filesSaved = false }
         .toolbar {
             if wordStep != .source && !busy {
                 ToolbarItem(placement: .topBarLeading) {
@@ -609,10 +613,11 @@ struct AdvancedOfflineToolContent:View {
                     Text("Your Word file is ready").font(.system(size: 24, weight: .bold)).foregroundStyle(TK.grey900)
                     Text(files?.urls.first?.lastPathComponent ?? "Document.docx").font(.system(size: 16)).foregroundStyle(TK.grey600)
                 }
+                SaveStatus(saved: filesSaved)
             }.frame(maxWidth: .infinity)
         } actions: {
             Button("Preview") { quickLook = true }.buttonStyle(SecondaryCTAStyle()).disabled(files == nil).accessibilityIdentifier("word-preview")
-            Button("Share Word file") { sharing = true }.buttonStyle(CTAButtonStyle()).disabled(files == nil).accessibilityIdentifier("word-share")
+            SaveFirstButton(urls: files?.urls, saved: $filesSaved, shareTitle: "Share Word file", shareID: "word-share") { sharing = true }
         }
     }
     private var showsWordLayout: Bool {

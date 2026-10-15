@@ -5,6 +5,15 @@ final class AdvancedToolsUITests: HushUITestCase {
         let expectation = XCTNSPredicateExpectation(predicate:NSPredicate(format:"exists == true AND enabled == true"),object:button)
         XCTAssertEqual(XCTWaiter.wait(for:[expectation],timeout:30),.completed,file:file,line:line)
     }
+    /// Ready pages save first: "Save to Files" (simulated in UI tests), then the share button.
+    @MainActor private func saveFirst(_ app:XCUIApplication,_ share:String,file:StaticString = #filePath,line:UInt = #line) {
+        let save = app.buttons["files-save"]
+        ready(save,file:file,line:line)
+        XCTAssertFalse(app.buttons[share].exists,"Sharing comes after saving",file:file,line:line)
+        XCTAssertTrue(app.descendants(matching:.any)["save-status"].exists,file:file,line:line)
+        save.tap()
+        ready(app.buttons[share],file:file,line:line)
+    }
     /// A finished Word, Excel or PowerPoint file opens full screen; close it to continue.
     @MainActor private func closePreview(_ app:XCUIApplication,file:StaticString = #filePath,line:UInt = #line) {
         let done = app.buttons["office-preview-done"]
@@ -119,7 +128,7 @@ final class AdvancedToolsUITests: HushUITestCase {
         app.buttons["word-type-text"].tap()
         XCTAssertFalse(app.buttons["offline-run"].isEnabled)
         editor.tap();editor.typeText("Local document\nOffline export example")
-        app.buttons["offline-run"].tap();closePreview(app);ready(app.buttons["word-share"])
+        app.buttons["offline-run"].tap();closePreview(app);saveFirst(app,"word-share")
         XCTAssertFalse(app.buttons["offline-run"].exists)
         app.buttons["word-preview"].tap()
         XCTAssertTrue(app.navigationBars.buttons["Done"].waitForExistence(timeout:10))
@@ -155,6 +164,8 @@ final class AdvancedToolsUITests: HushUITestCase {
         XCTAssertTrue(app.navigationBars.buttons["Done"].waitForExistence(timeout:15))
         saveShot(app,"math-pdf-preview")
         app.navigationBars.buttons["Done"].tap()
+        saveFirst(app,"math-primary")
+        saveShot(app,"math-saved")
         app.buttons["math-primary"].tap()
         XCTAssertTrue(app.collectionViews["activityCollectionView"].waitForExistence(timeout:15))
         saveShot(app,"math-share-document")
@@ -250,13 +261,13 @@ final class AdvancedToolsUITests: HushUITestCase {
         app.buttons["word-type-text"].tap()
         let editor = app.textViews["offline-text"]
         editor.tap();editor.typeText("First version")
-        app.buttons["offline-run"].tap();closePreview(app);ready(app.buttons["word-share"])
+        app.buttons["offline-run"].tap();closePreview(app);saveFirst(app,"word-share")
         app.buttons["word-step-back"].tap()
         XCTAssertFalse(app.buttons["word-share"].exists)
         XCTAssertFalse(app.buttons["word-preview"].exists)
         XCTAssertTrue((editor.value as? String ?? "").contains("First version"))
         editor.tap();editor.typeText(" revised")
-        app.buttons["offline-run"].tap();closePreview(app);ready(app.buttons["word-share"])
+        app.buttons["offline-run"].tap();closePreview(app);saveFirst(app,"word-share")
     }
     @MainActor func testWordCameraShowsEachPageBeforeContinuing() {
         let app = XCUIApplication();app.launchArguments = ["--ui-test-session",UUID().uuidString,"-app-language","en","--simulate-camera"];app.launch()
@@ -305,7 +316,7 @@ final class AdvancedToolsUITests: HushUITestCase {
         ready(app.buttons["word-extract"])
         XCTAssertFalse(app.buttons["offline-run"].exists)
         app.buttons["word-extract"].tap();ready(app.buttons["offline-run"])
-        app.buttons["offline-run"].tap();closePreview(app);ready(app.buttons["word-share"])
+        app.buttons["offline-run"].tap();closePreview(app);saveFirst(app,"word-share")
         XCTAssertFalse(app.buttons["word-extract"].exists)
         XCTAssertFalse(app.buttons["offline-run"].exists)
         XCTAssertFalse(app.textViews["offline-text"].exists)
@@ -336,7 +347,7 @@ final class AdvancedToolsUITests: HushUITestCase {
         XCTAssertTrue((app.textViews["offline-text"].value as? String ?? "").contains("Paper\t15"))
         app.buttons["word-plain-text"].tap()
         XCTAssertTrue(page.waitForExistence(timeout:5))
-        app.buttons["offline-run"].tap();closePreview(app);ready(app.buttons["word-share"])
+        app.buttons["offline-run"].tap();closePreview(app);saveFirst(app,"word-share")
     }
     @MainActor func testPowerPointMultiplePagesOrderRemovalAndExport() {
         let app = launch(document:true);app.tool("PowerPoint export").tap()
@@ -349,7 +360,7 @@ final class AdvancedToolsUITests: HushUITestCase {
         let selected = XCTAttachment(screenshot:app.screenshot());selected.name = "PowerPoint selected pages";selected.lifetime = .keepAlways;add(selected)
         app.buttons["ppt-options-1"].tap();app.buttons["Remove slide"].tap()
         XCTAssertFalse(app.staticTexts["ppt-source-2"].exists)
-        app.buttons["office-continue"].tap();app.buttons["ppt-create"].tap();closePreview(app);ready(app.buttons["ppt-share"])
+        app.buttons["office-continue"].tap();app.buttons["ppt-create"].tap();closePreview(app);saveFirst(app,"ppt-share")
         XCTAssertTrue(app.staticTexts["1 slide ready"].exists)
         app.buttons["ppt-preview"].tap()
         XCTAssertTrue(app.navigationBars.buttons["Done"].waitForExistence(timeout:10))
@@ -360,7 +371,7 @@ final class AdvancedToolsUITests: HushUITestCase {
         app.buttons["ppt-library-page-2"].tap();app.buttons["ppt-add-pages"].tap()
         ready(app.buttons["office-continue"])
         XCTAssertTrue(app.staticTexts["ppt-source-2"].label.contains("Page 2"))
-        app.buttons["office-continue"].tap();app.buttons["ppt-create"].tap();closePreview(app);ready(app.buttons["ppt-share"])
+        app.buttons["office-continue"].tap();app.buttons["ppt-create"].tap();closePreview(app);saveFirst(app,"ppt-share")
         let result = XCTAttachment(screenshot:app.screenshot());result.name = "PowerPoint ready";result.lifetime = .keepAlways;add(result)
         app.buttons["ppt-share"].tap()
         XCTAssertTrue(app.collectionViews["activityCollectionView"].waitForExistence(timeout:10))
@@ -411,7 +422,7 @@ final class AdvancedToolsUITests: HushUITestCase {
         XCTAssertTrue(cell.label.contains("corrected"))
         let shot = XCTAttachment(screenshot:app.screenshot());shot.name = "Excel review cells";shot.lifetime = .keepAlways;add(shot)
         if onPage { app.buttons["office-page-editor-done"].tap(); XCTAssertTrue(preview.waitForExistence(timeout:5)) }
-        app.buttons["ppt-create"].tap();closePreview(app);ready(app.buttons["ppt-share"])
+        app.buttons["ppt-create"].tap();closePreview(app);saveFirst(app,"ppt-share")
         app.buttons["ppt-preview"].tap()
         XCTAssertTrue(app.navigationBars.buttons["Done"].waitForExistence(timeout:15))
         _ = app.staticTexts.containing(NSPredicate(format:"label CONTAINS[c] %@","Paper")).firstMatch.waitForExistence(timeout:15)
@@ -429,7 +440,7 @@ final class AdvancedToolsUITests: HushUITestCase {
         app.buttons["ppt-mode-text"].tap();app.buttons["office-extract"].tap()
         XCTAssertTrue(app.textViews["ppt-text-1"].waitForExistence(timeout:60))
         XCTAssertTrue((app.textViews["ppt-text-1"].value as? String ?? "").contains("SCANNER TEST PAGE"))
-        app.buttons["ppt-create"].tap();closePreview(app);ready(app.buttons["ppt-share"])
+        app.buttons["ppt-create"].tap();closePreview(app);saveFirst(app,"ppt-share")
         app.buttons["ppt-preview"].tap()
         XCTAssertTrue(app.navigationBars.buttons["Done"].waitForExistence(timeout:15))
         _ = app.staticTexts.containing(NSPredicate(format:"label CONTAINS[c] %@","SCANNER TEST PAGE")).firstMatch.waitForExistence(timeout:15)
@@ -482,13 +493,13 @@ final class AdvancedToolsUITests: HushUITestCase {
         var app = launch(document:true);app.tool("Word export").tap()
         ready(app.buttons["word-extract"]);designShot(app,"word-1-source")
         app.buttons["word-extract"].tap();ready(app.buttons["offline-run"]);designShot(app,"word-2-review")
-        app.buttons["offline-run"].tap();closePreview(app);ready(app.buttons["word-share"]);designShot(app,"word-3-ready")
+        app.buttons["offline-run"].tap();closePreview(app);saveFirst(app,"word-share");designShot(app,"word-3-ready")
         app.terminate()
         // PowerPoint: pages, look, ready.
         app = launch(document:true);app.tool("PowerPoint export").tap()
         ready(app.buttons["office-continue"]);designShot(app,"ppt-1-pages")
         app.buttons["office-continue"].tap();ready(app.buttons["ppt-create"]);designShot(app,"ppt-2-look")
-        app.buttons["ppt-create"].tap();closePreview(app);ready(app.buttons["ppt-share"]);designShot(app,"ppt-3-ready")
+        app.buttons["ppt-create"].tap();closePreview(app);saveFirst(app,"ppt-share");designShot(app,"ppt-3-ready")
         app.terminate()
         // Excel: check cells.
         app = launch(document:true,table:true);app.tool("Excel export").tap()
@@ -525,6 +536,8 @@ final class AdvancedToolsUITests: HushUITestCase {
 
 extension XCUIApplication {
     /// A tile on the Tools page, scrolled into view (sections run below the fold).
+    /// Ready pages: "Save to Files" comes first, then the share button appears.
+    @MainActor func saveFirstButton() -> XCUIElement { buttons["files-save"] }
     @MainActor func tool(_ label: String) -> XCUIElement {
         let button = buttons[label]
         _ = button.waitForExistence(timeout: 2)

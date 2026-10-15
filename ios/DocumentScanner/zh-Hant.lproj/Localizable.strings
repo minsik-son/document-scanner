@@ -2073,3 +2073,10 @@
 "Join screenshots of a long chat or page into one tall picture." = "把長聊天或長頁面的截圖拼成一張長圖。";
 "Point the camera at a code" = "將相機對準 QR 碼";
 "Joined on this iPhone. Nothing is uploaded." = "在這台 iPhone 上拼接，不會上傳任何內容。";
+"Save to Files" = "儲存到「檔案」";
+"Saved to Files" = "已儲存到「檔案」";
+"Not saved yet" = "尚未儲存";
+"Couldn't save" = "無法儲存";
+"Allow HushScan to add photos in Settings, then try again." = "請在「設定」中允許 HushScan 加入照片，然後再試一次。";
+"The picture couldn't be added to Photos." = "無法將圖片加入「照片」。";
+"Save it to Files, then share it. It isn't saved in your documents." = "先儲存到「檔案」，再分享。它不會儲存在你的文件中。";

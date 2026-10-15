@@ -119,11 +119,11 @@ private struct PDFToolRoot: View {
             if subscription.isPro, let id = pending { proceed(id) }
             pending = nil
         }) { PaywallView(start: .general) }
-        .fileImporter(isPresented: $importing, allowedContentTypes: [.pdf]) { response in
-            guard case .success(let url) = response else { return }
-            work.run("Adding your PDF…") {
-                let id = try await store.importNativePDF(url)
-                select(id)
+        // Merge and long image take several PDFs at once.
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.pdf], allowsMultipleSelection: multiple) { response in
+            guard case .success(let urls) = response, !urls.isEmpty else { return }
+            work.run(urls.count == 1 ? "Adding your PDF…" : "Adding your PDFs…") {
+                for url in urls { select(try await store.importNativePDF(url)) }
             }
         }
         .fullScreenCover(isPresented: $scanning) {
@@ -135,9 +135,11 @@ private struct PDFToolRoot: View {
         .fullScreenCover(item: $annotate) { route in AnnotationEditor(documentID: route.id) }
         .onAppear {
             guard !started else { return }; started = true
-            if let id = preselected, store.document(id) != nil { select(id) }
+            if let id = preselected, store.document(id) != nil { tool == .longImage ? proceed(id) : select(id) }
         }
     }
+    /// Tools that join several documents.
+    private var multiple: Bool { tool == .merge || tool == .longImage }
     private var landing: some View {
         ToolPage(title: tool.headline, subtitle: tool.promise) {
             ToolHero(art: tool.art)
@@ -146,15 +148,16 @@ private struct PDFToolRoot: View {
                     ChoiceRow(symbol: "camera.fill", title: "Scan with the camera", detail: "Saved as a new PDF, then opened here", tint: TK.blue, soft: TK.blueSoft)
                 }.buttonStyle(.plain).accessibilityIdentifier("pdf-scan")
                 Button { importing = true } label: {
-                    ChoiceRow(symbol: "folder.fill", title: "Choose a PDF from Files", detail: "It's added to your documents", tint: TK.orange, soft: TK.orangeSoft)
+                    ChoiceRow(symbol: "folder.fill", title: multiple ? "Choose PDFs from Files" : "Choose a PDF from Files",
+                              detail: multiple ? "Pick several at once. They're added to your documents" : "It's added to your documents", tint: TK.orange, soft: TK.orangeSoft)
                 }.buttonStyle(.plain).accessibilityIdentifier("pdf-import")
             }
             VStack(alignment: .leading, spacing: 8) {
-                SectionLabel(text: tool == .merge ? "Choose documents in order" : "From your documents")
+                SectionLabel(text: multiple ? "Choose documents in order" : "From your documents")
                 if documents.isEmpty {
                     Text("No saved documents yet. Scan or import one first.").font(.system(size: 15)).foregroundStyle(TK.grey500).padding(.vertical, 12)
                 } else {
-                    DocumentChoiceList(documents: documents, selected: chosen, multiple: tool == .merge,
+                    DocumentChoiceList(documents: documents, selected: chosen, multiple: multiple,
                                        disabled: { tool == .split && $0.pages.count < 2 }) { select($0.id) }
                 }
             }
@@ -164,10 +167,17 @@ private struct PDFToolRoot: View {
                 Button(chosen.count < 2 ? "Choose 2 or more" : "Next · \(chosen.count) documents") { forward = true; step = 1 }
                     .buttonStyle(CTAButtonStyle()).disabled(chosen.count < 2).accessibilityIdentifier("merge-next")
                 if !subscription.isPro { Text("Free: merge 2 documents. Pro: any number.").font(.system(size: 13)).foregroundStyle(TK.grey500).accessibilityIdentifier("merge-free-limit") }
+            } else if tool == .longImage {
+                Button(chosen.isEmpty ? "Choose documents" : chosen.count == 1 ? "Next" : "Next · \(chosen.count) documents") { forward = true; step = 1 }
+                    .buttonStyle(CTAButtonStyle()).disabled(chosen.isEmpty).accessibilityIdentifier("long-image-documents-next")
             }
         }
     }
     private func select(_ id: UUID) {
+        if tool == .longImage {
+            if let i = chosen.firstIndex(of: id) { chosen.remove(at: i) } else { chosen.append(id) }
+            return
+        }
         if tool == .merge {
             if let i = chosen.firstIndex(of: id) { chosen.remove(at: i); return }
             if !subscription.isPro && chosen.count >= DocumentTool.freeMergeDocuments + 1 { pending = nil; paywall = true; return }
@@ -194,7 +204,9 @@ private struct PDFToolRoot: View {
         case .compress: CompressToolStep(document: doc, work: work, finish: finish)
         case .protect: ProtectToolStep(document: doc, work: work, finish: finish)
         case .images: ExportImagesToolStep(document: doc, work: work, finish: finish)
-        case .longImage: LongImageToolStep(document: doc, work: work, finish: finish)
+        case .longImage:
+            let docs = chosen.compactMap { store.document($0) }
+            LongImageToolStep(documents: docs.isEmpty ? [doc] : docs, work: work, finish: finish)
         case .print: PrintToolStep(document: doc, work: work)
         case .annotate, .identity: EmptyView()
         }
@@ -1120,36 +1132,53 @@ private struct ExportImagesToolStep: View {
 
 private struct LongImageToolStep: View {
     @EnvironmentObject private var store: LibraryStore
-    let document: ScanDocument
+    /// In the order chosen; their pages are joined one document after another.
+    let documents: [ScanDocument]
     @ObservedObject var work: ToolWork
     let finish: (PDFToolResult) -> Void
-    @State private var selected: [Int] = []
+    /// Chosen pages per document.
+    @State private var selected: [[Int]]
     @State private var choosing = false
     @State private var width = 1080
     @State private var gap = 0
-    private var count: String { selected.count == 1 ? "1 page" : "\(selected.count) pages" }
+    init(documents: [ScanDocument], work: ToolWork, finish: @escaping (PDFToolResult) -> Void) {
+        self.documents = documents; self.work = work; self.finish = finish
+        _selected = State(initialValue: documents.map { Array($0.pages.indices.prefix(100)) })
+    }
+    private var total: Int { selected.reduce(0) { $0 + $1.count } }
+    private var count: String { total == 1 ? "1 page" : "\(total) pages" }
+    /// (document, page) in the order they're joined.
+    private var picks: [(Int, Int)] { selected.enumerated().flatMap { k, pages in pages.sorted().map { (k, $0) } } }
     var body: some View {
         ZStack {
             if choosing { optionsPage.transition(.move(edge: .trailing).combined(with: .opacity)) }
             else { pagesPage.transition(.move(edge: .leading).combined(with: .opacity)) }
         }
         .animation(.snappy(duration: 0.3), value: choosing)
-        .onAppear { if selected.isEmpty { selected = Array(document.pages.indices.prefix(100)) } }
     }
     private var pagesPage: some View {
         ToolPage(title: "Which pages?", subtitle: "They're joined top to bottom into one image.") {
-            PageSelection(document: document, selected: $selected)
+            if documents.count == 1 {
+                PageSelection(document: documents[0], selected: $selected[0])
+            } else {
+                ForEach(documents.indices, id: \.self) { k in
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(verbatim: "\(k + 1). \(documents[k].title)").font(.system(size: 17, weight: .bold)).foregroundStyle(TK.grey900).lineLimit(2)
+                        PageSelection(document: documents[k], selected: $selected[k])
+                    }
+                }
+            }
         } actions: {
-            Button(selected.isEmpty ? "Select pages" : "Next · \(count)") { choosing = true }
-                .buttonStyle(CTAButtonStyle()).disabled(selected.isEmpty).accessibilityIdentifier("long-image-next")
+            Button(total == 0 ? "Select pages" : "Next · \(count)") { choosing = true }
+                .buttonStyle(CTAButtonStyle()).disabled(total == 0).accessibilityIdentifier("long-image-next")
         }
     }
     private var optionsPage: some View {
         ToolPage(title: "How should it look?", subtitle: "\(count) joined top to bottom.") {
             ScrollView {
                 VStack(spacing: CGFloat(gap) / 4) {
-                    ForEach(selected.sorted().prefix(8), id: \.self) { i in
-                        PDFPageThumb(document: document, index: i).frame(width: 120).background(.white)
+                    ForEach(Array(picks.prefix(8).enumerated()), id: \.offset) { _, pick in
+                        PDFPageThumb(document: documents[pick.0], index: pick.1).frame(width: 120).background(.white)
                     }
                 }.padding(10).frame(maxWidth: .infinity)
             }.frame(height: 240).background(TK.grey100, in: RoundedRectangle(cornerRadius: 16))
@@ -1178,10 +1207,28 @@ private struct LongImageToolStep: View {
         Button { withAnimation(.snappy) { gap = value } } label: { OptionCard(title: title, detail: detail, selected: gap == value) }.buttonStyle(.plain)
     }
     private func create() {
-        let doc = document, picks = selected.sorted(), w = width, g = gap
+        let docs = documents, chosen = picks, w = width, g = gap
         work.run("Joining pages…") {
-            let source = try PDFTools.data(doc, store: store)
-            let files = try await OfflineWork.perform { try LocalDocumentTools.longImages(source, indices: picks, width: w, gap: g) }
+            let source: Data, indices: [Int]
+            if docs.count == 1 {
+                source = try PDFTools.data(docs[0], store: store); indices = chosen.map(\.1)
+            } else {
+                // The chosen pages of every document, in order, as one PDF to join.
+                let sources = try docs.map { try PDFTools.data($0, store: store) }
+                let order = chosen.map { [$0.0, $0.1] }
+                source = try await OfflineWork.perform {
+                    let combined = PDFDocument()
+                    let pdfs = sources.map { PDFDocument(data: $0) }
+                    for pick in order {
+                        guard let page = pdfs[pick[0]]?.page(at: pick[1])?.copy() as? PDFPage else { throw ScannerError.message("A page couldn't be read.") }
+                        combined.insert(page, at: combined.pageCount)
+                    }
+                    guard let data = combined.dataRepresentation() else { throw ScannerError.message("A page couldn't be read.") }
+                    return data
+                }
+                indices = Array(0..<chosen.count)
+            }
+            let files = try await OfflineWork.perform { try LocalDocumentTools.longImages(source, indices: indices, width: w, gap: g) }
             finish(PDFToolResult(title: "Your long image is ready", detail: files.urls.count > 1 ? "Very long results are split into \(files.urls.count) numbered parts." : "Share it or save it to Photos.",
                                  files: files, shareTitle: "Share image"))
         }

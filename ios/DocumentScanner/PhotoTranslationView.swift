@@ -22,6 +22,7 @@ struct PhotoTranslationView: View {
     @State private var files: ExportedFiles?
     @State private var sharing = false
     @State private var saved = false
+    @State private var savedPage = false
     private var ready:Bool { composition != nil }
     private var complete:Bool { !scan.regions.isEmpty && scan.regions.allSatisfy { $0.keepOriginal || !$0.target.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty } }
     private var displayed:UIImage { original ? scan.image : composition?.image ?? scan.image }
@@ -83,6 +84,12 @@ struct PhotoTranslationView: View {
         }
         .fullScreenCover(isPresented: $zoom) { EnlargedScanPreview(initialImage: displayed) { displayed } }
         .sheet(isPresented: $sharing) { if let files { ShareSheet(items: files.urls) } }
+        .fullScreenCover(isPresented: $savedPage) {
+            SavedPage(place: .documents, urls: files?.urls ?? [], shareTitle: "Share PDF", shareID: "translation-saved-share") {
+                savedPage = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { dismiss() }
+            }
+        }
         .onChange(of: from) { _, _ in languageChanged() }
         .onChange(of: to) { _, _ in languageChanged() }
         .onAppear { if !scan.clarityChecked { scan = TranslationQuality.checked(scan, language: scan.recognitionLanguage ?? from) } }
@@ -302,7 +309,12 @@ struct PhotoTranslationView: View {
         job = Task { defer { busy = false }; do {
             let data = try await OfflineWork.perform { try OfflineImageEngine.pdf([composition.image],text:[composition.text]) }
             try Task.checkCancellation()
-            if save { _ = try await store.saveGeneratedPDF(data,title:name);saved = true }
+            if save {
+                _ = try await store.saveGeneratedPDF(data,title:name);saved = true
+                // Its own saved page, with Share (this PDF) and Done.
+                if let files { ExportFiles.remove(files.directory) };files = try ExportFiles.write([(name+".pdf",data)])
+                UINotificationFeedbackGenerator().notificationOccurred(.success);savedPage = true
+            }
             else { if let files { ExportFiles.remove(files.directory) };files = try ExportFiles.write([(name+".pdf",data)]);sharing = true }
         } catch { report(error) } }
     }

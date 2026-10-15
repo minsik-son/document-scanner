@@ -34,6 +34,7 @@ private final class PresentationWorkspace: ObservableObject {
 }
 
 struct PowerPointExportView: View {
+    @Environment(\.dismiss) private var dismissTool
     @EnvironmentObject private var store: LibraryStore
     let documentID: UUID?
     var excel = false
@@ -281,7 +282,7 @@ struct PowerPointExportView: View {
                           fileName: export?.urls.first?.lastPathComponent ?? (excel ? "Table.xlsx" : "Slides.pptx"), titleID: "ppt-ready")
         } actions: {
             Button("Preview") { preview = true }.buttonStyle(SecondaryCTAStyle()).accessibilityIdentifier("ppt-preview")
-            SaveFirstButton(urls: export?.urls, saved: $exportSaved, shareTitle: "Share \(formatName)", shareID: "ppt-share") { sharing = true }
+            SaveFirstButton(urls: export?.urls, saved: $exportSaved, shareTitle: "Share \(formatName)", shareID: "ppt-share", share: { sharing = true }, finish: { dismissTool() })
         }
     }
     private func slideRow(_ page:PresentationPage,index:Int) -> some View {

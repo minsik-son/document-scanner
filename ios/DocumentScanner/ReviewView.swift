@@ -78,6 +78,8 @@ struct ReviewView: View {
     @State private var imageFiles: ExportedFiles?
     @State private var sharingImages: ExportedFiles?
     @State private var savedToPhotos = false
+    /// Pictures saved to Photos: their own saved page, then Share or Done.
+    @State private var savedPhotosPage: ExportedFiles?
     @State private var openingPDF = false
     /// Conversion asked about in the sheet; it opens once the sheet has closed.
     @State private var confirmConvert: ConversionRoute?
@@ -514,6 +516,12 @@ struct ReviewView: View {
                 .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 8)
         }
         .background(TK.paper)
+        .fullScreenCover(item: $savedPhotosPage) { files in
+            SavedPage(place: .photos, urls: files.urls, shareTitle: "Share images", shareID: "saved-photos-share") {
+                savedPhotosPage = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { finishSaved() }
+            }
+        }
     }
     private func savedDetail(_ doc: ScanDocument) -> String {
         let pages = doc.pages.count == 1 ? L("1 page") : String(format: L("%lld pages"), doc.pages.count)
@@ -530,6 +538,8 @@ struct ReviewView: View {
     private func saveImagesToPhotos(_ files: ExportedFiles) {
         for url in files.urls { if let image = UIImage(contentsOfFile: url.path) { UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil) } }
         savedToPhotos = true
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        savedPhotosPage = files
     }
     private struct Conversion { let route: ConversionRoute; let letter: String; let title: String; let detail: String; let fill: Color }
     /// Word blue, Excel green, PowerPoint orange: the colours people know these files by.

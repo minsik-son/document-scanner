@@ -45,7 +45,7 @@ struct MathDocumentView: View {
             case .ready:
                 ToolPage(title: "") { readyContent } actions: {
                     Button("Preview") { previewing = true }.buttonStyle(SecondaryCTAStyle()).accessibilityIdentifier("math-preview-file")
-                    SaveFirstButton(urls: files?.urls, saved: $filesSaved, shareTitle: "Share document", shareID: "math-primary") { sharing = true }
+                    SaveFirstButton(urls: files?.urls, saved: $filesSaved, shareTitle: "Share document", shareID: "math-primary", share: { sharing = true }, finish: { dismiss() })
                 }
             }
         }

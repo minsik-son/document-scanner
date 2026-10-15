@@ -2087,3 +2087,14 @@
 "Leave without saving?" = "저장하지 않고 나갈까요?";
 "Leave without saving" = "저장하지 않고 나가기";
 "Corrections made here won't be saved. To keep them, tap Done." = "여기서 고친 내용은 저장되지 않아요. 저장하려면 완료를 누르세요.";
+"Check the long image" = "긴 이미지 확인";
+"Tap a screenshot to see it below, then trim it and check the overlap." = "스크린샷을 탭하면 아래에서 볼 수 있어요. 자르고 겹치는 부분을 확인하세요.";
+"Choose documents" = "문서 선택";
+"Choose PDFs from Files" = "파일 앱에서 PDF 선택";
+"Pick several at once. They're added to your documents" = "한 번에 여러 개를 고를 수 있어요. 내 문서에 추가돼요";
+"Adding your PDFs…" = "PDF 추가 중…";
+"Saved to your documents" = "내 문서에 저장했어요";
+"You'll find it in the folder you picked in Files." = "파일 앱에서 고른 폴더에 있어요.";
+"You'll find it in the Photos app." = "사진 앱에서 볼 수 있어요.";
+"You'll find it in Documents." = "문서 탭에서 볼 수 있어요.";
+"%lld files" = "파일 %lld개";

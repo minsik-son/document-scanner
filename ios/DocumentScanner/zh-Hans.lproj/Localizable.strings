@@ -2087,3 +2087,14 @@
 "Leave without saving?" = "不存储就退出？";
 "Leave without saving" = "不存储并退出";
 "Corrections made here won't be saved. To keep them, tap Done." = "在这里所做的更正不会存储。要保留，请轻点“完成”。";
+"Check the long image" = "检查长图";
+"Tap a screenshot to see it below, then trim it and check the overlap." = "轻点截图即可在下方查看，然后裁剪并检查重叠部分。";
+"Choose documents" = "选择文稿";
+"Choose PDFs from Files" = "从“文件”中选取 PDF";
+"Pick several at once. They're added to your documents" = "可一次选择多个，会添加到你的文稿中";
+"Adding your PDFs…" = "正在添加 PDF…";
+"Saved to your documents" = "已存储到你的文稿";
+"You'll find it in the folder you picked in Files." = "可在“文件”中你选择的文件夹里找到。";
+"You'll find it in the Photos app." = "可在“照片”App 中找到。";
+"You'll find it in Documents." = "可在“文稿”中找到。";
+"%lld files" = "%lld 个文件";

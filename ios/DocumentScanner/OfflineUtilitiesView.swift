@@ -60,14 +60,13 @@ struct QRCodeView: View {
                         Image(uiImage: image).interpolation(.none).resizable().scaledToFit().frame(maxWidth: 220, maxHeight: 220)
                             .padding(12).background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                             .frame(maxWidth: .infinity).accessibilityLabel("Generated QR code")
-                        SaveStatus(saved: qrSaved, photos: true).frame(maxWidth: .infinity)
                     }
                 }
                 Label("Codes are read on this iPhone. Links are not opened automatically.", systemImage: "lock.shield")
                     .font(.system(size: 13)).foregroundStyle(TK.grey500)
             } actions: {
                 if image != nil {
-                    SaveFirstButton(urls: qrFile?.urls, saved: $qrSaved, photos: true, shareTitle: "Share QR image", shareID: "qr-share") { share = qrFile }
+                    SaveFirstButton(urls: qrFile?.urls, saved: $qrSaved, photos: true, shareTitle: "Share QR image", shareID: "qr-share", share: { share = qrFile }, finish: { dismiss() })
                 } else if !text.isEmpty {
                     Button("Generate QR code") { generate() }.buttonStyle(CTAButtonStyle()).accessibilityIdentifier("qr-generate")
                 }
@@ -171,68 +170,126 @@ struct ScreenshotStitchView: View {
         .disabled(busy)
         .overlay { if busy { BusyOverlay(text: working) } }
     }
+    /// After choosing: order, trim and overlap, then the long image — on the tool page design.
     private var editor: some View {
-            Form {
-                if let output {
-                    Section("Preview") {
-                        ForEach(output.urls, id: \.self) { url in
-                            if let image = LocalDocumentTools.previewImage(url) { Image(uiImage: image).resizable().scaledToFit() }
-                        }
-                        Text("\(output.urls.count) PNG file(s). Long results are split into numbered parts.").font(.caption)
-
+        ToolPage(title: output == nil ? "Stitch screenshots" : "Check the long image",
+                 subtitle: output == nil ? "Tap a screenshot to see it below, then trim it and check the overlap." : nil) {
+            if let output {
+                VStack(spacing: 0) {
+                    ForEach(output.urls, id: \.self) { url in
+                        if let image = LocalDocumentTools.previewImage(url) { Image(uiImage: image).resizable().scaledToFit() }
                     }
-                } else {
-                    Section {
-                        PhotosPicker(selection: $selection, maxSelectionCount: 12, selectionBehavior: .ordered, matching: .images) { Label("Choose screenshots", systemImage: "photo.on.rectangle") }
-                        Text("Choose 2–12 screenshots from top to bottom. Trim fixed headers and footers, then check each overlap.").font(.footnote)
-                    }
-                    if !pages.isEmpty {
-                        Section("Order") {
-                            ForEach(Array(pages.enumerated()), id: \.element.id) { i, _ in
-                                HStack {
-                                    Text("Screenshot \(i+1)")
-                                    Spacer()
-                                    Button { pages.swapAt(i,i-1); resetSeams() } label: { Image(systemName: "arrow.up") }.disabled(i == 0).accessibilityLabel("Move screenshot \(i+1) earlier")
-                                    Button { pages.swapAt(i,i+1); resetSeams() } label: { Image(systemName: "arrow.down") }.disabled(i == pages.count-1).accessibilityLabel("Move screenshot \(i+1) later")
-                                }.buttonStyle(.borderless)
-                            }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(TK.grey200, lineWidth: 1))
+                Text("\(output.urls.count) PNG file(s). Long results are split into numbered parts.").font(.system(size: 13)).foregroundStyle(TK.grey500)
+            } else {
+                PhotosPicker(selection: $selection, maxSelectionCount: 12, selectionBehavior: .ordered, matching: .images) {
+                    HStack(spacing: 16) {
+                        Image("tool-stitch").resizable().interpolation(.high).scaledToFit().frame(width: 34, height: 34)
+                            .frame(width: 48, height: 48).background(TK.purpleSoft, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Choose screenshots").font(.system(size: 17, weight: .semibold)).foregroundStyle(TK.grey900)
+                            Text("Choose 2–12 screenshots from top to bottom. Trim fixed headers and footers, then check each overlap.")
+                                .font(.system(size: 14)).foregroundStyle(TK.grey600).fixedSize(horizontal: false, vertical: true)
                         }
-                        Section("Crop and overlap") {
-                            Picker("Screenshot", selection: $selected) { ForEach(pages.indices, id: \.self) { Text("Screenshot \($0+1)").tag($0) } }.accessibilityIdentifier("stitch-selected")
-                            if pages.indices.contains(selected) {
-                                Image(uiImage: pages[selected].image).resizable().scaledToFit().frame(maxHeight: 220)
-                                LabeledContent("Trim top", value: "\(Int(pages[selected].top*100))%")
-                                Slider(value: $pages[selected].top, in: 0...0.3, step: 0.001).accessibilityLabel("Trim screenshot top").onChange(of: pages[selected].top) { _, _ in resetSeams() }
-                                LabeledContent("Trim bottom", value: "\(Int(pages[selected].bottom*100))%")
-                                Slider(value: $pages[selected].bottom, in: 0...0.3, step: 0.001).accessibilityLabel("Trim screenshot bottom").onChange(of: pages[selected].bottom) { _, _ in resetSeams() }
-                                if selected > 0 {
-                                    LabeledContent("Overlap with previous", value: "\(Int(pages[selected].overlap*100))%")
-                                    Slider(value: $pages[selected].overlap, in: 0...0.8, step: 0.001).accessibilityLabel("Screenshot overlap")
-                                    Button("Find overlap") { detectOverlap() }
+                        Spacer(minLength: 8)
+                        Image(systemName: "chevron.right").font(.system(size: 14, weight: .semibold)).foregroundStyle(TK.grey400)
+                    }
+                    .padding(.vertical, 10).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).accessibilityLabel(L("Choose screenshots"))
+                if !pages.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        SectionLabel(text: "Order")
+                        VStack(spacing: 8) {
+                            ForEach(Array(pages.enumerated()), id: \.element.id) { i, page in orderRow(i, page) }
+                        }
+                    }
+                    VStack(alignment: .leading, spacing: 12) {
+                        SectionLabel(text: "Crop and overlap")
+                        HStack {
+                            Text("Screenshot").font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey700)
+                            Spacer()
+                            Picker("Screenshot", selection: $selected) { ForEach(pages.indices, id: \.self) { Text("Screenshot \($0+1)").tag($0) } }
+                                .pickerStyle(.menu).tint(TK.blue).accessibilityIdentifier("stitch-selected")
+                        }
+                        if pages.indices.contains(selected) {
+                            Image(uiImage: pages[selected].image).resizable().scaledToFit().frame(maxHeight: 260)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .frame(maxWidth: .infinity)
+                                .id(pages[selected].id)
+                            trimSlider("Trim top", label: "Trim screenshot top", value: $pages[selected].top, range: 0...0.3)
+                            trimSlider("Trim bottom", label: "Trim screenshot bottom", value: $pages[selected].bottom, range: 0...0.3)
+                            if selected > 0 {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack {
+                                        Text("Overlap with previous").font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey700)
+                                        Spacer()
+                                        Text("\(Int(pages[selected].overlap*100))%").font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.blue).monospacedDigit()
+                                    }
+                                    Slider(value: $pages[selected].overlap, in: 0...0.8, step: 0.001).tint(TK.blue).accessibilityLabel("Screenshot overlap")
                                 }
+                                Button("Find overlap") { detectOverlap() }.buttonStyle(ChipStyle(selected: false))
                             }
                         }
-
                     }
+                    .padding(16).background(TK.grey50, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 }
-                if busy { ProgressView(L(working)) }
-            }.disabled(busy)
-                .safeAreaInset(edge: .bottom) {
-                    VStack(spacing: 8) {
-                        if let message { Text(L(message)).font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("stitch-status") }
-                        if let output {
-                            SaveStatus(saved: outputSaved, photos: true)
-                            HStack(spacing: 10) {
-                                Button("Change seams") { ExportFiles.remove(output.directory); self.output = nil; message = nil; outputSaved = false }
-                                    .buttonStyle(SecondaryCTAStyle())
-                                SaveFirstButton(urls: output.urls, saved: $outputSaved, photos: true, shareTitle: "Share long image", shareID: "stitch-share") { share = output }
-                            }
-                        } else if !pages.isEmpty {
-                            Button("Preview long image") { export() }.buttonStyle(PrimaryButton()).disabled(pages.count < 2)
-                        }
-                    }.padding().background(.regularMaterial).disabled(busy)
+            }
+        } actions: {
+            if let message { Text(L(message)).font(.system(size: 13)).foregroundStyle(TK.grey600).multilineTextAlignment(.center).accessibilityIdentifier("stitch-status") }
+            if let output {
+                HStack(spacing: 10) {
+                    Button("Change seams") { ExportFiles.remove(output.directory); self.output = nil; message = nil; outputSaved = false }
+                        .buttonStyle(SecondaryCTAStyle())
+                    SaveFirstButton(urls: output.urls, saved: $outputSaved, photos: true, shareTitle: "Share long image", shareID: "stitch-share", share: { share = output }, finish: { dismiss() })
                 }
-                .navigationTitle("Stitch screenshots").navigationBarTitleDisplayMode(.inline)
+            } else if !pages.isEmpty {
+                Button("Preview long image") { export() }.buttonStyle(CTAButtonStyle()).disabled(pages.count < 2)
+            }
+        }
+        .disabled(busy)
+        .overlay { if busy { BusyOverlay(text: working) } }
+    }
+    /// One screenshot in the order list: tapping it shows it in the trim preview below.
+    private func orderRow(_ i: Int, _ page: StitchPage) -> some View {
+        let chosen = i == selected
+        return HStack(spacing: 12) {
+            Button { withAnimation(.easeInOut(duration: 0.2)) { selected = i } } label: {
+                HStack(spacing: 12) {
+                    Image(uiImage: page.image).resizable().scaledToFill().frame(width: 34, height: 52)
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    Text("Screenshot \(i+1)").font(.system(size: 16, weight: chosen ? .semibold : .regular))
+                        .foregroundStyle(chosen ? TK.blue : TK.grey900)
+                    Spacer(minLength: 4)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).accessibilityIdentifier("stitch-row-\(i+1)")
+            .accessibilityAddTraits(chosen ? .isSelected : [])
+            Button { pages.swapAt(i, i-1); if selected == i { selected = i-1 } else if selected == i-1 { selected = i }; resetSeams() } label: {
+                Image(systemName: "arrow.up").font(.system(size: 16, weight: .semibold)).frame(width: 36, height: 36)
+            }.disabled(i == 0).accessibilityLabel("Move screenshot \(i+1) earlier")
+            Button { pages.swapAt(i, i+1); if selected == i { selected = i+1 } else if selected == i+1 { selected = i }; resetSeams() } label: {
+                Image(systemName: "arrow.down").font(.system(size: 16, weight: .semibold)).frame(width: 36, height: 36)
+            }.disabled(i == pages.count-1).accessibilityLabel("Move screenshot \(i+1) later")
+        }
+        .buttonStyle(.borderless).tint(TK.blue)
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .background(chosen ? TK.blueSoft : TK.grey50, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(chosen ? TK.blue.opacity(0.45) : .clear, lineWidth: 1.5))
+    }
+    private func trimSlider(_ title: String, label: String, value: Binding<Double>, range: ClosedRange<Double>) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(L(title)).font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.grey700)
+                Spacer()
+                Text("\(Int(value.wrappedValue*100))%").font(.system(size: 15, weight: .semibold)).foregroundStyle(TK.blue).monospacedDigit()
+            }
+            Slider(value: value, in: range, step: 0.001).tint(TK.blue).accessibilityLabel(L(label))
+                .onChange(of: value.wrappedValue) { _, _ in resetSeams() }
+        }
     }
     private func seedUITestScreenshots() {
 #if DEBUG

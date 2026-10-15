@@ -203,9 +203,12 @@ private struct SaveBackupView: View {
     @State private var backupTask: Task<Void,Never>?
     @State private var feedback: String?
     @State private var autoFolder = AutoExport.folderName
+    @State private var backupDone = false
     private func backupCreated() {
         store.perform { try store.recordBackupCreated() }
-        AppToast.show("Backup saved", symbol: "externaldrive.fill.badge.checkmark")
+        // Its own saved page, like every other save.
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { backupDone = true }
     }
     var body: some View {
         List {
@@ -229,6 +232,9 @@ private struct SaveBackupView: View {
             if let feedback { Section { Text(L(feedback)) } }
         }
         .navigationTitle("Save & backup").navigationBarTitleDisplayMode(.inline)
+        .fullScreenCover(isPresented: $backupDone) {
+            ToolDonePage(title: "Backup saved", detail: "Backup files aren't password protected. Keep them somewhere you trust.", primary: { backupDone = false })
+        }
         .navigationBarBackButtonHidden(backupBusy)
         .interactiveDismissDisabled(backupBusy)
         .sheet(isPresented: $paywall) { PaywallView() }

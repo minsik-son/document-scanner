@@ -2087,3 +2087,14 @@
 "Leave without saving?" = "ออกโดยไม่บันทึกใช่ไหม";
 "Leave without saving" = "ออกโดยไม่บันทึก";
 "Corrections made here won't be saved. To keep them, tap Done." = "การแก้ไขที่นี่จะไม่ถูกบันทึก หากต้องการเก็บไว้ ให้แตะเสร็จสิ้น";
+"Check the long image" = "ตรวจสอบภาพยาว";
+"Tap a screenshot to see it below, then trim it and check the overlap." = "แตะภาพหน้าจอเพื่อดูด้านล่าง แล้วครอปและตรวจส่วนที่ซ้อนกัน";
+"Choose documents" = "เลือกเอกสาร";
+"Choose PDFs from Files" = "เลือก PDF จากไฟล์";
+"Pick several at once. They're added to your documents" = "เลือกได้หลายไฟล์พร้อมกัน ไฟล์จะถูกเพิ่มลงในเอกสารของคุณ";
+"Adding your PDFs…" = "กำลังเพิ่ม PDF…";
+"Saved to your documents" = "บันทึกลงในเอกสารของคุณแล้ว";
+"You'll find it in the folder you picked in Files." = "อยู่ในโฟลเดอร์ที่คุณเลือกในแอปไฟล์";
+"You'll find it in the Photos app." = "ดูได้ในแอปรูปภาพ";
+"You'll find it in Documents." = "ดูได้ในเอกสาร";
+"%lld files" = "%lld ไฟล์";

@@ -314,6 +314,7 @@ struct ProToolLockView:View {
     }
 }
 struct AdvancedOfflineToolContent:View {
+    @Environment(\.dismiss) private var dismissTool
     @EnvironmentObject private var store:LibraryStore
     let tool:AdvancedTool
     var documentID:UUID?
@@ -621,7 +622,7 @@ struct AdvancedOfflineToolContent:View {
                           fileName: files?.urls.first?.lastPathComponent ?? "Document.docx")
         } actions: {
             Button("Preview") { quickLook = true }.buttonStyle(SecondaryCTAStyle()).disabled(files == nil).accessibilityIdentifier("word-preview")
-            SaveFirstButton(urls: files?.urls, saved: $filesSaved, shareTitle: "Share Word file", shareID: "word-share") { sharing = true }
+            SaveFirstButton(urls: files?.urls, saved: $filesSaved, shareTitle: "Share Word file", shareID: "word-share", share: { sharing = true }, finish: { dismissTool() })
         }
     }
     private var showsWordLayout: Bool {

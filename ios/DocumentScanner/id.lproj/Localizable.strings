@@ -2087,3 +2087,14 @@
 "Leave without saving?" = "Keluar tanpa menyimpan?";
 "Leave without saving" = "Keluar tanpa menyimpan";
 "Corrections made here won't be saved. To keep them, tap Done." = "Koreksi di sini tidak akan disimpan. Untuk menyimpannya, ketuk Selesai.";
+"Check the long image" = "Periksa gambar panjang";
+"Tap a screenshot to see it below, then trim it and check the overlap." = "Ketuk tangkapan layar untuk melihatnya di bawah, lalu pangkas dan periksa tumpang tindihnya.";
+"Choose documents" = "Pilih dokumen";
+"Choose PDFs from Files" = "Pilih PDF dari File";
+"Pick several at once. They're added to your documents" = "Pilih beberapa sekaligus. File ditambahkan ke dokumen Anda";
+"Adding your PDFs…" = "Menambahkan PDF…";
+"Saved to your documents" = "Tersimpan di dokumen Anda";
+"You'll find it in the folder you picked in Files." = "Ada di folder yang Anda pilih di File.";
+"You'll find it in the Photos app." = "Ada di app Foto.";
+"You'll find it in Documents." = "Ada di Dokumen.";
+"%lld files" = "%lld file";

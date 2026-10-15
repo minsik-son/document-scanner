@@ -441,7 +441,7 @@ struct ToolDonePage<Extra: View>: View {
         } actions: {
             if let save {
                 SaveFirstButton(urls: save.urls, saved: $saved, photos: save.photos,
-                                shareTitle: LocalizedStringKey(save.shareTitle), shareID: "tool-done-secondary", share: save.share)
+                                shareTitle: LocalizedStringKey(save.shareTitle), shareID: "tool-done-secondary", share: save.share, finish: primary)
             } else {
                 doneActions
             }
@@ -1680,6 +1680,54 @@ struct FileReadyHero: View {
         .animation(.spring(response: 0.42, dampingFraction: 0.62), value: saved)
     }
 }
+/// Where a result was saved: shown on its own page, with Share and Done.
+enum SavedPlace { case files, photos, documents
+    var title: String {
+        switch self { case .files: return "Saved to Files"; case .photos: return "Saved to Photos"; case .documents: return "Saved to your documents" }
+    }
+    var detail: String {
+        switch self {
+        case .files: return "You'll find it in the folder you picked in Files."
+        case .photos: return "You'll find it in the Photos app."
+        case .documents: return "You'll find it in Documents."
+        }
+    }
+}
+/// The page after saving: a check draws in, says where the file went, then Share or Done.
+struct SavedPage: View {
+    let place: SavedPlace
+    let urls: [URL]
+    var shareTitle: LocalizedStringKey = "Share"
+    var shareID = "saved-share"
+    let done: () -> Void
+    @State private var sharing = false
+    @State private var appeared = false
+    private var name: String {
+        urls.count == 1 ? urls[0].lastPathComponent : String(format: L("%lld files"), urls.count)
+    }
+    var body: some View {
+        ToolPage(title: "") {
+            VStack(spacing: 20) {
+                ZStack {
+                    Circle().fill(TK.blueSoft).frame(width: 132, height: 132).scaleEffect(appeared ? 1 : 0.6)
+                    Circle().fill(TK.blue).frame(width: 84, height: 84).scaleEffect(appeared ? 1 : 0.3)
+                    DrawnCheck().frame(width: 84, height: 84)
+                }.padding(.top, 48).accessibilityHidden(true)
+                VStack(spacing: 8) {
+                    Text(L(place.title)).font(.system(size: 26, weight: .bold)).foregroundStyle(TK.grey900)
+                        .multilineTextAlignment(.center).accessibilityIdentifier("saved-title")
+                    Text(verbatim: name).font(.system(size: 16, weight: .medium)).foregroundStyle(TK.grey700)
+                    Text(L(place.detail)).font(.system(size: 15)).foregroundStyle(TK.grey500).multilineTextAlignment(.center)
+                }
+            }.frame(maxWidth: .infinity)
+        } actions: {
+            Button(shareTitle) { sharing = true }.buttonStyle(SecondaryCTAStyle()).accessibilityIdentifier(shareID)
+            Button(L("Done"), action: done).buttonStyle(CTAButtonStyle()).accessibilityIdentifier("saved-done")
+        }
+        .sheet(isPresented: $sharing) { ShareSheet(items: urls) }
+        .onAppear { withAnimation(.spring(response: 0.45, dampingFraction: 0.62)) { appeared = true } }
+    }
+}
 /// The ready page's main button: "Save to Files" (or Photos) until saved, then the share button.
 struct SaveFirstButton: View {
     let urls: [URL]?
@@ -1688,8 +1736,11 @@ struct SaveFirstButton: View {
     let shareTitle: LocalizedStringKey
     let shareID: String
     let share: () -> Void
+    /// Done on the saved page: ends the flow (closes the tool). nil: back to this page.
+    var finish: (() -> Void)? = nil
     @State private var exporting = false
     @State private var failed: String?
+    @State private var showSaved = false
     var body: some View {
         Group {
             if saved {
@@ -1701,6 +1752,12 @@ struct SaveFirstButton: View {
         }
         .sheet(isPresented: $exporting) {
             if let urls { FilesExporter(urls: urls) { ok in exporting = false; if ok { done() } }.ignoresSafeArea() }
+        }
+        .fullScreenCover(isPresented: $showSaved) {
+            SavedPage(place: photos ? .photos : .files, urls: urls ?? [], shareTitle: shareTitle, shareID: shareID) {
+                showSaved = false
+                if let finish { DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { finish() } }
+            }
         }
         .alert(L("Couldn't save"), isPresented: Binding(get: { failed != nil }, set: { if !$0 { failed = nil } })) {
             Button("OK") { failed = nil }
@@ -1722,6 +1779,8 @@ struct SaveFirstButton: View {
     }
     private func done() {
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { saved = true }
+        saved = true
+        // Saved gets its own page (not a badge on this one), then Share or Done.
+        showSaved = true
     }
 }

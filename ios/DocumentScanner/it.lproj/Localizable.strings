@@ -2087,3 +2087,14 @@
 "Leave without saving?" = "Uscire senza salvare?";
 "Leave without saving" = "Esci senza salvare";
 "Corrections made here won't be saved. To keep them, tap Done." = "Le correzioni fatte qui non verranno salvate. Per mantenerle, tocca Fine.";
+"Check the long image" = "Controlla l’immagine lunga";
+"Tap a screenshot to see it below, then trim it and check the overlap." = "Tocca uno screenshot per vederlo sotto, poi ritaglialo e controlla la sovrapposizione.";
+"Choose documents" = "Scegli i documenti";
+"Choose PDFs from Files" = "Scegli PDF da File";
+"Pick several at once. They're added to your documents" = "Scegline diversi in una volta. Vengono aggiunti ai tuoi documenti";
+"Adding your PDFs…" = "Aggiunta dei PDF…";
+"Saved to your documents" = "Salvato nei tuoi documenti";
+"You'll find it in the folder you picked in Files." = "Lo trovi nella cartella scelta in File.";
+"You'll find it in the Photos app." = "Lo trovi nell’app Foto.";
+"You'll find it in Documents." = "Lo trovi in Documenti.";
+"%lld files" = "%lld file";

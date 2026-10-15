@@ -2087,3 +2087,14 @@
 "Leave without saving?" = "保存せずに戻りますか？";
 "Leave without saving" = "保存せずに戻る";
 "Corrections made here won't be saved. To keep them, tap Done." = "ここで修正した内容は保存されません。保存するには「完了」をタップしてください。";
+"Check the long image" = "長い画像を確認";
+"Tap a screenshot to see it below, then trim it and check the overlap." = "スクリーンショットをタップすると下に表示されます。トリミングして重なりを確認してください。";
+"Choose documents" = "書類を選択";
+"Choose PDFs from Files" = "ファイルからPDFを選択";
+"Pick several at once. They're added to your documents" = "まとめて複数選べます。書類に追加されます";
+"Adding your PDFs…" = "PDFを追加しています…";
+"Saved to your documents" = "書類に保存しました";
+"You'll find it in the folder you picked in Files." = "ファイルAppで選んだフォルダにあります。";
+"You'll find it in the Photos app." = "写真Appで見られます。";
+"You'll find it in Documents." = "書類タブにあります。";
+"%lld files" = "%lld個のファイル";

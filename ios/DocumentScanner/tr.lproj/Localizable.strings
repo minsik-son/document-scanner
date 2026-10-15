@@ -2087,3 +2087,14 @@
 "Leave without saving?" = "Kaydetmeden çıkılsın mı?";
 "Leave without saving" = "Kaydetmeden çık";
 "Corrections made here won't be saved. To keep them, tap Done." = "Burada yapılan düzeltmeler kaydedilmeyecek. Korumak için Bitti’ye dokunun.";
+"Check the long image" = "Uzun görseli kontrol edin";
+"Tap a screenshot to see it below, then trim it and check the overlap." = "Aşağıda görmek için bir ekran görüntüsüne dokunun, ardından kırpın ve örtüşmeyi kontrol edin.";
+"Choose documents" = "Belgeleri seçin";
+"Choose PDFs from Files" = "Dosyalar’dan PDF seçin";
+"Pick several at once. They're added to your documents" = "Tek seferde birkaç tane seçin. Belgelerinize eklenir";
+"Adding your PDFs…" = "PDF’ler ekleniyor…";
+"Saved to your documents" = "Belgelerinize kaydedildi";
+"You'll find it in the folder you picked in Files." = "Dosyalar’da seçtiğiniz klasörde bulabilirsiniz.";
+"You'll find it in the Photos app." = "Fotoğraflar uygulamasında bulabilirsiniz.";
+"You'll find it in Documents." = "Belgeler’de bulabilirsiniz.";
+"%lld files" = "%lld dosya";

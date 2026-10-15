@@ -423,3 +423,47 @@ private struct OfficeProgressGrid: Shape {
         return p
     }
 }
+
+/// A finished Word or Excel file shown as its pages print, full screen with zoom.
+/// Used in place of Quick Look for these files: Apple's viewer sizes Word tables to their
+/// text (columns collapse and a form falls apart) and shows a sheet at actual size,
+/// while Word, Excel, Pages and LibreOffice open the file as drawn here.
+struct OfficeLayoutPreview: View {
+    @Environment(\.dismiss) private var dismiss
+    let pages: [PageLayout]
+    let title: String
+    @State private var image: UIImage?
+    var body: some View {
+        NavigationStack {
+            Group {
+                if let image { ZoomableScanImage(image: image) }
+                else { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
+            }
+            .background(TK.grey100.ignoresSafeArea())
+            .navigationTitle(Text(verbatim: title)).navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(L("Done")) { dismiss() }.fontWeight(.semibold).accessibilityIdentifier("office-preview-done")
+                }
+            }
+        }
+        .task { image = Self.stacked(pages) }
+    }
+    /// Every page, top to bottom, with a grey gap between pages.
+    @MainActor static func stacked(_ pages: [PageLayout]) -> UIImage? {
+        let width: CGFloat = pages.count > 4 ? 1000 : 1800
+        let images = pages.prefix(20).compactMap { OfficePagePreview.image($0, width: width) }
+        guard let widest = images.map(\.size.width).max() else { return nil }
+        let gap: CGFloat = 36
+        let height = images.reduce(0) { $0 + $1.size.height } + gap * CGFloat(images.count - 1)
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1
+        return UIGraphicsImageRenderer(size: CGSize(width: widest, height: height), format: format).image { context in
+            UIColor(white: 0.9, alpha: 1).setFill(); context.fill(CGRect(x: 0, y: 0, width: widest, height: height))
+            var y: CGFloat = 0
+            for page in images {
+                page.draw(in: CGRect(x: (widest - page.size.width) / 2, y: y, width: page.size.width, height: page.size.height))
+                y += page.size.height + gap
+            }
+        }
+    }
+}

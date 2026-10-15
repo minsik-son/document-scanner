@@ -447,7 +447,10 @@ struct AdvancedOfflineToolContent:View {
             }
         }
         .sheet(isPresented: $sharing) { if let files { ShareSheet(items: files.urls) } }
-        .fullScreenCover(isPresented: $quickLook) { if let url = files?.urls.first { OfficeQuickLook(url: url) } }
+        .fullScreenCover(isPresented: $quickLook) {
+            if let pages = wordPreviewPages { OfficeLayoutPreview(pages: pages, title: files?.urls.first?.lastPathComponent ?? "") }
+            else if let url = files?.urls.first { OfficeQuickLook(url: url) }
+        }
         .fullScreenCover(isPresented: $wordCamera) {
             OfficeScanCamera { result in
                 wordCamera = false
@@ -624,6 +627,11 @@ struct AdvancedOfflineToolContent:View {
             Button("Preview") { quickLook = true }.buttonStyle(SecondaryCTAStyle()).disabled(files == nil).accessibilityIdentifier("word-preview")
             SaveFirstButton(urls: files?.urls, saved: $filesSaved, shareTitle: "Share Word file", shareID: "word-share", share: { sharing = true }, finish: { dismissTool() })
         }
+    }
+    /// The pages the Word file was written from (as the export picks them), for the preview.
+    private var wordPreviewPages: [PageLayout]? {
+        guard tool == .word, !wordLayouts.isEmpty, LayoutText.related(text, wordLayoutText) else { return nil }
+        return LayoutText.apply(text, to: wordLayouts)
     }
     private var showsWordLayout: Bool {
         !wordPlainText && wordLayouts.indices.contains(wordReviewPage) && !wordLayouts[wordReviewPage].items.isEmpty

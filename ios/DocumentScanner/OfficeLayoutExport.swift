@@ -58,7 +58,7 @@ enum OfficeLayoutExport {
             body += "<w:p><w:pPr>\(breakBefore)<w:spacing w:before=\"0\" w:after=\"0\" w:line=\"20\" w:lineRule=\"exact\"/><w:rPr><w:sz w:val=\"2\"/></w:rPr></w:pPr>\(anchors)</w:p>"
             var cursor = Double(top) / scale + 1 / scale * 20 // pixels already used on the page
             if page.positioned {
-                body += wordPositioned(page, scale: scale)
+                body += wordPositioned(page, scale: scale, cursor: cursor, areaLeft: areaLeft)
                 continue
             }
             // Writes items as flowing text between `l` and `r` (pixels), advancing `cursor`.
@@ -232,16 +232,76 @@ enum OfficeLayoutExport {
 
     /// A form page: every line of text in a frame and every box as a floating
     /// table, each at its exact position on the page.
-    static func wordPositioned(_ page: PageLayout, scale: Double) -> String {
-        var xml = ""
-        // Larger boxes first so boxes drawn inside them stay visible.
-        let tables = page.items.compactMap { item -> LayoutTable? in if case .table(let t) = item { return t }; return nil }
-            .sorted { $0.box.width * $0.box.height > $1.box.width * $1.box.height }
-        let spacer = "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"20\" w:lineRule=\"exact\"/><w:rPr><w:sz w:val=\"2\"/></w:rPr></w:pPr></w:p>"
-        for t in tables {
-            xml += wordTable(t, areaLeft: 0, scale: scale, pointsPerPixel: page.pointsPerPixel, floating: true) + spacer
+    /// A positioned page (a form): text in boxes anchored to the page, tables flowing down
+    /// the page at their own place. Floating tables are avoided: Apple's viewers (Quick Look,
+    /// Files, Pages) drop their position and borders, which scattered a form's text over a
+    /// blank page. Tables side by side share one borderless row; a table drawn inside
+    /// another one's box stays floating over it.
+    static func wordPositioned(_ page: PageLayout, scale: Double, cursor start: Double, areaLeft: Double) -> String {
+        func spacer(_ twips: Int) -> String {
+            "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"\(max(20, twips))\" w:lineRule=\"exact\"/><w:rPr><w:sz w:val=\"2\"/></w:rPr></w:pPr></w:p>"
         }
-        // Text boxes anchored to the page; all go in one paragraph.
+        let ppp = page.pointsPerPixel
+        let boxes = wordTextBoxes(page)
+        // The boxes' paragraph first, so it is on this page whatever the tables do.
+        var xml = boxes.isEmpty ? "" : "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"20\" w:lineRule=\"exact\"/><w:rPr><w:sz w:val=\"2\"/></w:rPr></w:pPr>\(boxes)</w:p>"
+        var cursor = start + (boxes.isEmpty ? 0 : 20 / scale)
+        let all = page.items.compactMap { item -> LayoutTable? in if case .table(let t) = item { return t }; return nil }
+        func inside(_ a: LBox, _ b: LBox) -> Bool {
+            b.width * b.height > a.width * a.height && b.contains(x: a.midX, y: a.midY)
+        }
+        var over: [LayoutTable] = [], flowing: [LayoutTable] = []
+        for (k, t) in all.enumerated() {
+            if all.enumerated().contains(where: { $0.offset != k && inside(t.box, $0.element.box) }) { over.append(t) } else { flowing.append(t) }
+        }
+        flowing.sort { $0.box.y0 < $1.box.y0 }
+        // Side by side: overlapping rows, separate columns.
+        var groups: [[LayoutTable]] = []
+        for t in flowing {
+            if var g = groups.last, t.box.y0 < (g.map(\.box.y1).max() ?? 0) - 1,
+               !g.contains(where: { $0.box.x0 < t.box.x1 && t.box.x0 < $0.box.x1 }) {
+                g.append(t); groups[groups.count - 1] = g
+            } else if let g = groups.last, t.box.y0 < (g.map(\.box.y1).max() ?? 0) - 1 {
+                over.append(t)
+            } else {
+                groups.append([t])
+            }
+        }
+        func width(_ t: LayoutTable) -> Int { (0..<t.columnCount).map { max(60, i((t.columns[$0 + 1] - t.columns[$0]) * scale)) }.reduce(0, +) }
+        for group in groups {
+            let top = group.map(\.box.y0).min() ?? cursor, bottom = group.map(\.box.y1).max() ?? cursor
+            let gap = i((top - cursor) * scale)
+            xml += spacer(gap)
+            cursor += Double(max(20, gap)) / scale
+            if group.count == 1 {
+                xml += wordTable(group[0], areaLeft: areaLeft, scale: scale, pointsPerPixel: ppp)
+            } else {
+                let members = group.sorted { $0.box.x0 < $1.box.x0 }
+                var widths: [Int] = [], cells = ""
+                for (k, t) in members.enumerated() {
+                    let right = k + 1 < members.count ? members[k + 1].box.x0 : t.box.x1
+                    let w = max(width(t), i((right - t.box.x0) * scale))
+                    widths.append(w)
+                    let offset = i((t.box.y0 - top) * scale)
+                    cells += "<w:tc><w:tcPr><w:tcW w:w=\"\(w)\" w:type=\"dxa\"/></w:tcPr>" + (offset >= 20 ? spacer(offset) : "")
+                        + wordTable(t, areaLeft: t.box.x0, scale: scale, pointsPerPixel: ppp) + spacer(20) + "</w:tc>"
+                }
+                let nilBorders = "<w:tblBorders><w:top w:val=\"nil\"/><w:left w:val=\"nil\"/><w:bottom w:val=\"nil\"/><w:right w:val=\"nil\"/><w:insideH w:val=\"nil\"/><w:insideV w:val=\"nil\"/></w:tblBorders>"
+                let zero = "<w:tblCellMar><w:top w:w=\"0\" w:type=\"dxa\"/><w:left w:w=\"0\" w:type=\"dxa\"/><w:bottom w:w=\"0\" w:type=\"dxa\"/><w:right w:w=\"0\" w:type=\"dxa\"/></w:tblCellMar>"
+                xml += "<w:tbl><w:tblPr><w:tblW w:w=\"\(widths.reduce(0, +))\" w:type=\"dxa\"/><w:tblInd w:w=\"\(i((members[0].box.x0 - areaLeft) * scale))\" w:type=\"dxa\"/>\(nilBorders)<w:tblLayout w:type=\"fixed\"/>\(zero)<w:tblLook w:val=\"0000\"/></w:tblPr>"
+                    + "<w:tblGrid>" + widths.map { "<w:gridCol w:w=\"\($0)\"/>" }.joined() + "</w:tblGrid><w:tr><w:trPr><w:cantSplit/></w:trPr>\(cells)</w:tr></w:tbl>"
+            }
+            cursor = max(cursor, bottom)
+        }
+        // Boxes drawn inside another table (a stamp grid in a signature box) float over it.
+        for t in over.sorted(by: { $0.box.width * $0.box.height > $1.box.width * $1.box.height }) {
+            xml += spacer(20) + wordTable(t, areaLeft: 0, scale: scale, pointsPerPixel: ppp, floating: true)
+        }
+        return xml
+    }
+
+    /// The page's text as boxes anchored to the page (one run each), for one paragraph.
+    static func wordTextBoxes(_ page: PageLayout) -> String {
         var boxes = ""
         var id = 5000
         let emu = page.pointsPerPixel * 12700
@@ -269,8 +329,7 @@ enum OfficeLayoutExport {
                 }
             }
         }
-        if !boxes.isEmpty { xml += "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"20\" w:lineRule=\"exact\"/><w:rPr><w:sz w:val=\"2\"/></w:rPr></w:pPr>\(boxes)</w:p>" }
-        return xml
+        return boxes
     }
 
     static func wordTable(_ t: LayoutTable, areaLeft: Double, scale: Double, pointsPerPixel: Double, floating: Bool = false) -> String {
@@ -283,7 +342,9 @@ enum OfficeLayoutExport {
         } else {
             xml += "<w:tblW w:w=\"\(widths.reduce(0, +))\" w:type=\"dxa\"/><w:tblInd w:w=\"\(i((t.columns[0] - areaLeft) * scale))\" w:type=\"dxa\"/>"
         }
-        xml += "<w:tblBorders><w:top w:val=\"nil\"/><w:left w:val=\"nil\"/><w:bottom w:val=\"nil\"/><w:right w:val=\"nil\"/><w:insideH w:val=\"nil\"/><w:insideV w:val=\"nil\"/></w:tblBorders>"
+        // No table-level "nil" borders: Word lets each cell's own sides win, but Apple's
+        // viewers (Quick Look, Files, Mail) then hide every cell border. The default table
+        // style has none, so cells without sides stay unruled either way.
         xml += "<w:tblLayout w:type=\"fixed\"/><w:tblCellMar><w:top w:w=\"0\" w:type=\"dxa\"/><w:left w:w=\"57\" w:type=\"dxa\"/><w:bottom w:w=\"0\" w:type=\"dxa\"/><w:right w:w=\"57\" w:type=\"dxa\"/></w:tblCellMar><w:tblLook w:val=\"0000\"/></w:tblPr>"
         xml += "<w:tblGrid>" + widths.map { "<w:gridCol w:w=\"\($0)\"/>" }.joined() + "</w:tblGrid>"
         for r in 0..<t.rowCount {

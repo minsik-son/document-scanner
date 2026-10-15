@@ -51,7 +51,7 @@ struct EnlargedScanPreview: View {
     }
 }
 
-private struct ZoomableScanImage: UIViewRepresentable {
+struct ZoomableScanImage: UIViewRepresentable {
     let image: UIImage
     func makeUIView(context: Context) -> ScanImageScrollView { ScanImageScrollView(image: image) }
     func updateUIView(_ view: ScanImageScrollView, context: Context) { view.setImage(image) }

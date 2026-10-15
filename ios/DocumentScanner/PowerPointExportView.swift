@@ -124,7 +124,10 @@ struct PowerPointExportView: View {
                     }
                 }.ignoresSafeArea()
             }
-            .fullScreenCover(isPresented:$preview) { if let url = export?.urls.first { OfficeQuickLook(url:url) } }
+            .fullScreenCover(isPresented:$preview) {
+                if excel, let pages = excelPreviewPages { OfficeLayoutPreview(pages: pages, title: export?.urls.first?.lastPathComponent ?? "") }
+                else if let url = export?.urls.first { OfficeQuickLook(url:url) }
+            }
             .sheet(isPresented:$sharing) { if let export { ShareSheet(items:export.urls) } }
             .onChange(of: export?.directory) { _, _ in exportSaved = false }
             .task {
@@ -216,6 +219,17 @@ struct PowerPointExportView: View {
     }
 
     /// The page of the table being checked, with every correction made so far.
+    /// The pages the Excel file was written from (tables with their corrections), for the preview.
+    private var excelPreviewPages: [PageLayout]? {
+        guard !layouts.isEmpty else { return nil }
+        var pages = layouts
+        for table in tables {
+            guard let p = table.layoutPage, let i = table.layoutItem, pages.indices.contains(p), pages[p].items.indices.contains(i),
+                  case .table(var layout) = pages[p].items[i] else { continue }
+            layout.apply(table); pages[p].items[i] = .table(layout)
+        }
+        return pages
+    }
     private var excelPreviewIndex: Int { tables.indices.contains(tableIndex) ? (tables[tableIndex].layoutPage ?? 0) : 0 }
     private var excelPreviewPage: PageLayout? {
         let index = excelPreviewIndex

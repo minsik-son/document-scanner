@@ -1,6 +1,7 @@
 import XCTest
 import UIKit
 import CoreImage
+import QuickLookThumbnailing
 @testable import DocumentScanner
 
 /// Rebuilds the sample scans as Word, Excel and PowerPoint files and checks
@@ -236,6 +237,50 @@ final class OfficeLayoutTests: XCTestCase {
         }
         try summary.joined(separator: "\n").write(to: root.appendingPathComponent(only == nil ? "packing/report.txt" : "packing/report-only.txt"), atomically: true, encoding: .utf8)
         print("PACKING\n" + summary.joined(separator: "\n"))
+    }
+
+    /// How Apple's viewer (the same renderer as Quick Look and Files) draws the Word file of
+    /// each packing-list photo: old export next to the current one, as PNGs in packing/ql/.
+    @MainActor func testPackingListWordInAppleViewer() throws {
+        let (_, root) = try privateSample("PackingList.jpg")
+        let packing = root.appendingPathComponent("packing")
+        let out = packing.appendingPathComponent("ql")
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        let folders = ((try? FileManager.default.contentsOfDirectory(atPath: packing.path)) ?? []).filter {
+            FileManager.default.fileExists(atPath: packing.appendingPathComponent($0 + "/layout.json").path)
+        }.sorted()
+        // Hand-made variants in ql/var/ (renderer experiments) are drawn too.
+        let variants = out.appendingPathComponent("var")
+        for file in ((try? FileManager.default.contentsOfDirectory(atPath: variants.path)) ?? []).filter({ $0.hasSuffix(".docx") }) {
+            let done = expectation(description: file)
+            let request = QLThumbnailGenerator.Request(fileAt: variants.appendingPathComponent(file), size: CGSize(width: 900, height: 1200), scale: 1, representationTypes: .thumbnail)
+            QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { rep, _ in
+                if let png = rep?.uiImage.pngData() { try? png.write(to: variants.appendingPathComponent(file + ".png")) }
+                done.fulfill()
+            }
+            wait(for: [done], timeout: 60)
+        }
+        for name in folders {
+            let folder = packing.appendingPathComponent(name)
+            let page = try JSONDecoder().decode(PageLayout.self, from: Data(contentsOf: folder.appendingPathComponent("layout.json")))
+            let current = out.appendingPathComponent(name + "-new.docx")
+            // The pictures cut from this scan (graphic-N.png), else a blank pixel.
+            let blank = UIGraphicsImageRenderer(size: CGSize(width: 1, height: 1)).pngData { _ in }
+            try OfficeLayoutExport.word([page], image: { _, g in
+                let k = page.graphics.firstIndex(where: { $0.box == g.box }) ?? -1
+                return (try? Data(contentsOf: folder.appendingPathComponent("graphic-\(k).png"))) ?? blank
+            }).write(to: current)
+            for (file, tag) in [(folder.appendingPathComponent("PackingList.docx"), "old"), (current, "new")] {
+                let done = expectation(description: name + tag)
+                let request = QLThumbnailGenerator.Request(fileAt: file, size: CGSize(width: 900, height: 1200), scale: 1, representationTypes: .thumbnail)
+                QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { rep, error in
+                    if let png = rep?.uiImage.pngData() { try? png.write(to: out.appendingPathComponent("\(name)-\(tag).png")) }
+                    else { print("QL \(name) \(tag) failed: \(String(describing: error))") }
+                    done.fulfill()
+                }
+                wait(for: [done], timeout: 60)
+            }
+        }
     }
 
     /// Invoices, VAT invoices and forms from public datasets (testimg/online, see

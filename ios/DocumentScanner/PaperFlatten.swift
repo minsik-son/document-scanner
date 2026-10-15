@@ -50,6 +50,7 @@ enum PaperFlatten {
             memory.setObject(Box(stored.mesh), forKey: key as NSString); return stored.mesh
         }
         let result = analyze(source, crop: crop)
+        PerfTrace.note("  · flatten analysis from \(Int(source.extent.width))x\(Int(source.extent.height))")
         if let key {
             memory.setObject(Box(result), forKey: key as NSString)
             if let url = file(key), let data = try? JSONEncoder().encode(Stored(mesh: result)) { try? data.write(to: url, options: .atomic) }

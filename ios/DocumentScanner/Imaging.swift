@@ -108,6 +108,7 @@ enum Imaging {
     /// normalized, so they apply unchanged. A few MB instead of a full render.
     static func renderThumbnail(_ page: ScanPage, root: URL, maxDimension: Int) throws -> UIImage {
         try autoreleasepool {
+            PerfTrace.note("  thumbnail render \(maxDimension) px")
             let ci = try source(page, root: root, maxPixel: max(1600, maxDimension * 2))
             let base = try DocumentProcessing.render(ci, crop: page.crop, turns: page.turns, enhancement: page.enhancement, strength: page.enhancementStrength, identityCleanup: page.identityBackgroundCleanup == true && page.cropReviewNeeded != true, flatten: page.flattenRequest)
             let output = try trim(DocumentProcessing.adjust(base, settings: page.appearance), edges: page.trimming)

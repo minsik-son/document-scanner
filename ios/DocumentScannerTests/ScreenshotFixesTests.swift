@@ -382,3 +382,158 @@ final class PaleCellToneTests: XCTestCase {
         }
     }
 }
+
+/// Where the seconds go between the shutter and the finished page.
+final class ScanSpeedTests: XCTestCase {
+    @MainActor func testScanPipelineTimings() throws {
+        let base = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Verification/private")
+        let out = base.appendingPathComponent("speed"); try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        var lines: [String] = []
+        func time<T>(_ label: String, _ work: () throws -> T) rethrows -> T {
+            let t = CFAbsoluteTimeGetCurrent(); let r = try work()
+            lines.append(String(format: "%@ %.0f ms", label, (CFAbsoluteTimeGetCurrent() - t) * 1000)); return r
+        }
+        PaperFlattener.trace = { lines.append("    flattener " + $0) }
+        defer { PaperFlattener.trace = nil }
+        for name in ["IMG_3885.HEIC", "IMG_3887.HEIC", "tint_sheet.jpg"] {
+            let url = base.appendingPathComponent("testimg/" + name)
+            guard let data = try? Data(contentsOf: url) else { continue }
+            lines.append("== " + name)
+            guard let photo = time("decode ~24MP", { CameraController.decode(data, maxPixels: 25_000_000) }), let cg = photo.cgImage else { continue }
+            lines.append("  size \(cg.width)x\(cg.height)")
+            let crop = time("find page") { CaptureStyle.document.detect(Imaging.limited(photo, maxPixels: 12_200_000), capturedPhoto: true) } ?? .full
+            let source = CIImage(cgImage: cg)
+            let mesh = time("flatten analysis") { PaperFlatten.analyze(source, crop: crop) }
+            lines.append("  flattened: \(mesh != nil)")
+            for (label, flatten) in [("with flatten", FlattenRequest(key: nil)), ("perspective only", nil)] as [(String, FlattenRequest?)] {
+                let prepared = try time("prepare " + label) { try DocumentProcessing.prepare(source, crop: crop, turns: 0, enhancement: .document, flatten: flatten) }
+                let finished = try DocumentProcessing.finish(prepared)
+                _ = time("  render full " + label + " \(Int(finished.extent.width))x\(Int(finished.extent.height))") { DocumentProcessing.context.createCGImage(finished, from: finished.extent) }
+            }
+            for limit in [12_000_000, 6_000_000] {
+                let small = Imaging.limited(photo, maxPixels: limit)
+                guard let scg = small.cgImage else { continue }
+                let s = CIImage(cgImage: scg)
+                let prepared = try time("prepare with flatten @\(limit/1_000_000)MP") { try DocumentProcessing.prepare(s, crop: crop, turns: 0, enhancement: .document, flatten: FlattenRequest(key: nil)) }
+                let finished = try DocumentProcessing.finish(prepared)
+                _ = time("  render @\(limit/1_000_000)MP \(Int(finished.extent.width))x\(Int(finished.extent.height))") { DocumentProcessing.context.createCGImage(finished, from: finished.extent) }
+            }
+        }
+        try lines.joined(separator: "\n").write(to: out.appendingPathComponent("timings.txt"), atomically: true, encoding: .utf8)
+        print(lines.joined(separator: "\n"))
+    }
+}
+
+extension ScanSpeedTests {
+    /// The on-screen preview (1800 px) from a smaller source vs from the full photo.
+    @MainActor func testSmallSourcePreviewMatchesFull() throws {
+        let base = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Verification/private")
+        let out = base.appendingPathComponent("speed"); try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        var lines: [String] = []
+        func preview(_ photo: UIImage, _ crop: ScanQuad) throws -> UIImage {
+            let prepared = try DocumentProcessing.prepare(CIImage(cgImage: photo.cgImage!), crop: crop, turns: 0, enhancement: .document, flatten: FlattenRequest(key: nil))
+            let finished = try DocumentProcessing.finish(prepared)
+            let cg = DocumentProcessing.context.createCGImage(finished, from: finished.extent)!
+            return try Imaging.previewThumbnail(UIImage(cgImage: cg), maxDimension: 1800)
+        }
+        func gray(_ image: UIImage, _ w: Int, _ h: Int) -> [UInt8] {
+            var px = [UInt8](repeating: 0, count: w * h)
+            let ctx = CGContext(data: &px, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w, space: CGColorSpaceCreateDeviceGray(), bitmapInfo: 0)!
+            ctx.interpolationQuality = .high; ctx.draw(image.cgImage!, in: CGRect(x: 0, y: 0, width: w, height: h)); return px
+        }
+        for name in ["IMG_3885.HEIC", "IMG_3887.HEIC", "IMG_3889.HEIC"] {
+            guard let data = try? Data(contentsOf: base.appendingPathComponent("testimg/" + name)),
+                  let photo = CameraController.decode(data, maxPixels: 25_000_000) else { continue }
+            let crop = CaptureStyle.document.detect(Imaging.limited(photo, maxPixels: 12_200_000), capturedPhoto: true) ?? .full
+            let full = try preview(photo, crop)
+            let w = Int(full.size.width * full.scale), h = Int(full.size.height * full.scale)
+            let a = gray(full, w, h)
+            for limit in [12_000_000, 6_000_000] {
+                let small = try preview(Imaging.limited(photo, maxPixels: limit), crop)
+                let b = gray(small, w, h)
+                var sum = 0, big = 0
+                for i in 0..<a.count { let d = abs(Int(a[i]) - Int(b[i])); sum += d; if d > 24 { big += 1 } }
+                lines.append(String(format: "%@ @%dMP: mean diff %.2f / 255, pixels off by >24: %.3f%%", name, limit / 1_000_000, Double(sum) / Double(a.count), Double(big) * 100 / Double(a.count)))
+                if limit == 6_000_000 {
+                    try full.jpegData(compressionQuality: 0.9)?.write(to: out.appendingPathComponent(name + ".full.jpg"))
+                    try small.jpegData(compressionQuality: 0.9)?.write(to: out.appendingPathComponent(name + ".6mp.jpg"))
+                }
+            }
+        }
+        try lines.joined(separator: "\n").write(to: out.appendingPathComponent("match.txt"), atomically: true, encoding: .utf8)
+    }
+}
+
+/// Quality guard for speed work: the finished full-resolution page of each test
+/// photo, byte for byte. The first run records `golden/`, later runs must match.
+final class ScanOutputGoldenTests: XCTestCase {
+    @MainActor func testFinishedPagesUnchanged() throws {
+        let base = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Verification/private")
+        let golden = base.appendingPathComponent("speed/golden"); try FileManager.default.createDirectory(at: golden, withIntermediateDirectories: true)
+        var report: [String] = []
+        for name in ["IMG_3885.HEIC", "IMG_3886.HEIC", "IMG_3887.HEIC", "IMG_3888.HEIC", "IMG_3889.HEIC", "tint_sheet.jpg", "marked_doc.jpg", "book_spread.jpg"] {
+            guard let data = try? Data(contentsOf: base.appendingPathComponent("testimg/" + name)),
+                  let photo = CameraController.decode(data, maxPixels: 25_000_000), let cg = photo.cgImage else { continue }
+            let crop = CaptureStyle.document.detect(Imaging.limited(photo, maxPixels: 12_200_000), capturedPhoto: true) ?? .full
+            let prepared = try DocumentProcessing.prepare(CIImage(cgImage: cg), crop: crop, turns: 0, enhancement: .document, flatten: FlattenRequest(key: nil))
+            let finished = try DocumentProcessing.finish(prepared)
+            let w = Int(finished.extent.width), h = Int(finished.extent.height)
+            var bytes = [UInt8](repeating: 0, count: w * h * 4)
+            DocumentProcessing.context.render(finished, toBitmap: &bytes, rowBytes: w * 4, bounds: finished.extent, format: .RGBA8, colorSpace: CGColorSpace(name: CGColorSpace.sRGB))
+            let file = golden.appendingPathComponent(name + ".rgba")
+            let header = Data("\(w)x\(h)\n".utf8)
+            let current = header + Data(bytes)
+            if let stored = try? Data(contentsOf: file) {
+                if stored == current { report.append("\(name) \(w)x\(h) identical") }
+                else {
+                    var diff = 0, maxd = 0
+                    let s = [UInt8](stored.dropFirst(header.count))
+                    if s.count == bytes.count { for i in 0..<s.count { let d = abs(Int(s[i]) - Int(bytes[i])); if d > 0 { diff += 1; maxd = max(maxd, d) } } }
+                    report.append("\(name) \(w)x\(h) CHANGED: \(s.count == bytes.count ? "\(diff) values differ, max \(maxd)" : "size differs")")
+                }
+            } else { try current.write(to: file); report.append("\(name) \(w)x\(h) recorded") }
+        }
+        try report.joined(separator: "\n").write(to: golden.appendingPathComponent("report.txt"), atomically: true, encoding: .utf8)
+        // Core Image on the GPU is not bit-exact run to run: a few hundred of ~40M
+        // values flip between identical runs. More than that is a real change.
+        let real = report.filter { line in
+            guard line.contains("CHANGED") else { return false }
+            if line.contains("size differs") { return true }
+            let count = Int(line.components(separatedBy: "CHANGED: ").last?.components(separatedBy: " ").first ?? "") ?? 0
+            return count > 3000
+        }
+        XCTAssertTrue(real.isEmpty, report.joined(separator: "\n"))
+    }
+}
+
+extension ScanSpeedTests {
+    /// The flat-page mesh found from a thumbnail-sized copy (1600 px) vs from the
+    /// full photo: how far apart the finished full-resolution pages are.
+    @MainActor func testMeshFromThumbnailVsFull() throws {
+        let base = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Verification/private")
+        var lines: [String] = []
+        func pixels(_ prepared: DocumentProcessing.PreparedDocument) throws -> (Int, Int, [UInt8]) {
+            let f = try DocumentProcessing.finish(prepared)
+            let w = Int(f.extent.width), h = Int(f.extent.height)
+            var b = [UInt8](repeating: 0, count: w * h * 4)
+            DocumentProcessing.context.render(f, toBitmap: &b, rowBytes: w * 4, bounds: f.extent, format: .RGBA8, colorSpace: CGColorSpace(name: CGColorSpace.sRGB))
+            return (w, h, b)
+        }
+        for name in ["IMG_3885.HEIC", "IMG_3886.HEIC", "IMG_3887.HEIC", "IMG_3888.HEIC", "IMG_3889.HEIC"] {
+            guard let data = try? Data(contentsOf: base.appendingPathComponent("testimg/" + name)),
+                  let photo = CameraController.decode(data, maxPixels: 25_000_000), let cg = photo.cgImage else { continue }
+            let crop = CaptureStyle.document.detect(Imaging.limited(photo, maxPixels: 12_200_000), capturedPhoto: true) ?? .full
+            let full = CIImage(cgImage: cg)
+            let a = try pixels(DocumentProcessing.prepare(full, crop: crop, turns: 0, enhancement: .document, flatten: FlattenRequest(key: nil)))
+            let key = "thumbtest-" + name + UUID().uuidString
+            let thumb = CIImage(cgImage: Imaging.limited(photo, maxPixels: 1600 * 1600 * 3 / 4).cgImage!)
+            _ = PaperFlatten.mesh(for: thumb, crop: crop, key: key)
+            let b = try pixels(DocumentProcessing.prepare(full, crop: crop, turns: 0, enhancement: .document, flatten: FlattenRequest(key: key)))
+            if a.0 == b.0 && a.1 == b.1 {
+                var n = 0; for i in 0..<a.2.count where a.2[i] != b.2[i] { n += 1 }
+                lines.append("\(name) same size \(a.0)x\(a.1), \(n) values differ")
+            } else { lines.append("\(name) size full \(a.0)x\(a.1) vs thumb-mesh \(b.0)x\(b.1)") }
+        }
+        try lines.joined(separator: "\n").write(to: base.appendingPathComponent("speed/mesh.txt"), atomically: true, encoding: .utf8)
+    }
+}

@@ -431,7 +431,7 @@ enum DocumentProcessing {
         var image = source
         // A curled or bent sheet is drawn flat; otherwise the four corners are enough.
         var flattened = false
-        if let flatten, !identityCleanup, let mesh = PaperFlatten.mesh(for: source, crop: crop, key: flatten.key), let flat = PaperFlatten.apply(mesh, to: source) {
+        if let flatten, !identityCleanup, let mesh = PerfTrace.measure("  · flatten mesh", { PaperFlatten.mesh(for: source, crop: crop, key: flatten.key) }), let flat = PaperFlatten.apply(mesh, to: source) {
             image = flat; flattened = true
         } else if crop != .full {
             let f = CIFilter.perspectiveCorrection(); f.inputImage = image
@@ -453,13 +453,13 @@ enum DocumentProcessing {
         // a few pixels. Only a large grid with several supported ruling lines is
         // allowed to guide a second perspective correction. Pixels outside that
         // grid stay in the image; this is not a crop to the printed table.
-        let alignment = alignPrintedGrid(image)
-        image = alignment.grid == nil ? alignTextLines(alignment.image) : alignment.image
+        let alignment = PerfTrace.measure("  · grid alignment") { alignPrintedGrid(image) }
+        image = alignment.grid == nil ? PerfTrace.measure("  · text-line alignment") { alignTextLines(alignment.image) } : alignment.image
         if enhancement == .original { return .init(image: image, enhancement: enhancement, flattened: flattened) }
         let extent = image.extent
         // Estimate illumination from paper-like pixels. Colored cells and logos do
         // not become the local white reference, even when they fill a large area.
-        guard let paper = paperSurface(image, protectedGrid: alignment.grid) else { throw ScannerError.message("Document enhancement couldn't be applied. Try the Original filter.") }
+        guard let paper = PerfTrace.measure("  · paper lighting", { paperSurface(image, protectedGrid: alignment.grid) }) else { throw ScannerError.message("Document enhancement couldn't be applied. Try the Original filter.") }
         var flat = paper.surface.applyingFilter("CIDivideBlendMode", parameters: [kCIInputBackgroundImageKey: image]).cropped(to: extent)
         // A small residual cast is still visible on a digital white page. Remove
         // it only where spatial paper evidence agrees, before the tone curve.
@@ -483,7 +483,7 @@ enum DocumentProcessing {
             let small = flat.transformed(by: CGAffineTransform(scaleX: f, y: f))
             let moved = small.transformed(by: CGAffineTransform(translationX: -small.extent.minX, y: -small.extent.minY))
             let toned = (try? finish(.init(image: moved.cropped(to: moved.extent.integral), enhancement: enhancement))) ?? moved
-            strips = edgeStrips(toned)
+            strips = PerfTrace.measure("  · edge strips") { edgeStrips(toned) }
         }
         return .init(image: flat, enhancement: enhancement, flattened: flattened, edgeStrips: strips)
     }

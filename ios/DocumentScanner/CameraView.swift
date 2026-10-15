@@ -51,7 +51,7 @@ struct CameraView: View {
                     // enhanced, the screen finishes (fold, PDF badge, check) and lifts.
                     guard instantResult != nil, !instantDone else { return }
                     instantDone = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.85) { withAnimation(.easeInOut(duration: 0.25)) { instantResult = nil } }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { withAnimation(.easeInOut(duration: 0.2)) { instantResult = nil } }
                 }, onSave: { updated in
                     try keepAdjustments(updated)
                     if identityCapture {
@@ -218,7 +218,10 @@ struct CameraView: View {
             HStack(alignment: .center, spacing: 16) {
                 // Last page and count; Done finishes once something is captured.
                 HStack(spacing: 10) {
-                    if let last = store.document(documentID)?.pages.last {
+                    // Hidden under the result screen while a new page is reviewed: its
+                    // thumbnail waits until then, so it doesn't compete with the page's
+                    // own preview render (the thumbnail reuses that page's flat outline).
+                    if capturedPage == nil, let last = store.document(documentID)?.pages.last {
                         PageThumbnail(page: last).frame(width: 42, height: 56).background(.white)
                             .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                             .overlay(alignment: .topTrailing) {

@@ -881,6 +881,9 @@ struct PageEditor: View {
     @State private var comparingOriginal = false
     @State private var detecting = false
     @State private var previewReady = false
+    /// Set once the page's first preview is up (or after 3 s): the tone row waits for it,
+    /// so its small renders don't compete with the big one the user is waiting for.
+    @State private var firstPreviewShown = false
     @State private var message: String?
     @State private var saveError: String?
     @State private var confirmStop = false
@@ -915,8 +918,10 @@ struct PageEditor: View {
                     VStack(spacing: 16) {
                         ScanPreview(page: displayedPage, onReady: { ready in
                             if ready && !previewReady { onPreviewReady?() }
+                            if ready { firstPreviewShown = true }
                             previewReady = ready
                         })
+                            .task { try? await Task.sleep(for: .seconds(3)); firstPreviewShown = true }
                             .frame(height: max(260, geometry.size.height * 0.60))
                             .clipShape(RoundedRectangle(cornerRadius: 20))
                             .overlay(alignment: .topTrailing) {
@@ -1040,7 +1045,7 @@ struct PageEditor: View {
                 }
             }
         case .tone:
-            ToneThumbnails(page: page) { tone in
+            ToneThumbnails(page: page, ready: firstPreviewShown) { tone in
                 guard page.enhancement != tone else { return }
                 page.enhancement = tone
                 if tone == .original && selectedAdjustment == .cleanup { selectedAdjustment = .brightness }
@@ -1328,8 +1333,10 @@ struct PageEraseSheet: View {
 private struct ToneThumbnails: View {
     @EnvironmentObject var store: LibraryStore
     let page: ScanPage
+    var ready = true
     let onSelect: (Enhancement) -> Void
     @State private var images: [Enhancement: UIImage] = [:]
+    private struct Request: Equatable { let page: ScanPage; let ready: Bool }
     /// Everything but the tone itself decides what the previews look like.
     private var key: ScanPage { var p = page; p.enhancement = .original; return p }
     var body: some View {
@@ -1366,7 +1373,8 @@ private struct ToneThumbnails: View {
             }
             .onAppear { proxy.scrollTo(page.enhancement, anchor: .center) }
         }
-        .task(id: key) {
+        .task(id: Request(page: key, ready: ready)) {
+            guard ready else { return }
             let request = key, root = store.root
             let rendered = await Task.detached(priority: .utility) { (try? Imaging.renderToneThumbnails(request, root: root, maxDimension: 240)) ?? [:] }.value
             if Task.isCancelled { return }

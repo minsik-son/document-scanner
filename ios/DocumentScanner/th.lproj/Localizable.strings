@@ -2023,3 +2023,21 @@
 "Rate the app" = "ให้คะแนนแอป";
 "Share the app" = "แชร์แอป";
 "HushScan scans documents and keeps them on your iPhone." = "HushScan สแกนเอกสารและเก็บไว้ใน iPhone ของคุณเท่านั้น";
+
+/* Done pages and toasts */
+"Moved to Trash" = "ย้ายไปที่ถังขยะแล้ว";
+"Restored to your documents" = "กู้คืนไปที่เอกสารของคุณแล้ว";
+"Backup saved" = "บันทึกข้อมูลสำรองแล้ว";
+"Your corrections are in the PDF" = "ข้อความที่แก้อยู่ใน PDF แล้ว";
+"PDF text updated" = "อัปเดตข้อความ PDF แล้ว";
+"Hidden. It's applied when you save." = "ปิดไว้แล้ว จะมีผลเมื่อบันทึก";
+"Copy saved" = "บันทึกสำเนาแล้ว";
+"Saved as “%@”. Your original is unchanged." = "บันทึกเป็น “%@” แล้ว ต้นฉบับไม่เปลี่ยน";
+"Form filled in" = "กรอกแบบฟอร์มเรียบร้อย";
+"Signature added" = "ใส่ลายเซ็นแล้ว";
+"Marks added" = "ใส่เครื่องหมายแล้ว";
+"Saved to “%@”." = "บันทึกลงใน “%@” แล้ว";
+"Text · %d" = "ข้อความ · %d";
+"Signatures · %d" = "ลายเซ็น · %d";
+"Pen · %d" = "ปากกา · %d";
+"Highlights · %d" = "ไฮไลต์ · %d";

@@ -406,7 +406,7 @@ struct HomeView: View {
     @ViewBuilder
     private func trashAction(_ document: ScanDocument) -> some View {
         if store.storageAvailable {
-            Button(role: .destructive) { store.moveToTrash(document) } label: {
+            Button(role: .destructive) { trashWithUndo(store, document) } label: {
                 Image(systemName: "trash")
             }
             .tint(.red)

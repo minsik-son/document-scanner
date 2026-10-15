@@ -2023,3 +2023,21 @@
 "Rate the app" = "Noter l’app";
 "Share the app" = "Partager l’app";
 "HushScan scans documents and keeps them on your iPhone." = "HushScan numérise vos documents et les garde sur votre iPhone.";
+
+/* Done pages and toasts */
+"Moved to Trash" = "Placé dans la corbeille";
+"Restored to your documents" = "Restauré dans vos documents";
+"Backup saved" = "Sauvegarde enregistrée";
+"Your corrections are in the PDF" = "Vos corrections sont dans le PDF";
+"PDF text updated" = "Texte du PDF mis à jour";
+"Hidden. It's applied when you save." = "Masqué. Appliqué à l’enregistrement.";
+"Copy saved" = "Copie enregistrée";
+"Saved as “%@”. Your original is unchanged." = "Enregistré sous « %@ ». L’original reste inchangé.";
+"Form filled in" = "Formulaire rempli";
+"Signature added" = "Signature ajoutée";
+"Marks added" = "Annotations ajoutées";
+"Saved to “%@”." = "Enregistré dans « %@ ».";
+"Text · %d" = "Texte · %d";
+"Signatures · %d" = "Signatures · %d";
+"Pen · %d" = "Stylo · %d";
+"Highlights · %d" = "Surlignages · %d";

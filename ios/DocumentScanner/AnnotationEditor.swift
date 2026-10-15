@@ -37,6 +37,9 @@ struct AnnotationEditor: View {
   @State private var zoomStart: CGFloat?
   @State private var drawing: UUID?
   @State private var history: [[PageAnnotation]] = []
+  /// Set once the marks are saved: the done page shows what was added and where.
+  @State private var finished: AnnotationSummary?
+  @State private var shareFile: SharedFile?
   private var marks: [PageAnnotation] { document?.pages[index].annotations ?? [] }
   private func icon(_ kind: AnnotationKind) -> String {
     switch kind {
@@ -49,6 +52,7 @@ struct AnnotationEditor: View {
   private let colors: [(String, Color)] = [("black", .black), ("blue", TK.blue), ("red", TK.red), ("yellow", TK.yellow)]
   var body: some View {
     NavigationStack {
+      if let finished { donePage(finished) } else {
       ToolPage(title: "Sign & annotate", subtitle: nil) {
         if let doc = document {
           if doc.pages.count > 1 {
@@ -288,7 +292,49 @@ struct AnnotationEditor: View {
             if FormProfile.load().isEmpty { profileEditor = true } else { autoFilled = true; fillForm() }
           }
         }
+      }
     }
+  }
+  /// What was added, with the page that shows it, after saving.
+  private func donePage(_ summary: AnnotationSummary) -> some View {
+    ToolDonePage(title: summary.title, detail: summary.detail, primaryTitle: "Done", primary: { dismiss() },
+                 secondaryTitle: "Share", secondary: { share(summary) }) {
+      VStack(spacing: 16) {
+        if !summary.chips.isEmpty {
+          HStack(spacing: 6) {
+            ForEach(summary.chips, id: \.self) { chip in
+              Text(chip).font(.system(size: 13, weight: .semibold)).foregroundStyle(TK.grey700)
+                .padding(.horizontal, 10).padding(.vertical, 6).background(TK.grey100, in: Capsule())
+            }
+          }
+        }
+        if let image = summary.preview {
+          Image(uiImage: image).resizable().scaledToFit()
+            .overlay {
+              GeometryReader { g in
+                ForEach(summary.boxes.indices, id: \.self) { i in
+                  let r = summary.boxes[i]
+                  RoundedRectangle(cornerRadius: 4, style: .continuous).strokeBorder(TK.blue, lineWidth: 2)
+                    .frame(width: r.width * g.size.width + 8, height: r.height * g.size.height + 8)
+                    .position(x: r.midX * g.size.width, y: r.midY * g.size.height)
+                }
+              }
+            }
+            .background(.white)
+            .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(TK.grey200))
+            .frame(maxWidth: 200, maxHeight: 260)
+            .accessibilityHidden(true)
+        }
+      }
+    }
+    .interactiveDismissDisabled(false)
+    .sheet(item: $shareFile) { file in ShareSheet(items: [file.url], completion: { _, _ in ExportFiles.remove(file.url.deletingLastPathComponent()) }) }
+  }
+  private func share(_ summary: AnnotationSummary) {
+    do {
+      let files = try ExportFiles.write([(summary.fileName + ".pdf", summary.data)])
+      shareFile = SharedFile(url: files.urls[0])
+    } catch { self.error = error.localizedDescription }
   }
   private func field<T>(_ id: UUID, _ key: WritableKeyPath<PageAnnotation, T>, default value: T)
     -> Binding<T>
@@ -422,7 +468,7 @@ struct AnnotationEditor: View {
         let result = try await PDFExport.prepare(doc, root: store.root)
         try store.savePDF(result.data, document: result.document)
         if trialUnlocked { ProTrialSession.commit() }
-        dismiss()
+        finished = AnnotationSummary(result.document, data: result.data, form: autoFill)
       } catch { self.error = error.localizedDescription }
       busy = false
     }
@@ -651,5 +697,33 @@ struct FormProfileEditor: View {
         ToolbarItem(placement: .confirmationAction) { Button("Save") { FormProfile.save(values); dismiss() } }
       }
     }
+  }
+}
+
+/// What a save of signatures and marks added, for the done page.
+struct AnnotationSummary {
+  var title: String
+  var detail: String
+  var chips: [String]
+  /// The page with the first signature (or the first marked page), rendered from the saved PDF.
+  var preview: UIImage?
+  /// Signature boxes on that page, normalized, origin top-left.
+  var boxes: [CGRect]
+  var data: Data
+  var fileName: String
+  init(_ doc: ScanDocument, data: Data, form: Bool) {
+    let marks = doc.pages.map { $0.annotations ?? [] }
+    let all = marks.flatMap { $0 }
+    func count(_ kind: AnnotationKind) -> Int { all.filter { $0.kind == kind }.count }
+    let signatures = count(.signature), texts = count(.text), pens = count(.pen), highlights = count(.highlight)
+    title = form ? "Form filled in" : (signatures > 0 && texts + pens + highlights == 0 ? "Signature added" : "Marks added")
+    detail = String(format: L("Saved to “%@”."), doc.title)
+    chips = [(texts, "Text · %d"), (signatures, "Signatures · %d"), (pens, "Pen · %d"), (highlights, "Highlights · %d")]
+      .filter { $0.0 > 0 }.map { String(format: L($0.1), $0.0) }
+    let page = marks.firstIndex { $0.contains { $0.kind == .signature } } ?? marks.firstIndex { !$0.isEmpty } ?? 0
+    preview = PDFDocument(data: data)?.page(at: page)?.thumbnail(of: CGSize(width: 400, height: 520), for: .mediaBox)
+    boxes = marks.indices.contains(page) ? marks[page].filter { $0.kind == .signature }.map { CGRect(x: $0.x, y: $0.y, width: $0.width, height: $0.height) } : []
+    self.data = data
+    fileName = doc.title
   }
 }

@@ -58,6 +58,7 @@ struct OCRTextEditor: View {
         let result = try await PDFExport.prepare(doc, root: store.root)
         try store.savePDF(result.data, document: result.document)
         dismiss()
+        AppToast.show("Your corrections are in the PDF")
       } catch { self.error = error.localizedDescription }
       busy = false
     }

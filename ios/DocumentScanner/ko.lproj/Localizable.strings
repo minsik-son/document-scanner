@@ -2023,3 +2023,21 @@
 "Rate the app" = "앱 평가";
 "Share the app" = "앱 공유";
 "HushScan scans documents and keeps them on your iPhone." = "HushScan은 문서를 스캔하고 iPhone 안에만 보관해요.";
+
+/* Done pages and toasts */
+"Moved to Trash" = "휴지통으로 옮겼어요";
+"Restored to your documents" = "내 문서로 복원했어요";
+"Backup saved" = "백업을 저장했어요";
+"Your corrections are in the PDF" = "고친 글자를 PDF에 반영했어요";
+"PDF text updated" = "PDF 글자를 업데이트했어요";
+"Hidden. It's applied when you save." = "가렸어요. 저장하면 반영돼요.";
+"Copy saved" = "사본을 저장했어요";
+"Saved as “%@”. Your original is unchanged." = "'%@'(으)로 저장했어요. 원본은 그대로예요.";
+"Form filled in" = "양식을 다 채웠어요";
+"Signature added" = "서명을 넣었어요";
+"Marks added" = "표시를 넣었어요";
+"Saved to “%@”." = "'%@'에 바로 저장했어요.";
+"Text · %d" = "글자 %d칸";
+"Signatures · %d" = "서명 %d개";
+"Pen · %d" = "펜 %d개";
+"Highlights · %d" = "형광펜 %d개";

@@ -72,7 +72,11 @@ final class ScannerFlowTests: HushUITestCase {
         defer { session.clearTransactions() }
         try session.buyProduct(productIdentifier: "com.hushscan.pro.yearly")
         let app = XCUIApplication(); app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-saved"]
-        app.launch(); openTestDocument(app)
+        app.launch()
+        // A new Pro member first sees the welcome card.
+        let welcome = app.buttons["Start scanning"]
+        if welcome.waitForExistence(timeout: 5) { welcome.tap() }
+        openTestDocument(app)
         func finished(_ name: String) {
             XCTAssertTrue(app.staticTexts["tool-done-title"].waitForExistence(timeout: 30), name)
             let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = name; shot.lifetime = .keepAlways; add(shot)
@@ -93,9 +97,9 @@ final class ScannerFlowTests: HushUITestCase {
         waitEnabled(prepare); prepare.tap()
         let save = app.buttons["local-tool-save"]
         waitEnabled(save); save.tap()
-        let done = expectation(for: NSPredicate(format: "label == %@", "Copy saved on this iPhone."), evaluatedWith: app.staticTexts["local-tool-result"])
+        let done = expectation(for: NSPredicate(format: "label == %@", "Copy saved"), evaluatedWith: app.staticTexts["tool-done-title"])
         wait(for: [done], timeout: 30)
-        app.buttons["Close"].tap()
+        app.buttons["tool-done-primary"].tap()
         // Long image: share-only result.
         openDocumentTools(app); app.buttons["Long image · PRO"].tap()
         waitEnabled(app.buttons["long-image-next"]); app.buttons["long-image-next"].tap()
@@ -215,6 +219,12 @@ final class ScannerFlowTests: HushUITestCase {
         field.tap(); field.typeText(" APPROVED")
         designShot(app, "annotate-1-canvas")
         waitEnabled(app.buttons["Save"]); app.buttons["Save"].tap()
+        // A done page says what was added before the editor closes.
+        XCTAssertTrue(app.staticTexts["tool-done-title"].waitForExistence(timeout: 60))
+        XCTAssertEqual(app.staticTexts["tool-done-title"].label, "Marks added")
+        XCTAssertTrue(app.buttons["tool-done-secondary"].exists)
+        let doneShot = XCTAttachment(screenshot: app.screenshot()); doneShot.name = "Annotate done"; doneShot.lifetime = .keepAlways; add(doneShot)
+        app.buttons["tool-done-primary"].tap()
         let annotationDismissed = expectation(for:NSPredicate(format:"exists == false"),evaluatedWith:app.staticTexts["Sign & annotate"])
         wait(for:[annotationDismissed],timeout:60)
         XCTAssertTrue(app.buttons["Share PDF"].isHittable)
@@ -472,6 +482,24 @@ final class ScannerFlowTests: HushUITestCase {
         restoreTestDocument(in: app)
         openTestDocument(app)
         XCTAssertTrue(app.buttons["Share PDF"].waitForExistence(timeout: 5), "Restoring must retain the saved PDF and normal row navigation")
+    }
+
+    @MainActor
+    func testTrashUndoToastBringsTheDocumentBack() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-saved"]
+        app.launch()
+        let row = savedDocumentRow(in: app)
+        XCTAssertTrue(reveal(row, in: app))
+        dragRow(row, from: 0.65, to: 0.35)
+        let trash = app.buttons["Move Test document to Trash"].firstMatch
+        XCTAssertTrue(trash.waitForExistence(timeout: 5)); trash.tap()
+        let undo = app.buttons["app-toast-action"]
+        XCTAssertTrue(undo.waitForExistence(timeout: 3))
+        XCTAssertEqual(app.staticTexts["app-toast-text"].label, "Moved to Trash")
+        let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = "Trash undo toast"; shot.lifetime = .keepAlways; add(shot)
+        undo.tap()
+        XCTAssertTrue(app.staticTexts["Test document"].waitForExistence(timeout: 5))
     }
 
     @MainActor

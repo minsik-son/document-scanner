@@ -2023,3 +2023,21 @@
 "Rate the app" = "Uygulamayı değerlendir";
 "Share the app" = "Uygulamayı paylaş";
 "HushScan scans documents and keeps them on your iPhone." = "HushScan belgeleri tarar ve iPhone’unuzda saklar.";
+
+/* Done pages and toasts */
+"Moved to Trash" = "Çöp Kutusu’na taşındı";
+"Restored to your documents" = "Belgelerinize geri yüklendi";
+"Backup saved" = "Yedek kaydedildi";
+"Your corrections are in the PDF" = "Düzeltmeleriniz PDF’te";
+"PDF text updated" = "PDF metni güncellendi";
+"Hidden. It's applied when you save." = "Gizlendi. Kaydettiğinizde uygulanır.";
+"Copy saved" = "Kopya kaydedildi";
+"Saved as “%@”. Your original is unchanged." = "“%@” olarak kaydedildi. Orijinal değişmedi.";
+"Form filled in" = "Form dolduruldu";
+"Signature added" = "İmza eklendi";
+"Marks added" = "İşaretler eklendi";
+"Saved to “%@”." = "“%@” belgesine kaydedildi.";
+"Text · %d" = "Metin · %d";
+"Signatures · %d" = "İmza · %d";
+"Pen · %d" = "Kalem · %d";
+"Highlights · %d" = "Vurgu · %d";

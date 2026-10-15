@@ -1367,3 +1367,72 @@ struct WorkProgressView: View {
         WorkDoneBadge(t: t, fill: tint).offset(x: 196, y: 36)
     }
 }
+
+// MARK: - Toast
+
+/// A short note near the bottom of the screen for work that finished without a page of
+/// its own ("Moved to Trash · Undo"). It sits in its own window, so it shows above sheets
+/// and full-screen pages too; without an action it never blocks a tap.
+@MainActor enum AppToast {
+    private static var window: UIWindow?
+    private static var hideTask: Task<Void, Never>?
+    static func show(_ text: String, symbol: String = "checkmark", tint: Color = TK.teal, action: String? = nil, perform: (() -> Void)? = nil) {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        guard let scene = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first else { return }
+        let bounds = scene.coordinateSpace.bounds
+        let bottom = scene.windows.first(where: \.isKeyWindow)?.safeAreaInsets.bottom ?? 0
+        let height: CGFloat = 72
+        let w = window ?? UIWindow(windowScene: scene)
+        w.frame = CGRect(x: 0, y: bounds.height - bottom - 100 - height, width: bounds.width, height: height)
+        w.windowLevel = .alert + 1
+        w.backgroundColor = .clear
+        w.isUserInteractionEnabled = perform != nil
+        let host = UIHostingController(rootView: ToastBanner(text: text, symbol: symbol, tint: tint, action: action) { perform?(); dismiss() })
+        host.view.backgroundColor = .clear
+        w.rootViewController = host
+        w.isHidden = false
+        window = w
+        UIAccessibility.post(notification: .announcement, argument: L(text))
+        hideTask?.cancel()
+        hideTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(perform == nil ? 2.4 : 4))
+            if !Task.isCancelled { dismiss() }
+        }
+    }
+    static func dismiss() { window?.isHidden = true; window?.rootViewController = nil }
+}
+
+struct ToastBanner: View {
+    let text: String
+    let symbol: String
+    let tint: Color
+    let action: String?
+    let run: () -> Void
+    @State private var shown = false
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: symbol).font(.system(size: 11, weight: .heavy)).foregroundStyle(.white)
+                .frame(width: 22, height: 22).background(tint, in: Circle())
+            Text(L(text)).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white).lineLimit(2)
+                .accessibilityIdentifier("app-toast-text")
+            Spacer(minLength: 8)
+            if let action {
+                Button(L(action), action: run).font(.system(size: 15, weight: .semibold)).foregroundStyle(Color(hex: 0x8EC1FF))
+                    .accessibilityIdentifier("app-toast-action")
+            }
+        }
+        .padding(.horizontal, 16).frame(minHeight: 50)
+        .background(TK.grey900, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(.horizontal, 16)
+        .frame(maxHeight: .infinity, alignment: .bottom)
+        .offset(y: shown ? 0 : 16).opacity(shown ? 1 : 0)
+        .onAppear { withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { shown = true } }
+    }
+}
+
+/// Moves a document to Trash and offers Undo for a few seconds.
+@MainActor func trashWithUndo(_ store: LibraryStore, _ doc: ScanDocument) {
+    store.moveToTrash(doc)
+    guard store.problem == nil else { return }
+    AppToast.show("Moved to Trash", symbol: "trash.fill", tint: TK.grey600, action: "Undo") { store.restore(doc) }
+}

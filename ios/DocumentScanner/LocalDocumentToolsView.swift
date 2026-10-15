@@ -25,10 +25,13 @@ struct LocalDocumentToolsView: View {
     @State private var working = "Preparing the file…"
     @State private var message: String?
     @State private var saved = false
+    /// Name of the saved copy; shows the done page.
+    @State private var savedTitle: String?
     @State private var job: Task<Void, Never>?
     private var doc: ScanDocument? { store.document(documentID) }
     var body: some View {
         NavigationStack {
+            Group { if let savedTitle { savedPage(savedTitle) } else {
             Form {
                 if let doc {
                     if let files = previewFiles {
@@ -77,6 +80,7 @@ struct LocalDocumentToolsView: View {
                     if let message { Section { Text(L(message)).accessibilityIdentifier("local-tool-result") } }
                 }
             }
+            } }
             .navigationTitle(L(tool.rawValue)).navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() }.disabled(busy) } }
             .interactiveDismissDisabled(busy)
@@ -162,6 +166,12 @@ struct LocalDocumentToolsView: View {
             catch { message = error.localizedDescription }
         }
     }
+    /// The copy is a new document: say so, and offer to share it.
+    private func savedPage(_ title: String) -> some View {
+        ToolDonePage(title: "Copy saved", detail: String(format: L("Saved as “%@”. Your original is unchanged."), title),
+                     primaryTitle: "Done", primary: { dismiss() },
+                     secondaryTitle: previewFiles == nil ? nil : "Share", secondary: { share = previewFiles }) { EmptyView() }
+    }
     private func saveCopy() {
         guard let pdfData, let doc else { return }
         busy = true; message = nil; working = "Saving a copy…"
@@ -169,7 +179,8 @@ struct LocalDocumentToolsView: View {
             defer { busy = false }
             do {
                 _ = try await store.saveGeneratedPDF(pdfData, title: doc.title + " (" + tool.rawValue + ")", folder: doc.folder)
-                saved = true; message = "Copy saved on this iPhone."
+                savedTitle = doc.title + " (" + tool.rawValue + ")"
+                saved = true; message = nil
             } catch { message = error.localizedDescription }
         }
     }

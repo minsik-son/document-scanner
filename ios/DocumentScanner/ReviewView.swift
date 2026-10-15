@@ -191,7 +191,7 @@ struct ReviewView: View {
                 Button("Keep editing", role: .cancel) {}
             } message: { Text("Its pages will be deleted from this iPhone.") }
             .alert("Delete the last page?", isPresented: $deletingLast) {
-                Button("Move document to Trash", role: .destructive) { if let doc = store.document(documentID) { store.moveToTrash(doc); if store.problem == nil { cancelEditing() } } }
+                Button("Move document to Trash", role: .destructive) { if let doc = store.document(documentID) { trashWithUndo(store, doc); if store.problem == nil { cancelEditing() } } }
                 Button("Cancel", role: .cancel) {}
             } message: { Text("Removing the last page moves this document to Trash, where it can be restored.") }
             .interactiveDismissDisabled(saving)
@@ -599,6 +599,9 @@ struct ReviewView: View {
     /// Stores the editor's areas on their pages. The first hide spends the free try.
     private func applyHiding(_ result: [UUID: (hidden: [CGRect], visible: [CGRect])], style: RedactionStyle) {
         let before = document?.pages.contains(where: \.hasRedaction) ?? false
+        if result.values.contains(where: { !$0.hidden.isEmpty }) {
+            AppToast.show("Hidden. It's applied when you save.", symbol: "eye.slash.fill", tint: TK.blue)
+        }
         change { doc in
             for (id, value) in result {
                 if let i = doc.pages.firstIndex(where: { $0.id == id }) { doc.pages[i].setRedaction(hidden: value.hidden, visible: value.visible, style: style) }

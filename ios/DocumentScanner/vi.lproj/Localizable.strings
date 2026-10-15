@@ -2023,3 +2023,21 @@
 "Rate the app" = "Đánh giá ứng dụng";
 "Share the app" = "Chia sẻ ứng dụng";
 "HushScan scans documents and keeps them on your iPhone." = "HushScan quét tài liệu và chỉ lưu trên iPhone của bạn.";
+
+/* Done pages and toasts */
+"Moved to Trash" = "Đã chuyển vào Thùng rác";
+"Restored to your documents" = "Đã khôi phục về tài liệu của bạn";
+"Backup saved" = "Đã lưu bản sao lưu";
+"Your corrections are in the PDF" = "Phần sửa đã có trong PDF";
+"PDF text updated" = "Đã cập nhật chữ trong PDF";
+"Hidden. It's applied when you save." = "Đã che. Sẽ áp dụng khi lưu.";
+"Copy saved" = "Đã lưu bản sao";
+"Saved as “%@”. Your original is unchanged." = "Đã lưu thành “%@”. Bản gốc giữ nguyên.";
+"Form filled in" = "Đã điền xong biểu mẫu";
+"Signature added" = "Đã thêm chữ ký";
+"Marks added" = "Đã thêm ghi chú";
+"Saved to “%@”." = "Đã lưu vào “%@”.";
+"Text · %d" = "Chữ · %d";
+"Signatures · %d" = "Chữ ký · %d";
+"Pen · %d" = "Bút · %d";
+"Highlights · %d" = "Tô sáng · %d";

@@ -85,7 +85,7 @@ struct DocumentView: View {
                 .toolbar { ToolbarItem(placement: .topBarTrailing) { Button { trash = true } label: { Image(systemName: "trash") }.accessibilityLabel("Move to trash") } }
                 .sheet(isPresented: $newContact) { NewContactView(fields: DocumentInsight.cardFields(doc), cardImage: cardImage(doc)).ignoresSafeArea() }
                 .sheet(isPresented: $naming) { DocumentNameSheet(document: doc).presentationDetents([.medium, .large]) }
-                .confirmationDialog("Move this document to Trash?", isPresented: $trash) { Button("Move to Trash", role: .destructive) { store.moveToTrash(doc); if store.problem == nil { dismiss() } } } message: { Text("You can restore it from Settings → Trash.") }
+                .confirmationDialog("Move this document to Trash?", isPresented: $trash) { Button("Move to Trash", role: .destructive) { trashWithUndo(store, doc); if store.problem == nil { dismiss() } } } message: { Text("You can restore it from Settings → Trash.") }
                 .sheet(isPresented: $toolPaywall, onDismiss: {
                     if subscription.isPro { activeTool = pendingTool }; pendingTool = nil
                 }) { PaywallView() }
@@ -148,6 +148,7 @@ struct DocumentView: View {
                 let result = try await PDFExport.prepare(doc, root: root, forceText: true) { progress = $0 }
                 try store.savePDF(result.data, document: result.document)
                 problem = result.textNotice
+                if result.textNotice == nil { AppToast.show("PDF text updated") }
             } catch { problem = "PDF text wasn't updated. Your saved PDF is still available. \(error.localizedDescription)" }
             recognizing = false
         }

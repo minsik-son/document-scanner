@@ -25,6 +25,14 @@ struct SettingsView: View {
     @State private var showingTour = false
     @State private var manageSubscription = false
     @Environment(\.openURL) private var openURL
+    private func restoreFromTrash(_ doc: ScanDocument) {
+        store.restore(doc)
+        if store.problem == nil { AppToast.show("Restored to your documents", symbol: "arrow.uturn.backward") }
+    }
+    private func backupCreated() {
+        store.perform { try store.recordBackupCreated() }
+        AppToast.show("Backup saved", symbol: "externaldrive.fill.badge.checkmark")
+    }
     var body: some View {
         NavigationStack {
             List {
@@ -75,7 +83,7 @@ struct SettingsView: View {
                                 VStack(alignment: .leading, spacing: 12) {
                                     Text(L(doc.title)).font(.headline)
                                     Text("\(max(0,30-Int(Date().timeIntervalSince(doc.deletedAt ?? Date())/86400))) days remaining").font(.caption).foregroundStyle(.secondary)
-                                    HStack { Button("Restore") { store.restore(doc) }.buttonStyle(.bordered); Spacer(); Button("Delete permanently", role: .destructive) { pendingDelete = doc }.buttonStyle(.bordered) }
+                                    HStack { Button("Restore") { restoreFromTrash(doc) }.buttonStyle(.bordered); Spacer(); Button("Delete permanently", role: .destructive) { pendingDelete = doc }.buttonStyle(.bordered) }
                                 }.padding(.vertical, 6)
                             }
                         }.navigationTitle("Trash")
@@ -161,7 +169,7 @@ struct SettingsView: View {
             .sheet(isPresented: $paywall) { PaywallView() }
             .manageSubscriptionsSheet(isPresented: $manageSubscription)
             .sheet(item: $share) { file in ShareSheet(items: [file.url], completion: { completed, error in
-                if completed { store.perform { try store.recordBackupCreated() } }
+                if completed { backupCreated() }
                 if let error { feedback = error.localizedDescription }
                 try? FileManager.default.removeItem(at: file.url)
             }) }
@@ -206,7 +214,7 @@ private struct UnfinishedScansView: View {
         }
         .navigationTitle("Unfinished scans")
         .alert("Move this unfinished scan to Trash?", isPresented: $confirmingTrash, presenting: pendingTrash) { doc in
-            Button("Move to Trash", role: .destructive) { store.moveToTrash(doc) }
+            Button("Move to Trash", role: .destructive) { trashWithUndo(store, doc) }
             Button("Cancel", role: .cancel) {}
         } message: { _ in Text("Your scanned pages can be restored from Settings → Trash.") }
     }

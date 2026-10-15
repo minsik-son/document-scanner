@@ -2023,3 +2023,21 @@
 "Rate the app" = "Beri nilai aplikasi";
 "Share the app" = "Bagikan aplikasi";
 "HushScan scans documents and keeps them on your iPhone." = "HushScan memindai dokumen dan menyimpannya di iPhone Anda.";
+
+/* Done pages and toasts */
+"Moved to Trash" = "Dipindahkan ke Sampah";
+"Restored to your documents" = "Dipulihkan ke dokumen Anda";
+"Backup saved" = "Cadangan disimpan";
+"Your corrections are in the PDF" = "Koreksi Anda sudah ada di PDF";
+"PDF text updated" = "Teks PDF diperbarui";
+"Hidden. It's applied when you save." = "Disembunyikan. Diterapkan saat disimpan.";
+"Copy saved" = "Salinan disimpan";
+"Saved as “%@”. Your original is unchanged." = "Disimpan sebagai “%@”. Dokumen asli tidak berubah.";
+"Form filled in" = "Formulir sudah diisi";
+"Signature added" = "Tanda tangan ditambahkan";
+"Marks added" = "Tanda ditambahkan";
+"Saved to “%@”." = "Disimpan ke “%@”.";
+"Text · %d" = "Teks · %d";
+"Signatures · %d" = "Tanda tangan · %d";
+"Pen · %d" = "Pena · %d";
+"Highlights · %d" = "Sorotan · %d";

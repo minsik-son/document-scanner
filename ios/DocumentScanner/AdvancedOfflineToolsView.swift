@@ -617,18 +617,8 @@ struct AdvancedOfflineToolContent:View {
     /// Step 3: the file is ready.
     private var wordReadyPage: some View {
         ToolPage(title: "") {
-            VStack(spacing: 20) {
-                ZStack {
-                    Circle().fill(TK.blueSoft).frame(width: 132, height: 132)
-                    Circle().fill(TK.blue).frame(width: 84, height: 84)
-                    Image(systemName: "checkmark").font(.system(size: 38, weight: .bold)).foregroundStyle(.white)
-                }.padding(.top, 24).accessibilityHidden(true)
-                VStack(spacing: 8) {
-                    Text("Your Word file is ready").font(.system(size: 24, weight: .bold)).foregroundStyle(TK.grey900)
-                    Text(files?.urls.first?.lastPathComponent ?? "Document.docx").font(.system(size: 16)).foregroundStyle(TK.grey600)
-                }
-                SaveStatus(saved: filesSaved)
-            }.frame(maxWidth: .infinity)
+            FileReadyHero(saved: filesSaved, readyTitle: L("Your Word file is ready"),
+                          fileName: files?.urls.first?.lastPathComponent ?? "Document.docx")
         } actions: {
             Button("Preview") { quickLook = true }.buttonStyle(SecondaryCTAStyle()).disabled(files == nil).accessibilityIdentifier("word-preview")
             SaveFirstButton(urls: files?.urls, saved: $filesSaved, shareTitle: "Share Word file", shareID: "word-share") { sharing = true }

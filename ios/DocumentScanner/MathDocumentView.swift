@@ -151,16 +151,7 @@ struct MathDocumentView: View {
     }
     private var readyContent: some View {
         VStack(spacing: 20) {
-            ZStack {
-                Circle().fill(TK.blueSoft).frame(width: 132, height: 132)
-                Circle().fill(TK.blue).frame(width: 84, height: 84)
-                Image(systemName: "checkmark").font(.system(size: 38, weight: .bold)).foregroundStyle(.white)
-            }.padding(.top, 24).accessibilityHidden(true)
-            VStack(spacing: 8) {
-                Text("Your document is ready").font(.system(size: 24, weight: .bold)).foregroundStyle(TK.grey900)
-                Text("Math transcription.\(format.extensionName)").font(.system(size: 16)).foregroundStyle(TK.grey600)
-            }
-            SaveStatus(saved: filesSaved)
+            FileReadyHero(saved: filesSaved, readyTitle: L("Your document is ready"), fileName: "Math transcription.\(format.extensionName)")
             Button("Scan another page") { clearFiles();onRetake() }.buttonStyle(ChipStyle(selected: false)).accessibilityIdentifier("math-another")
         }.frame(maxWidth: .infinity)
     }

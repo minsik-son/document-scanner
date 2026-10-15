@@ -126,7 +126,7 @@ final class ScannerFlowTests: HushUITestCase {
         waitEnabled(app.buttons["long-image-run"]); app.buttons["long-image-run"].tap()
         finished("Long image"); XCTAssertFalse(app.buttons["tool-done-secondary"].exists, "Save comes before share")
         app.buttons["files-save"].tap(); XCTAssertTrue(app.buttons["tool-done-secondary"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.descendants(matching: .any)["save-status"].label, "Saved to Photos")
+        XCTAssertEqual(app.staticTexts["tool-done-title"].label, "Saved to Photos")
         app.buttons["tool-close"].tap()
         app.terminate(); app.launch()
         // Newest first; the list builds rows lazily as it scrolls.

@@ -276,19 +276,9 @@ struct PowerPointExportView: View {
     /// Done: the file is ready.
     private var readyPage: some View {
         ToolPage(title: "") {
-            VStack(spacing: 20) {
-                ZStack {
-                    Circle().fill(TK.blueSoft).frame(width: 132, height: 132)
-                    Circle().fill(TK.blue).frame(width: 84, height: 84)
-                    Image(systemName: "checkmark").font(.system(size: 38, weight: .bold)).foregroundStyle(.white)
-                }.padding(.top, 24).accessibilityHidden(true)
-                VStack(spacing: 8) {
-                    Text(LS(excel ? (tables.count == 1 ? "1 table ready" : "\(tables.count) tables ready") : (pages.count == 1 ? "1 slide ready" : "\(pages.count) slides ready")))
-                        .font(.system(size: 24, weight: .bold)).foregroundStyle(TK.grey900).accessibilityIdentifier("ppt-ready")
-                    Text(export?.urls.first?.lastPathComponent ?? (excel ? "Table.xlsx" : "Slides.pptx")).font(.system(size: 16)).foregroundStyle(TK.grey600)
-                }
-                SaveStatus(saved: exportSaved)
-            }.frame(maxWidth: .infinity)
+            FileReadyHero(saved: exportSaved,
+                          readyTitle: LS(excel ? (tables.count == 1 ? "1 table ready" : "\(tables.count) tables ready") : (pages.count == 1 ? "1 slide ready" : "\(pages.count) slides ready")),
+                          fileName: export?.urls.first?.lastPathComponent ?? (excel ? "Table.xlsx" : "Slides.pptx"), titleID: "ppt-ready")
         } actions: {
             Button("Preview") { preview = true }.buttonStyle(SecondaryCTAStyle()).accessibilityIdentifier("ppt-preview")
             SaveFirstButton(urls: export?.urls, saved: $exportSaved, shareTitle: "Share \(formatName)", shareID: "ppt-share") { sharing = true }

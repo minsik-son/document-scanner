@@ -10,7 +10,6 @@ final class AdvancedToolsUITests: HushUITestCase {
         let save = app.buttons["files-save"]
         ready(save,file:file,line:line)
         XCTAssertFalse(app.buttons[share].exists,"Sharing comes after saving",file:file,line:line)
-        XCTAssertTrue(app.descendants(matching:.any)["save-status"].exists,file:file,line:line)
         save.tap()
         ready(app.buttons[share],file:file,line:line)
     }

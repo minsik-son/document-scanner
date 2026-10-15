@@ -415,16 +415,27 @@ struct ToolDonePage<Extra: View>: View {
             VStack(spacing: 22) {
                 ZStack {
                     Circle().fill(TK.blueSoft).frame(width: 132, height: 132).scaleEffect(appeared ? 1 : 0.6)
-                    Circle().fill(TK.blue).frame(width: 84, height: 84).scaleEffect(appeared ? 1 : 0.4)
-                    Image(systemName: "checkmark").font(.system(size: 38, weight: .bold)).foregroundStyle(.white)
-                        .scaleEffect(appeared ? 1 : 0.2)
+                    if let save, !saved {
+                        // Not saved yet: the file, not a check.
+                        Image(systemName: save.photos ? "photo.fill" : "doc.fill")
+                            .font(.system(size: 44, weight: .semibold)).foregroundStyle(TK.blue)
+                            .transition(.scale(scale: 0.7).combined(with: .opacity))
+                    } else if save != nil {
+                        Circle().fill(TK.blue).frame(width: 84, height: 84).transition(.scale(scale: 0.3).combined(with: .opacity))
+                        DrawnCheck().frame(width: 84, height: 84)
+                    } else {
+                        Circle().fill(TK.blue).frame(width: 84, height: 84).scaleEffect(appeared ? 1 : 0.4)
+                        Image(systemName: "checkmark").font(.system(size: 38, weight: .bold)).foregroundStyle(.white)
+                            .scaleEffect(appeared ? 1 : 0.2)
+                    }
                 }.padding(.top, 24).accessibilityHidden(true)
+                .animation(.spring(response: 0.42, dampingFraction: 0.62), value: saved)
                 VStack(spacing: 10) {
-                    Text(L(title)).font(.system(size: 24, weight: .bold)).foregroundStyle(TK.grey900).multilineTextAlignment(.center)
+                    Text(verbatim: save != nil && saved ? L(save?.photos == true ? "Saved to Photos" : "Saved to Files") : L(title))
+                        .font(.system(size: 24, weight: .bold)).foregroundStyle(TK.grey900).multilineTextAlignment(.center)
                         .accessibilityIdentifier("tool-done-title")
                     Text(L(detail)).font(.system(size: 16)).foregroundStyle(TK.grey600).multilineTextAlignment(.center)
                 }
-                if let save { SaveStatus(saved: saved, photos: save.photos) }
                 extra()
             }.frame(maxWidth: .infinity)
         } actions: {
@@ -1598,14 +1609,75 @@ struct SaveStatus: View {
     let saved: Bool
     var photos = false
     var body: some View {
-        Label(L(saved ? (photos ? "Saved to Photos" : "Saved to Files") : "Not saved yet"),
-              systemImage: saved ? "checkmark.circle.fill" : "exclamationmark.circle")
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(saved ? TK.teal : TK.grey600)
-            .padding(.horizontal, 12).padding(.vertical, 7)
-            .background(saved ? TK.tealSoft : TK.grey100, in: Capsule())
-            .accessibilityIdentifier("save-status")
-            .animation(.spring(response: 0.35, dampingFraction: 0.7), value: saved)
+        // Nothing until saved: the page says the file is ready and offers to save it.
+        if saved {
+            Label(L(photos ? "Saved to Photos" : "Saved to Files"), systemImage: "checkmark.circle.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(TK.teal)
+                .padding(.horizontal, 12).padding(.vertical, 7)
+                .background(TK.tealSoft, in: Capsule())
+                .accessibilityIdentifier("save-status")
+                .transition(.scale(scale: 0.8).combined(with: .opacity))
+        }
+    }
+}
+/// A check that draws itself in, stroke by stroke.
+struct CheckMarkShape: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: r.minX + r.width * 0.28, y: r.minY + r.height * 0.53))
+        p.addLine(to: CGPoint(x: r.minX + r.width * 0.44, y: r.minY + r.height * 0.68))
+        p.addLine(to: CGPoint(x: r.minX + r.width * 0.73, y: r.minY + r.height * 0.36))
+        return p
+    }
+}
+struct DrawnCheck: View {
+    var lineWidth: CGFloat = 7
+    var color: Color = .white
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var progress: CGFloat = 0
+    var body: some View {
+        CheckMarkShape().trim(from: 0, to: progress)
+            .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
+            .onAppear {
+                if reduceMotion { progress = 1; return }
+                withAnimation(.easeOut(duration: 0.45).delay(0.18)) { progress = 1 }
+            }
+    }
+}
+/// Top of a ready page: the file is ready (file icon) until saved, then the circle fills
+/// and a check draws in, and the title says where it was saved.
+struct FileReadyHero: View {
+    let saved: Bool
+    /// Already localized ("Your Word file is ready").
+    let readyTitle: String
+    let fileName: String
+    var photos = false
+    var titleID = "ready-title"
+    var body: some View {
+        VStack(spacing: 20) {
+            ZStack {
+                Circle().fill(TK.blueSoft).frame(width: 132, height: 132)
+                if saved {
+                    Circle().fill(TK.blue).frame(width: 84, height: 84)
+                        .transition(.scale(scale: 0.3).combined(with: .opacity))
+                    DrawnCheck().frame(width: 84, height: 84)
+                } else {
+                    Image(systemName: photos ? "photo.fill" : "doc.fill")
+                        .font(.system(size: 44, weight: .semibold)).foregroundStyle(TK.blue)
+                        .transition(.scale(scale: 0.7).combined(with: .opacity))
+                }
+            }
+            .padding(.top, 24).accessibilityHidden(true)
+            VStack(spacing: 8) {
+                Text(verbatim: saved ? L(photos ? "Saved to Photos" : "Saved to Files") : readyTitle)
+                    .font(.system(size: 24, weight: .bold)).foregroundStyle(TK.grey900).multilineTextAlignment(.center)
+                    .contentTransition(.opacity).accessibilityIdentifier(titleID)
+                Text(verbatim: fileName).font(.system(size: 16)).foregroundStyle(TK.grey600)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .animation(.spring(response: 0.42, dampingFraction: 0.62), value: saved)
     }
 }
 /// The ready page's main button: "Save to Files" (or Photos) until saved, then the share button.

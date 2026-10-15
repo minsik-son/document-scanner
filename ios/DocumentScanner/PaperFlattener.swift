@@ -50,7 +50,20 @@ enum PaperFlattener {
         let W = Double(img.w), H = Double(img.h)
         var corners = crop.points.map { Pt($0.x * W, $0.y * H) }
         let center = corners.reduce(Pt(0, 0), +) / 4
-        guard let mask = PaperFeatures.paperMask(img, seed: center) else { return nil }
+        guard var mask = PaperFeatures.paperMask(img, seed: center) else { return nil }
+        // Paper reaching well past the crop is a light desk taken for paper. The sheet told
+        // apart by colour or by lightness is used instead when it matches the crop; otherwise
+        // the desk's outline is kept out of the corners and edges below.
+        var quadArea = 0.0
+        for k in 0..<4 { let a = corners[k], b = corners[(k + 1) % 4]; quadArea += a.x * b.y - b.x * a.y }
+        quadArea = abs(quadArea) / 2
+        func area(_ m: Plane) -> Double { Double(m.p.reduce(0) { $0 + ($1 > 0 ? 1 : 0) }) }
+        var leaked = area(mask) > quadArea * 1.25
+        if leaked {
+            for make in [PaperFeatures.contrastPaperMask, PaperFeatures.lightPaperMask] {
+                if let m = make(img, center), area(m) > quadArea * 0.8, area(m) < quadArea * 1.25 { mask = m; leaked = false; break }
+            }
+        }
         let outline = PaperFeatures.outline(mask, center: center)
         lap("mask", &t)
         // Sides between the corners, and corners refined from the paper's edges.
@@ -60,6 +73,14 @@ enum PaperFlattener {
         var usable = [Bool](repeating: false, count: 4), outward = [Bool](repeating: false, count: 4)
         for k in 0..<4 {
             guard let l = lines[k], sides[k].count >= 12 else { continue }
+            // A side that runs along the photo's own border is not the paper's edge: on a
+            // light desk the light-paper mask can spread to the whole picture, and that
+            // straight border would pull the corners out onto the desk.
+            // (A crop that itself runs along the border, a page filling the photo, keeps it.)
+            let onBorder = sides[k].filter { $0.x < 3 || $0.y < 3 || $0.x > W - 4 || $0.y > H - 4 }.count
+            let cropMid = (corners[k] + corners[(k + 1) % 4]) / 2
+            let cropToBorder = min(cropMid.x, cropMid.y, W - cropMid.x, H - cropMid.y)
+            if onBorder * 3 > sides[k].count, cropToBorder > diag * 0.02 { continue }
             // The outline follows this side of the crop (it isn't a crop inside the paper).
             let a = corners[k], b = corners[(k + 1) % 4]
             let mid = (a + b) / 2
@@ -71,7 +92,8 @@ enum PaperFlattener {
             let parallel = abs(simd_dot(l.d, side.d)) > cos(10 * Double.pi / 180)
             let body = Array(sides[k].dropFirst(sides[k].count / 5).dropLast(sides[k].count / 5))
             let straight = median(body.map { distance(l, $0) }) < diag * 0.004
-            if beyond > 0, beyond < diag * 0.10, parallel, straight { usable[k] = true; outward[k] = true }
+            // (With the desk taken for paper, an edge "a little farther out" is the desk's.)
+            if !leaked, beyond > 0, beyond < diag * 0.10, parallel, straight { usable[k] = true; outward[k] = true }
         }
         for k in 0..<4 where usable[k] && usable[(k + 3) % 4] {
             let reach = outward[k] || outward[(k + 3) % 4] ? 0.14 : 0.06
@@ -79,12 +101,7 @@ enum PaperFlattener {
         }
         sides = splitOutline(outline, corners: corners, center: center)
         // Page shape: perspective aspect, snapped to Letter or A4 when close.
-        guard var aspect = quadAspect(corners, W: W, H: H) else { return nil }
-        // The nearest one: Letter and A4 are only 9 % apart.
-        let raw = aspect
-        let standards: [Double] = [8.5 / 11, 11 / 8.5, 1 / 2.0.squareRoot(), 2.0.squareRoot()]
-        func off(_ std: Double) -> Double { abs(raw / std - 1) }
-        if let std = standards.min(by: { off($0) < off($1) }), off(std) < 0.06 { aspect = std }
+        guard let aspect = pageAspect(corners, W: W, H: H) else { return nil }
         let pw = 1.0, ph = 1.0 / aspect
         // Rough rectification to find the lines.
         let pageToPhoto = homography(from: [Pt(0, 0), Pt(pw, 0), Pt(pw, ph), Pt(0, ph)], to: corners)
@@ -151,11 +168,41 @@ enum PaperFlattener {
     static func findPage(_ photo: CGImage) -> ScanQuad? {
         guard let img = RGBAImage(photo, maxSide: 700) else { return nil }
         let center = Pt(Double(img.w) / 2, Double(img.h) / 2)
-        // Light, plain paper first; then paper told apart from its background by colour.
+        // Light, plain paper first; then paper told apart from its background by colour,
+        // then by lightness alone (white paper on a beige desk).
         for mask in [PaperFeatures.paperMask(img, seed: center), PaperFeatures.contrastPaperMask(img, seed: center)] {
             if let mask, let quad = pageQuad(mask, center: center) { return quad }
         }
+        // Lightness alone splits paper from print as readily as from a desk, so its sheet
+        // counts only when what lies just outside it, all round, is clearly darker than the
+        // paper just inside (a white sheet on a beige desk, not a text block on a page).
+        if let mask = PaperFeatures.lightPaperMask(img, seed: center), let quad = pageQuad(mask, center: center), darkerAround(img, quad) { return quad }
         return nil
+    }
+
+    /// Whether the band just outside each side of `quad` is darker than the paper just inside.
+    static func darkerAround(_ img: RGBAImage, _ quad: ScanQuad) -> Bool {
+        let g = img.gray, W = Double(img.w), H = Double(img.h)
+        let c = quad.points.map { Pt($0.x * W, $0.y * H) }
+        let mid = c.reduce(Pt(0, 0), +) / 4, gap = 0.025 * hypot(W, H)
+        for k in 0..<4 {
+            let a = c[k], b = c[(k + 1) % 4]
+            var n = simd_normalize(Pt(b.y - a.y, a.x - b.x))
+            if simd_dot(n, (a + b) / 2 - mid) < 0 { n = -n }
+            var inside: [Int] = [], outside: [Int] = []
+            for i in 1..<20 {
+                let p = a + (b - a) * (Double(i) / 20)
+                for (q, list) in [(p - n * gap, 0), (p + n * gap, 1)] {
+                    let x = Int(q.x), y = Int(q.y)
+                    guard x >= 0, y >= 0, x < img.w, y < img.h else { continue }
+                    if list == 0 { inside.append(Int(g[x, y])) } else { outside.append(Int(g[x, y])) }
+                }
+            }
+            guard inside.count >= 10, outside.count >= 10 else { return false }
+            let i = inside.sorted()[inside.count * 3 / 4], o = outside.sorted()[outside.count / 2]
+            if o > i - 18 { return false }
+        }
+        return true
     }
 
     /// The sheet's corners from its mask, when the mask looks like one sheet that
@@ -347,6 +394,16 @@ enum PaperFlattener {
     }
 
     /// Width / height of the rectangle a perspective quad shows (Zhang & He), or nil.
+    /// The page's width / height from its four corners in a W × H photo (pixels, top-left
+    /// origin), snapped to Letter or A4 when close: the nearest one, as they are only 9 % apart.
+    static func pageAspect(_ c: [Pt], W: Double, H: Double) -> Double? {
+        guard let raw = quadAspect(c, W: W, H: H) else { return nil }
+        let standards: [Double] = [8.5 / 11, 11 / 8.5, 1 / 2.0.squareRoot(), 2.0.squareRoot()]
+        func off(_ std: Double) -> Double { abs(raw / std - 1) }
+        if let std = standards.min(by: { off($0) < off($1) }), off(std) < 0.06 { return std }
+        return raw
+    }
+
     static func quadAspect(_ c: [Pt], W: Double, H: Double) -> Double? {
         let u0 = W / 2, v0 = H / 2
         func v(_ p: Pt) -> SIMD3<Double> { SIMD3(p.x, p.y, 1) }

@@ -439,6 +439,23 @@ enum DocumentProcessing {
             f.topLeft = p[0]; f.topRight = p[1]; f.bottomRight = p[2]; f.bottomLeft = p[3]
             guard let corrected = f.outputImage else { throw ScannerError.message("Perspective correction couldn't be applied. Adjust the crop and try again.") }
             image = corrected
+            // The four corners alone keep the photographed proportions: a page shot at an
+            // angle comes out short or narrow. For a page that was to be flattened, restore the
+            // sheet's real shape from the camera geometry, stretching the shorter side so no
+            // detail is lost.
+            if flatten != nil, !identityCleanup {
+                let e = source.extent
+                let corners = crop.points.map { PaperFlattener.Pt($0.x * e.width, $0.y * e.height) }
+                if let aspect = PaperFlattener.pageAspect(corners, W: e.width, H: e.height) {
+                    let r = image.extent, current = r.width / r.height
+                    if abs(current / aspect - 1) > 0.005 {
+                        let sx = aspect > current ? aspect / current : 1, sy = aspect > current ? 1 : current / aspect
+                        let origin = image.transformed(by: CGAffineTransform(translationX: -r.minX, y: -r.minY))
+                        let size = CGRect(x: 0, y: 0, width: (r.width * sx).rounded(), height: (r.height * sy).rounded())
+                        image = origin.clampedToExtent().applyingFilter("CILanczosScaleTransform", parameters: [kCIInputScaleKey: sy, kCIInputAspectRatioKey: sx / sy]).cropped(to: size)
+                    }
+                }
+            }
         }
         image = image.transformed(by: CGAffineTransform(translationX: -image.extent.minX, y: -image.extent.minY))
         // Remove the strip of desk/shadow that survives when the crop corners sit a

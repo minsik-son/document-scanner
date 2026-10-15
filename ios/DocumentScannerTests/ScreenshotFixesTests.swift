@@ -658,7 +658,9 @@ final class QAScanTests: XCTestCase {
         let qa = Self.qa, photos = qa.appendingPathComponent("synth/photos"), pages = qa.appendingPathComponent("synth/pages")
         let out = qa.appendingPathComponent("results/scan"); try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
         let log = qa.appendingPathComponent("results/scan.jsonl"); try? FileManager.default.removeItem(at: log); FileManager.default.createFile(atPath: log.path, contents: nil)
-        let only = ProcessInfo.processInfo.environment["QA_ONLY"]
+        // QA_ONLY (or the first line of qa/only.txt): run only photos whose name contains it.
+        let onlyFile = (try? String(contentsOf: qa.appendingPathComponent("only.txt"), encoding: .utf8))?.split(separator: "\n").first.map(String.init)
+        let only = ProcessInfo.processInfo.environment["QA_ONLY"] ?? onlyFile.flatMap { $0.isEmpty ? nil : $0 }
         let names = try FileManager.default.contentsOfDirectory(atPath: photos.path).filter { $0.hasSuffix(".json") }.sorted()
         var baseline: [String: (cer: Double, recall: Double)] = [:]
         for name in names {

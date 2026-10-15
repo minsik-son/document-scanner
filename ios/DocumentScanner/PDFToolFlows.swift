@@ -1883,6 +1883,12 @@ extension Redaction {
                                   "date of birth", "naissance", "resident", "citizenship", "status", "services card", "photo card", "health number",
                                   "주민등록", "운전면허", "면허", "運転免許", "個人番号", "マイナンバー", "公安委員会", "免許", "有効", "身份", "居民", "居留", "在留", "证件", "签发", "外国人"]
     /// Label words, with what the value next to them is.
+    /// Labels of numbers that identify a business document, not a person (see `businessRow`).
+    private static let businessWords: Set<String> = Set(("order invoice inv isbn issn policy pol reference ref tracking receipt transaction txn booking " +
+        "confirmation ticket case claim serial model sku item po purchase business gst hst vat tax postal zip postcode shipment waybill " +
+        "commande facture rechnung bestellung pedido fattura ordine").split(separator: " ").map(String.init))
+    private static let businessWordsCJK = ["주문", "접수", "사업자", "송장", "운송장", "영수증", "거래", "승인번호", "우편번호", "청구번호", "문서번호", "관리번호",
+                                           "注文", "請求", "受付", "伝票", "郵便番号", "订单", "发票", "单号", "邮编", "訂單", "發票", "郵遞區號"]
     private static let labelWords: [String: String] = {
         var v: [String: String] = [:]
         for w in "name names nom noms surname surnames given family famille prenom prenoms alias emprunt last first lastname firstname".split(separator: " ") { v[String(w)] = "name" }
@@ -2055,6 +2061,22 @@ extension Redaction {
             return wordRanges(b).filter { NSIntersectionRange($0.0, range).length > 0 }.reduce(guess) { $0.union($1.1) }
         }
         func overlapY(_ a: TextBlock, _ b: TextBlock) -> Double { min(a.y + a.height, b.y + b.height) - max(a.y, b.y) }
+        /// On an ordinary page (not a card) a number labelled as an order, invoice, reference,
+        /// tracking or business number, or a postal code on its own, is not about the person:
+        /// the label in the same line or just left of it on the row says so.
+        func businessRow(_ j: Int) -> Bool {
+            guard !card else { return false }
+            let b = blocks[j]
+            let row = blocks.indices.filter { k in
+                let c = blocks[k]
+                return k == j || (c.x + c.width <= b.x + 0.02 && b.x - (c.x + c.width) < 0.4 && overlapY(b, c) > 0.4 * min(b.height, c.height))
+            }
+            return row.contains { k in
+                let f = fold(blocks[k].text)
+                if businessWordsCJK.contains(where: { f.contains($0) }) { return true }
+                return IDRx.words.matches(in: f, range: full(f)).contains { m in businessWords.contains((f as NSString).substring(with: m.range)) }
+            }
+        }
         func isLabel(_ j: Int) -> Bool { infos[j]?.only == true }
         func add(_ j: Int, _ kind: String) { out.append((names[kind] ?? kind, rect(blocks[j]))); used.insert(j) }
         /// Address lines that run on under block `j`; stops at the first line that is a label or a date.
@@ -2074,7 +2096,7 @@ extension Redaction {
             // Machine-readable lines on passports and residence cards.
             if marks(t) >= 3 || (has(IDRx.mrzLine, t.replacingOccurrences(of: " ", with: "")) && digits(t) >= 8) { add(i, "number"); continue }
             let label = infos[i]
-            if let label, label.kind != "other" {
+            if let label, label.kind != "other", !(label.kind == "number" && businessRow(i)) {
                 let kind = label.kind
                 if !label.only {
                     let value = ns.substring(from: min(label.end, n))
@@ -2133,7 +2155,7 @@ extension Redaction {
                 for m in IDRx.token.matches(in: t, range: full(t)) {
                     let s = ns.substring(with: m.range)
                     if m.range.location > 0, ns.substring(with: NSRange(location: m.range.location - 1, length: 1)) == "*" { continue }
-                    if digits(s) >= 5, s.filter({ $0 != "-" }).count <= 18, !has(IDRx.shortDate, s), !compactDate(s) { out.append(("ID number", span(b, m.range.location, m.range.upperBound))) }
+                    if digits(s) >= 5, s.filter({ $0 != "-" }).count <= 18, !has(IDRx.shortDate, s), !compactDate(s), !businessRow(i) { out.append(("ID number", span(b, m.range.location, m.range.upperBound))) }
                 }
             }
             for m in IDRx.spaced.matches(in: t, range: full(t)) { out.append(("ID number", span(b, m.range.location, m.range.upperBound))) }
@@ -2144,7 +2166,7 @@ extension Redaction {
                 if field == "8" { continuation(i, anchor: b.x) }
             }
             if has(IDRx.street, t.uppercased()) { add(i, "address"); continuation(i, anchor: b.x) }
-            if has(IDRx.postal, t.uppercased()) { add(i, "address") }
+            if has(IDRx.postal, t.uppercased()), !businessRow(i) { add(i, "address") }
             if has(IDRx.cjkAddress, t) { add(i, "address") }
             // Korean resident cards: the name sits right above the registration number.
             if has(IDRx.rrnLoose, t) {

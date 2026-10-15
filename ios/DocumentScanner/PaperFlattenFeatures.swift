@@ -68,6 +68,37 @@ enum PaperFeatures {
         return region(m, seed: seed)
     }
 
+    /// Paper that is clearly lighter than what surrounds it, whatever its tint: a sheet on
+    /// a beige desk, or a sheet in a dim room. Otsu's split on lightness, low-saturation
+    /// pixels only, so a coloured desk or band stays outside.
+    static func lightPaperMask(_ img: RGBAImage, seed: Pt) -> Plane? {
+        let n = img.w * img.h
+        var L = [UInt8](repeating: 0, count: n), hist = [Int](repeating: 0, count: 256)
+        for i in 0..<n {
+            let r = Int(img.px[i * 4]), g = Int(img.px[i * 4 + 1]), b = Int(img.px[i * 4 + 2])
+            let l = (r * 77 + g * 150 + b * 29) >> 8
+            L[i] = UInt8(l); hist[l] += 1
+        }
+        var sum = 0.0; for k in 0..<256 { sum += Double(k * hist[k]) }
+        var sumB = 0.0, wB = 0.0, best = 0.0, t = 0
+        for k in 0..<256 {
+            wB += Double(hist[k]); guard wB > 0 else { continue }
+            let wF = Double(n) - wB; if wF <= 0 { break }
+            sumB += Double(k * hist[k])
+            let mB = sumB / wB, mF = (sum - sumB) / wF
+            let between = wB * wF * (mB - mF) * (mB - mF)
+            if between > best { best = between; t = k }
+        }
+        guard t >= 25 else { return nil }
+        var m = Plane(w: img.w, h: img.h)
+        for i in 0..<n where Int(L[i]) > t {
+            let r = Int(img.px[i * 4]), g = Int(img.px[i * 4 + 1]), b = Int(img.px[i * 4 + 2])
+            let mx = max(r, g, b), mn = min(r, g, b)
+            if mx > 0 && (mx - mn) * 255 / mx < 90 { m.p[i] = 255 }
+        }
+        return region(m, seed: seed)
+    }
+
     /// The region of `m` that holds `seed`, cleaned and with holes (the print) filled.
     static func region(_ m0: Plane, seed: Pt) -> Plane? {
         var m = m0

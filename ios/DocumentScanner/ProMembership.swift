@@ -328,7 +328,7 @@ struct ProBenefitsCard: View {
             }
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(TK.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         .onAppear { trials = ProTrials(); tick += 1 }
         .onReceive(NotificationCenter.default.publisher(for: .proTrialsChanged)) { _ in tick += 1 }
     }
@@ -387,7 +387,7 @@ struct WelcomeToProView: View {
                 }.buttonStyle(.plain).padding(.top, 24).accessibilityIdentifier("welcome-pro-start")
             }
             .padding(24)
-            .background(.white, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .background(TK.surface, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
             .padding(.horizontal, 20)
         }
     }

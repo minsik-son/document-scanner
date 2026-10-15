@@ -90,6 +90,70 @@ final class ToolDirectoryDesignTests: HushUITestCase {
         XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 5))
         capture(app, "Privacy and data")
     }
+    /// Light appearance stays as it was (compare with earlier screenshots).
+    @MainActor func testLightModeScreens() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-saved", "-appAppearance", "light"]
+        app.launch()
+        let splash = app.otherElements["startup-screen"]
+        let deadline = Date().addingTimeInterval(10)
+        while splash.exists && Date() < deadline { usleep(200_000) }
+        XCTAssertTrue(app.buttons["home-tools"].waitForExistence(timeout: 5))
+        capture(app, "Light home")
+        app.buttons["home-tools"].tap()
+        XCTAssertTrue(app.textFields["tool-search"].waitForExistence(timeout: 5))
+        capture(app, "Light tools")
+    }
+    /// Dark appearance across the main screens (screenshots for review).
+    @MainActor func testDarkModeScreens() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-test-session", UUID().uuidString, "--seed-saved", "--simulate-camera", "-appAppearance", "dark", "-app-language", "ko", "-AppleLanguages", "(ko)"]
+        app.launch()
+        XCTAssertTrue(app.buttons["nav-home"].waitForExistence(timeout: 10))
+        let splash = app.otherElements["startup-screen"]
+        let deadline = Date().addingTimeInterval(10)
+        while splash.exists && Date() < deadline { usleep(200_000) }
+        capture(app, "Dark home")
+        app.swipeUp(); capture(app, "Dark home lower"); app.swipeDown()
+        app.buttons["nav-tools"].tap()
+        XCTAssertTrue(app.textFields["tool-search"].waitForExistence(timeout: 5))
+        capture(app, "Dark tools")
+        let compress = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "PDF 압축")).firstMatch
+        if compress.waitForExistence(timeout: 3) {
+            compress.tap(); sleep(2); capture(app, "Dark tool page")
+            if app.buttons["tool-close"].exists { app.buttons["tool-close"].tap() } else { app.navigationBars.buttons.element(boundBy: 0).tap() }
+        }
+        app.buttons["tools-close"].tap()
+        app.buttons["nav-documents"].tap()
+        capture(app, "Dark documents")
+        let row = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "document-row-")).firstMatch
+        if row.waitForExistence(timeout: 5) {
+            row.tap(); sleep(2); capture(app, "Dark document")
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+        }
+        app.buttons["nav-settings"].tap()
+        XCTAssertTrue(app.buttons["settings-save-backup"].waitForExistence(timeout: 5))
+        capture(app, "Dark settings")
+        app.buttons["settings-save-backup"].tap()
+        XCTAssertTrue(app.buttons["backup-export"].waitForExistence(timeout: 5))
+        capture(app, "Dark save and backup")
+        app.terminate()
+        app.launchArguments = ["--ui-test-session", UUID().uuidString, "--simulate-camera", "-appAppearance", "dark", "-app-language", "ko", "-AppleLanguages", "(ko)"]
+        app.launch()
+        let scan = app.buttons["scan-document"]
+        XCTAssertTrue(scan.waitForExistence(timeout: 10))
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.otherElements["startup-screen"])
+        _ = XCTWaiter.wait(for: [gone], timeout: 10)
+        scan.tap()
+        let shutter = app.buttons["capture-page"]
+        if shutter.waitForExistence(timeout: 6) {
+            let enabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isEnabled == true"), object: shutter)
+            _ = XCTWaiter.wait(for: [enabled], timeout: 8)
+            shutter.tap()
+            _ = app.buttons["review-done"].waitForExistence(timeout: 12); sleep(2)
+            capture(app, "Dark scan review")
+        }
+    }
     @MainActor func testBottomNavigationAndCenterCamera() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-saved", "--simulate-camera", "-AppleLanguages", "(en)"]

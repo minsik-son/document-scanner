@@ -55,14 +55,14 @@ struct HomeView: View {
                         Spacer()
                         Button { importMenu = true } label: {
                             Image(systemName: "square.and.arrow.down").font(.system(size: 17, weight: .semibold)).foregroundStyle(Design.ink)
-                                .frame(width: 40, height: 40).background(.white, in: Circle())
+                                .frame(width: 40, height: 40).background(TK.surface, in: Circle())
                         }.accessibilityLabel("Import").disabled(importing || !store.storageAvailable)
                     }
                     HStack {
                         Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                         TextField(showingDocuments ? "Search your documents" : "Search documents", text: $query).autocorrectionDisabled()
                         if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill") }.accessibilityLabel("Clear document search") }
-                    }.padding(.horizontal, 14).frame(height: 44).background(.white, in: Capsule())
+                    }.padding(.horizontal, 14).frame(height: 44).background(TK.surface, in: Capsule())
                     if query.isEmpty && !showingDocuments {
                         scanCard
                         shortcutsCard
@@ -80,7 +80,7 @@ struct HomeView: View {
                             ForEach(["Recent", "Favorites", "Folders"], id: \.self) { value in
                                 Button { tab = value; folder = nil } label: {
                                     Text(LocalizedStringKey(value)).font(.subheadline.weight(.semibold)).padding(.horizontal, 14).padding(.vertical, 9)
-                                        .background(tab == value ? Design.blue.opacity(0.09) : .white, in: Capsule())
+                                        .background(tab == value ? Design.blue.opacity(0.09) : TK.surface, in: Capsule())
                                 }.foregroundStyle(tab == value ? Design.blue : .secondary)
                             }
                         }
@@ -94,7 +94,7 @@ struct HomeView: View {
                                         Button { kindFilter = kindFilter == kind ? nil : kind } label: {
                                             Label { Text(verbatim: L(kind.plural) + " \(kindCounts[kind] ?? 0)") } icon: { Image(systemName: kind.symbol) }.font(.footnote.weight(.semibold))
                                                 .padding(.horizontal, 12).padding(.vertical, 7)
-                                                .background(kindFilter == kind ? Design.blue.opacity(0.1) : .white, in: Capsule())
+                                                .background(kindFilter == kind ? Design.blue.opacity(0.1) : TK.surface, in: Capsule())
                                         }.foregroundStyle(kindFilter == kind ? Design.blue : .secondary)
                                             .accessibilityIdentifier("kind-filter-" + kind.rawValue)
                                     }
@@ -105,7 +105,7 @@ struct HomeView: View {
                             ScrollView(.horizontal) {
                                 HStack { ForEach(store.manifest.folders, id: \.self) { name in
                                     Button(L(name)) { folder = folder == name ? nil : name }.padding(12)
-                                        .background(folder == name ? Design.blue.opacity(0.1) : .white, in: Capsule())
+                                        .background(folder == name ? Design.blue.opacity(0.1) : TK.surface, in: Capsule())
                                 } }
                             }.scrollIndicators(.hidden)
                         }
@@ -124,7 +124,7 @@ struct HomeView: View {
                         ToolArtwork(name: "scan", size: 72)
                         Text(query.isEmpty ? "Paperwork, simplified" : "No documents found").font(.title2.bold())
                         Text(query.isEmpty ? "Scan a page. Save a PDF.\nEverything stays on this iPhone." : "Try another document name.").font(.body).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                    }.frame(maxWidth: .infinity).padding(.vertical, 28).background(.white, in: RoundedRectangle(cornerRadius: 24))
+                    }.frame(maxWidth: .infinity).padding(.vertical, 28).background(TK.surface, in: RoundedRectangle(cornerRadius: 24))
                         .listRowSeparator(.hidden).listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 16, trailing: 20))
                     if showsAd { adRow }
@@ -132,14 +132,14 @@ struct HomeView: View {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: 20) {
                         ForEach(filtered) { doc in
                             NavigationLink { DocumentView(documentID: doc.id, initialPage: matchingPage(doc)) } label: {
-                                VStack { if PrivateLock.isLocked(doc, in: store.manifest) { LockedThumb().frame(height: 150) } else if let page = doc.pages.first { PageThumbnail(page: page, pdfFile: doc.pdfFile).frame(height: 150) }; Text(L(doc.title)).font(.headline).lineLimit(2); Text("\(doc.pages.count) pages").font(.caption) }.padding(12).frame(maxWidth: .infinity).background(.white, in: RoundedRectangle(cornerRadius: 20))
+                                VStack { if PrivateLock.isLocked(doc, in: store.manifest) { LockedThumb().frame(height: 150) } else if let page = doc.pages.first { PageThumbnail(page: page, pdfFile: doc.pdfFile).frame(height: 150) }; Text(L(doc.title)).font(.headline).lineLimit(2); Text("\(doc.pages.count) pages").font(.caption) }.padding(12).frame(maxWidth: .infinity).background(TK.surface, in: RoundedRectangle(cornerRadius: 20))
                             }.buttonStyle(.plain).contextMenu { trashAction(doc) }
                         }
                     }.listRowSeparator(.hidden).listRowBackground(Color.clear)
                     if showsAd { adRow }
                 } else {
                     ForEach(Array(filtered.enumerated()), id: \.element.id) { index, doc in
-                        NavigationLink { DocumentView(documentID: doc.id, initialPage: matchingPage(doc)) } label: { DocumentRow(document: doc, query: query).padding(.horizontal, 14).background(.white, in: RoundedRectangle(cornerRadius: 20)) }
+                        NavigationLink { DocumentView(documentID: doc.id, initialPage: matchingPage(doc)) } label: { DocumentRow(document: doc, query: query).padding(.horizontal, 14).background(TK.surface, in: RoundedRectangle(cornerRadius: 20)) }
                             .accessibilityIdentifier("document-row-" + doc.id.uuidString)
                             .listRowInsets(EdgeInsets(top: 5, leading: 20, bottom: 5, trailing: 20))
                             .listRowSeparator(.hidden).listRowBackground(Color.clear)
@@ -156,7 +156,7 @@ struct HomeView: View {
             .listStyle(.plain)
             .onScrollPhaseChange { _, phase in ads.setScrolling(phase != .idle) }
             .scrollContentBackground(.hidden)
-            .background { if subscription.isPro { ProPageBackground(band: 118) } else { Design.muted.ignoresSafeArea() } }
+            .background { if subscription.isPro { ProPageBackground(band: 118) } else { TK.canvas.ignoresSafeArea() } }
             .toolbar(.hidden, for: .navigationBar)
             .environment(\.defaultMinListRowHeight, 0)
             .disabled(importing)
@@ -276,7 +276,7 @@ struct HomeView: View {
                     .foregroundStyle(.white)
                     .frame(width: 64, height: 64)
                     .background(subscription.isPro ? AnyShapeStyle(ProTheme.action) : AnyShapeStyle(Design.cameraBlue), in: Circle())
-                    .overlay { Circle().stroke(.white, lineWidth: 5).padding(-5) }
+                    .overlay { Circle().stroke(TK.surface, lineWidth: 5).padding(-5) }
                     .frame(maxWidth: .infinity)
                     .padding(.bottom, 12)
             }.buttonStyle(.plain)
@@ -308,7 +308,7 @@ struct HomeView: View {
         }
         .background(alignment: .bottom) {
             UnevenRoundedRectangle(topLeadingRadius: 26, topTrailingRadius: 26)
-                .fill(.white).padding(.top, 15).ignoresSafeArea(edges: .bottom)
+                .fill(TK.surface).padding(.top, 15).ignoresSafeArea(edges: .bottom)
         }
         .disabled(importing)
     }
@@ -351,7 +351,7 @@ struct HomeView: View {
                 }.disabled(!store.storageAvailable).accessibilityIdentifier("hero-scan")
             }.buttonStyle(.plain)
         }.padding(24).frame(maxWidth: .infinity, alignment: .leading)
-            .background(.white, in: RoundedRectangle(cornerRadius: 26))
+            .background(TK.surface, in: RoundedRectangle(cornerRadius: 26))
     }
     private var shortcutsCard: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -379,7 +379,7 @@ struct HomeView: View {
                     }.frame(maxWidth: .infinity, minHeight: 88, alignment: .top).contentShape(Rectangle())
                 }.accessibilityLabel("Tools").accessibilityIdentifier("home-tools")
             }
-        }.padding(18).background(.white, in: RoundedRectangle(cornerRadius: 26))
+        }.padding(18).background(TK.surface, in: RoundedRectangle(cornerRadius: 26))
     }
     private var quickTools: [HomeShortcut] { QuickToolPrefs.load(quickToolsRaw, pro: subscription.isPro) }
     private func open(_ item: HomeShortcut) {

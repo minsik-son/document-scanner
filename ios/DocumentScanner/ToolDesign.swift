@@ -53,13 +53,13 @@ enum ToolHue {
     var container: Color {
         // Whisper tiles: almost white, so the glyph carries the colour and the set feels light.
         switch self {
-        case .blue: return Color(hex: 0xF4F8FF)
-        case .teal: return Color(hex: 0xF1FAF9)
-        case .green: return Color(hex: 0xF2FAF4)
-        case .orange: return Color(hex: 0xFFF8F1)
-        case .purple: return Color(hex: 0xF7F5FF)
-        case .pink: return Color(hex: 0xFEF5F6)
-        case .yellow: return Color(hex: 0xFFFBEC)
+        case .blue: return Color(light: 0xF4F8FF, dark: 0x202C4D)
+        case .teal: return Color(light: 0xF1FAF9, dark: 0x203537)
+        case .green: return Color(light: 0xF2FAF4, dark: 0x153729)
+        case .orange: return Color(light: 0xFFF8F1, dark: 0x3D2500)
+        case .purple: return Color(light: 0xF7F5FF, dark: 0x2E2650)
+        case .pink: return Color(light: 0xFEF5F6, dark: 0x3C2020)
+        case .yellow: return Color(light: 0xFFFBEC, dark: 0x3D2D1A)
         }
     }
 }
@@ -77,7 +77,7 @@ extension ToolArtwork {
     ]
     /// v3 tiles: four soft tints (blue, purple, green, orange), one per tool.
     static let tints: [String: Color] = {
-        let blue = Color(hex: 0xEAF2FF), purple = Color(hex: 0xF0EAFB), green = Color(hex: 0xE7F7EF), orange = Color(hex: 0xFFF1E4)
+        let blue = Color(light: 0xEAF2FF, dark: 0x202C4D), purple = Color(light: 0xF0EAFB, dark: 0x2E2650), green = Color(light: 0xE7F7EF, dark: 0x153729), orange = Color(light: 0xFFF1E4, dark: 0x3D2500)
         var t: [String: Color] = [:]
         for n in ["scan", "translate", "ocr", "fill-form", "redact", "restore", "word", "images", "portrait", "card-contact", "measure", "import-photo"] { t[n] = blue }
         for n in ["merge", "split", "eraser", "marks", "reorder", "math", "long-image", "stitch"] { t[n] = purple }

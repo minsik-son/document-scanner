@@ -2063,3 +2063,9 @@
 "Backup files aren't password protected. Keep them somewhere you trust." = "Pliki kopii nie są chronione hasłem. Przechowuj je w zaufanym miejscu.";
 "Scanning, PDF creation and text recognition all run offline on this iPhone." = "Skanowanie, tworzenie PDF i rozpoznawanie tekstu działają offline na tym iPhonie.";
 "Privacy & data" = "Prywatność i dane";
+
+/* Appearance */
+"Appearance" = "Wygląd";
+"Same as iPhone" = "Jak w iPhonie";
+"Light" = "Jasny";
+"Dark" = "Ciemny";

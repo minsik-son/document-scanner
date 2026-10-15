@@ -231,7 +231,7 @@ struct AnnotationEditor: View {
               if item.kind == .text {
                 TextField("Text", text: field(id, \.text, default: ""), axis: .vertical)
                   .font(.system(size: 17)).padding(.horizontal, 14).padding(.vertical, 12)
-                  .background(Color.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                  .background(TK.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                   .accessibilityIdentifier("annotation-text")
               }
               HStack(spacing: 12) {
@@ -320,7 +320,7 @@ struct AnnotationEditor: View {
                 }
               }
             }
-            .background(.white)
+            .background(TK.paper)
             .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(TK.grey200))
             .frame(maxWidth: 200, maxHeight: 260)
             .accessibilityHidden(true)

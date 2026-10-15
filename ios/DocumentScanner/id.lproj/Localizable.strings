@@ -2063,3 +2063,9 @@
 "Backup files aren't password protected. Keep them somewhere you trust." = "File cadangan tidak dilindungi kata sandi. Simpan di tempat yang Anda percaya.";
 "Scanning, PDF creation and text recognition all run offline on this iPhone." = "Pemindaian, pembuatan PDF, dan pengenalan teks berjalan offline di iPhone ini.";
 "Privacy & data" = "Privasi & data";
+
+/* Appearance */
+"Appearance" = "Tampilan";
+"Same as iPhone" = "Sama seperti iPhone";
+"Light" = "Terang";
+"Dark" = "Gelap";

@@ -330,7 +330,7 @@ struct ReviewView: View {
                 .disabled(saving || doc.pages.isEmpty)
                 .accessibilityIdentifier("review-save")
             }
-        }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8).background(.white)
+        }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8).background(TK.paper)
     }
     private struct OutputFormat { let key: String; let title: String }
     /// What a new scan is saved as. Word, Excel and PowerPoint are offered after the save.
@@ -698,7 +698,7 @@ struct ReviewView: View {
                 .accessibilityLabel("Page \(index+1) actions").accessibilityIdentifier("page-actions-\(index+1)")
             }
             .padding(.vertical, 6)
-            .background(.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .background(TK.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             if doc.pages.count > 1 {
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -969,7 +969,7 @@ struct PageEditor: View {
                         if onAddPage != nil { Button { finish(.addPage) } label: { Label("Add page", systemImage: "plus").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 18).background(Design.muted, in: RoundedRectangle(cornerRadius: 16)) }
                             .accessibilityIdentifier("review-add-page") }
                         Button(L(doneTitle)) { finish(.done) }.buttonStyle(PrimaryButton()).accessibilityIdentifier("review-done")
-                    }.disabled(detecting || !previewReady).padding(.horizontal, 20).padding(.vertical, 12).background(.white)
+                    }.disabled(detecting || !previewReady).padding(.horizontal, 20).padding(.vertical, 12).background(TK.paper)
                 }
             }
             .onAppear { if let initialTool, let tool = EditorTool(rawValue: initialTool) { selectedTool = tool } }

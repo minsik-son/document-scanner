@@ -94,7 +94,7 @@ private struct LockScreen: View {
   let interactive: Bool
   var body: some View {
     ZStack {
-      Color.white.ignoresSafeArea()
+      TK.paper.ignoresSafeArea()
       VStack(spacing: 24) {
         Image(systemName: "lock.shield").font(.system(size: 60)).foregroundStyle(Design.blue)
         Text("Your documents are locked").font(.title2.bold())

@@ -2063,3 +2063,9 @@
 "Backup files aren't password protected. Keep them somewhere you trust." = "Yedek dosyaları parola korumalı değildir. Güvendiğiniz bir yerde saklayın.";
 "Scanning, PDF creation and text recognition all run offline on this iPhone." = "Tarama, PDF oluşturma ve metin tanıma bu iPhone'da çevrimdışı çalışır.";
 "Privacy & data" = "Gizlilik ve veriler";
+
+/* Appearance */
+"Appearance" = "Görünüm";
+"Same as iPhone" = "iPhone ile aynı";
+"Light" = "Açık";
+"Dark" = "Koyu";

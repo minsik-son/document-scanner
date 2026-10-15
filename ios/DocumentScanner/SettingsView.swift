@@ -16,6 +16,7 @@ struct SettingsView: View {
     @State private var showingTour = false
     @State private var manageSubscription = false
     @Environment(\.openURL) private var openURL
+    @AppStorage(AppAppearance.key) private var appearance = AppAppearance.system.rawValue
     private func restoreFromTrash(_ doc: ScanDocument) {
         store.restore(doc)
         if store.problem == nil { AppToast.show("Restored to your documents", symbol: "arrow.uturn.backward") }
@@ -67,6 +68,10 @@ struct SettingsView: View {
                         ForEach(AppLanguage.allCases) { Text(verbatim: $0.nativeName).tag($0) }
                     } label: { SettingsIconRow(icon: "globe", title: "Language", fill: false) }
                         .accessibilityIdentifier("language-picker")
+                    Picker(selection: $appearance) {
+                        ForEach(AppAppearance.allCases) { Text(L($0.title)).tag($0.rawValue) }
+                    } label: { SettingsIconRow(icon: "moon", title: "Appearance", fill: false) }
+                        .accessibilityIdentifier("appearance-picker")
                     NavigationLink { RecognitionLanguagesView() } label: { SettingsIconRow(icon: "ocr", title: "Text languages") }
                     Button { showingTour = true } label: { SettingsIconRow(icon: "tour", title: "Take a quick tour", chevron: true) }
                         .buttonStyle(.plain)

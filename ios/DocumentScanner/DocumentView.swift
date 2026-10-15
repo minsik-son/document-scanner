@@ -44,7 +44,7 @@ struct DocumentView: View {
                 .task { _ = await privateLock.unlock(doc, in: store.manifest) }
             } else if let doc = document {
                 VStack(spacing: 0) {
-                    if let file = doc.pdfFile { PDFPreview(url: store.url(file), initialPage: initialPage).background(Design.muted) }
+                    if let file = doc.pdfFile { PDFPreview(url: store.url(file), initialPage: initialPage).background(TK.canvas) }
                     VStack(alignment: .leading, spacing: 16) {
                         Button { naming = true } label: {
                             HStack(spacing: 10) {

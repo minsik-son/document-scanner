@@ -728,6 +728,8 @@ private struct TemplateTile: View {
                         .padding(.horizontal, 8).padding(.vertical, 4).background(Color(hex: 0xD9DDE2), in: RoundedRectangle(cornerRadius: 5))
                 }
             }.frame(height: 76)
+            // A stamp as it is printed on the page: the same colours in dark mode.
+            .environment(\.colorScheme, .light)
             Text(L(template.rawValue)).font(.system(size: 14, weight: .semibold)).foregroundStyle(selected ? TK.blue : TK.grey700)
         }
         .padding(8).background(selected ? TK.blueSoft : TK.grey50, in: RoundedRectangle(cornerRadius: 16, style: .continuous))

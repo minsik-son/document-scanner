@@ -206,7 +206,7 @@ struct OfficeConversionProgress: View {
             target(t)
             Circle().fill(tint).frame(width: 40, height: 40)
                 .overlay(Image(systemName: "checkmark").font(.system(size: 20, weight: .heavy)).foregroundStyle(.white))
-                .padding(4).background(Circle().fill(.white))
+                .padding(4).background(Circle().fill(TK.paper))
                 .scaleEffect(kf(t, [(0, 0), (0.83, 0), (0.87, 1.15), (0.89, 1), (0.95, 1), (1, 0)]))
                 .offset(x: kind == .slides ? 232 : 216, y: kind == .excel ? 14 : kind == .word ? 6 : 50)
         }

@@ -2063,3 +2063,9 @@
 "Backup files aren't password protected. Keep them somewhere you trust." = "备份文件没有密码保护，请存放在可信的地方。";
 "Scanning, PDF creation and text recognition all run offline on this iPhone." = "扫描、创建 PDF 和文字识别都在这台 iPhone 上离线完成。";
 "Privacy & data" = "隐私与数据";
+
+/* Appearance */
+"Appearance" = "外观";
+"Same as iPhone" = "与 iPhone 一致";
+"Light" = "浅色";
+"Dark" = "深色";

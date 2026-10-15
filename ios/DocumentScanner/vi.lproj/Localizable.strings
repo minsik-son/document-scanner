@@ -2063,3 +2063,9 @@
 "Backup files aren't password protected. Keep them somewhere you trust." = "Tệp sao lưu không có mật khẩu. Hãy cất ở nơi bạn tin tưởng.";
 "Scanning, PDF creation and text recognition all run offline on this iPhone." = "Quét, tạo PDF và nhận dạng văn bản đều chạy ngoại tuyến trên iPhone này.";
 "Privacy & data" = "Quyền riêng tư & dữ liệu";
+
+/* Appearance */
+"Appearance" = "Giao diện";
+"Same as iPhone" = "Giống iPhone";
+"Light" = "Sáng";
+"Dark" = "Tối";

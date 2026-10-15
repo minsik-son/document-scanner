@@ -17,6 +17,7 @@ struct DocumentScannerApp: App {
     @StateObject private var completionAdvertisements = CompletionAdvertisementStore()
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(AppLanguage.key) private var language = ""
+    @AppStorage(AppAppearance.key) private var appearance = AppAppearance.system.rawValue
 #if DEBUG
     @StateObject private var splashMetrics = SplashMetrics.shared
 #endif
@@ -29,7 +30,6 @@ struct DocumentScannerApp: App {
                         // .id rebuilds the screens when the language changes.
                         .environment(\.locale, AppLanguage.locale)
                         .id(language)
-                        .environment(\.colorScheme, .light)
                         .environment(\.startupCovered, !coverGone)
                         // Not reachable (VoiceOver, UI tests, touches) until it is revealed.
                         // The accessibility tree is rebuilt after the fade, not during it.
@@ -83,7 +83,7 @@ struct DocumentScannerApp: App {
                 lock.sceneChanged(phase)
                 if phase == .active { Task { await subscription.refreshEntitlements() } }
             }
-            .tint(Design.blue).preferredColorScheme(lightAppearance ? .light : .dark)
+            .tint(Design.blue).preferredColorScheme(lightAppearance ? (AppAppearance(rawValue: appearance) ?? .system).scheme : .dark)
         }
     }
 
@@ -153,14 +153,27 @@ enum AppInfo {
     static var termsURL: URL { URL(string: terms)! }
 }
 
+/// Settings → Appearance: follow the iPhone, or always light / dark.
+enum AppAppearance: String, CaseIterable, Identifiable {
+    case system, light, dark
+    static let key = "appAppearance"
+    var id: String { rawValue }
+    var title: String {
+        switch self { case .system: "Same as iPhone"; case .light: "Light"; case .dark: "Dark" }
+    }
+    var scheme: ColorScheme? {
+        switch self { case .system: nil; case .light: .light; case .dark: .dark }
+    }
+}
+
 enum Design {
-    static let blue = Color(red: 55/255, green: 105/255, blue: 159/255)
-    static let cameraBlue = Color(red: 37/255, green: 99/255, blue: 235/255)
-    static let pastelBlue = Color(red: 186/255, green: 216/255, blue: 255/255)
-    static let softBlue = Color(red: 234/255, green: 243/255, blue: 255/255)
-    static let blueInk = Color(red: 36/255, green: 78/255, blue: 131/255)
-    static let ink = Color(red: 32/255, green: 35/255, blue: 41/255)
-    static let muted = Color(red: 244/255, green: 245/255, blue: 246/255)
+    static let blue = Color(light: 0x37699F, dark: 0x6CA6E8)
+    static let cameraBlue = Color(light: 0x2563EB, dark: 0x3485FA)
+    static let pastelBlue = Color(light: 0xBAD8FF, dark: 0x23386A)
+    static let softBlue = Color(light: 0xEAF3FF, dark: 0x202C4D)
+    static let blueInk = Color(light: 0x244E83, dark: 0xA8D2FF)
+    static let ink = Color(light: 0x202329, dark: 0xF2F3F5)
+    static let muted = Color(light: 0xF4F5F6, dark: 0x2C2C35)
 }
 enum OfficeHeaderPalette {
     case word, excel, slides
@@ -195,7 +208,7 @@ struct SecondaryButton: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.font(.system(.body, design: .default, weight: .semibold)).frame(maxWidth: .infinity).padding(.vertical, 18)
             .foregroundStyle(Design.blueInk)
-            .background(configuration.isPressed ? Design.muted : .white, in: RoundedRectangle(cornerRadius: 18))
+            .background(configuration.isPressed ? Design.muted : TK.surface, in: RoundedRectangle(cornerRadius: 18))
             .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color(red: 0.898, green: 0.910, blue: 0.922), lineWidth: 1.5))
             .opacity(isEnabled ? 1 : 0.5)
     }

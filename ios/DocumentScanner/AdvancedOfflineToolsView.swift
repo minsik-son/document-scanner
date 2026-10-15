@@ -81,14 +81,14 @@ struct AdvancedOfflineHub: View {
                     HStack(spacing: 10) {
                         Button { dismiss() } label: {
                             Image(systemName: "xmark").font(.system(size: 17, weight: .semibold)).foregroundStyle(Design.ink)
-                                .frame(width: 44, height: 44).background(.white, in: Circle())
+                                .frame(width: 44, height: 44).background(TK.surface, in: Circle())
                         }.accessibilityLabel("Close").accessibilityIdentifier("tools-close")
                         HStack {
                             Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                             TextField("Search all tools", text: $query).autocorrectionDisabled()
                                 .accessibilityIdentifier("tool-search")
                             if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill") }.accessibilityLabel("Clear search") }
-                        }.padding(.horizontal, 14).frame(height: 44).background(.white, in: Capsule())
+                        }.padding(.horizontal, 14).frame(height: 44).background(TK.surface, in: Capsule())
                     }
                     if subscription.isPro && query.isEmpty {
                         HStack {
@@ -113,7 +113,7 @@ struct AdvancedOfflineHub: View {
                     if !hasMatches { ContentUnavailableView("No tools found", systemImage: "magnifyingglass", description: Text("Try another tool name.")) }
                     Label("Processed on this iPhone", systemImage: "iphone").font(.footnote).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.vertical, 8)
                 }.padding(.horizontal, 20).padding(.top, 4).padding(.bottom, 20)
-            }.background { if subscription.isPro { ProPageBackground(band: 96) } else { Design.muted.ignoresSafeArea() } }
+            }.background { if subscription.isPro { ProPageBackground(band: 96) } else { TK.canvas.ignoresSafeArea() } }
                 .navigationTitle("All tools")
                 .toolbar(.hidden, for: .navigationBar)
                 .buttonStyle(.plain)
@@ -140,7 +140,7 @@ struct AdvancedOfflineHub: View {
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(visible) { entry in tile(entry) }
                 }
-            }.padding(20).background(.white, in: RoundedRectangle(cornerRadius: 26))
+            }.padding(20).background(TK.surface, in: RoundedRectangle(cornerRadius: 26))
         }
     }
     @ViewBuilder private func tile(_ entry: ToolEntry) -> some View {

@@ -16,30 +16,48 @@ extension Color {
     }
 }
 
+extension Color {
+    /// One colour in light mode and another in dark mode (Toss's dark palette).
+    init(light: UInt32, dark: UInt32) {
+        self.init(UIColor { traits in
+            let v = traits.userInterfaceStyle == .dark ? dark : light
+            return UIColor(red: CGFloat((v >> 16) & 0xff) / 255, green: CGFloat((v >> 8) & 0xff) / 255,
+                           blue: CGFloat(v & 0xff) / 255, alpha: 1)
+        })
+    }
+}
+
+/// Light values are the original palette; dark values follow Toss's published
+/// dark tokens (@toss/tds-colors): background #17171C, layered #202027, grey100 #2C2C35.
 enum TK {
-    static let blue = Color(hex: 0x3182F6)
-    static let blueDeep = Color(hex: 0x1B64DA)
-    static let blueSoft = Color(hex: 0xE8F3FF)
-    static let teal = Color(hex: 0x18B99A)
-    static let tealSoft = Color(hex: 0xE3F8F3)
-    static let purple = Color(hex: 0x7B61FF)
-    static let purpleSoft = Color(hex: 0xF0EDFF)
-    static let orange = Color(hex: 0xFF8A3D)
-    static let orangeSoft = Color(hex: 0xFFF1E6)
-    static let red = Color(hex: 0xF04452)
-    static let redSoft = Color(hex: 0xFFEEEF)
-    static let yellow = Color(hex: 0xFFC342)
-    static let grey50 = Color(hex: 0xF9FAFB)
-    static let grey100 = Color(hex: 0xF2F4F6)
-    static let grey200 = Color(hex: 0xE5E8EB)
-    static let grey300 = Color(hex: 0xD1D6DB)
-    static let grey400 = Color(hex: 0xB0B8C1)
-    static let grey500 = Color(hex: 0x8B95A1)
-    static let grey600 = Color(hex: 0x6B7684)
-    static let grey700 = Color(hex: 0x4E5968)
-    static let grey800 = Color(hex: 0x333D4B)
-    static let grey900 = Color(hex: 0x191F28)
-    static let paper = Color.white
+    static let blue = Color(light: 0x3182F6, dark: 0x3485FA)
+    static let blueDeep = Color(light: 0x1B64DA, dark: 0x449BFF)
+    static let blueSoft = Color(light: 0xE8F3FF, dark: 0x202C4D)
+    static let teal = Color(light: 0x18B99A, dark: 0x1FC7A6)
+    static let tealSoft = Color(light: 0xE3F8F3, dark: 0x153729)
+    static let purple = Color(light: 0x7B61FF, dark: 0x8D78FF)
+    static let purpleSoft = Color(light: 0xF0EDFF, dark: 0x2E2650)
+    static let orange = Color(light: 0xFF8A3D, dark: 0xFD9528)
+    static let orangeSoft = Color(light: 0xFFF1E6, dark: 0x3D2500)
+    static let red = Color(light: 0xF04452, dark: 0xFA616D)
+    static let redSoft = Color(light: 0xFFEEEF, dark: 0x3C2020)
+    static let yellow = Color(light: 0xFFC342, dark: 0xFFC259)
+    static let grey50 = Color(light: 0xF9FAFB, dark: 0x202027)
+    static let grey100 = Color(light: 0xF2F4F6, dark: 0x2C2C35)
+    static let grey200 = Color(light: 0xE5E8EB, dark: 0x3C3C47)
+    static let grey300 = Color(light: 0xD1D6DB, dark: 0x4D4D59)
+    static let grey400 = Color(light: 0xB0B8C1, dark: 0x62626D)
+    static let grey500 = Color(light: 0x8B95A1, dark: 0x7E7E87)
+    static let grey600 = Color(light: 0x6B7684, dark: 0x9E9EA4)
+    static let grey700 = Color(light: 0x4E5968, dark: 0xC3C3C6)
+    static let grey800 = Color(light: 0x333D4B, dark: 0xE4E4E5)
+    static let grey900 = Color(light: 0x191F28, dark: 0xFFFFFF)
+    /// A page's own background (white in light mode).
+    static let paper = Color(light: 0xFFFFFF, dark: 0x17171C)
+    /// A card on a grey page (Home, Tools): white in light mode.
+    static let surface = Color(light: 0xFFFFFF, dark: 0x202027)
+    /// The grey page that cards sit on.
+    static let canvas = Color(light: 0xF4F5F6, dark: 0x101013)
 }
 
 // MARK: - Buttons
@@ -272,7 +290,7 @@ struct BusyOverlay: View {
             }
             .padding(.horizontal, 32).padding(.vertical, 28)
             .frame(minWidth: 240)
-            .background(.white, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .background(TK.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             .shadow(color: .black.opacity(0.12), radius: 24, y: 8)
         }
         .transition(.opacity)
@@ -935,7 +953,7 @@ struct WorkDoneBadge: View {
     var body: some View {
         Circle().fill(fill).frame(width: 40, height: 40)
             .overlay(Image(systemName: symbol).font(.system(size: 19, weight: .heavy)).foregroundStyle(.white))
-            .padding(4).background(Circle().fill(.white))
+            .padding(4).background(Circle().fill(TK.paper))
             .scaleEffect(loopValue(t, [(0, 0), (0.83, 0), (0.87, 1.15), (0.89, 1), (0.95, 1), (1, 0)]))
     }
 }
@@ -1040,6 +1058,8 @@ struct WorkProgressView: View {
     var done = false
     var onFinished: (() -> Void)? = nil
     var cancel: (() -> Void)? = nil
+    /// The page's scheme, read outside the light-only picture (the folded corner shows the page).
+    @Environment(\.colorScheme) private var pageScheme
 
     var body: some View {
         AnimatedWorkPage(title: kind.title, steps: kind.steps, tint: kind.tint, phase: phase, progress: progress,
@@ -1065,6 +1085,8 @@ struct WorkProgressView: View {
             }
         }
         .frame(width: 320, height: 260, alignment: .topLeading)
+        // Paper is paper: the picture keeps its light colours in dark mode.
+        .environment(\.colorScheme, .light)
     }
 
     // MARK: Pieces
@@ -1116,7 +1138,7 @@ struct WorkProgressView: View {
                 .opacity(kf(t, [(0, 0), (0.25, 0), (0.27, 1), (0.46, 1), (0.48, 0), (1, 0)]))
             // Folded corner: the page behind is cut away and the flap lies on top.
             Path { p in p.move(to: CGPoint(x: 120 - fold, y: 0)); p.addLine(to: CGPoint(x: 121, y: -1)); p.addLine(to: CGPoint(x: 121, y: fold)); p.closeSubpath() }
-                .fill(TK.paper).opacity(fold > 1 ? 1 : 0)
+                .fill(pageScheme == .dark ? Color(hex: 0x17171C) : .white).opacity(fold > 1 ? 1 : 0)
             Path { p in p.move(to: CGPoint(x: 120 - fold, y: 0)); p.addLine(to: CGPoint(x: 120 - fold, y: fold - 4)); p.addQuadCurve(to: CGPoint(x: 120 - fold + 4, y: fold), control: CGPoint(x: 120 - fold, y: fold)); p.addLine(to: CGPoint(x: 120, y: fold)); p.closeSubpath() }
                 .fill(Color(hex: 0xFFD6D2))
                 .overlay(Path { p in p.move(to: CGPoint(x: 120 - fold, y: 0)); p.addLine(to: CGPoint(x: 120, y: fold)) }.stroke(TK.grey300, lineWidth: 1))

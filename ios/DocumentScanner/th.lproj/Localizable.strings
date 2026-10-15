@@ -2063,3 +2063,9 @@
 "Backup files aren't password protected. Keep them somewhere you trust." = "ไฟล์สำรองไม่มีรหัสผ่าน เก็บไว้ในที่ที่คุณไว้ใจ";
 "Scanning, PDF creation and text recognition all run offline on this iPhone." = "การสแกน การสร้าง PDF และการจดจำข้อความทำงานแบบออฟไลน์บน iPhone เครื่องนี้";
 "Privacy & data" = "ความเป็นส่วนตัวและข้อมูล";
+
+/* Appearance */
+"Appearance" = "รูปลักษณ์";
+"Same as iPhone" = "ตามการตั้งค่า iPhone";
+"Light" = "สว่าง";
+"Dark" = "มืด";

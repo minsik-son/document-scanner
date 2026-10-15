@@ -116,7 +116,7 @@ struct PhotoTranslationView: View {
                     Rectangle().fill(TK.grey100).frame(height: 1)
                     Button { guard !from.isEmpty else { return }; let a = from; from = to; to = a } label: {
                         Image(systemName: "arrow.up.arrow.down").font(.system(size: 15, weight: .bold)).foregroundStyle(TK.blue)
-                            .frame(width: 40, height: 40).background(Color.white, in: Circle())
+                            .frame(width: 40, height: 40).background(TK.surface, in: Circle())
                             .overlay(Circle().strokeBorder(TK.grey200, lineWidth: 1))
                     }
                     .accessibilityLabel("Swap languages").accessibilityIdentifier("translation-swap")

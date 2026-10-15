@@ -67,7 +67,7 @@ struct OnboardingView: View {
             }
             footer
         }
-        .background(Color.white.ignoresSafeArea())
+        .background(TK.paper.ignoresSafeArea())
         .sensoryFeedback(.selection, trigger: page)
     }
 
@@ -250,7 +250,7 @@ struct FirstScanDoneView: View {
             .padding(.horizontal, 20).padding(.bottom, 12)
         }
         .padding(.horizontal, 24)
-        .background(Color.white.ignoresSafeArea())
+        .background(TK.paper.ignoresSafeArea())
         .sensoryFeedback(.success, trigger: shown)
         .onAppear { withAnimation(.spring(response: 0.5, dampingFraction: 0.6).delay(0.1)) { shown = true } }
     }

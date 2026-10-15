@@ -13,10 +13,10 @@ enum ToolArt: String, CaseIterable {
     var background: LinearGradient {
         let pair: (Color, Color)
         switch self {
-        case .book, .ocr, .merge, .extract, .images, .measure, .word, .translate, .cardContact, .fillForm: pair = (Color(hex: 0xEAF3FF), Color(hex: 0xF4F8FF))
-        case .portrait, .count, .protect, .mesh, .split, .excel, .autoSave, .redact: pair = (Color(hex: 0xE6F8F3), Color(hex: 0xF3FBF9))
-        case .erase, .marks, .annotate, .reorder, .longImage, .math, .askDocument, .removeFingers: pair = (Color(hex: 0xF1EEFF), Color(hex: 0xF8F6FF))
-        case .restore, .watermark, .timestamp, .compress, .print, .mega, .ppt: pair = (Color(hex: 0xFFF3E9), Color(hex: 0xFFF9F3))
+        case .book, .ocr, .merge, .extract, .images, .measure, .word, .translate, .cardContact, .fillForm: pair = (Color(light: 0xEAF3FF, dark: 0x202C4D), Color(light: 0xF4F8FF, dark: 0x1B2236))
+        case .portrait, .count, .protect, .mesh, .split, .excel, .autoSave, .redact: pair = (Color(light: 0xE6F8F3, dark: 0x153729), Color(light: 0xF3FBF9, dark: 0x13281F))
+        case .erase, .marks, .annotate, .reorder, .longImage, .math, .askDocument, .removeFingers: pair = (Color(light: 0xF1EEFF, dark: 0x2E2650), Color(light: 0xF8F6FF, dark: 0x231E3B))
+        case .restore, .watermark, .timestamp, .compress, .print, .mega, .ppt: pair = (Color(light: 0xFFF3E9, dark: 0x3D2500), Color(light: 0xFFF9F3, dark: 0x2E1F0A))
         }
         return LinearGradient(colors: [pair.0, pair.1], startPoint: .topLeading, endPoint: .bottomTrailing)
     }

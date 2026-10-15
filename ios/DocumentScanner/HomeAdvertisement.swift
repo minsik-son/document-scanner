@@ -411,7 +411,7 @@ struct HomeAdvertisementSlot<Fallback: View>: View {
                             .padding(.horizontal, 14).frame(height: 44).contentShape(Rectangle())
                     }.buttonStyle(.plain).accessibilityIdentifier("remove-ads")
                 }
-                .background(.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .background(TK.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .sheet(isPresented: $removeAds) { PaywallView(start: .noAds) }
             } else {

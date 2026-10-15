@@ -236,7 +236,7 @@ struct CameraView: View {
                 Button(action: capturePage) {
                     Circle().fill(.white).frame(width: 72, height: 72)
                         .overlay(Circle().stroke(.black, lineWidth: 3).padding(5))
-                }.accessibilityLabel("Capture page").disabled(saving || cardComplete || (!camera.ready && !testCamera))
+                }.accessibilityLabel("Capture page").accessibilityIdentifier("capture-page").disabled(saving || cardComplete || (!camera.ready && !testCamera))
                 VStack(alignment: .trailing, spacing: 8) {
                     if !identityCapture && pageCount > 0 {
                         Button { dismiss() } label: {

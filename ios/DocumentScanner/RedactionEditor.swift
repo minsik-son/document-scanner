@@ -138,7 +138,7 @@ struct RedactionEditor: View {
             }
             .buttonStyle(PrimaryButton()).disabled(states.isEmpty).accessibilityIdentifier("redact-save")
         }
-        .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 8).background(.white)
+        .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 8).background(TK.paper)
     }
 
     private func update(_ id: UUID, _ change: (inout RedactionMark) -> Void) {

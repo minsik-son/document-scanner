@@ -23,7 +23,7 @@ struct DocumentExportBar: View {
             button(.images, "Images", "photo.on.rectangle")
         }
         .padding(.top, 8).padding(.bottom, 4)
-        .background(.white)
+        .background(TK.paper)
         .overlay(alignment: .top) { Divider() }
         .sheet(item: $route) { route in ConversionDestination(route: route, documentID: documentID) { self.route = nil } }
     }

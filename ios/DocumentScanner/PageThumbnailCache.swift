@@ -57,6 +57,35 @@ actor PageThumbnailCache {
         }
         return thumbnail
     }
+    /// One page shown big (the save step's preview): tone and lines worked out on a
+    /// 2800 px copy and kept at 1400 px, so thin table lines stay whole. Only a few are
+    /// kept in memory; small list thumbnails are unaffected.
+    private let large: NSCache<NSString, UIImage> = { let c = NSCache<NSString, UIImage>(); c.countLimit = 3; return c }()
+    func largeImage(for page: ScanPage, root: URL) throws -> UIImage {
+        try Task.checkCancellation()
+        var appearance = page
+        appearance.textBlocks = []; appearance.ocrComplete = false; appearance.ocrProcessingVersion = nil
+        if appearance.identityBackgroundCleanup != true { appearance.cropReviewNeeded = nil }
+        let encoder = JSONEncoder(); encoder.outputFormatting = .sortedKeys
+        var data = try encoder.encode(appearance)
+        let source = root.appendingPathComponent(page.imageFile)
+        let attributes = try source.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
+        data.append(Data("large-v1|\(page.imageFile)|\(attributes.contentModificationDate?.timeIntervalSince1970 ?? 0)|\(attributes.fileSize ?? 0)".utf8))
+        let key = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        let memoryKey = (root.path + "|" + key) as NSString
+        if let cached = large.object(forKey: memoryKey) { return cached }
+        let directory = root.appendingPathComponent("Thumbnails", isDirectory: true)
+        let file = directory.appendingPathComponent(key + ".jpg")
+        if let cached = UIImage(contentsOfFile: file.path)?.preparingForDisplay() { large.setObject(cached, forKey: memoryKey); return cached }
+        let image = try autoreleasepool { try Imaging.renderThumbnail(page, root: root, maxDimension: 1400) }
+        try Task.checkCancellation()
+        large.setObject(image, forKey: memoryKey)
+        if let bytes = image.jpegData(compressionQuality: 0.92) {
+            try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try? bytes.write(to: file, options: [.atomic, .completeFileProtectionUnlessOpen])
+        }
+        return image
+    }
     private func remember(_ image: UIImage, key: String) {
         let cost = image.cgImage.map { $0.bytesPerRow * $0.height } ?? 0
         memory.setObject(image, forKey: key as NSString, cost: cost)

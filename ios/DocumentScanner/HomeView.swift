@@ -452,6 +452,25 @@ struct PageThumbnail: View {
             }
     }
 }
+/// A page shown big: the small thumbnail at once, then a sharper render of the same page.
+struct PageLargePreview: View {
+    @EnvironmentObject var store: LibraryStore
+    let page: ScanPage
+    @State private var sharp: UIImage?
+    @State private var sharpFor: ScanPage?
+    var body: some View {
+        Group {
+            if let sharp, sharpFor == page { Image(uiImage: sharp).resizable().scaledToFit() }
+            else { PageThumbnail(page: page) }
+        }
+        .task(id: page) {
+            let root = store.root
+            let rendered = try? await PageThumbnailCache.shared.largeImage(for: page, root: root)
+            guard !Task.isCancelled, let rendered else { return }
+            sharp = rendered; sharpFor = page
+        }
+    }
+}
 struct DocumentRow: View {
     @EnvironmentObject private var store: LibraryStore
     let document: ScanDocument

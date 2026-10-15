@@ -329,3 +329,28 @@ final class WorkAnimationFrameTests: XCTestCase {
         }
     }
 }
+
+/// The save step's big preview against the list thumbnail, on real document photos.
+final class LargePreviewQualityTests: XCTestCase {
+    @MainActor func testLargePreviewKeepsThinLines() throws {
+        let base = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Verification/private")
+        let out = base.appendingPathComponent("anim"); try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString); try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        for name in ["IMG_3885.HEIC", "IMG_3887.HEIC"] {
+            let src = base.appendingPathComponent("testimg/" + name)
+            guard FileManager.default.fileExists(atPath: src.path) else { continue }
+            try? FileManager.default.copyItem(at: src, to: root.appendingPathComponent(name))
+            var page = ScanPage(imageFile: name); page.enhancement = .document
+            if let image = UIImage(contentsOfFile: src.path), let quad = CaptureStyle.document.detect(image, capturedPhoto: true) { page.crop = quad }
+            let small = try Imaging.renderThumbnail(page, root: root, maxDimension: 700)
+            let large = try Imaging.renderThumbnail(page, root: root, maxDimension: 1400)
+            // Same box, shown at the large size, side by side.
+            let w = large.size.width, h = large.size.height
+            let sheet = UIGraphicsImageRenderer(size: CGSize(width: w * 2 + 20, height: h), format: { let f = UIGraphicsImageRendererFormat(); f.scale = 1; return f }()).image { c in
+                UIColor.white.setFill(); c.fill(CGRect(x: 0, y: 0, width: w * 2 + 20, height: h))
+                small.draw(in: CGRect(x: 0, y: 0, width: w, height: h)); large.draw(in: CGRect(x: w + 20, y: 0, width: w, height: h))
+            }
+            try XCTUnwrap(sheet.jpegData(compressionQuality: 0.9)).write(to: out.appendingPathComponent("preview_" + name + ".jpg"))
+        }
+    }
+}

@@ -620,7 +620,7 @@ struct ReviewView: View {
         let page = doc.pages[index]
         VStack(spacing: 14) {
             Button { editPage = page } label: {
-                PageThumbnail(page: page)
+                PageLargePreview(page: page)
                     .frame(maxWidth: .infinity).frame(height: 360)
                     .padding(18)
                     // A cool grey stage, so a white page stands out from what is around it.

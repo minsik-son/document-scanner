@@ -18,7 +18,8 @@ enum ProStyle {
 
 /// Pro look: a soft lavender page behind Home, All tools and Settings. Screens where a document is being worked on keep the plain page.
 enum ProTheme {
-    static let page = Color(red: 0.945, green: 0.941, blue: 0.98)
+    /// Soft lavender in light mode; a near-black with the same violet hint in dark mode.
+    static let page = Color(light: 0xF1F0FA, dark: 0x13121B)
     static let dusk = LinearGradient(colors: [Color(red: 0.129, green: 0.110, blue: 0.333), Color(red: 0.180, green: 0.153, blue: 0.439), Color(red: 0.231, green: 0.196, blue: 0.565)],
                                      startPoint: .topLeading, endPoint: .bottomTrailing)
     static let action = LinearGradient(colors: [Color(red: 0.357, green: 0.486, blue: 1), Color(red: 0.545, green: 0.361, blue: 0.965)], startPoint: .leading, endPoint: .trailing)

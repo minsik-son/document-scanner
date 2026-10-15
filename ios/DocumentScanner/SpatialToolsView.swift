@@ -210,7 +210,7 @@ private struct MeasureScreen: View {
                     Button { session.undo() } label: { Image(systemName: "arrow.uturn.backward").font(.system(size: 20, weight: .semibold)).frame(width: 54, height: 54).background(.black.opacity(0.45), in: Circle()) }
                         .disabled(session.start == nil && session.segments.isEmpty).accessibilityLabel("Undo")
                     Button { session.addPoint() } label: {
-                        Image(systemName: "plus").font(.system(size: 34, weight: .bold)).foregroundStyle(TK.grey900)
+                        Image(systemName: "plus").font(.system(size: 34, weight: .bold)).foregroundStyle(TK.onWhite)
                             .frame(width: 78, height: 78).background(.white, in: Circle())
                             .overlay(Circle().strokeBorder(.white.opacity(0.5), lineWidth: 4).padding(-6))
                     }.disabled(session.aim == nil).opacity(session.aim == nil ? 0.5 : 1).accessibilityLabel(session.start == nil ? "Add start point" : "Add end point")
@@ -222,7 +222,7 @@ private struct MeasureScreen: View {
         .statusBarHidden()
     }
     private func label(_ text: String, large: Bool = false) -> some View {
-        Text(L(text)).font(.system(size: large ? 20 : 15, weight: .bold)).foregroundStyle(TK.grey900).monospacedDigit()
+        Text(L(text)).font(.system(size: large ? 20 : 15, weight: .bold)).foregroundStyle(TK.onWhite).monospacedDigit()
             .padding(.horizontal, large ? 14 : 10).padding(.vertical, large ? 8 : 5).background(.white, in: Capsule())
             .shadow(color: .black.opacity(0.2), radius: 4)
     }

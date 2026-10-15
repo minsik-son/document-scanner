@@ -187,7 +187,7 @@ struct CameraView: View {
             ForEach(CaptureStyle.allCases, id: \.self) { mode in
                 Button { selectStyle(mode) } label: {
                     Text(L(mode.rawValue)).font(.system(size: 14, weight: .semibold)).lineLimit(1).fixedSize()
-                        .foregroundStyle(style == mode ? TK.grey900 : .white.opacity(0.85))
+                        .foregroundStyle(style == mode ? TK.onWhite : .white.opacity(0.85))
                         .padding(.horizontal, 12).frame(height: 32)
                         .background(style == mode ? Color.white : Color.clear, in: Capsule())
                 }.buttonStyle(.plain).accessibilityAddTraits(style == mode ? .isSelected : [])

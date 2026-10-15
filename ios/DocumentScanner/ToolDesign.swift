@@ -154,7 +154,7 @@ struct QuickToolView: View {
         case .advanced(let value):
             NavigationStack {
                 AdvancedOfflineToolView(tool: value, documentID: documentID)
-                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
+                    .modifier(HostCloseButton(identifier: "tool-close") { dismiss() })
             }
         case .library(let value):
             if value == .identity { IdentityScanView() }

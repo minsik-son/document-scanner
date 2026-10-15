@@ -417,6 +417,7 @@ struct AdvancedOfflineToolContent:View {
             if wordStep != .source && !busy {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
+                        if wordPlainEditing { leaveWordPlainText(); return }
                         editingText = false; wordForward = false
                         if wordStep == .ready { clearOutput(); wordStep = .review }
                         else { message = nil; wordStep = .source }
@@ -425,6 +426,8 @@ struct AdvancedOfflineToolContent:View {
                 }
             }
         }
+        // Editing as plain text is a sub-step: "Close" (shown as "Done") leaves it, not the tool.
+        .preference(key: ToolCloseInterceptKey.self, value: wordPlainEditing ? ToolCloseIntercept(id: "word-plain-text", action: leaveWordPlainText) : nil)
         .overlay {
             // Reading pages and making the file: the page turning into a Word page.
             FinishingOverlay(text: busy ? phase : nil, failed: message != nil) { text, done, cancelled, finished in
@@ -624,6 +627,9 @@ struct AdvancedOfflineToolContent:View {
             wordLayoutText = updated; text = updated
         })
     }
+    /// Plain-text editing over a page that also has its table layout to go back to.
+    private var wordPlainEditing: Bool { wordStep == .review && wordPlainText && !wordLayouts.isEmpty && message == nil && !busy }
+    private func leaveWordPlainText() { toggleWordPlainText() }
     private func toggleWordPlainText() {
         editingText = false
         guard wordPlainText else { wordPlainText = true; return }

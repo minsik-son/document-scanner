@@ -61,6 +61,8 @@ enum TK {
     /// Behind white text (toasts, hints, small badges): near-black in light mode,
     /// a lifted grey in dark mode so it still reads as a separate layer.
     static let inkFill = Color(light: 0x191F28, dark: 0x3C3C47)
+    /// Text and icons on a white chip or circle drawn over a photo: dark in both modes.
+    static let onWhite = Color(light: 0x191F28, dark: 0x191F28)
 }
 
 // MARK: - Buttons
@@ -84,7 +86,8 @@ struct SecondaryCTAStyle: ButtonStyle {
         configuration.label
             .font(.system(size: 17, weight: .semibold))
             .frame(maxWidth: .infinity, minHeight: 56)
-            .foregroundStyle(enabled ? TK.grey700 : TK.grey400)
+            // Near-white label in dark mode: grey700 read as too dim on the dark grey fill.
+            .foregroundStyle(enabled ? Color(light: 0x4E5968, dark: 0xF2F2F3) : TK.grey400)
             .background(TK.grey100.opacity(configuration.isPressed ? 0.7 : 1), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
     }
@@ -241,6 +244,66 @@ struct ToolSlider: View {
 // MARK: - Hero and empty states
 
 /// Intro block of a tool: illustration card and a short promise.
+/// Hero for a tool without an animated picture: its icon on a tile over the tool's gradient.
+struct IconHero: View {
+    let icon: String
+    let tint: Color
+    let colors: (Color, Color)
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var up = false
+    var body: some View {
+        ZStack {
+            Image(systemName: "sparkle").font(.system(size: 22, weight: .bold)).foregroundStyle(tint.opacity(0.55))
+                .offset(x: 92, y: -54).scaleEffect(up ? 1 : 0.8)
+            Image(systemName: "sparkle").font(.system(size: 14, weight: .bold)).foregroundStyle(tint.opacity(0.4))
+                .offset(x: -96, y: 48).scaleEffect(up ? 0.8 : 1)
+            Image(icon).resizable().interpolation(.high).scaledToFit().frame(width: 88, height: 88)
+                .frame(width: 124, height: 124)
+                .background(TK.surface, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+                .offset(y: up ? -5 : 3)
+        }
+        .frame(maxWidth: .infinity).frame(height: 210)
+        .background(LinearGradient(colors: [colors.0, colors.1], startPoint: .top, endPoint: .bottom), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .accessibilityHidden(true)
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) { up = true }
+        }
+    }
+}
+
+/// A step inside a tool that "Close" should leave first (plain-text editing, say).
+/// The screen hosting the tool shows "Done" and runs this instead of closing.
+struct ToolCloseIntercept: Equatable {
+    let id: String
+    let action: () -> Void
+    static func == (a: Self, b: Self) -> Bool { a.id == b.id }
+}
+struct ToolCloseInterceptKey: PreferenceKey {
+    static var defaultValue: ToolCloseIntercept? = nil
+    static func reduce(value: inout ToolCloseIntercept?, nextValue: () -> ToolCloseIntercept?) { value = value ?? nextValue() }
+}
+/// The host's Close button, which defers to a tool's open sub-step.
+struct HostCloseButton: ViewModifier {
+    var placement: ToolbarItemPlacement = .cancellationAction
+    var identifier: String
+    let close: () -> Void
+    @State private var intercept: ToolCloseIntercept?
+    func body(content: Content) -> some View {
+        content
+            .onPreferenceChange(ToolCloseInterceptKey.self) { intercept = $0 }
+            .toolbar {
+                ToolbarItem(placement: placement) {
+                    if let intercept {
+                        Button("Done", action: intercept.action).fontWeight(.semibold).accessibilityIdentifier("tool-step-done")
+                    } else {
+                        Button("Close", action: close).accessibilityIdentifier(identifier)
+                    }
+                }
+            }
+    }
+}
+
 struct ToolHero: View {
     let art: ToolArt
     var body: some View {
@@ -381,7 +444,7 @@ struct BeforeAfterView: View {
                 Rectangle().fill(.white).frame(width: 2, height: rect.height).offset(x: x - 1, y: rect.minY)
                     .shadow(color: .black.opacity(0.25), radius: 2)
                 Image(systemName: "arrowtriangle.left.and.line.vertical.and.arrowtriangle.right")
-                    .font(.system(size: 13, weight: .bold)).foregroundStyle(TK.grey800)
+                    .font(.system(size: 13, weight: .bold)).foregroundStyle(TK.onWhite)
                     .frame(width: 40, height: 40).background(.white, in: Circle()).shadow(color: .black.opacity(0.2), radius: 4)
                     .offset(x: x - 20, y: rect.midY - 20)
                 HStack {

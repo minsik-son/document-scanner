@@ -60,9 +60,25 @@ final class ScannerFlowTests: HushUITestCase {
         app.buttons["qr-generate"].tap()
         XCTAssertTrue(app.buttons["qr-share"].waitForExistence(timeout: 5))
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = "Offline QR code"; shot.lifetime = .keepAlways; add(shot)
-        app.navigationBars["QR code"].buttons["Close"].tap(); app.tool("Stitch screenshots").tap()
-        XCTAssertTrue(app.navigationBars["Stitch screenshots"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Choose screenshots"].exists)
+        app.buttons["tool-close"].tap(); app.tool("Stitch screenshots").tap()
+        XCTAssertTrue(app.buttons["stitch-choose"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["tool-page-title"].exists, "Stitch opens on a tool page like the others")
+    }
+
+    /// QR and Stitch landing pages in light and dark, for the design review.
+    @MainActor
+    func testQRAndStitchLandingPages() throws {
+        for mode in ["light", "dark"] {
+            let app = XCUIApplication()
+            app.launchArguments = ["--ui-test-session", UUID().uuidString, "-appAppearance", mode, "-app-language", "ko", "-AppleLanguages", "(ko)"]
+            app.launch(); app.buttons["home-tools"].tap(); app.tool("QR 코드").tap()
+            XCTAssertTrue(app.buttons["qr-photo"].waitForExistence(timeout: 5))
+            let qr = XCTAttachment(screenshot: app.screenshot()); qr.name = "QR landing \(mode)"; qr.lifetime = .keepAlways; add(qr)
+            app.buttons["tool-close"].tap(); app.tool("스크린샷 이어 붙이기").tap()
+            XCTAssertTrue(app.buttons["stitch-choose"].waitForExistence(timeout: 5))
+            let st = XCTAttachment(screenshot: app.screenshot()); st.name = "Stitch landing \(mode)"; st.lifetime = .keepAlways; add(st)
+            app.terminate()
+        }
     }
 
     @MainActor
@@ -817,6 +833,12 @@ final class ScannerFlowTests: HushUITestCase {
         preview.tap()
         XCTAssertTrue(app.buttons["office-page-editor-done"].waitForExistence(timeout: 10), "Tapping the page opens the corrections")
         app.buttons["office-page-editor-done"].tap()
+        // Editing as plain text: the top button leaves the text editing, not the Word export.
+        app.buttons["word-plain-text"].tap()
+        XCTAssertTrue(app.textViews["offline-text"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["export-close"].exists)
+        app.buttons["tool-step-done"].tap()
+        XCTAssertTrue(preview.waitForExistence(timeout: 5), "Done returns to the page, still in the Word export")
         app.buttons["export-close"].tap()
         XCTAssertTrue(app.staticTexts["Saved as PDF"].waitForExistence(timeout: 10), "Back on the saved page")
     }

@@ -19,7 +19,7 @@ struct ConversionDestination: View {
         if let tool = route.tool {
             NavigationStack {
                 AdvancedOfflineToolView(tool: tool, documentID: documentID, autoStart: true)
-                    .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Close", action: close).accessibilityIdentifier("export-close") } }
+                    .modifier(HostCloseButton(placement: .topBarTrailing, identifier: "export-close", close: close))
             }
         } else {
             PDFToolFlow(tool: .images, documentID: documentID)

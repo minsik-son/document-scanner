@@ -15,35 +15,68 @@ struct QRCodeView: View {
     @State private var job: Task<Void, Never>?
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Read a QR code") {
-                    if UIImagePickerController.isSourceTypeAvailable(.camera) { Button("Scan with camera") { camera = true } }
-                    PhotosPicker("Choose QR image", selection: $photo, matching: .images)
-                    ForEach(results, id: \.self) { value in
-                        Text(L(value)).textSelection(.enabled)
-                        Button("Copy result") { UIPasteboard.general.string = value }
+            ToolPage(title: "QR code", subtitle: "Read a code with the camera or from a picture, or make your own.") {
+                IconHero(icon: "tool-qr", tint: TK.teal, colors: (Color(light: 0xE6F8F3, dark: 0x153729), Color(light: 0xF3FBF9, dark: 0x13281F)))
+                VStack(alignment: .leading, spacing: 4) {
+                    SectionLabel(text: "Read a QR code")
+                    if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                        Button { camera = true } label: {
+                            ChoiceRow(symbol: "camera.fill", title: "Scan with camera", detail: "Point the camera at a code", tint: TK.blue, soft: TK.blueSoft)
+                        }.buttonStyle(.plain).accessibilityIdentifier("qr-camera")
                     }
-                    Text("Codes are read on this iPhone. Links are not opened automatically.").font(.caption)
+                    PhotosPicker(selection: $photo, matching: .images) {
+                        ChoiceRow(symbol: "photo.fill", title: "Choose QR image", detail: "From your photo library", tint: TK.orange, soft: TK.orangeSoft)
+                    }.buttonStyle(.plain).accessibilityIdentifier("qr-photo")
                 }
-                Section("Create a QR code") {
-                    TextField("Text or URL", text: $text, axis: .vertical).autocorrectionDisabled().textInputAutocapitalization(.never).accessibilityIdentifier("qr-text")
-                    Button("Generate QR code") { generate() }.disabled(text.isEmpty).accessibilityIdentifier("qr-generate")
+                if !results.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(results, id: \.self) { value in
+                            HStack(alignment: .top, spacing: 12) {
+                                Text(verbatim: value).font(.system(size: 16)).foregroundStyle(TK.grey900).textSelection(.enabled)
+                                    .frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
+                                Button("Copy result") { UIPasteboard.general.string = value }
+                                    .font(.system(size: 14, weight: .semibold)).foregroundStyle(TK.blue)
+                            }
+                        }
+                    }
+                    .padding(16).background(TK.grey50, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                if let message {
+                    ToastMessage(text: message, symbol: results.isEmpty ? "exclamationmark.circle.fill" : "checkmark.circle.fill", tint: results.isEmpty ? TK.red : TK.teal)
+                        .accessibilityIdentifier("qr-result")
+                }
+                VStack(alignment: .leading, spacing: 10) {
+                    SectionLabel(text: "Create a QR code")
+                    TextField("Text or URL", text: $text, axis: .vertical)
+                        .font(.system(size: 16)).foregroundStyle(TK.grey900).lineLimit(1...4)
+                        .autocorrectionDisabled().textInputAutocapitalization(.never)
+                        .padding(.horizontal, 14).padding(.vertical, 13)
+                        .background(TK.grey100, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .accessibilityIdentifier("qr-text")
                     if let image {
-                        Image(uiImage: image).interpolation(.none).resizable().scaledToFit().frame(maxHeight: 260).accessibilityLabel("Generated QR code")
-                        Button("Share QR image") {
-                            do {
-                                guard let data = image.pngData() else { return }
-                                share = try ExportFiles.write([("QR-code.png", data)])
-                            } catch { message = error.localizedDescription }
-                        }.accessibilityIdentifier("qr-share")
+                        // A code needs its white quiet zone in dark mode too.
+                        Image(uiImage: image).interpolation(.none).resizable().scaledToFit().frame(maxWidth: 220, maxHeight: 220)
+                            .padding(12).background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .frame(maxWidth: .infinity).accessibilityLabel("Generated QR code")
                     }
                 }
-                if busy { ProgressView("Reading the QR code…") }
-                if let message { Text(L(message)).accessibilityIdentifier("qr-result") }
+                Label("Codes are read on this iPhone. Links are not opened automatically.", systemImage: "lock.shield")
+                    .font(.system(size: 13)).foregroundStyle(TK.grey500)
+            } actions: {
+                if image != nil {
+                    Button("Share QR image") {
+                        do {
+                            guard let data = image?.pngData() else { return }
+                            share = try ExportFiles.write([("QR-code.png", data)])
+                        } catch { message = error.localizedDescription }
+                    }.buttonStyle(CTAButtonStyle()).accessibilityIdentifier("qr-share")
+                } else if !text.isEmpty {
+                    Button("Generate QR code") { generate() }.buttonStyle(CTAButtonStyle()).accessibilityIdentifier("qr-generate")
+                }
             }
             .disabled(busy)
-            .navigationTitle("QR code").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
+            .overlay { if busy { BusyOverlay(text: "Reading the QR code…") } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() }.accessibilityIdentifier("tool-close") } }
             .sheet(isPresented: $camera) { LocalPhotoCamera { value in camera = false; if let value { read(value) } } }
             .sheet(item: $share, onDismiss: { ExportFiles.cleanExpired() }) { files in
                 ShareSheet(items: files.urls, completion: { _, _ in ExportFiles.remove(files.directory) })
@@ -107,6 +140,33 @@ struct ScreenshotStitchView: View {
     @State private var job: Task<Void, Never>?
     var body: some View {
         NavigationStack {
+            Group {
+                if output == nil && pages.isEmpty { landing } else { editor }
+            }
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() }.disabled(busy).accessibilityIdentifier("tool-close") } }
+                .interactiveDismissDisabled(busy)
+                .sheet(item: $share) { files in ShareSheet(items: files.urls) }
+                .onAppear { seedUITestScreenshots() }
+                .onChange(of: selection) { _, items in load(items) }
+                .onDisappear { job?.cancel(); if let output { ExportFiles.remove(output.directory) } }
+        }
+    }
+    /// First screen, laid out like the other tools: hero, one way in, and the promise.
+    private var landing: some View {
+        ToolPage(title: "Stitch screenshots", subtitle: "Join screenshots of a long chat or page into one tall picture.") {
+            IconHero(icon: "tool-stitch", tint: TK.purple, colors: (Color(light: 0xF1EEFF, dark: 0x2E2650), Color(light: 0xF8F6FF, dark: 0x231E3B)))
+            PhotosPicker(selection: $selection, maxSelectionCount: 12, selectionBehavior: .ordered, matching: .images) {
+                ChoiceRow(symbol: "photo.on.rectangle", title: "Choose screenshots", detail: "Choose 2–12 screenshots from top to bottom. Trim fixed headers and footers, then check each overlap.", tint: TK.purple, soft: TK.purpleSoft)
+            }
+            .buttonStyle(.plain).accessibilityLabel(L("Choose screenshots")).accessibilityIdentifier("stitch-choose")
+            if let message { ToastMessage(text: message) }
+            Label("Joined on this iPhone. Nothing is uploaded.", systemImage: "lock.shield")
+                .font(.system(size: 13)).foregroundStyle(TK.grey500)
+        } actions: { EmptyView() }
+        .disabled(busy)
+        .overlay { if busy { BusyOverlay(text: working) } }
+    }
+    private var editor: some View {
             Form {
                 if let output {
                     Section("Preview") {
@@ -166,13 +226,6 @@ struct ScreenshotStitchView: View {
                     }.padding().background(.regularMaterial).disabled(busy)
                 }
                 .navigationTitle("Stitch screenshots").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() }.disabled(busy) } }
-                .interactiveDismissDisabled(busy)
-                .sheet(item: $share) { files in ShareSheet(items: files.urls) }
-                .onAppear { seedUITestScreenshots() }
-                .onChange(of: selection) { _, items in load(items) }
-                .onDisappear { job?.cancel(); if let output { ExportFiles.remove(output.directory) } }
-        }
     }
     private func seedUITestScreenshots() {
 #if DEBUG

@@ -304,7 +304,8 @@ struct ReviewView: View {
                             Text(verbatim: format.title).font(.system(size: 15, weight: chosen ? .bold : .semibold))
                                 .foregroundStyle(chosen ? TK.grey900 : TK.grey600)
                                 .frame(maxWidth: .infinity, minHeight: 34)
-                                .background(chosen ? Color.white : Color.clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                // Raised a step above the track in both modes (white on grey, lighter grey on dark grey).
+                                .background(chosen ? Color(light: 0xFFFFFF, dark: 0x4D4D59) : Color.clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)

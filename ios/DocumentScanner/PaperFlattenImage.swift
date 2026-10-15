@@ -9,6 +9,22 @@ struct Plane {
     var w: Int, h: Int
     var p: [UInt8]
     init(w: Int, h: Int, fill: UInt8 = 0) { self.w = w; self.h = h; p = [UInt8](repeating: fill, count: w * h) }
+    /// Number of set (non-zero) pixels, eight at a time: the same count as checking each one.
+    var count: Int {
+        p.withUnsafeBytes { raw -> Int in
+            let words = raw.count / 8
+            var n = 0
+            raw.baseAddress.map { base in
+                for i in 0..<words {
+                    var b = base.loadUnaligned(fromByteOffset: i * 8, as: UInt64.self)
+                    b |= b >> 4; b |= b >> 2; b |= b >> 1   // any bit of a byte -> its lowest bit
+                    n += (b & 0x0101_0101_0101_0101).nonzeroBitCount
+                }
+            }
+            for i in (words * 8)..<raw.count where raw[i] != 0 { n += 1 }
+            return n
+        }
+    }
     @inline(__always) subscript(x: Int, y: Int) -> UInt8 {
         get { p[y * w + x] }
         set { p[y * w + x] = newValue }

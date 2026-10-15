@@ -57,7 +57,7 @@ enum PaperFlattener {
         var quadArea = 0.0
         for k in 0..<4 { let a = corners[k], b = corners[(k + 1) % 4]; quadArea += a.x * b.y - b.x * a.y }
         quadArea = abs(quadArea) / 2
-        func area(_ m: Plane) -> Double { Double(m.p.reduce(0) { $0 + ($1 > 0 ? 1 : 0) }) }
+        func area(_ m: Plane) -> Double { Double(m.count) }
         var leaked = area(mask) > quadArea * 1.25
         if leaked {
             for make in [PaperFeatures.contrastPaperMask, PaperFeatures.lightPaperMask] {

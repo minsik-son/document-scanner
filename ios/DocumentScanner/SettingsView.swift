@@ -9,18 +9,9 @@ struct SettingsView: View {
     @EnvironmentObject var lock: AppLock
     @Environment(\.dismiss) var dismiss
     let resumeDraft: (UUID) -> Void
-    @State private var share: SharedFile?
     @State private var paywall = false
-    @State private var backupWarning = false
-    @State private var importing = false
-    @State private var keepBoth = false
-    @State private var includeSignatures = false
-    @State private var backupBusy = false
-    @State private var backupProgress = "Creating backup…"
-    @State private var backupTask: Task<Void,Never>?
     @State private var folder = ""
     @State private var addingFolder = false
-    @State private var feedback: String?
     @State private var pendingDelete: ScanDocument?
     @State private var showingTour = false
     @State private var manageSubscription = false
@@ -29,9 +20,9 @@ struct SettingsView: View {
         store.restore(doc)
         if store.problem == nil { AppToast.show("Restored to your documents", symbol: "arrow.uturn.backward") }
     }
-    private func backupCreated() {
-        store.perform { try store.recordBackupCreated() }
-        AppToast.show("Backup saved", symbol: "externaldrive.fill.badge.checkmark")
+    /// "Backed up 3 days ago · Auto-save off" under Save & backup.
+    private var backupSummary: Text {
+        Text(verbatim: backupLine(store.manifest.lastBackupCreated) + " · " + L(AutoExport.folderName == nil ? "Auto-save off" : "Auto-save on"))
     }
     var body: some View {
         NavigationStack {
@@ -41,78 +32,60 @@ struct SettingsView: View {
                         .listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
                 }
                 Section {
-                    ProBenefitsCard()
-                        .listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
+                    NavigationLink {
+                        ScrollView { ProBenefitsCard().padding(16) }
+                            .background(Color(.systemGroupedBackground)).navigationTitle("My benefits").navigationBarTitleDisplayMode(.inline)
+                    } label: { SettingsIconRow(icon: "crown", title: "My benefits") }
+                        .accessibilityIdentifier("settings-benefits")
                 }
                 Section {
-                    Button("Restore purchases") { Task { await subscription.restore() } }.disabled(subscription.busy)
+                    NavigationLink { SaveBackupView() } label: {
+                        SettingsIconRow(icon: "backup", title: "Save & backup", detail: backupSummary)
+                    }.accessibilityIdentifier("settings-save-backup")
+                    NavigationLink { foldersPage } label: {
+                        SettingsIconRow(icon: "folder", title: "Folders", value: "\(store.manifest.folders.count)")
+                    }.accessibilityIdentifier("settings-folders")
+                    NavigationLink { UnfinishedScansView(resume: resumeDraft) } label: {
+                        SettingsIconRow(icon: "draft", title: "Unfinished scans", value: "\(store.drafts.count)")
+                    }.accessibilityIdentifier("unfinished-scans")
+                    NavigationLink { trashPage } label: {
+                        SettingsIconRow(icon: "trash", title: "Trash", value: "\(store.trash.count)")
+                    }.accessibilityIdentifier("settings-trash")
+                } header: { Text("My documents") }
+                Section {
+                    Toggle(isOn: Binding(get: { lock.enabled }, set: { value in Task { await lock.setEnabled(value) } })) {
+                        SettingsIconRow(icon: "lock", title: "App lock", fill: false)
+                    }.disabled(lock.authenticating).accessibilityIdentifier("settings-app-lock")
+                    if let message = lock.message { Text(L(message)).font(.footnote).foregroundStyle(.secondary) }
+                    NavigationLink { PrivacyDataView() } label: { SettingsIconRow(icon: "shield", title: "Privacy & data") }
+                        .accessibilityIdentifier("settings-privacy")
+                } header: { Text("Security & privacy") } footer: {
+                    Text("Use Face ID, Touch ID or your device passcode. App lock also hides documents in the app switcher.")
+                }
+                Section {
+                    Picker(selection: Binding(get: { AppLanguage.current }, set: { AppLanguage.choose($0) })) {
+                        ForEach(AppLanguage.allCases) { Text(verbatim: $0.nativeName).tag($0) }
+                    } label: { SettingsIconRow(icon: "globe", title: "Language", fill: false) }
+                        .accessibilityIdentifier("language-picker")
+                    NavigationLink { RecognitionLanguagesView() } label: { SettingsIconRow(icon: "ocr", title: "Text languages") }
+                    Button { showingTour = true } label: { SettingsIconRow(icon: "tour", title: "Take a quick tour", chevron: true) }
+                        .buttonStyle(.plain)
+                } header: { Text("General") }
+                Section {
+                    NavigationLink { SupportView() } label: { SettingsIconRow(icon: "mail", title: "Contact support") }
+                        .accessibilityIdentifier("settings-support")
+                    Button { openURL(AppInfo.reviewURL) } label: { SettingsIconRow(icon: "star", title: "Rate the app", chevron: true) }
+                        .buttonStyle(.plain).accessibilityIdentifier("settings-rate")
+                    ShareLink(item: AppInfo.storeURL, message: Text(L("HushScan scans documents and keeps them on your iPhone."))) {
+                        SettingsIconRow(icon: "share", title: "Share the app", chevron: true)
+                    }.buttonStyle(.plain).accessibilityIdentifier("settings-share")
+                    Button { Task { await subscription.restore() } } label: { SettingsIconRow(icon: "receipt", title: "Restore purchases", chevron: true) }
+                        .buttonStyle(.plain).disabled(subscription.busy).accessibilityIdentifier("settings-restore")
                     if let message = subscription.message { Text(L(message)).font(.caption) }
                     if subscription.statusText != "Pro is active" && subscription.statusText != "Free" {
                         Text(L(subscription.statusText)).font(.caption).foregroundStyle(.secondary)
                     }
-                }
-                Section {
-                    Label("Saved on this iPhone", systemImage: "iphone")
-                    Text("Scanning, PDF creation, and text recognition work offline. Keep a separate backup before deleting the app or changing phones.").font(.subheadline).foregroundStyle(.secondary)
-                    Button("Take a quick tour") { showingTour = true }
-                }
-                Section {
-                    AutoExportRow(openPaywall: { paywall = true })
-                } header: { Text("Auto-save") } footer: {
-                    Text("Each new scan is also saved as a PDF in the folder you choose. Pick a folder in iCloud Drive, Dropbox or Google Drive to back it up there.")
-                }
-                Section("Language") {
-                    Picker("Language", selection: Binding(get: { AppLanguage.current }, set: { AppLanguage.choose($0) })) {
-                        ForEach(AppLanguage.allCases) { Text(verbatim: $0.nativeName).tag($0) }
-                    }
-                    .accessibilityIdentifier("language-picker")
-                }
-                Section("Library") {
-                    NavigationLink {
-                        UnfinishedScansView(resume: resumeDraft)
-                    } label: { Text("Unfinished scans (\(store.drafts.count))") }
-                        .accessibilityIdentifier("unfinished-scans")
-                    NavigationLink("Folders") {
-                        List { ForEach(store.manifest.folders, id: \.self) { Text($0) }; Button("New folder") { addingFolder = true } }.navigationTitle("Folders")
-                    }
-                    NavigationLink("Trash (\(store.trash.count))") {
-                        List {
-                            if store.trash.isEmpty { Text("Trash is empty").foregroundStyle(.secondary) }
-                            else { Text("Items are permanently removed after 30 days.").font(.caption).foregroundStyle(.secondary) }
-                            ForEach(store.trash) { doc in
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text(L(doc.title)).font(.headline)
-                                    Text("\(max(0,30-Int(Date().timeIntervalSince(doc.deletedAt ?? Date())/86400))) days remaining").font(.caption).foregroundStyle(.secondary)
-                                    HStack { Button("Restore") { restoreFromTrash(doc) }.buttonStyle(.bordered); Spacer(); Button("Delete permanently", role: .destructive) { pendingDelete = doc }.buttonStyle(.bordered) }
-                                }.padding(.vertical, 6)
-                            }
-                        }.navigationTitle("Trash")
-                    }
-                }
-                Section("Privacy") {
-                    Link("Privacy policy", destination: AppInfo.privacyPolicyURL).accessibilityIdentifier("settings-privacy-policy")
-                    NavigationLink("Privacy details") { PrivacyView() }
-                    if !subscription.isPro, AdConsent.privacyOptionsRequired {
-                        Button("Ad privacy choices") { AdConsent.presentPrivacyOptions() }
-                            .accessibilityIdentifier("settings-ad-privacy")
-                    }
-                    Toggle("App lock", isOn: Binding(get: { lock.enabled }, set: { value in Task { await lock.setEnabled(value) } })).disabled(lock.authenticating)
-                    Text("Use Face ID, Touch ID or your device passcode. App lock also hides documents in the app switcher.").font(.caption)
-                    if let message = lock.message { Text(L(message)).foregroundStyle(.secondary) }
-                }
-                Section("Text recognition") {
-                    NavigationLink("Supported languages") { RecognitionLanguagesView() }
-                }
-                Section("Backup") {
-                    Toggle("Include saved reusable signatures", isOn: $includeSignatures).disabled(backupBusy)
-                    Text("Signatures already placed in documents stay in document backups. Unused saved signatures are excluded unless selected.").font(.caption)
-                    Button("Export library backup") { backupWarning = true }.disabled(backupBusy)
-                    if backupBusy { ProgressView(backupProgress); Button("Cancel backup") { backupTask?.cancel() } }
-                    if let date = store.manifest.lastBackupCreated { LabeledContent("Last backup created", value: date.appFormatted(date: .abbreviated, time: .shortened)) }
-                    Toggle("Keep both when restoring duplicates", isOn: $keepBoth).disabled(backupBusy)
-                    Button("Restore library backup") { importing = true }.disabled(backupBusy)
-                    Text("Existing documents are preserved. Choose whether duplicate documents are skipped or restored as copies. Backups are streamed to disk; enough free space for the exported archive is required.").font(.caption).foregroundStyle(.secondary)
-                }
+                } header: { Text("Support") }
                 #if DEBUG
                 Section {
                     Picker("Act as", selection: Binding(get: { SubscriptionStore.devPlan }, set: { subscription.setDevPlan($0) })) {
@@ -134,56 +107,184 @@ struct SettingsView: View {
                         .accessibilityIdentifier("dev-replay-intro")
                 } header: { Text("Developer") } footer: { Text("Debug builds only. Switches the app between the free and Pro layouts without buying. App Store follows the real purchase.") }
                 #endif
-                Section("About") {
-                    LabeledContent(AppInfo.name, value: "\(AppInfo.version) (\(AppInfo.build))").accessibilityIdentifier("settings-version")
-                    NavigationLink { SupportView() } label: {
-                        Label { Text(L("Contact support")).foregroundStyle(.primary) } icon: { Image(systemName: "envelope").foregroundStyle(TK.blue) }
-                    }.accessibilityIdentifier("settings-support")
-                    Button { openURL(AppInfo.reviewURL) } label: { SettingsLinkRow(title: "Rate the app", symbol: "star") }.buttonStyle(.plain).accessibilityIdentifier("settings-rate")
-                    ShareLink(item: AppInfo.storeURL, message: Text(L("HushScan scans documents and keeps them on your iPhone."))) {
-                        SettingsLinkRow(title: "Share the app", symbol: "square.and.arrow.up")
-                    }.buttonStyle(.plain).accessibilityIdentifier("settings-share")
-                    Link("Terms of Use", destination: AppInfo.termsURL)
-                }
-                if let feedback { Section { Text(L(feedback)) } }
+                Section {
+                    VStack(spacing: 6) {
+                        HStack(spacing: 6) {
+                            Link("Terms of Use", destination: AppInfo.termsURL)
+                            Text(verbatim: "·")
+                            Link("Privacy policy", destination: AppInfo.privacyPolicyURL).accessibilityIdentifier("settings-privacy-policy")
+                        }
+                        Text(verbatim: "\(AppInfo.name) \(AppInfo.version) (\(AppInfo.build))").accessibilityIdentifier("settings-version")
+                    }
+                    .font(.caption).foregroundStyle(TK.grey500).tint(TK.grey600).frame(maxWidth: .infinity)
+                }.listRowBackground(Color.clear)
             }
             .scrollContentBackground(subscription.isPro ? .hidden : .automatic)
             .background { if subscription.isPro { ProPageBackground(band: 50) } }
             .toolbarBackground(subscription.isPro ? .hidden : .automatic, for: .navigationBar)
-            .navigationTitle("Settings").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.disabled(backupBusy) } }
-            .interactiveDismissDisabled(backupBusy)
+            .navigationTitle("Settings").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .fullScreenCover(isPresented: $showingTour) { OnboardingView(onFinish: { _ in showingTour = false }, replay: true) }
-            .alert("New folder", isPresented: $addingFolder) { TextField("Folder name", text: $folder); Button("Create") { store.perform { try store.addFolder(folder) }; folder = "" }; Button("Cancel", role: .cancel) {} }
-            .confirmationDialog("Export an unencrypted backup?", isPresented: $backupWarning) { Button("Export backup") {
-                backupBusy = true; backupProgress = "Creating backup…"
-                backupTask = Task {
-                    defer { backupBusy = false }
-                    do { share = SharedFile(url:try await store.exportBackupAsync(includeSignatures:includeSignatures)) }
-                    catch is CancellationError { feedback = "Backup canceled. Your library is unchanged." }
-                    catch { feedback = error.localizedDescription }
-                }
-            } } message: { Text("This file is not password protected. Anyone with the file can read your documents. Store it somewhere you trust.") }
-            .confirmationDialog("Permanently delete this document?", isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } })) {
-                Button("Delete permanently", role: .destructive) { if let doc = pendingDelete { store.perform { try store.permanentlyDelete(doc) } }; pendingDelete = nil }
-            } message: { Text("This cannot be undone.") }
             .sheet(isPresented: $paywall) { PaywallView() }
             .manageSubscriptionsSheet(isPresented: $manageSubscription)
-            .sheet(item: $share) { file in ShareSheet(items: [file.url], completion: { completed, error in
-                if completed { backupCreated() }
-                if let error { feedback = error.localizedDescription }
-                try? FileManager.default.removeItem(at: file.url)
-            }) }
-            .fileImporter(isPresented: $importing, allowedContentTypes: [.data]) { result in
-                do {
-                    let url = try result.get(); backupBusy = true; backupProgress = "Checking and restoring backup…"
-                    backupTask = Task {
-                        defer { backupBusy = false }
-                        do { try await store.importBackupAsync(url,keepBoth:keepBoth); feedback = "Backup restored. Existing documents were preserved." }
-                        catch { feedback = "Backup wasn't restored. Nothing in your library was changed. " + error.localizedDescription }
-                    }
-                } catch { feedback = error.localizedDescription }
+        }
+    }
+    private var foldersPage: some View {
+        List { ForEach(store.manifest.folders, id: \.self) { Text($0) }; Button("New folder") { addingFolder = true } }
+            .navigationTitle("Folders")
+            .alert("New folder", isPresented: $addingFolder) { TextField("Folder name", text: $folder); Button("Create") { store.perform { try store.addFolder(folder) }; folder = "" }; Button("Cancel", role: .cancel) {} }
+    }
+    private var trashPage: some View {
+        List {
+            if store.trash.isEmpty { Text("Trash is empty").foregroundStyle(.secondary) }
+            else { Text("Items are permanently removed after 30 days.").font(.caption).foregroundStyle(.secondary) }
+            ForEach(store.trash) { doc in
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(L(doc.title)).font(.headline)
+                    Text("\(max(0,30-Int(Date().timeIntervalSince(doc.deletedAt ?? Date())/86400))) days remaining").font(.caption).foregroundStyle(.secondary)
+                    HStack { Button("Restore") { restoreFromTrash(doc) }.buttonStyle(.bordered); Spacer(); Button("Delete permanently", role: .destructive) { pendingDelete = doc }.buttonStyle(.bordered) }
+                }.padding(.vertical, 6)
             }
         }
+        .navigationTitle("Trash")
+        .confirmationDialog("Permanently delete this document?", isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } })) {
+            Button("Delete permanently", role: .destructive) { if let doc = pendingDelete { store.perform { try store.permanentlyDelete(doc) } }; pendingDelete = nil }
+        } message: { Text("This cannot be undone.") }
+    }
+}
+
+/// "Backed up 3 days ago", or "Not backed up yet".
+func backupLine(_ date: Date?) -> String {
+    guard let date else { return L("Not backed up yet") }
+    let relative = date.formatted(.relative(presentation: .named).locale(AppLanguage.locale))
+    return String(format: L("Backed up %@"), relative)
+}
+
+/// One settings row: a flat two-tone icon, a title, and an optional detail line or count.
+struct SettingsIconRow: View {
+    let icon: String
+    let title: String
+    var detail: Text? = nil
+    var value: String? = nil
+    var tint: Color? = nil
+    var chevron = false
+    var fill = true
+    var body: some View {
+        HStack(spacing: 14) {
+            Image("set-" + icon).resizable().interpolation(.high).scaledToFit()
+                .frame(width: 28, height: 28).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L(title)).foregroundStyle(tint ?? .primary)
+                if let detail { detail.font(.caption).foregroundStyle(.secondary).lineLimit(1) }
+            }
+            if fill { Spacer(minLength: 8) }
+            if let value { Text(verbatim: value).foregroundStyle(.secondary) }
+            if chevron { Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(TK.grey400) }
+        }
+        .contentShape(Rectangle())
+    }
+}
+
+/// Save & backup: where documents live, auto-save to a Files folder, and backup files.
+private struct SaveBackupView: View {
+    @EnvironmentObject var store: LibraryStore
+    @State private var share: SharedFile?
+    @State private var paywall = false
+    @State private var backupWarning = false
+    @State private var importing = false
+    @State private var keepBoth = false
+    @State private var includeSignatures = false
+    @State private var backupBusy = false
+    @State private var backupProgress = "Creating backup…"
+    @State private var backupTask: Task<Void,Never>?
+    @State private var feedback: String?
+    @State private var autoFolder = AutoExport.folderName
+    private func backupCreated() {
+        store.perform { try store.recordBackupCreated() }
+        AppToast.show("Backup saved", symbol: "externaldrive.fill.badge.checkmark")
+    }
+    var body: some View {
+        List {
+            Section { notice.padding(.vertical, 6) }
+            Section {
+                AutoExportRow(openPaywall: { paywall = true }, folder: $autoFolder)
+            } header: { Text("Auto-save") } footer: {
+                Text("HushScan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone.")
+            }
+            Section {
+                Button { backupWarning = true } label: { SettingsIconRow(icon: "export", title: "Export library backup", tint: TK.blue, chevron: true) }
+                    .buttonStyle(.plain).disabled(backupBusy).accessibilityIdentifier("backup-export")
+                Button { importing = true } label: { SettingsIconRow(icon: "import", title: "Restore library backup", tint: TK.blue, chevron: true) }
+                    .buttonStyle(.plain).disabled(backupBusy).accessibilityIdentifier("backup-restore")
+                if backupBusy { ProgressView(backupProgress); Button("Cancel backup") { backupTask?.cancel() } }
+                Toggle(isOn: $includeSignatures) { SettingsIconRow(icon: "sign", title: "Include saved reusable signatures", fill: false) }.disabled(backupBusy)
+                Toggle(isOn: $keepBoth) { SettingsIconRow(icon: "dup", title: "Keep both when restoring duplicates", fill: false) }.disabled(backupBusy)
+            } header: { Text("Backup files") } footer: {
+                Text("Backup files aren't password protected. Keep them somewhere you trust.")
+            }
+            if let feedback { Section { Text(L(feedback)) } }
+        }
+        .navigationTitle("Save & backup").navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(backupBusy)
+        .interactiveDismissDisabled(backupBusy)
+        .sheet(isPresented: $paywall) { PaywallView() }
+        .confirmationDialog("Export an unencrypted backup?", isPresented: $backupWarning) { Button("Export backup") {
+            backupBusy = true; backupProgress = "Creating backup…"
+            backupTask = Task {
+                defer { backupBusy = false }
+                do { share = SharedFile(url:try await store.exportBackupAsync(includeSignatures:includeSignatures)) }
+                catch is CancellationError { feedback = "Backup canceled. Your library is unchanged." }
+                catch { feedback = error.localizedDescription }
+            }
+        } } message: { Text("This file is not password protected. Anyone with the file can read your documents. Store it somewhere you trust.") }
+        .sheet(item: $share) { file in ShareSheet(items: [file.url], completion: { completed, error in
+            if completed { backupCreated() }
+            if let error { feedback = error.localizedDescription }
+            try? FileManager.default.removeItem(at: file.url)
+        }) }
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.data]) { result in
+            do {
+                let url = try result.get(); backupBusy = true; backupProgress = "Checking and restoring backup…"
+                backupTask = Task {
+                    defer { backupBusy = false }
+                    do { try await store.importBackupAsync(url,keepBoth:keepBoth); feedback = "Backup restored. Existing documents were preserved." }
+                    catch { feedback = "Backup wasn't restored. Nothing in your library was changed. " + error.localizedDescription }
+                }
+            } catch { feedback = error.localizedDescription }
+        }
+    }
+    private var notice: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(autoFolder == nil ? "set-phone" : "set-autosave").resizable().interpolation(.high).scaledToFit()
+                .frame(width: 36, height: 36).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(autoFolder == nil ? "Your documents are only on this iPhone" : "New scans are also saved to your folder")
+                    .font(.subheadline.weight(.bold))
+                Text(autoFolder == nil ? "HushScan never uploads anything. Back up before you delete the app or change phones."
+                                       : "The original stays on this iPhone, and the same PDF is saved to the folder you picked in Files.")
+                    .font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(verbatim: backupLine(store.manifest.lastBackupCreated)).font(.caption.weight(.semibold)).foregroundStyle(TK.blue).padding(.top, 4)
+            }
+        }
+        .accessibilityElement(children: .combine).accessibilityIdentifier("backup-notice")
+    }
+}
+
+/// Privacy & data: what HushScan keeps, the policy, and ad choices for free users.
+private struct PrivacyDataView: View {
+    @EnvironmentObject var subscription: SubscriptionStore
+    var body: some View {
+        List {
+            Section {
+                NavigationLink { PrivacyView() } label: { SettingsIconRow(icon: "shield", title: "Privacy details") }
+                Link(destination: AppInfo.privacyPolicyURL) { SettingsIconRow(icon: "doc", title: "Privacy policy", chevron: true) }
+                    .buttonStyle(.plain)
+                if !subscription.isPro, AdConsent.privacyOptionsRequired {
+                    Button { AdConsent.presentPrivacyOptions() } label: { SettingsIconRow(icon: "ad", title: "Ad privacy choices", chevron: true) }
+                        .buttonStyle(.plain).accessibilityIdentifier("settings-ad-privacy")
+                }
+            } footer: { Text("Scanning, PDF creation and text recognition all run offline on this iPhone.") }
+        }
+        .navigationTitle("Privacy & data").navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -257,27 +358,36 @@ private struct RecognitionLanguagesView: View {
 struct AutoExportRow: View {
     @EnvironmentObject private var subscription: SubscriptionStore
     let openPaywall: () -> Void
+    @Binding var folder: String?
     @State private var picking = false
-    @State private var folder = AutoExport.folderName
     @State private var problem: String?
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let folder {
-                HStack {
-                    Label(L(folder), systemImage: "folder.fill").lineLimit(1)
-                    Spacer()
-                    Button("Change") { picking = true }.buttonStyle(.borderless)
-                    Button("Turn off", role: .destructive) { AutoExport.clear(); self.folder = nil }.buttonStyle(.borderless)
-                }
+        VStack(alignment: .leading, spacing: 10) {
+            if subscription.isPro || folder != nil {
+                Toggle(isOn: Binding(get: { folder != nil }, set: { on in
+                    if on { picking = true } else { AutoExport.clear(); folder = nil }
+                })) {
+                    SettingsIconRow(icon: "autosave", title: "Auto-save to Files",
+                                    detail: folder == nil ? Text("Save each new scan as a PDF in a folder you pick") : nil, fill: false)
+                }.accessibilityIdentifier("auto-export-toggle")
             } else {
-                Button {
-                    if subscription.isPro { picking = true } else { openPaywall() }
-                } label: {
+                Button(action: openPaywall) {
                     HStack {
-                        Label("Save new scans to a folder", systemImage: "folder.badge.plus")
-                        if !subscription.isPro { Spacer(); ProBadge() }
+                        SettingsIconRow(icon: "autosave", title: "Auto-save to Files", detail: Text("Save each new scan as a PDF in a folder you pick"))
+                        ProBadge()
                     }
-                }.accessibilityIdentifier("auto-export-choose")
+                }.buttonStyle(.plain).accessibilityIdentifier("auto-export-choose")
+            }
+            if let folder {
+                HStack(spacing: 8) {
+                    Image("set-folder").resizable().interpolation(.high).frame(width: 20, height: 20).accessibilityHidden(true)
+                    Text(L(folder)).font(.subheadline.weight(.semibold)).lineLimit(1)
+                    Spacer()
+                    Button("Change") { picking = true }.buttonStyle(.borderless).font(.subheadline.weight(.semibold))
+                }
+                .padding(.horizontal, 12).padding(.vertical, 10)
+                .background(TK.grey100, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .accessibilityIdentifier("auto-export-folder")
             }
             if let problem { Text(L(problem)).font(.footnote).foregroundStyle(.red) }
         }

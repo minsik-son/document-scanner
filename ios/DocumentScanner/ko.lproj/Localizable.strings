@@ -2041,3 +2041,25 @@
 "Signatures · %d" = "서명 %d개";
 "Pen · %d" = "펜 %d개";
 "Highlights · %d" = "형광펜 %d개";
+
+/* Settings redesign */
+"My documents" = "내 문서";
+"Security & privacy" = "보안 및 개인정보";
+"General" = "일반";
+"Support" = "지원";
+"Save & backup" = "저장 및 백업";
+"Not backed up yet" = "아직 백업 안 함";
+"Backed up %@" = "마지막 백업 %@";
+"Auto-save on" = "자동 저장 켜짐";
+"Auto-save off" = "자동 저장 꺼짐";
+"Your documents are only on this iPhone" = "문서는 이 iPhone에만 있어요";
+"HushScan never uploads anything. Back up before you delete the app or change phones." = "HushScan은 아무것도 업로드하지 않아요. 앱을 지우거나 폰을 바꾸기 전에 백업해 두세요.";
+"New scans are also saved to your folder" = "새 스캔이 고른 폴더에도 저장돼요";
+"The original stays on this iPhone, and the same PDF is saved to the folder you picked in Files." = "원본은 이 iPhone에 있고, 같은 PDF가 파일 앱에서 고른 폴더에 한 부 더 저장돼요.";
+"Auto-save to Files" = "파일 앱에 자동 저장";
+"Save each new scan as a PDF in a folder you pick" = "새 스캔을 고른 폴더에 PDF로 한 부 더 저장해요";
+"HushScan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone." = "HushScan은 업로드하지 않아요. iCloud Drive나 Dropbox 폴더를 고르면 그 서비스가 동기화해요. '나의 iPhone' 폴더를 고르면 폰 밖으로 나가지 않아요.";
+"Backup files" = "백업 파일";
+"Backup files aren't password protected. Keep them somewhere you trust." = "백업 파일은 암호가 걸리지 않아요. 믿을 수 있는 곳에 보관하세요.";
+"Scanning, PDF creation and text recognition all run offline on this iPhone." = "스캔, PDF 만들기, 글자 인식은 모두 인터넷 없이 이 iPhone에서 처리돼요.";
+"Privacy & data" = "개인정보";

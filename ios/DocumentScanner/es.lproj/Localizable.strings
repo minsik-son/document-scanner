@@ -2041,3 +2041,25 @@
 "Signatures · %d" = "Firmas · %d";
 "Pen · %d" = "Lápiz · %d";
 "Highlights · %d" = "Resaltados · %d";
+
+/* Settings redesign */
+"My documents" = "Mis documentos";
+"Security & privacy" = "Seguridad y privacidad";
+"General" = "General";
+"Support" = "Soporte";
+"Save & backup" = "Guardado y copia de seguridad";
+"Not backed up yet" = "Aún sin copia de seguridad";
+"Backed up %@" = "Última copia %@";
+"Auto-save on" = "Guardado automático activado";
+"Auto-save off" = "Guardado automático desactivado";
+"Your documents are only on this iPhone" = "Tus documentos solo están en este iPhone";
+"HushScan never uploads anything. Back up before you delete the app or change phones." = "HushScan no sube nada. Haz una copia de seguridad antes de borrar la app o cambiar de teléfono.";
+"New scans are also saved to your folder" = "Los escaneos nuevos también se guardan en tu carpeta";
+"The original stays on this iPhone, and the same PDF is saved to the folder you picked in Files." = "El original se queda en este iPhone y el mismo PDF se guarda en la carpeta que elegiste en Archivos.";
+"Auto-save to Files" = "Guardar automáticamente en Archivos";
+"Save each new scan as a PDF in a folder you pick" = "Guarda cada escaneo nuevo como PDF en la carpeta que elijas";
+"HushScan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone." = "HushScan nunca sube nada. Si eliges una carpeta de iCloud Drive o Dropbox, ese servicio la sincroniza. Una carpeta En mi iPhone nunca sale de este iPhone.";
+"Backup files" = "Archivos de copia de seguridad";
+"Backup files aren't password protected. Keep them somewhere you trust." = "Los archivos de copia no tienen contraseña. Guárdalos en un lugar de confianza.";
+"Scanning, PDF creation and text recognition all run offline on this iPhone." = "El escaneo, la creación de PDF y el reconocimiento de texto funcionan sin conexión en este iPhone.";
+"Privacy & data" = "Privacidad y datos";

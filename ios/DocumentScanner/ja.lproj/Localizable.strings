@@ -2041,3 +2041,25 @@
 "Signatures · %d" = "署名 %d";
 "Pen · %d" = "ペン %d";
 "Highlights · %d" = "マーカー %d";
+
+/* Settings redesign */
+"My documents" = "マイドキュメント";
+"Security & privacy" = "セキュリティとプライバシー";
+"General" = "一般";
+"Support" = "サポート";
+"Save & backup" = "保存とバックアップ";
+"Not backed up yet" = "まだバックアップなし";
+"Backed up %@" = "最終バックアップ %@";
+"Auto-save on" = "自動保存オン";
+"Auto-save off" = "自動保存オフ";
+"Your documents are only on this iPhone" = "書類はこのiPhoneにだけ保存されています";
+"HushScan never uploads anything. Back up before you delete the app or change phones." = "HushScanは何もアップロードしません。アプリを削除したり機種変更したりする前にバックアップしてください。";
+"New scans are also saved to your folder" = "新しいスキャンは選んだフォルダにも保存されます";
+"The original stays on this iPhone, and the same PDF is saved to the folder you picked in Files." = "元の書類はこのiPhoneに残り、同じPDFが「ファイル」で選んだフォルダにも保存されます。";
+"Auto-save to Files" = "「ファイル」に自動保存";
+"Save each new scan as a PDF in a folder you pick" = "新しいスキャンを選んだフォルダにPDFで保存";
+"HushScan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone." = "HushScanはアップロードしません。iCloud DriveやDropboxのフォルダを選ぶと、そのサービスが同期します。「このiPhone内」のフォルダならiPhoneの外には出ません。";
+"Backup files" = "バックアップファイル";
+"Backup files aren't password protected. Keep them somewhere you trust." = "バックアップファイルにはパスワードがかかりません。信頼できる場所に保管してください。";
+"Scanning, PDF creation and text recognition all run offline on this iPhone." = "スキャン、PDF作成、文字認識はすべてこのiPhone上でオフラインで動作します。";
+"Privacy & data" = "プライバシーとデータ";

@@ -2041,3 +2041,25 @@
 "Signatures · %d" = "Signatures · %d";
 "Pen · %d" = "Stylo · %d";
 "Highlights · %d" = "Surlignages · %d";
+
+/* Settings redesign */
+"My documents" = "Mes documents";
+"Security & privacy" = "Sécurité et confidentialité";
+"General" = "Général";
+"Support" = "Assistance";
+"Save & backup" = "Enregistrement et sauvegarde";
+"Not backed up yet" = "Aucune sauvegarde";
+"Backed up %@" = "Dernière sauvegarde %@";
+"Auto-save on" = "Enregistrement auto activé";
+"Auto-save off" = "Enregistrement auto désactivé";
+"Your documents are only on this iPhone" = "Vos documents sont uniquement sur cet iPhone";
+"HushScan never uploads anything. Back up before you delete the app or change phones." = "HushScan n’envoie rien en ligne. Faites une sauvegarde avant de supprimer l’app ou de changer de téléphone.";
+"New scans are also saved to your folder" = "Les nouveaux scans sont aussi enregistrés dans votre dossier";
+"The original stays on this iPhone, and the same PDF is saved to the folder you picked in Files." = "L’original reste sur cet iPhone et le même PDF est enregistré dans le dossier choisi dans Fichiers.";
+"Auto-save to Files" = "Enregistrer auto dans Fichiers";
+"Save each new scan as a PDF in a folder you pick" = "Chaque nouveau scan en PDF dans le dossier de votre choix";
+"HushScan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone." = "HushScan n’envoie jamais rien. Si vous choisissez un dossier iCloud Drive ou Dropbox, ce service le synchronise. Un dossier « Sur mon iPhone » ne quitte jamais cet iPhone.";
+"Backup files" = "Fichiers de sauvegarde";
+"Backup files aren't password protected. Keep them somewhere you trust." = "Les fichiers de sauvegarde ne sont pas protégés par mot de passe. Gardez-les en lieu sûr.";
+"Scanning, PDF creation and text recognition all run offline on this iPhone." = "La numérisation, la création de PDF et la reconnaissance de texte fonctionnent hors ligne sur cet iPhone.";
+"Privacy & data" = "Confidentialité et données";

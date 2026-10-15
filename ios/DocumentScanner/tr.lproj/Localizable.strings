@@ -2041,3 +2041,25 @@
 "Signatures · %d" = "İmza · %d";
 "Pen · %d" = "Kalem · %d";
 "Highlights · %d" = "Vurgu · %d";
+
+/* Settings redesign */
+"My documents" = "Belgelerim";
+"Security & privacy" = "Güvenlik ve gizlilik";
+"General" = "Genel";
+"Support" = "Destek";
+"Save & backup" = "Kaydetme ve yedekleme";
+"Not backed up yet" = "Henüz yedek yok";
+"Backed up %@" = "Son yedek %@";
+"Auto-save on" = "Otomatik kaydetme açık";
+"Auto-save off" = "Otomatik kaydetme kapalı";
+"Your documents are only on this iPhone" = "Belgeleriniz yalnızca bu iPhone'da";
+"HushScan never uploads anything. Back up before you delete the app or change phones." = "HushScan hiçbir şey yüklemez. Uygulamayı silmeden veya telefon değiştirmeden önce yedek alın.";
+"New scans are also saved to your folder" = "Yeni taramalar klasörünüze de kaydedilir";
+"The original stays on this iPhone, and the same PDF is saved to the folder you picked in Files." = "Orijinal bu iPhone'da kalır, aynı PDF Dosyalar'da seçtiğiniz klasöre de kaydedilir.";
+"Auto-save to Files" = "Dosyalar'a otomatik kaydet";
+"Save each new scan as a PDF in a folder you pick" = "Her yeni taramayı seçtiğiniz klasöre PDF olarak kaydeder";
+"HushScan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone." = "HushScan hiçbir şey yüklemez. iCloud Drive veya Dropbox klasörü seçerseniz o hizmet eşitler. iPhone'umda klasörü bu iPhone'dan hiç çıkmaz.";
+"Backup files" = "Yedek dosyaları";
+"Backup files aren't password protected. Keep them somewhere you trust." = "Yedek dosyaları parola korumalı değildir. Güvendiğiniz bir yerde saklayın.";
+"Scanning, PDF creation and text recognition all run offline on this iPhone." = "Tarama, PDF oluşturma ve metin tanıma bu iPhone'da çevrimdışı çalışır.";
+"Privacy & data" = "Gizlilik ve veriler";

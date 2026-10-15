@@ -65,6 +65,31 @@ final class ToolDirectoryDesignTests: HushUITestCase {
         XCTAssertTrue(app.buttons["support-send"].isEnabled)
         capture(app, "Support filled")
     }
+    @MainActor func testSettingsRedesignScreens() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-test-session", UUID().uuidString, "--seed-saved", "-app-language", "ko", "-AppleLanguages", "(ko)"]
+        app.launch()
+        XCTAssertTrue(app.buttons["nav-settings"].waitForExistence(timeout: 10))
+        app.buttons["nav-settings"].tap()
+        let saveBackup = app.buttons["settings-save-backup"]
+        XCTAssertTrue(saveBackup.waitForExistence(timeout: 5))
+        capture(app, "Settings top")
+        app.swipeUp(); capture(app, "Settings middle")
+        app.swipeUp(); app.swipeUp(); capture(app, "Settings bottom")
+        XCTAssertTrue(app.buttons["settings-support"].exists)
+        for _ in 0..<4 { app.swipeDown() }
+        for _ in 0..<4 where !saveBackup.isHittable { app.swipeUp() }
+        saveBackup.tap()
+        XCTAssertTrue(app.buttons["backup-export"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["auto-export-choose"].exists || app.switches["auto-export-toggle"].exists)
+        capture(app, "Save and backup")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        let privacy = app.buttons["settings-privacy"]
+        for _ in 0..<4 where !privacy.isHittable { app.swipeUp() }
+        privacy.tap()
+        XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 5))
+        capture(app, "Privacy and data")
+    }
     @MainActor func testBottomNavigationAndCenterCamera() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-test-session", UUID().uuidString,"-app-language","en", "--seed-saved", "--simulate-camera", "-AppleLanguages", "(en)"]

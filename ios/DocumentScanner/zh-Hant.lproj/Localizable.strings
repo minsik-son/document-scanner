@@ -2041,3 +2041,25 @@
 "Signatures · %d" = "簽名 %d";
 "Pen · %d" = "畫筆 %d";
 "Highlights · %d" = "螢光筆 %d";
+
+/* Settings redesign */
+"My documents" = "我的文件";
+"Security & privacy" = "安全與隱私";
+"General" = "一般";
+"Support" = "支援";
+"Save & backup" = "儲存與備份";
+"Not backed up yet" = "尚未備份";
+"Backed up %@" = "上次備份 %@";
+"Auto-save on" = "自動儲存已開啟";
+"Auto-save off" = "自動儲存已關閉";
+"Your documents are only on this iPhone" = "你的文件只存在這支 iPhone 上";
+"HushScan never uploads anything. Back up before you delete the app or change phones." = "HushScan 不會上傳任何內容。刪除 App 或更換手機前請先備份。";
+"New scans are also saved to your folder" = "新掃描也會儲存到你選的資料夾";
+"The original stays on this iPhone, and the same PDF is saved to the folder you picked in Files." = "原件保留在這支 iPhone 上，同一份 PDF 會儲存到你在「檔案」中選的資料夾。";
+"Auto-save to Files" = "自動儲存到「檔案」";
+"Save each new scan as a PDF in a folder you pick" = "把每份新掃描以 PDF 存到你選的資料夾";
+"HushScan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone." = "HushScan 不會上傳。若選擇 iCloud 雲碟或 Dropbox 資料夾，會由該服務同步。「我的 iPhone」中的資料夾不會離開這支 iPhone。";
+"Backup files" = "備份檔案";
+"Backup files aren't password protected. Keep them somewhere you trust." = "備份檔案沒有密碼保護，請存放在可信的地方。";
+"Scanning, PDF creation and text recognition all run offline on this iPhone." = "掃描、製作 PDF 和文字辨識都在這支 iPhone 上離線完成。";
+"Privacy & data" = "隱私與資料";

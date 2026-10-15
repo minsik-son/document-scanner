@@ -2041,3 +2041,25 @@
 "Signatures · %d" = "ลายเซ็น · %d";
 "Pen · %d" = "ปากกา · %d";
 "Highlights · %d" = "ไฮไลต์ · %d";
+
+/* Settings redesign */
+"My documents" = "เอกสารของฉัน";
+"Security & privacy" = "ความปลอดภัยและความเป็นส่วนตัว";
+"General" = "ทั่วไป";
+"Support" = "ช่วยเหลือ";
+"Save & backup" = "บันทึกและสำรองข้อมูล";
+"Not backed up yet" = "ยังไม่ได้สำรองข้อมูล";
+"Backed up %@" = "สำรองล่าสุด %@";
+"Auto-save on" = "บันทึกอัตโนมัติเปิดอยู่";
+"Auto-save off" = "บันทึกอัตโนมัติปิดอยู่";
+"Your documents are only on this iPhone" = "เอกสารของคุณอยู่ใน iPhone เครื่องนี้เท่านั้น";
+"HushScan never uploads anything. Back up before you delete the app or change phones." = "HushScan ไม่อัปโหลดอะไรเลย สำรองข้อมูลไว้ก่อนลบแอปหรือเปลี่ยนเครื่อง";
+"New scans are also saved to your folder" = "สแกนใหม่จะถูกบันทึกลงโฟลเดอร์ของคุณด้วย";
+"The original stays on this iPhone, and the same PDF is saved to the folder you picked in Files." = "ต้นฉบับยังอยู่ใน iPhone เครื่องนี้ และ PDF เดียวกันจะถูกบันทึกลงโฟลเดอร์ที่คุณเลือกในแอปไฟล์";
+"Auto-save to Files" = "บันทึกลงแอปไฟล์อัตโนมัติ";
+"Save each new scan as a PDF in a folder you pick" = "บันทึกสแกนใหม่เป็น PDF ในโฟลเดอร์ที่คุณเลือก";
+"HushScan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone." = "HushScan ไม่อัปโหลดอะไรเลย ถ้าคุณเลือกโฟลเดอร์ใน iCloud Drive หรือ Dropbox บริการนั้นจะซิงค์เอง โฟลเดอร์ในเครื่อง iPhone จะไม่ออกไปนอกเครื่อง";
+"Backup files" = "ไฟล์สำรองข้อมูล";
+"Backup files aren't password protected. Keep them somewhere you trust." = "ไฟล์สำรองไม่มีรหัสผ่าน เก็บไว้ในที่ที่คุณไว้ใจ";
+"Scanning, PDF creation and text recognition all run offline on this iPhone." = "การสแกน การสร้าง PDF และการจดจำข้อความทำงานแบบออฟไลน์บน iPhone เครื่องนี้";
+"Privacy & data" = "ความเป็นส่วนตัวและข้อมูล";

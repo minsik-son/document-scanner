@@ -2041,3 +2041,25 @@
 "Signatures · %d" = "Tanda tangan · %d";
 "Pen · %d" = "Pena · %d";
 "Highlights · %d" = "Sorotan · %d";
+
+/* Settings redesign */
+"My documents" = "Dokumen saya";
+"Security & privacy" = "Keamanan & privasi";
+"General" = "Umum";
+"Support" = "Bantuan";
+"Save & backup" = "Simpan & cadangan";
+"Not backed up yet" = "Belum dicadangkan";
+"Backed up %@" = "Dicadangkan %@";
+"Auto-save on" = "Simpan otomatis aktif";
+"Auto-save off" = "Simpan otomatis nonaktif";
+"Your documents are only on this iPhone" = "Dokumen Anda hanya ada di iPhone ini";
+"HushScan never uploads anything. Back up before you delete the app or change phones." = "HushScan tidak pernah mengunggah apa pun. Cadangkan sebelum menghapus aplikasi atau ganti ponsel.";
+"New scans are also saved to your folder" = "Pindaian baru juga disimpan ke folder Anda";
+"The original stays on this iPhone, and the same PDF is saved to the folder you picked in Files." = "Aslinya tetap di iPhone ini, dan PDF yang sama disimpan ke folder pilihan Anda di File.";
+"Auto-save to Files" = "Simpan otomatis ke File";
+"Save each new scan as a PDF in a folder you pick" = "Simpan tiap pindaian baru sebagai PDF di folder pilihan Anda";
+"HushScan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone." = "HushScan tidak pernah mengunggah. Jika Anda memilih folder iCloud Drive atau Dropbox, layanan itu yang menyinkronkannya. Folder Di iPhone Saya tidak pernah keluar dari iPhone ini.";
+"Backup files" = "File cadangan";
+"Backup files aren't password protected. Keep them somewhere you trust." = "File cadangan tidak dilindungi kata sandi. Simpan di tempat yang Anda percaya.";
+"Scanning, PDF creation and text recognition all run offline on this iPhone." = "Pemindaian, pembuatan PDF, dan pengenalan teks berjalan offline di iPhone ini.";
+"Privacy & data" = "Privasi & data";

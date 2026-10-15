@@ -1342,7 +1342,7 @@ enum SmartTool: String, CaseIterable, Identifiable {
         case .redact: return "Hide personal info"
         case .fillForm: return "Fill a form"
         case .businessCard: return "Business card to contact"
-        case .autoSave: return "Auto-save to cloud"
+        case .autoSave: return "Auto-save to Files"
         }
     }
     var icon: String {
@@ -1436,11 +1436,13 @@ struct FillFormTool: View {
 /// Choose the folder that receives every new scan.
 struct AutoSaveTool: View {
     @State private var paywall = false
+    @State private var folder = AutoExport.folderName
     var body: some View {
-        ToolPage(title: "Auto-save to cloud", subtitle: "Every new scan is also saved as a PDF in a folder you choose — iCloud Drive, Dropbox, Google Drive or this iPhone.") {
+        ToolPage(title: "Auto-save to Files", subtitle: "Save each new scan as a PDF in a folder you pick") {
             ToolHero(art: .autoSave)
-            AutoExportRow(openPaywall: { paywall = true })
+            AutoExportRow(openPaywall: { paywall = true }, folder: $folder)
                 .padding(16).background(TK.grey50, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            Text("HushScan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone.").font(.footnote).foregroundStyle(TK.grey500)
             Text("You can change or turn this off any time here or in Settings.").font(.footnote).foregroundStyle(TK.grey500)
         } actions: { EmptyView() }
         .sheet(isPresented: $paywall) { PaywallView() }

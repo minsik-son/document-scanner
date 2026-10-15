@@ -333,8 +333,10 @@ final class ScannerFlowTests: HushUITestCase {
         XCTAssertTrue(reveal(app.staticTexts["Paperwork, simplified"], in: app))
         app.buttons["nav-settings"].tap()
         XCTAssertTrue(app.buttons["Explore Pro"].waitForExistence(timeout: 5))
-        for _ in 0..<5 where !app.buttons["Export library backup"].isHittable { app.swipeUp() }
+        let saveBackup = app.buttons["settings-save-backup"]
+        XCTAssertTrue(reveal(saveBackup, in: app)); saveBackup.tap()
         XCTAssertTrue(app.buttons["Export library backup"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Your documents are only on this iPhone"].exists || app.descendants(matching: .any)["backup-notice"].exists)
     }
 
     /// A new scan saves as PDF: PDF in the format row, then Save.
@@ -449,7 +451,7 @@ final class ScannerFlowTests: HushUITestCase {
         XCTAssertTrue(reveal(app.staticTexts["Paperwork, simplified"], in: app))
         XCTAssertFalse(app.alerts["Move this document to Trash?"].exists, "Home gestures commit directly to recoverable Trash")
         app.buttons["nav-settings"].tap()
-        let trashFolder = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Trash (")).firstMatch
+        let trashFolder = app.buttons["settings-trash"]
         XCTAssertTrue(reveal(trashFolder, in: app)); trashFolder.tap()
         XCTAssertTrue(app.staticTexts["Test document"].waitForExistence(timeout: 5))
         app.buttons["Restore"].tap()
@@ -544,7 +546,7 @@ final class ScannerFlowTests: HushUITestCase {
         confirmation.buttons["Move to Trash"].tap()
         XCTAssertTrue(app.staticTexts["No unfinished scans"].waitForExistence(timeout: 5))
         app.navigationBars["Unfinished scans"].buttons.firstMatch.tap()
-        let trashFolder = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Trash (")).firstMatch
+        let trashFolder = app.buttons["settings-trash"]
         XCTAssertTrue(reveal(trashFolder, in: app)); trashFolder.tap()
         XCTAssertTrue(app.staticTexts["Test document"].waitForExistence(timeout: 5))
         app.buttons["Restore"].tap()

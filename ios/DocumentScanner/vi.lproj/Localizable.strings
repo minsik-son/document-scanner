@@ -2041,3 +2041,25 @@
 "Signatures · %d" = "Chữ ký · %d";
 "Pen · %d" = "Bút · %d";
 "Highlights · %d" = "Tô sáng · %d";
+
+/* Settings redesign */
+"My documents" = "Tài liệu của tôi";
+"Security & privacy" = "Bảo mật & quyền riêng tư";
+"General" = "Chung";
+"Support" = "Hỗ trợ";
+"Save & backup" = "Lưu & sao lưu";
+"Not backed up yet" = "Chưa sao lưu";
+"Backed up %@" = "Sao lưu lần cuối %@";
+"Auto-save on" = "Tự động lưu đang bật";
+"Auto-save off" = "Tự động lưu đang tắt";
+"Your documents are only on this iPhone" = "Tài liệu của bạn chỉ ở trên iPhone này";
+"HushScan never uploads anything. Back up before you delete the app or change phones." = "HushScan không tải lên bất cứ thứ gì. Hãy sao lưu trước khi xóa ứng dụng hoặc đổi điện thoại.";
+"New scans are also saved to your folder" = "Bản quét mới cũng được lưu vào thư mục của bạn";
+"The original stays on this iPhone, and the same PDF is saved to the folder you picked in Files." = "Bản gốc vẫn ở trên iPhone này, và cùng tệp PDF được lưu vào thư mục bạn chọn trong Tệp.";
+"Auto-save to Files" = "Tự động lưu vào Tệp";
+"Save each new scan as a PDF in a folder you pick" = "Lưu mỗi bản quét mới dưới dạng PDF vào thư mục bạn chọn";
+"HushScan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone." = "HushScan không bao giờ tải lên. Nếu bạn chọn thư mục iCloud Drive hoặc Dropbox, dịch vụ đó sẽ đồng bộ. Thư mục Trên iPhone không bao giờ rời khỏi iPhone này.";
+"Backup files" = "Tệp sao lưu";
+"Backup files aren't password protected. Keep them somewhere you trust." = "Tệp sao lưu không có mật khẩu. Hãy cất ở nơi bạn tin tưởng.";
+"Scanning, PDF creation and text recognition all run offline on this iPhone." = "Quét, tạo PDF và nhận dạng văn bản đều chạy ngoại tuyến trên iPhone này.";
+"Privacy & data" = "Quyền riêng tư & dữ liệu";

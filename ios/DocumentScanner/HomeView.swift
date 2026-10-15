@@ -297,9 +297,9 @@ struct HomeView: View {
                     Text("Ready when you are. Tap here to scan")
                         .font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
                         .padding(.horizontal, 14).padding(.vertical, 10)
-                        .background(Design.ink, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .background(TK.inkFill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .overlay(alignment: .bottom) {
-                            Rectangle().fill(Design.ink).frame(width: 12, height: 12).rotationEffect(.degrees(45)).offset(y: 5)
+                            Rectangle().fill(TK.inkFill).frame(width: 12, height: 12).rotationEffect(.degrees(45)).offset(y: 5)
                         }
                 }
                 .buttonStyle(.plain).offset(y: -50).transition(.opacity)

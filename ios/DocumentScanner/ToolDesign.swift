@@ -280,10 +280,12 @@ struct ProTrialBadge: View {
             if subscription.isPro { EmptyView() }
             else if let feature, ProTrials().remaining(feature) > 0, !ProTrials().bypassed {
                 // Dark pill: stands apart from every tile tint (blue, purple, green, orange) and from the PRO gradient.
-                Text("\(ProTrials().remaining(feature)) free").font(.system(size: 9, weight: .heavy)).foregroundStyle(.white)
+                // Dark mode flips it: a white pill with dark text on the grey tiles.
+                Text("\(ProTrials().remaining(feature)) free").font(.system(size: 9, weight: .heavy))
+                    .foregroundStyle(Color(light: 0xFFFFFF, dark: 0x191F28))
                     .padding(.horizontal, 6).padding(.vertical, 3)
-                    .background(TK.grey900, in: Capsule())
-                    .overlay(Capsule().strokeBorder(.white, lineWidth: 1.5))
+                    .background(Color(light: 0x191F28, dark: 0xFFFFFF), in: Capsule())
+                    .overlay(Capsule().strokeBorder(TK.surface, lineWidth: 1.5))
                     .accessibilityHidden(true)
             } else { ProBadge() }
         }
@@ -299,7 +301,7 @@ struct ProBadge: View {
             Text("PRO").font(.system(size: 9, weight: .heavy)).tracking(0.4).foregroundStyle(.white)
                 .padding(.horizontal, 6).padding(.vertical, 3)
                 .background(LinearGradient(colors: [TK.purple, TK.blue], startPoint: .leading, endPoint: .trailing), in: Capsule())
-                .overlay(Capsule().strokeBorder(.white, lineWidth: 1.5))
+                .overlay(Capsule().strokeBorder(TK.surface, lineWidth: 1.5))
                 .accessibilityHidden(true)
         }
     }

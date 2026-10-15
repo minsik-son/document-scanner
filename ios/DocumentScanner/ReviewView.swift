@@ -554,7 +554,7 @@ struct ReviewView: View {
                 if let badge = officeBadge {
                     Text(badge).font(.system(size: 12, weight: .semibold)).foregroundStyle(officeLocked ? Color.white : TK.blueDeep)
                         .padding(.horizontal, 7).padding(.vertical, 4)
-                        .background(officeLocked ? TK.grey800 : TK.blueSoft, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .background(officeLocked ? TK.inkFill : TK.blueSoft, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
                 }
                 Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(TK.grey400).accessibilityHidden(true)
             }.frame(minHeight: 64).contentShape(Rectangle())

@@ -358,7 +358,7 @@ struct MeshToolView: View {
     }
     private func preview(_ mesh: CapturedMesh) -> some View {
         ToolPage(title: "Your 3D scan", subtitle: "Drag to turn it. Pinch to zoom.", scrolls: false) {
-            MeshPreview(mesh: mesh).frame(maxHeight: .infinity).background(TK.grey900, in: RoundedRectangle(cornerRadius: 22))
+            MeshPreview(mesh: mesh).frame(maxHeight: .infinity).background(Color(hex: 0x191F28), in: RoundedRectangle(cornerRadius: 22))
                 .clipShape(RoundedRectangle(cornerRadius: 22))
             Text("\(mesh.vertices.count.formatted()) points · \(mesh.faces.count.formatted()) faces").font(.system(size: 14, weight: .medium)).foregroundStyle(TK.grey500)
         } actions: {

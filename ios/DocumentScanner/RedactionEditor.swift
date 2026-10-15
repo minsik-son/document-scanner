@@ -110,7 +110,7 @@ struct RedactionEditor: View {
             Spacer(minLength: 0)
         }
         .foregroundStyle(.white).padding(.horizontal, 12).padding(.vertical, 9)
-        .background(TK.grey900, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(TK.inkFill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .accessibilityElement(children: .combine).accessibilityIdentifier("redact-status")
         if let notice { Text(L(notice)).font(.system(size: 13)).foregroundStyle(Color.orange).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 6) }
     }

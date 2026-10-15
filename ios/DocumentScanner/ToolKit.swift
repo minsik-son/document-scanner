@@ -58,6 +58,9 @@ enum TK {
     static let surface = Color(light: 0xFFFFFF, dark: 0x202027)
     /// The grey page that cards sit on.
     static let canvas = Color(light: 0xF4F5F6, dark: 0x101013)
+    /// Behind white text (toasts, hints, small badges): near-black in light mode,
+    /// a lifted grey in dark mode so it still reads as a separate layer.
+    static let inkFill = Color(light: 0x191F28, dark: 0x3C3C47)
 }
 
 // MARK: - Buttons
@@ -1444,7 +1447,7 @@ struct ToastBanner: View {
             }
         }
         .padding(.horizontal, 16).frame(minHeight: 50)
-        .background(TK.grey900, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(TK.inkFill, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .padding(.horizontal, 16)
         .frame(maxHeight: .infinity, alignment: .bottom)
         .offset(y: shown ? 0 : 16).opacity(shown ? 1 : 0)

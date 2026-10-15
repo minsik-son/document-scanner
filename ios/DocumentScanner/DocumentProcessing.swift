@@ -958,6 +958,8 @@ enum DocumentProcessing {
         var confidence: CIImage?
     }
 
+    /// Test hook: the measured paper tiles (RGB or nil), grid size and the printed grid (normalized, top-left).
+    nonisolated(unsafe) static var paperTrace: (([[Double]?], Int, Int, CGRect?) -> Void)?
     private static func paperSurface(_ image: CIImage, protectedGrid: CGRect? = nil) -> PaperEstimate? {
         let extent = image.extent
         let scale = min(1, 512/max(extent.width,extent.height))
@@ -1018,10 +1020,53 @@ enum DocumentProcessing {
                 paperConfidence[row*columns+column] = !printedTile && (candidates.count > available/2 || paperCasts[row*columns+column])
             }
         }}
-        let known = samples.indices.filter { samples[$0] != nil }
+        var known = samples.indices.filter { samples[$0] != nil }
         // Without enough visible neutral paper, use a scalar estimate that cannot
         // independently normalize R/G/B of colored artwork to white.
         guard known.count >= max(4,samples.count/8) else { return PaperEstimate(surface: scalarSurface(image)) }
+        paperTrace?(samples, columns, rows, protectedGrid.map { CGRect(x: ($0.minX-extent.minX)/extent.width, y: 1-($0.maxY-extent.minY)/extent.height, width: $0.width/extent.width, height: $0.height/extent.height) })
+        // A blue fill printed in the middle of the page can pass as a cool paper cast.
+        // Unlike a shadow, which fades over several tiles, a fill starts with a sharp
+        // step from the paper beside it. Used as the paper reference it darkens and cools
+        // the estimate around it, so the next pale row turns bright yellow with orange
+        // text. Such tiles, and the cool tiles joined to them, are left out and filled
+        // from the paper around them; the fill itself keeps its colour.
+        func coolness(_ v: [Double]) -> Double { (v[2]-v[0])/max(0.01, v.max()!) }
+        let paperCool = reference[2]-reference[0]
+        var fill = [Bool](repeating: false, count: columns*rows)
+        for index in known {
+            let row = index/columns, column = index%columns
+            guard row > 0, column > 0, row < rows-1, column < columns-1, coolness(samples[index]!) - paperCool > 0.08 else { continue }
+            for k in [index-1, index+1, index-columns, index+columns] where samples[k] != nil && !fill[k] {
+                if coolness(samples[index]!) - coolness(samples[k]!) > 0.12 { fill[index] = true; break }
+            }
+        }
+        // Grow each seed through the cool tiles joined to it. A region that reaches the
+        // page edge is a cast from outside the page (a corner shadow), not a fill.
+        var seeds = fill.indices.filter { fill[$0] }
+        fill = [Bool](repeating: false, count: columns*rows)
+        var visited = [Bool](repeating: false, count: columns*rows)
+        while let seed = seeds.popLast() {
+            guard !visited[seed] else { continue }
+            var region = [seed], frontier = [seed], touchesEdge = false
+            visited[seed] = true
+            while let index = frontier.popLast() {
+                let row = index/columns, column = index%columns
+                if row == 0 || column == 0 || row == rows-1 || column == columns-1 { touchesEdge = true }
+                var around = [Int]()
+                if column > 0 { around.append(index-1) }; if column < columns-1 { around.append(index+1) }
+                if row > 0 { around.append(index-columns) }; if row < rows-1 { around.append(index+columns) }
+                for k in around where !visited[k] && samples[k] != nil {
+                    let v = samples[k]!
+                    if coolness(v) - paperCool > 0.08 && abs(coolness(v) - coolness(samples[index]!)) < 0.08 { visited[k] = true; region.append(k); frontier.append(k) }
+                }
+            }
+            if !touchesEdge { for index in region { fill[index] = true } }
+        }
+        if fill.contains(true) {
+            for index in fill.indices where fill[index] { samples[index] = nil; paperConfidence[index] = false }
+            known = samples.indices.filter { samples[$0] != nil }
+        }
         var bytes = [UInt8](repeating: 255, count: columns*rows*4)
         var confidenceBytes = [UInt8](repeating: 255, count: columns*rows*4)
         for row in 0..<rows { for column in 0..<columns {

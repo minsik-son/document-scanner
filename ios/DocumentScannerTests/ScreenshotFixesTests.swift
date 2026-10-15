@@ -354,3 +354,31 @@ final class LargePreviewQualityTests: XCTestCase {
         }
     }
 }
+
+/// Pale colored table cells on the Document tone: dumps the lit-flattened page and the
+/// finished page so cell colors can be compared row by row.
+final class PaleCellToneTests: XCTestCase {
+    @MainActor func testDumpPaleCells() throws {
+        let base = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Verification/private")
+        let out = base.appendingPathComponent("tone"); try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        DocumentProcessing.paperTrace = { samples, columns, rows, grid in
+            var lines = ["grid \(columns)x\(rows) table \(String(describing: grid))"]
+            for r in 0..<rows { lines.append((0..<columns).map { c in samples[r*columns+c].map { v in String(format: "%02d%02d%02d", Int(v[0]*99), Int(v[1]*99), Int(v[2]*99)) } ?? "------" }.joined(separator: " ")) }
+            try? lines.joined(separator: "\n").write(to: out.appendingPathComponent("trace.txt"), atomically: true, encoding: .utf8)
+        }
+        defer { DocumentProcessing.paperTrace = nil }
+        for name in ["tint_sheet.jpg"] {
+            let url = base.appendingPathComponent("testimg/" + name)
+            guard let image = UIImage(contentsOfFile: url.path), let cg = image.cgImage else { continue }
+            let crop = CaptureStyle.document.detect(image, capturedPhoto: true) ?? .full
+            let ci = CIImage(cgImage: cg)
+            let prepared = try DocumentProcessing.prepare(ci, crop: crop, turns: 0, enhancement: .document)
+            let finished = try DocumentProcessing.finish(prepared)
+            for (suffix, img) in [("flat", prepared.image), ("doc", finished)] {
+                let ctx = DocumentProcessing.context
+                guard let png = ctx.pngRepresentation(of: img, format: .RGBA8, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!) else { continue }
+                try png.write(to: out.appendingPathComponent(name + "." + suffix + ".png"))
+            }
+        }
+    }
+}

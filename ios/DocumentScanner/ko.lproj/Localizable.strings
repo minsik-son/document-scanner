@@ -2080,3 +2080,7 @@
 "Allow HushScan to add photos in Settings, then try again." = "설정에서 HushScan의 사진 추가를 허용한 뒤 다시 시도해 주세요.";
 "The picture couldn't be added to Photos." = "사진 앱에 이미지를 추가하지 못했어요.";
 "Save it to Files, then share it. It isn't saved in your documents." = "파일 앱에 저장한 뒤 공유하세요. 내 문서에는 저장되지 않아요.";
+"Leave without applying?" = "적용하지 않고 나갈까요?";
+"Leave without applying" = "적용하지 않고 나가기";
+"Changes made in plain text won't be applied. To apply them, tap Done." = "일반 텍스트에서 바꾼 내용은 적용되지 않아요. 적용하려면 완료를 누르세요.";
+"Tap Done to apply your changes. Going back leaves without applying them." = "완료를 눌러야 변경 내용이 적용돼요. 뒤로 가면 적용되지 않아요.";

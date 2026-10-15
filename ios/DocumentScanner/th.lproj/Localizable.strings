@@ -2080,3 +2080,7 @@
 "Allow HushScan to add photos in Settings, then try again." = "อนุญาตให้ HushScan เพิ่มรูปภาพในการตั้งค่า แล้วลองอีกครั้ง";
 "The picture couldn't be added to Photos." = "เพิ่มภาพลงในรูปภาพไม่ได้";
 "Save it to Files, then share it. It isn't saved in your documents." = "บันทึกไปยังไฟล์ก่อน แล้วจึงแชร์ ไฟล์นี้จะไม่ถูกบันทึกในเอกสารของคุณ";
+"Leave without applying?" = "ออกโดยไม่นำไปใช้ใช่ไหม";
+"Leave without applying" = "ออกโดยไม่นำไปใช้";
+"Changes made in plain text won't be applied. To apply them, tap Done." = "การเปลี่ยนแปลงในข้อความธรรมดาจะไม่ถูกนำไปใช้ หากต้องการนำไปใช้ ให้แตะเสร็จสิ้น";
+"Tap Done to apply your changes. Going back leaves without applying them." = "แตะเสร็จสิ้นเพื่อนำการเปลี่ยนแปลงไปใช้ ย้อนกลับจะออกโดยไม่นำไปใช้";

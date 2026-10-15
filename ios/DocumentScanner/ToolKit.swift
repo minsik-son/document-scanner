@@ -89,7 +89,8 @@ struct SecondaryCTAStyle: ButtonStyle {
             .frame(maxWidth: .infinity, minHeight: 56)
             // Near-white label in dark mode: grey700 read as too dim on the dark grey fill.
             .foregroundStyle(enabled ? Color(light: 0x4E5968, dark: 0xF2F2F3) : TK.grey400)
-            .background(TK.grey100.opacity(configuration.isPressed ? 0.7 : 1), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            // Dark mode: a clearly lighter grey than the page, so the button reads as one.
+            .background(Color(light: 0xF2F4F6, dark: 0x4A4A55).opacity(configuration.isPressed ? 0.7 : 1), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
     }
 }
@@ -288,7 +289,8 @@ struct ToolCloseInterceptKey: PreferenceKey {
 struct HostCloseButton: ViewModifier {
     var placement: ToolbarItemPlacement = .cancellationAction
     var identifier: String
-    let close: () -> Void
+    /// nil: the host has no Close of its own (a pushed tool); only "Done" shows, when a step asks for it.
+    let close: (() -> Void)?
     @State private var intercept: ToolCloseIntercept?
     func body(content: Content) -> some View {
         content
@@ -297,7 +299,7 @@ struct HostCloseButton: ViewModifier {
                 ToolbarItem(placement: placement) {
                     if let intercept {
                         Button("Done", action: intercept.action).fontWeight(.semibold).accessibilityIdentifier("tool-step-done")
-                    } else {
+                    } else if let close {
                         Button("Close", action: close).accessibilityIdentifier(identifier)
                     }
                 }

@@ -2080,3 +2080,7 @@
 "Allow HushScan to add photos in Settings, then try again." = "Ayarlar’da HushScan’in fotoğraf eklemesine izin verin ve tekrar deneyin.";
 "The picture couldn't be added to Photos." = "Görsel Fotoğraflar’a eklenemedi.";
 "Save it to Files, then share it. It isn't saved in your documents." = "Dosyalar’a kaydedin, sonra paylaşın. Belgelerinize kaydedilmez.";
+"Leave without applying?" = "Uygulamadan çıkılsın mı?";
+"Leave without applying" = "Uygulamadan çık";
+"Changes made in plain text won't be applied. To apply them, tap Done." = "Düz metinde yapılan değişiklikler uygulanmayacak. Uygulamak için Bitti’ye dokunun.";
+"Tap Done to apply your changes. Going back leaves without applying them." = "Değişiklikleri uygulamak için Bitti’ye dokunun. Geri dönerseniz uygulanmaz.";

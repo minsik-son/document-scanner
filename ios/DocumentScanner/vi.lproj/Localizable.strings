@@ -2080,3 +2080,7 @@
 "Allow HushScan to add photos in Settings, then try again." = "Cho phép HushScan thêm ảnh trong Cài đặt rồi thử lại.";
 "The picture couldn't be added to Photos." = "Không thể thêm ảnh vào Ảnh.";
 "Save it to Files, then share it. It isn't saved in your documents." = "Lưu vào Tệp rồi chia sẻ. Tệp không được lưu trong tài liệu của bạn.";
+"Leave without applying?" = "Thoát mà không áp dụng?";
+"Leave without applying" = "Thoát không áp dụng";
+"Changes made in plain text won't be applied. To apply them, tap Done." = "Các thay đổi trong văn bản thuần sẽ không được áp dụng. Để áp dụng, hãy chạm Xong.";
+"Tap Done to apply your changes. Going back leaves without applying them." = "Chạm Xong để áp dụng thay đổi. Quay lại sẽ thoát mà không áp dụng.";

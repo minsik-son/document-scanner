@@ -2080,3 +2080,7 @@
 "Allow HushScan to add photos in Settings, then try again." = "请在“设置”中允许 HushScan 添加照片，然后重试。";
 "The picture couldn't be added to Photos." = "无法将图片添加到“照片”。";
 "Save it to Files, then share it. It isn't saved in your documents." = "先存储到“文件”，再共享。它不会保存在你的文稿中。";
+"Leave without applying?" = "不应用就退出？";
+"Leave without applying" = "不应用并退出";
+"Changes made in plain text won't be applied. To apply them, tap Done." = "在纯文本中所做的更改不会应用。要应用，请轻点“完成”。";
+"Tap Done to apply your changes. Going back leaves without applying them." = "轻点“完成”以应用更改。返回则不会应用。";

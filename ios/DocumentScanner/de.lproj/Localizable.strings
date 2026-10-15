@@ -2080,3 +2080,7 @@
 "Allow HushScan to add photos in Settings, then try again." = "Erlaube HushScan in den Einstellungen, Fotos hinzuzufügen, und versuche es erneut.";
 "The picture couldn't be added to Photos." = "Das Bild konnte nicht zu Fotos hinzugefügt werden.";
 "Save it to Files, then share it. It isn't saved in your documents." = "Sichere sie in Dateien und teile sie dann. Sie wird nicht in deinen Dokumenten gespeichert.";
+"Leave without applying?" = "Ohne Übernehmen verlassen?";
+"Leave without applying" = "Ohne Übernehmen verlassen";
+"Changes made in plain text won't be applied. To apply them, tap Done." = "Änderungen im reinen Text werden nicht übernommen. Tippe auf „Fertig“, um sie zu übernehmen.";
+"Tap Done to apply your changes. Going back leaves without applying them." = "Tippe auf „Fertig“, um die Änderungen zu übernehmen. Zurück verlässt ohne Übernehmen.";

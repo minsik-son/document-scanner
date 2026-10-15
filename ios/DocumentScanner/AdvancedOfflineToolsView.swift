@@ -123,7 +123,7 @@ struct AdvancedOfflineHub: View {
                 .navigationDestination(item: $advancedRoute) { tool in
                     if tool == .measure { MeasureToolView() }
                     else if tool == .mesh { MeshToolView() }
-                    else { AdvancedOfflineToolView(tool: tool, documentID: documentID) }
+                    else { AdvancedOfflineToolView(tool: tool, documentID: documentID).modifier(HostCloseButton(placement: .topBarTrailing, identifier: "tool-close", close: nil)) }
                 }
                 .fullScreenCover(item: $capture, onDismiss: { store.perform { try store.discardEmptyDrafts() } }) { ReviewView(documentID: $0.id, captureOnOpen: true) }
                 .alert("Something needs attention", isPresented: Binding(get: { store.problem != nil }, set: { if !$0 { store.problem = nil } })) { Button("OK") { store.problem = nil } } message: { Text(store.problem ?? "") }
@@ -338,6 +338,9 @@ struct AdvancedOfflineToolContent:View {
     @State private var wordLayoutText = ""
     /// The review shows plain text instead of tables.
     @State private var wordPlainText = false
+    /// The text when plain-text editing began: Back leaves without applying and restores it.
+    @State private var wordPlainStart = ""
+    @State private var confirmLeavePlainText = false
     @FocusState private var editingText: Bool
     @State private var translated = ""
     @State private var from = "en"
@@ -421,7 +424,7 @@ struct AdvancedOfflineToolContent:View {
             if wordStep != .source && !busy {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
-                        if wordPlainEditing { leaveWordPlainText(); return }
+                        if wordPlainEditing { backFromWordPlainText(); return }
                         editingText = false; wordForward = false
                         if wordStep == .ready { clearOutput(); wordStep = .review }
                         else { message = nil; wordStep = .source }
@@ -578,6 +581,10 @@ struct AdvancedOfflineToolContent:View {
                 // opens the corrections, which start from the whole page too.
                 OfficePageOverview(page: wordLayoutPage(wordReviewPage).wrappedValue, caption: "", editLabel: "Correct text") { correctingWord = true }
             } else {
+                if wordPlainEditing {
+                    Label("Tap Done to apply your changes. Going back leaves without applying them.", systemImage: "info.circle")
+                        .font(.system(size: 13)).foregroundStyle(TK.grey600).accessibilityIdentifier("word-plain-hint")
+                }
                 TextEditor(text: wordReviewText).focused($editingText)
                     .font(.system(size: 16)).scrollContentBackground(.hidden)
                     .padding(12).frame(minHeight: 320)
@@ -595,6 +602,10 @@ struct AdvancedOfflineToolContent:View {
                 .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .accessibilityIdentifier("offline-run")
         }
+        .alert("Leave without applying?", isPresented: $confirmLeavePlainText) {
+            Button("Leave without applying", role: .destructive) { text = wordPlainStart; wordPlainText = false; message = nil }
+            Button("Keep editing", role: .cancel) {}
+        } message: { Text("Changes made in plain text won't be applied. To apply them, tap Done.") }
         .fullScreenCover(isPresented: $correctingWord) {
             if wordLayouts.indices.contains(wordReviewPage) { WordPageEditor(page: wordLayoutPage(wordReviewPage)) }
         }
@@ -635,9 +646,14 @@ struct AdvancedOfflineToolContent:View {
     /// Plain-text editing over a page that also has its table layout to go back to.
     private var wordPlainEditing: Bool { wordStep == .review && wordPlainText && !wordLayouts.isEmpty && message == nil && !busy }
     private func leaveWordPlainText() { toggleWordPlainText() }
+    /// Back while editing as plain text: leaves without applying (asks first when something changed).
+    private func backFromWordPlainText() {
+        editingText = false
+        if text == wordPlainStart { wordPlainText = false } else { confirmLeavePlainText = true }
+    }
     private func toggleWordPlainText() {
         editingText = false
-        guard wordPlainText else { wordPlainText = true; return }
+        guard wordPlainText else { wordPlainStart = text; wordPlainText = true; return }
         if text == wordLayoutText { wordPlainText = false; return }
         if LayoutText.related(text,wordLayoutText), let pages = LayoutText.apply(text,to:wordLayouts) {
             wordLayouts = pages

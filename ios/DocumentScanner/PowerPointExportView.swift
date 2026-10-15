@@ -224,7 +224,8 @@ struct PowerPointExportView: View {
 
     /// Step 3: check cells (Excel) or slide text.
     private var reviewPage: some View {
-        ToolPage(title: excel ? "Check your tables" : "Check your slide text", subtitle: excel ? "Check the whole page first, then tap a cell to correct it. Merged cells, fills and fonts are kept." : "Pictures and page layout aren't included in text slides.") {
+        // Excel with the page shown: one screen, the page fitted above the buttons.
+        ToolPage(title: excel ? "Check your tables" : "Check your slide text", subtitle: excel ? "Check the whole page first, then tap a cell to correct it. Merged cells, fills and fonts are kept." : "Pictures and page layout aren't included in text slides.", scrolls: !(excel && excelPreviewPage != nil)) {
             if excel {
                 if tables.count > 1 {
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -238,6 +239,7 @@ struct PowerPointExportView: View {
                     OfficePageOverview(page: preview,
                                        caption: table.map { "\($0.cells.count) rows · \($0.columnCount) columns" } ?? "",
                                        editLabel: "Correct cells") { correcting = true }
+                        .frame(maxHeight: .infinity, alignment: .top)
                 } else if tables.indices.contains(tableIndex) {
                     // No page layout to show (plain text table): edit the grid directly.
                     OfficeTableEditor(table: $tables[tableIndex])

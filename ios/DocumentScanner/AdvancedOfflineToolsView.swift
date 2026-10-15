@@ -561,7 +561,9 @@ struct AdvancedOfflineToolContent:View {
     /// Step 2: check the text, as tables when the page has them.
     private var wordReviewStepPage: some View {
         let pageTexts = text.components(separatedBy: "\u{000c}")
-        return ToolPage(title: "Check your text", subtitle: showsWordLayout ? "Check the whole page first, then tap a cell to correct it." : "Correct anything we misread before making the file.") {
+        // With the page shown, everything fits one screen: the page is sized to the space
+        // left above the buttons, so it never runs underneath them.
+        return ToolPage(title: "Check your text", subtitle: showsWordLayout ? "Check the whole page first, then tap a cell to correct it." : "Correct anything we misread before making the file.", scrolls: !showsWordLayout) {
             if pageTexts.count > 1 {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -580,6 +582,7 @@ struct AdvancedOfflineToolContent:View {
                 // One job per screen: the whole page as it will print. Tapping it
                 // opens the corrections, which start from the whole page too.
                 OfficePageOverview(page: wordLayoutPage(wordReviewPage).wrappedValue, caption: "", editLabel: "Correct text") { correctingWord = true }
+                    .frame(maxHeight: .infinity, alignment: .top)
             } else {
                 if wordPlainEditing {
                     Label("Tap Done to apply your changes. Going back leaves without applying them.", systemImage: "info.circle")

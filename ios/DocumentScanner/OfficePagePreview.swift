@@ -125,7 +125,9 @@ struct OfficePageOverview: View {
                 .accessibilityIdentifier("office-page-preview")
             }
             .aspectRatio(CGFloat(max(1, page.width)) / CGFloat(max(1, page.height)), contentMode: .fit)
-            Text(L(caption)).font(.system(size: 13)).foregroundStyle(TK.grey500)
+            // Centred when the page is fitted to the height left on a non-scrolling screen.
+            .frame(maxWidth: .infinity)
+            if !caption.isEmpty { Text(L(caption)).font(.system(size: 13)).foregroundStyle(TK.grey500) }
         }
         .fullScreenCover(item: $zoom) { zoom in
             EnlargedScanPreview(initialImage: zoom.image) { zoom.image }

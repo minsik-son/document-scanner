@@ -2084,3 +2084,6 @@
 "Leave without applying" = "적용하지 않고 나가기";
 "Changes made in plain text won't be applied. To apply them, tap Done." = "일반 텍스트에서 바꾼 내용은 적용되지 않아요. 적용하려면 완료를 누르세요.";
 "Tap Done to apply your changes. Going back leaves without applying them." = "완료를 눌러야 변경 내용이 적용돼요. 뒤로 가면 적용되지 않아요.";
+"Leave without saving?" = "저장하지 않고 나갈까요?";
+"Leave without saving" = "저장하지 않고 나가기";
+"Corrections made here won't be saved. To keep them, tap Done." = "여기서 고친 내용은 저장되지 않아요. 저장하려면 완료를 누르세요.";

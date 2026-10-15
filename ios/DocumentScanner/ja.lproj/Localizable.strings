@@ -2084,3 +2084,6 @@
 "Leave without applying" = "適用せずに戻る";
 "Changes made in plain text won't be applied. To apply them, tap Done." = "プレーンテキストで変更した内容は適用されません。適用するには「完了」をタップしてください。";
 "Tap Done to apply your changes. Going back leaves without applying them." = "「完了」をタップすると変更が適用されます。戻ると適用されません。";
+"Leave without saving?" = "保存せずに戻りますか？";
+"Leave without saving" = "保存せずに戻る";
+"Corrections made here won't be saved. To keep them, tap Done." = "ここで修正した内容は保存されません。保存するには「完了」をタップしてください。";

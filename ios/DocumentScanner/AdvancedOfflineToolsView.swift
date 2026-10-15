@@ -595,7 +595,7 @@ struct AdvancedOfflineToolContent:View {
         } actions: {
             // The page opens the corrections too; this is the same thing as a button.
             if showsWordLayout {
-                Button("Correct") { correctingWord = true }.buttonStyle(SecondaryCTAStyle())
+                Button("Correct") { correctingWord = true }.buttonStyle(SilverCTAStyle())
                     .accessibilityIdentifier("office-correct")
             }
             Button("Create Word file") { run() }.buttonStyle(CTAButtonStyle())

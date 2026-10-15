@@ -2084,3 +2084,6 @@
 "Leave without applying" = "ออกโดยไม่นำไปใช้";
 "Changes made in plain text won't be applied. To apply them, tap Done." = "การเปลี่ยนแปลงในข้อความธรรมดาจะไม่ถูกนำไปใช้ หากต้องการนำไปใช้ ให้แตะเสร็จสิ้น";
 "Tap Done to apply your changes. Going back leaves without applying them." = "แตะเสร็จสิ้นเพื่อนำการเปลี่ยนแปลงไปใช้ ย้อนกลับจะออกโดยไม่นำไปใช้";
+"Leave without saving?" = "ออกโดยไม่บันทึกใช่ไหม";
+"Leave without saving" = "ออกโดยไม่บันทึก";
+"Corrections made here won't be saved. To keep them, tap Done." = "การแก้ไขที่นี่จะไม่ถูกบันทึก หากต้องการเก็บไว้ ให้แตะเสร็จสิ้น";

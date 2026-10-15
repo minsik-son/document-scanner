@@ -2084,3 +2084,6 @@
 "Leave without applying" = "不应用并退出";
 "Changes made in plain text won't be applied. To apply them, tap Done." = "在纯文本中所做的更改不会应用。要应用，请轻点“完成”。";
 "Tap Done to apply your changes. Going back leaves without applying them." = "轻点“完成”以应用更改。返回则不会应用。";
+"Leave without saving?" = "不存储就退出？";
+"Leave without saving" = "不存储并退出";
+"Corrections made here won't be saved. To keep them, tap Done." = "在这里所做的更正不会存储。要保留，请轻点“完成”。";

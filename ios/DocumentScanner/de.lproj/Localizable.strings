@@ -2084,3 +2084,6 @@
 "Leave without applying" = "Ohne Übernehmen verlassen";
 "Changes made in plain text won't be applied. To apply them, tap Done." = "Änderungen im reinen Text werden nicht übernommen. Tippe auf „Fertig“, um sie zu übernehmen.";
 "Tap Done to apply your changes. Going back leaves without applying them." = "Tippe auf „Fertig“, um die Änderungen zu übernehmen. Zurück verlässt ohne Übernehmen.";
+"Leave without saving?" = "Ohne Sichern verlassen?";
+"Leave without saving" = "Ohne Sichern verlassen";
+"Corrections made here won't be saved. To keep them, tap Done." = "Korrekturen hier werden nicht gesichert. Tippe auf „Fertig“, um sie zu behalten.";

@@ -2084,3 +2084,6 @@
 "Leave without applying" = "Uygulamadan çık";
 "Changes made in plain text won't be applied. To apply them, tap Done." = "Düz metinde yapılan değişiklikler uygulanmayacak. Uygulamak için Bitti’ye dokunun.";
 "Tap Done to apply your changes. Going back leaves without applying them." = "Değişiklikleri uygulamak için Bitti’ye dokunun. Geri dönerseniz uygulanmaz.";
+"Leave without saving?" = "Kaydetmeden çıkılsın mı?";
+"Leave without saving" = "Kaydetmeden çık";
+"Corrections made here won't be saved. To keep them, tap Done." = "Burada yapılan düzeltmeler kaydedilmeyecek. Korumak için Bitti’ye dokunun.";

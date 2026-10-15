@@ -509,7 +509,7 @@ struct ReviewView: View {
                     }.padding(.horizontal, 20).padding(.top, 20)
                 }.padding(.bottom, 16)
             }
-            Button("Done") { finishSaved() }.buttonStyle(SecondaryCTAStyle())
+            Button("Done") { finishSaved() }.buttonStyle(CTAButtonStyle())
                 .disabled(saving || finishing).accessibilityIdentifier("saved-finish")
                 .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 8)
         }

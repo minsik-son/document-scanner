@@ -257,7 +257,7 @@ struct PowerPointExportView: View {
         } actions: {
             // The page opens the corrections too; this is the same thing as a button.
             if excel && excelPreviewPage != nil {
-                Button("Correct") { correcting = true }.buttonStyle(SecondaryCTAStyle()).disabled(busy)
+                Button("Correct") { correcting = true }.buttonStyle(SilverCTAStyle()).disabled(busy)
                     .accessibilityIdentifier("office-correct")
             }
             Button("Create \(formatName)") { create() }.buttonStyle(CTAButtonStyle())

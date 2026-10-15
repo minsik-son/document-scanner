@@ -2084,3 +2084,6 @@
 "Leave without applying" = "不套用並離開";
 "Changes made in plain text won't be applied. To apply them, tap Done." = "在純文字中所做的變更不會套用。若要套用，請點一下「完成」。";
 "Tap Done to apply your changes. Going back leaves without applying them." = "點一下「完成」以套用變更。返回則不會套用。";
+"Leave without saving?" = "不儲存就離開？";
+"Leave without saving" = "不儲存並離開";
+"Corrections made here won't be saved. To keep them, tap Done." = "在這裡所做的修正不會儲存。若要保留，請點一下「完成」。";

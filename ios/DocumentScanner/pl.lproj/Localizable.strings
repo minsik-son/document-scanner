@@ -2084,3 +2084,6 @@
 "Leave without applying" = "Wyjdź bez zastosowania";
 "Changes made in plain text won't be applied. To apply them, tap Done." = "Zmiany w zwykłym tekście nie zostaną zastosowane. Aby je zastosować, stuknij Gotowe.";
 "Tap Done to apply your changes. Going back leaves without applying them." = "Stuknij Gotowe, aby zastosować zmiany. Powrót wychodzi bez ich zastosowania.";
+"Leave without saving?" = "Wyjść bez zapisywania?";
+"Leave without saving" = "Wyjdź bez zapisywania";
+"Corrections made here won't be saved. To keep them, tap Done." = "Poprawki wprowadzone tutaj nie zostaną zapisane. Aby je zachować, stuknij Gotowe.";

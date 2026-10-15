@@ -115,6 +115,10 @@ struct OfficePageCorrector: View {
     /// Prefix of the panel's identifiers ("excel" → excel-cell-value).
     var prefix = "excel"
     let save: (OfficeEditTarget, String) -> Void
+    /// Puts the page back as it was when the editor opened (Cancel → leave without saving).
+    var discard: () -> Void = {}
+    @State private var changed = false
+    @State private var confirmCancel = false
     @State private var image: UIImage?
     @State private var editing: OfficeEditTarget?
     @State private var draft = ""
@@ -138,11 +142,19 @@ struct OfficePageCorrector: View {
             .navigationTitle(L(title))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(L("Cancel")) { cancel() }.accessibilityIdentifier("office-page-editor-cancel")
+                }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(L("Done")) { commit(); dismiss() }.accessibilityIdentifier("office-page-editor-done")
+                    Button(L("Done")) { commit(); dismiss() }.fontWeight(.semibold).accessibilityIdentifier("office-page-editor-done")
                 }
             }
+            .alert(L("Leave without saving?"), isPresented: $confirmCancel) {
+                Button(L("Leave without saving"), role: .destructive) { discard(); dismiss() }
+                Button(L("Keep editing"), role: .cancel) {}
+            } message: { Text(L("Corrections made here won't be saved. To keep them, tap Done.")) }
         }
+        .interactiveDismissDisabled(changed)
         // Redrawn after each correction; the zoom and position stay where they were.
         .task(id: page) { image = OfficePagePreview.image(page, width: 2600) }
     }
@@ -177,6 +189,12 @@ struct OfficePageCorrector: View {
         .shadow(color: .black.opacity(0.08), radius: 12, y: -2)
     }
 
+    /// Leaves without saving: asks first when something was corrected.
+    private func cancel() {
+        typing = false
+        let pending = editing.map { t in (t.singleLine ? draft.replacingOccurrences(of: "\n", with: " ") : draft) != t.text } ?? false
+        if changed || pending { confirmCancel = true } else { dismiss() }
+    }
     private func open(_ target: OfficeEditTarget) {
         commit()
         fade?.cancel()
@@ -190,7 +208,7 @@ struct OfficePageCorrector: View {
     private func commit() {
         guard let target = editing else { return }
         let value = target.singleLine ? draft.replacingOccurrences(of: "\n", with: " ") : draft
-        if value != target.text { save(target, value) }
+        if value != target.text { save(target, value); changed = true }
     }
 
     /// The corrected spot stays marked for a moment after the panel closes.
@@ -237,11 +255,13 @@ struct OfficePageEditor: View {
         return result
     }
 
+    @State private var original: [OfficeTable]?
     var body: some View {
-        OfficePageCorrector(page: page, targets: targets) { target, value in
+        OfficePageCorrector(page: page, targets: targets, save: { target, value in
             guard let ref = refs[target.id] else { return }
             tables[ref.table].cells[ref.row][ref.column] = value
-        }
+        }, discard: { if let original { tables = original } })
+        .onAppear { if original == nil { original = tables } }
     }
 }
 
@@ -269,13 +289,15 @@ struct WordPageEditor: View {
         return result
     }
 
+    @State private var original: PageLayout?
     var body: some View {
         OfficePageCorrector(page: page, targets: targets, title: "Correct text",
-                            hint: "Tap a cell to correct it. Tables stay tables in Word.", prefix: "word") { target, value in
+                            hint: "Tap a cell to correct it. Tables stay tables in Word.", prefix: "word", save: { target, value in
             let parts = target.id.split(separator: ":")
             guard parts.count == 3, let index = Int(parts[1]), let n = Int(parts[2]), page.items.indices.contains(index) else { return }
             if parts[0] == "line" { setLine(index, n, value) } else { setCell(index, n, value) }
-        }
+        }, discard: { if let original { page = original } })
+        .onAppear { if original == nil { original = page } }
     }
     private func setLine(_ index: Int, _ n: Int, _ value: String) {
         guard case .paragraph(let p) = page.items[index], p.lines.indices.contains(n) else { return }

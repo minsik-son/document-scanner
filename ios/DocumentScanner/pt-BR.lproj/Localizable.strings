@@ -2084,3 +2084,6 @@
 "Leave without applying" = "Sair sem aplicar";
 "Changes made in plain text won't be applied. To apply them, tap Done." = "As alterações no texto simples não serão aplicadas. Para aplicá-las, toque em OK.";
 "Tap Done to apply your changes. Going back leaves without applying them." = "Toque em OK para aplicar as alterações. Se voltar, elas não serão aplicadas.";
+"Leave without saving?" = "Sair sem salvar?";
+"Leave without saving" = "Sair sem salvar";
+"Corrections made here won't be saved. To keep them, tap Done." = "As correções feitas aqui não serão salvas. Para mantê-las, toque em OK.";

@@ -94,6 +94,22 @@ struct SecondaryCTAStyle: ButtonStyle {
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
     }
 }
+/// Edit and correct actions: silver, set apart from the blue main action (done, convert)
+/// and the grey neutral ones (cancel, preview). Dark text on silver in both modes.
+struct SilverCTAStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var enabled
+    func makeBody(configuration: Configuration) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        return configuration.label
+            .font(.system(size: 17, weight: .semibold))
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .foregroundStyle(enabled ? Color(light: 0x191F28, dark: 0x191F28) : Color(light: 0x8B95A1, dark: 0x6B7684))
+            .background(LinearGradient(colors: [Color(light: 0xF3F5F7, dark: 0xECEEF1), Color(light: 0xD3D8DE, dark: 0xBFC5CC)],
+                                       startPoint: .top, endPoint: .bottom).opacity(configuration.isPressed ? 0.8 : 1), in: shape)
+            .overlay(shape.strokeBorder(Color(light: 0xC2C8D0, dark: 0xF5F6F8).opacity(0.7), lineWidth: 1))
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+    }
+}
 struct ChipStyle: ButtonStyle {
     var selected: Bool
     func makeBody(configuration: Configuration) -> some View {

@@ -2084,3 +2084,6 @@
 "Leave without applying" = "Thoát không áp dụng";
 "Changes made in plain text won't be applied. To apply them, tap Done." = "Các thay đổi trong văn bản thuần sẽ không được áp dụng. Để áp dụng, hãy chạm Xong.";
 "Tap Done to apply your changes. Going back leaves without applying them." = "Chạm Xong để áp dụng thay đổi. Quay lại sẽ thoát mà không áp dụng.";
+"Leave without saving?" = "Thoát mà không lưu?";
+"Leave without saving" = "Thoát không lưu";
+"Corrections made here won't be saved. To keep them, tap Done." = "Các chỉnh sửa ở đây sẽ không được lưu. Để giữ lại, hãy chạm Xong.";

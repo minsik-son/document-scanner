@@ -143,7 +143,7 @@ enum AppInfo {
     /// Apple's standard licensed application end user license agreement.
     static let terms = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
     /// Support mail, the same address as on the support page.
-    static let supportEmail = "minsik.son@gmail.com"
+    static let supportEmail = "support@rudefinch.com"
     /// App Store listing (App Store Connect app ID) and its write-a-review page.
     static let appStoreID = "6820689054"
     static var storeURL: URL { URL(string: "https://apps.apple.com/app/id\(appStoreID)")! }

@@ -44,6 +44,8 @@ struct ReviewView: View {
     @State private var textNotice: String?
     @State private var textRetryNeeded = false
     @State private var saved = false
+    /// Back in the editor from the saved page (a step forgotten before saving).
+    @State private var editingAfterSave = false
     @State private var error: String?
     @State private var options = false
     @State private var cropReviewPage: ScanPage?
@@ -154,7 +156,8 @@ struct ReviewView: View {
                     } else {
                         Button(document?.isDraft == true ? "Close" : "Cancel") {
                             // A new scan with pages is never thrown away by one tap.
-                            if document?.isDraft == true && !(document?.pages.isEmpty ?? true) { confirmDiscard = true } else { cancelEditing() }
+                            if editingAfterSave { leaveEditAgain() }
+                            else if document?.isDraft == true && !(document?.pages.isEmpty ?? true) { confirmDiscard = true } else { cancelEditing() }
                         }.disabled(saving).accessibilityIdentifier("review-close")
                     }
                 }
@@ -482,12 +485,16 @@ struct ReviewView: View {
                             }.buttonStyle(.plain).disabled(savedToPhotos).accessibilityIdentifier("saved-photos")
                             Button { sharingImages = files } label: { savedAction("Share", icon: "square.and.arrow.up", primary: false) }
                                 .buttonStyle(.plain).accessibilityLabel("Share images")
+                            Button { editAgain() } label: { savedAction("Edit", icon: "pencil", primary: false) }
+                                .buttonStyle(.plain).disabled(saving || finishing).accessibilityIdentifier("saved-edit")
                         } else if let file = savedDoc.pdfFile {
                             ShareLink(item: SharedPDF.url(for: store.url(file), title: savedDoc.title)) {
                                 savedAction("Share", icon: "square.and.arrow.up", primary: true)
                             }.buttonStyle(.plain).accessibilityLabel("Share PDF")
                             Button { openingPDF = true } label: { savedAction("Open", icon: "doc.text.magnifyingglass", primary: false) }
                                 .buttonStyle(.plain).accessibilityIdentifier("saved-open")
+                            Button { editAgain() } label: { savedAction("Edit", icon: "pencil", primary: false) }
+                                .buttonStyle(.plain).disabled(saving || finishing).accessibilityIdentifier("saved-edit")
                         }
                     }.padding(.horizontal, 20).padding(.top, 18)
                     if textNotice != nil || textRetryNeeded || saving || error != nil || doc.captureStyle == .card {
@@ -806,6 +813,22 @@ struct ReviewView: View {
             guard persistDraft() else { return }; retakingPage = retaking; camera = true
         } catch { self.error = error.localizedDescription }
     }
+    /// From the saved page back to the editor; saving again replaces the saved file.
+    private func editAgain() {
+        error = nil; undoHistory = []; redoHistory = []
+        editingAfterSave = true
+        saved = false
+    }
+    /// Cancel in the editor after Edit: the saved file stays as it was.
+    private func leaveEditAgain() {
+        do {
+            if let id = workingDraftID, let draft = store.document(id) { try store.permanentlyDelete(draft) }
+            workingDraftID = nil
+            document = store.document(documentID)
+            editingAfterSave = false
+            saved = true
+        } catch { self.error = error.localizedDescription }
+    }
     private func cancelEditing() {
         do { if let id = workingDraftID, let draft = store.document(id) { try store.permanentlyDelete(draft) }; dismiss() }
         catch { self.error = error.localizedDescription }
@@ -835,7 +858,7 @@ struct ReviewView: View {
         saving = true; error = nil; saveProgress = "Preparing PDF…"
         let root = store.root
         // PNG or JPEG: only a new scan saved from its settings page makes pictures.
-        let pictures = doc.isDraft ? imageFormat : nil, pixels = imagePixels
+        let pictures = doc.isDraft || editingAfterSave ? imageFormat : nil, pixels = imagePixels
         savingKind = pictures == nil ? .save : .images
         saveTask = Task {
             do {
@@ -861,7 +884,7 @@ struct ReviewView: View {
                         savedToPhotos = false
                     } catch { self.error = "The images couldn't be made. The PDF is saved. \(error.localizedDescription)" }
                 }
-                Instant.run { saved = true; settingsOpen = false }
+                Instant.run { saved = true; settingsOpen = false; editingAfterSave = false }
             } catch is CancellationError { self.error = "Export canceled. Your pages and existing PDF are unchanged." }
             catch { self.error = "PDF wasn't saved. Your previously saved pages are still available. \(error.localizedDescription)" }
             saving = false

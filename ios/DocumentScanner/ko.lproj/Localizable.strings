@@ -1757,7 +1757,7 @@
 "Come back and tap Translate again. Your scan and text stay here." = "돌아와서 번역을 다시 탭하세요. 스캔과 텍스트는 그대로 남아 있어요.";
 "This app never downloads languages itself, and your text never leaves this iPhone." = "이 앱은 언어를 직접 다운로드하지 않으며, 텍스트는 이 iPhone 밖으로 나가지 않아요.";
 "OK" = "확인";
-"The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements." = "무료 버전은 홈 화면의 문서 목록 아래와 도구 화면에 Google AdMob 광고를 각각 하나씩 표시할 수 있어요. 짧은 동영상 광고는 Pro 도구를 한 번 더 무료로 쓰기 위해 직접 시청을 선택했을 때만 재생돼요. 광고가 저절로 전체 화면으로 열리는 일은 없으며, 광고 때문에 스캔이나 저장이 늦어지지 않아요. 설치 후 첫날에는 광고가 표시되지 않아요. Pro 사용자에게는 광고를 불러오거나 표시하지 않아요.";
+"The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. When you return to Home after saving a scan, a full-screen ad may appear, at most once every three saves and twice a day. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements." = "무료 버전은 홈 화면의 문서 목록 아래와 도구 화면에 Google AdMob 광고를 각각 하나씩 표시할 수 있어요. 스캔을 저장하고 홈으로 돌아갈 때 전면 광고가 나올 수 있어요. 저장 세 번에 최대 한 번, 하루 최대 두 번이에요. 짧은 동영상 광고는 Pro 도구를 한 번 더 무료로 쓰기 위해 직접 시청을 선택했을 때만 재생돼요. 광고 때문에 스캔이나 저장이 늦어지지 않아요. 설치 후 첫날에는 광고가 표시되지 않아요. Pro 사용자에게는 광고를 불러오거나 표시하지 않아요.";
 "Unlock\n%@ Pro" = "%@ Pro\n잠금 해제";
 "Ad privacy choices" = "광고 개인정보 선택";
 "Couldn't detect — choose the language" = "감지 못 함 — 언어를 골라 주세요";

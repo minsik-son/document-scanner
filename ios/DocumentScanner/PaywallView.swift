@@ -214,7 +214,7 @@ struct PrivacyView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     Text("Your documents stay with you").font(.title.bold())
                     Text("This build stores your scans and recognized text in the app on this iPhone. Camera processing and text recognition happen on device. There is no developer-operated document server or account system.")
-                    Text("The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements.")
+                    Text("The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. When you return to Home after saving a scan, a full-screen ad may appear, at most once every three saves and twice a day. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements.")
                     #if DEBUG
                     Text("This development build uses official test advertisements only.").font(.footnote).foregroundStyle(.secondary)
                     #endif

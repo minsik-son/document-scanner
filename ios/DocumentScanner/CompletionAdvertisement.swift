@@ -77,7 +77,7 @@ final class CompletionAdvertisementStore: ObservableObject {
             try Task.checkCancellation()
             let request = Request()
             let extras = Extras(); extras.additionalParameters = ["npa": "1"]; request.register(extras)
-            let ad = try await InterstitialAd.load(with: "ca-app-pub-3940256099942544/4411468910", request: request)
+            let ad = try await InterstitialAd.load(with: HomeAdConfiguration.interstitialUnitID, request: request)
             return GoogleCompletionAd(ad)
         }
     }

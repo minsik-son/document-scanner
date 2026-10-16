@@ -195,7 +195,7 @@ struct HomeView: View {
             .fullScreenCover(item: $route, onDismiss: {
                 if !importing { store.perform { try store.discardEmptyDrafts() } }
             }) { value in
-                ReviewView(documentID: value.id, captureOnOpen: newCapture, completionAdEnabled: false,
+                ReviewView(documentID: value.id, captureOnOpen: newCapture, completionAdEnabled: true,
                            onCompleted: { showingDocuments = false; query = ""; celebrateFirstScan(); countSave() }, savedBackTitle: "Home")
             }
             .confirmationDialog("Import pages", isPresented: $importMenu) {

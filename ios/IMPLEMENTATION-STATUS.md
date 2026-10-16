@@ -338,3 +338,8 @@ Selected-language + close-up OCR, word-gap column separation, mixed-script parag
 - **검토했지만 넣지 않음**: 그림자 제거 GCNet(연한 색 칸·따뜻한 그림자 기준 테스트 실패 → 화질 원칙상 제외), 컬러 필기 지우기(상업용 가능한 공개 모델 없음, 관련 특허 US12333690B2).
 - 설정 › 개인정보 및 데이터 › 오픈소스 라이선스에 모델 라이선스 고지.
 - 테스트: `NeuralModelsTests`(PyTorch 기준 출력과 일치, 복원 샘플), `Verification/private/neural/use.txt`로 QA·벤치마크에서 모델 끄고 비교. 골든 재기록(`speed/golden`, 이전 것은 `golden-v1`).
+
+## 저장 후 전면 광고 켬 (2026-10-16)
+
+사용자 결정으로 저장 후 전면 광고를 켬(`HomeView`의 `completionAdEnabled: true`). 규칙은 기존 `CompletionAdFrequency` 그대로: 첫 저장 제외, 4·7·10번째 저장 뒤 Done으로 홈에 돌아갈 때, 최소 10분 간격, 하루 최대 2회, 설치 후 24시간·Pro·오프라인·잠금이면 없음, 미리 로드 안 됐으면 건너뜀. AdMob 단위 "Save completion interstitial" `ca-app-pub-9921649727270589/4986868176`(Release), Debug는 Google 테스트 단위. 개인정보 화면 광고 문구(15개 언어)·웹 개인정보처리방침·심사 노트에서 "전면 광고 없음" 문구를 새 규칙으로 바꿈. CompletionAdvertisementTests는 아직 다시 돌리지 않음.
+

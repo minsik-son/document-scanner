@@ -1757,7 +1757,7 @@
 "Come back and tap Translate again. Your scan and text stay here." = "回到这里，再次轻点“翻译”。你的扫描件和文字会保留。";
 "This app never downloads languages itself, and your text never leaves this iPhone." = "本 App 不会自行下载语言，你的文字也不会离开这台 iPhone。";
 "OK" = "好";
-"The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never open full screen on their own and never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements." = "免费版可能会在首页的文档下方展示一条 Google AdMob 广告，并在“工具”中展示一条。只有当你主动选择观看，以额外获得一次 Pro 工具免费试用时，才会播放短视频广告。广告绝不会自行全屏打开，也绝不会拖慢扫描或保存。安装后的第一天不会显示广告。Pro 用户不会加载或显示广告。";
+"The free version can show one Google AdMob advertisement on Home, below your documents, and one in Tools. When you return to Home after saving a scan, a full-screen ad may appear, at most once every three saves and twice a day. A short video ad plays only when you choose to watch one for an extra free try of a Pro tool. Ads never delay scanning or saving. No ads appear in the first day after install. Pro users do not load or display advertisements." = "免费版可能会在首页的文档下方展示一条 Google AdMob 广告，并在“工具”中展示一条。保存扫描后返回首页时，可能会出现一次全屏广告，最多每保存三次出现一次，每天最多两次。只有当你主动选择观看，以额外获得一次 Pro 工具免费试用时，才会播放短视频广告。广告绝不会拖慢扫描或保存。安装后的第一天不会显示广告。Pro 用户不会加载或显示广告。";
 "Unlock\n%@ Pro" = "解锁\n%@ Pro";
 "Ad privacy choices" = "广告隐私选项";
 "Couldn't detect — choose the language" = "未能识别 — 请选择语言";

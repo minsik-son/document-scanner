@@ -12,10 +12,14 @@ enum HomeAdConfiguration {
     static let homeNativeLiveID = "ca-app-pub-9921649727270589/3406287684"
     static let toolsNativeLiveID = "ca-app-pub-9921649727270589/6320314928"
     static let rewardedLiveID = "ca-app-pub-9921649727270589/3986987592"
+    /// "Save completion interstitial" in AdMob: after a saved scan, back to Home.
+    static let interstitialLiveID = "ca-app-pub-9921649727270589/4986868176"
     static let sampleAppID = "ca-app-pub-3940256099942544~1458002511"
     static let videoTestUnitID = "ca-app-pub-3940256099942544/2521693316"
     /// Google's official iOS rewarded test unit.
     static let rewardedTestUnitID = "ca-app-pub-3940256099942544/1712485313"
+    /// Google's official iOS interstitial test unit.
+    static let interstitialTestUnitID = "ca-app-pub-3940256099942544/4411468910"
     enum Placement { case home, tools }
     /// Debug builds only ever request Google's demo units; Release requests the live ones.
     static func nativeUnitID(_ placement: Placement) -> String {
@@ -30,6 +34,13 @@ enum HomeAdConfiguration {
         return rewardedTestUnitID
 #else
         return rewardedLiveID
+#endif
+    }
+    static var interstitialUnitID: String {
+#if DEBUG
+        return interstitialTestUnitID
+#else
+        return interstitialLiveID
 #endif
     }
     static var adsEnabled: Bool {

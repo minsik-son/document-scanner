@@ -3,8 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rude Finch</title>
-<meta name="description" content="Rude Finch makes small, private apps for iPhone.">
+<title>Rude Finch — Private apps for iPhone</title>
+<meta name="description" content="Rude Finch makes small, private apps for iPhone, including HushScan, an offline PDF scanner and OCR app with no account and no watermark.">
+<link rel="canonical" href="https://rudefinch.com/">
+<link rel="icon" href="hushscan/img/icon.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://rudefinch.com/#org",
+  "name": "Rude Finch",
+  "url": "https://rudefinch.com/",
+  "email": "support@rudefinch.com"
+}
+</script>
 <style>
   :root { color-scheme: light dark; --ink:#191f28; --sub:#4e5968; --line:#e5e8eb; --bg:#ffffff; --accent:#3182f6; }
   @media (prefers-color-scheme: dark) { :root { --ink:#f2f4f6; --sub:#b0b8c1; --line:#333d4b; --bg:#17171c; } }
@@ -12,7 +24,9 @@
   main { max-width:720px; margin:0 auto; padding:40px 20px 64px; }
   h1 { font-size:30px; margin:0 0 16px; } h2 { font-size:20px; margin:32px 0 8px; }
   p, li { color:var(--sub); } a { color:var(--accent); }
-  .contact { border:1px solid var(--line); border-radius:16px; padding:16px 20px; }
+  .contact { border:1px solid var(--line); border-radius:16px; padding:16px 20px; display:flex; gap:16px; align-items:flex-start; }
+  .contact img { width:56px; height:56px; border-radius:13px; flex:none; margin-top:14px; }
+  .contact a.name { color:var(--ink); text-decoration:none; }
 </style>
 </head>
 <body>
@@ -22,8 +36,11 @@
 
 <h2>Apps</h2>
 <div class="contact">
-  <p><strong>HushScan</strong> — a document scanner that works offline.</p>
-  <p><a href="https://apps.apple.com/app/id6820689054">App Store</a> · <a href="hushscan/support.html">Support</a> · <a href="hushscan/privacy.html">Privacy Policy</a></p>
+  <img src="hushscan/img/icon.png" alt="HushScan app icon" width="56" height="56">
+  <div>
+    <p><strong><a class="name" href="hushscan/">HushScan: PDF Scanner &amp; OCR</a></strong> — a document scanner app that works offline. Scan to PDF, Word and Excel with no account and no watermark.</p>
+    <p><a href="hushscan/">About HushScan</a> · <a href="https://apps.apple.com/app/id6820689054">App Store</a> · <a href="hushscan/support.html">Support</a> · <a href="hushscan/privacy.html">Privacy Policy</a></p>
+  </div>
 </div>
 
 <h2>Contact</h2>

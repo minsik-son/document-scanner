@@ -39,10 +39,19 @@ enum DocumentProcessing {
         var strongEdges: Int
         var accepted: Bool
         var score: Double
+        /// A sheet of one colour (yellow, pink, red paper) with something else beyond its edges.
+        var colouredSheet = false
     }
 
     static func detect(_ image: CGImage) -> ScanQuad? {
-        let accepted = candidates(image).filter(\.accepted)
+        let all = candidates(image)
+        var accepted = all.filter(\.accepted)
+        // Coloured paper has little of the neutral paper the checks look for. When nothing
+        // else is found, a confident rectangle of one colour with a boundary on most sides
+        // is the sheet (the largest, so a box printed on it isn't taken instead).
+        if accepted.isEmpty, let sheet = all.filter({ $0.colouredSheet }).max(by: { area($0.quad) < area($1.quad) }) {
+            accepted = [sheet]
+        }
         guard var best = accepted.max(by: { $0.score < $1.score })?.quad else { return nil }
         // A rectangle printed on the page (a photo, a box) scores well on its own;
         // the confidently segmented sheet around it is the page.
@@ -349,8 +358,10 @@ enum DocumentProcessing {
             let accepted = acceptableCrop(quad, source: kind, confidence: confidence, boundarySupport: supported, strongBoundary: strong)
                 && (printed || evidence.interior > 0.58 && (supported || (area(quad) > 0.72 && evidence.interior > 0.82)))
             let score = evidence.interior*0.5 + evidence.edge*0.9 + min(area(quad), 0.75)*0.2
+            let coloured = !accepted && kind == .rectangle && confidence >= 0.9 && (0.08...0.9).contains(area(quad))
+                && colouredSheetEvidence(quad, raster: raster)
             return DetectionCandidate(quad: quad, kind: kind, confidence: confidence, interior: evidence.interior,
-                                      edge: evidence.edge, strongEdges: evidence.strongEdges, accepted: accepted, score: score)
+                                      edge: evidence.edge, strongEdges: evidence.strongEdges, accepted: accepted, score: score, colouredSheet: coloured)
         }
     }
 
@@ -399,6 +410,45 @@ enum DocumentProcessing {
         }
         return (interior/63, edges.reduce(0,+)/4, edges.filter { $0 > 0.12 }.count)
     }
+    /// One colour inside the quad (most interior samples agree with their median once ink
+    /// is left out) and a different one just beyond at least three of its sides.
+    private static func colouredSheetEvidence(_ quad: ScanQuad, raster: Raster) -> Bool {
+        let p = quad.points
+        func at(_ u: Double, _ v: Double) -> ScanPoint {
+            ScanPoint(x: (1-v)*((1-u)*p[0].x+u*p[1].x)+v*((1-u)*p[3].x+u*p[2].x), y: (1-v)*((1-u)*p[0].y+u*p[1].y)+v*((1-u)*p[3].y+u*p[2].y))
+        }
+        var inside = [[Double]]()
+        for y in 0..<9 { for x in 0..<7 { let q = at((Double(x)+0.5)/7, (Double(y)+0.5)/9); inside.append(raster.pixel(q.x, q.y)) } }
+        let light = inside.sorted { $0.max()! < $1.max()! }.suffix(inside.count*6/10)
+        let paper = (0..<3).map { c in light.map { $0[c] }.sorted()[light.count/2] }
+        let level = paper.max()!
+        // White paper keeps the other checks (and their crops); this is for paper of a colour.
+        guard level > 0.25, (level - paper.min()!)/level >= 0.15 else { return false }
+        func same(_ c: [Double]) -> Bool {
+            let h = max(0.01, c.max()!)
+            let chroma = (0..<3).map { abs(c[$0]/h - paper[$0]/level) }.max()!
+            return chroma < 0.08 && abs(h - level) < 0.22
+        }
+        guard Double(inside.filter(same).count) >= Double(inside.count)*0.6 else { return false }
+        var sides = 0
+        for i in 0..<4 {
+            let a = p[i], b = p[(i+1)%4]
+            let dx = (b.x-a.x)*Double(raster.width), dy = (b.y-a.y)*Double(raster.height)
+            let length = max(1, hypot(dx, dy))
+            let nx = -dy/length/Double(raster.width), ny = dx/length/Double(raster.height)
+            let distance = max(4, Double(max(raster.width, raster.height))*0.018)
+            var differs = 0, samples = 0
+            for j in 1...8 {
+                let t = Double(j)/9, x = a.x+(b.x-a.x)*t, y = a.y+(b.y-a.y)*t
+                let ox = x-nx*distance, oy = y-ny*distance
+                guard (0...1).contains(ox), (0...1).contains(oy) else { continue }
+                samples += 1
+                if same(raster.pixel(x+nx*distance, y+ny*distance)) && !same(raster.pixel(ox, oy)) { differs += 1 }
+            }
+            if samples >= 4 && differs*2 >= samples { sides += 1 }
+        }
+        return sides >= 3
+    }
     private static func paperLikelihood(_ rgb: [Double]) -> Double {
         let high = rgb.max()!, low = rgb.min()!
         let brightness = min(1, max(0, (high-0.25)/0.45))
@@ -416,6 +466,9 @@ enum DocumentProcessing {
         /// rectangles in page fractions (top-left origin). Painted paper-white by the
         /// tone step.
         var edgeStrips: [CGRect] = []
+        /// Strongly coloured paper (red, deep yellow): its colour is kept, evened out
+        /// but not pushed to white or made more saturated.
+        var keepsTint = false
     }
 
     static func render(_ source: CIImage, crop: ScanQuad, turns: Int, enhancement: Enhancement, strength: Double = 1, identityCleanup: Bool = false, alignedOriginal: Bool = false, flatten: FlattenRequest? = nil) throws -> CIImage {
@@ -499,10 +552,10 @@ enum DocumentProcessing {
             let e = flat.extent, f = min(1, 1200/max(e.width, e.height))
             let small = flat.transformed(by: CGAffineTransform(scaleX: f, y: f))
             let moved = small.transformed(by: CGAffineTransform(translationX: -small.extent.minX, y: -small.extent.minY))
-            let toned = (try? finish(.init(image: moved.cropped(to: moved.extent.integral), enhancement: enhancement))) ?? moved
+            let toned = (try? finish(.init(image: moved.cropped(to: moved.extent.integral), enhancement: enhancement, keepsTint: paper.keepsTint))) ?? moved
             strips = PerfTrace.measure("  · edge strips") { edgeStrips(toned) }
         }
-        return .init(image: flat, enhancement: enhancement, flattened: flattened, edgeStrips: strips)
+        return .init(image: flat, enhancement: enhancement, flattened: flattened, edgeStrips: strips, keepsTint: paper.keepsTint)
     }
 
     /// Long side the clarity step works at: smaller pages are enlarged toward it
@@ -550,7 +603,14 @@ enum DocumentProcessing {
                 let t = min(1,max(0,(saturation-0.008)/0.04))
                 let color = t*t*(3-2*t)
                 let white = Float(whitePoint)+(1-Float(whitePoint))*color
-                for component in rgb { cube.append(min(1,max(0,(component-Float(blackPoint))/(white-Float(blackPoint))))) }
+                if prepared.keepsTint {
+                    // Coloured paper: the same levels on the brightest channel, applied to all
+                    // three, so the paper's hue and saturation stay as they were.
+                    let level = min(1,max(0,(high-Float(blackPoint))/(white-Float(blackPoint))))
+                    for component in rgb { cube.append(high > 0.001 ? min(1, component*level/high) : 0) }
+                } else {
+                    for component in rgb { cube.append(min(1,max(0,(component-Float(blackPoint))/(white-Float(blackPoint))))) }
+                }
                 cube.append(1)
             }}}
             let data = cube.withUnsafeBufferPointer { Data(buffer: $0) }
@@ -973,6 +1033,38 @@ enum DocumentProcessing {
     private struct PaperEstimate {
         var surface: CIImage
         var confidence: CIImage?
+        var keepsTint = false
+    }
+
+    /// Coloured paper: most of the page, its border included, is one colour that is not
+    /// neutral. Returns the paper's chromaticity (channels over the brightest) and whether
+    /// the colour is strong. Pale tints (cream, pale pink, pale blue) are then cleaned to
+    /// white like white paper; strong colours (red, deep yellow) keep their colour. It is
+    /// decided from the paper itself, so a sheet comes out the same in any light (a warm
+    /// lamp used to tip a cream sheet into deep orange). Nil for white paper.
+    private static func paperTint(_ raster: Raster) -> (chroma: [Double], strong: Bool)? {
+        var lit = [[Double]](), border = [[Double]](), neutral = 0
+        for y in stride(from: 0, to: raster.height, by: 3) { for x in stride(from: 0, to: raster.width, by: 3) {
+            let u = (Double(x)+0.5)/Double(raster.width), v = (Double(y)+0.5)/Double(raster.height)
+            let rgb = raster.pixel(u, v)
+            let high = rgb.max()!
+            guard high > 0.3 else { continue }
+            lit.append(rgb)
+            if (high-rgb.min()!)/high < 0.3 { neutral += 1 }
+            if u < 0.08 || u > 0.92 || v < 0.08 || v > 0.92 { border.append(rgb) }
+        }}
+        guard lit.count > 200, Double(neutral) < Double(lit.count)*0.25, border.count > 20 else { return nil }
+        // The paper: the brighter half of the lit pixels (ink, shade and highlights left out).
+        let sorted = lit.sorted { $0.max()! < $1.max()! }
+        let band = sorted[(sorted.count/2)..<(sorted.count*9/10)]
+        let median = (0..<3).map { c in band.map { $0[c] }.sorted()[band.count/2] }
+        let high = median.max()!
+        guard high > 0.2 else { return nil }
+        let chroma = median.map { $0/high }
+        func near(_ p: [Double]) -> Bool { let h = max(0.01, p.max()!); return (0..<3).map { abs(p[$0]/h-chroma[$0]) }.max()! < 0.1 }
+        guard Double(lit.filter(near).count) >= Double(lit.count)*0.4,
+              Double(border.filter(near).count) >= Double(border.count)*0.5 else { return nil }
+        return (chroma, (high-median.min()!)/high >= 0.5)
     }
 
     /// Test hook: the measured paper tiles (RGB or nil), grid size and the printed grid (normalized, top-left).
@@ -989,10 +1081,16 @@ enum DocumentProcessing {
             let high = rgb.max()!
             if high > 0.3 && (high-rgb.min()!)/high < 0.3 { brightest.append((high,rgb)) }
         }}
-        guard !brightest.isEmpty else { return PaperEstimate(surface: scalarSurface(image)) }
+        let tint = paperTint(raster)
+        guard !brightest.isEmpty || tint != nil else { return PaperEstimate(surface: scalarSurface(image)) }
         brightest.sort { $0.0 > $1.0 }
         let referenceSamples = brightest.prefix(max(1,brightest.count/5))
-        let reference = (0..<3).map { channel in referenceSamples.reduce(0.0) { $0+$1.1[channel]/$1.0 }/Double(referenceSamples.count) }
+        var reference = referenceSamples.isEmpty ? [1.0, 1.0, 1.0] : (0..<3).map { channel in referenceSamples.reduce(0.0) { $0+$1.1[channel]/$1.0 }/Double(referenceSamples.count) }
+        // Coloured paper is its own reference: tiles of that colour are the paper.
+        if let tint { reference = tint.chroma }
+        let strongTint = tint?.strong == true
+        // A strong colour's grain and noise spread its chromaticity a little more.
+        let paperTolerance = strongTint ? 0.08 : 0.045
         let paperCasts = edgePaperCasts(raster: raster, columns: columns, rows: rows, reference: reference, protectedGrid: protectedGrid, extent: extent)
         var samples = [[Double]?](repeating: nil, count: columns*rows)
         var paperConfidence = [Bool](repeating: false, count: columns*rows)
@@ -1014,8 +1112,8 @@ enum DocumentProcessing {
                 // shadow. Inside it, the exact same blue can be intentional ink.
                 let blankPaper = (protectedGrid == nil || !inGrid) && paperCasts[row*columns+column] && (high-rgb.min()!)/max(0.01,high) < 0.38
                 let neutralPaper = inGrid && protectedGrid != nil
-                    ? coolOffset < 0.015 && chromaDistance < 0.045
-                    : coolOffset < 0.025 && (chromaDistance < 0.045 || (warmerShadow && chromaDistance < 0.16 && paperCasts[row*columns+column]))
+                    ? coolOffset < 0.015 && chromaDistance < paperTolerance
+                    : coolOffset < 0.025 && (chromaDistance < paperTolerance || (warmerShadow && chromaDistance < 0.16 && paperCasts[row*columns+column]))
                 let paperChroma = blankPaper || neutralPaper
                 if high > 0.25 && paperChroma { candidates.append((high,rgb)) }
             }}
@@ -1040,7 +1138,7 @@ enum DocumentProcessing {
         var known = samples.indices.filter { samples[$0] != nil }
         // Without enough visible neutral paper, use a scalar estimate that cannot
         // independently normalize R/G/B of colored artwork to white.
-        guard known.count >= max(4,samples.count/8) else { return PaperEstimate(surface: scalarSurface(image)) }
+        guard known.count >= max(4,samples.count/8) else { return PaperEstimate(surface: scalarSurface(image), keepsTint: strongTint) }
         paperTrace?(samples, columns, rows, protectedGrid.map { CGRect(x: ($0.minX-extent.minX)/extent.width, y: 1-($0.maxY-extent.minY)/extent.height, width: $0.width/extent.width, height: $0.height/extent.height) })
         // A blue fill printed in the middle of the page can pass as a cool paper cast.
         // Unlike a shadow, which fades over several tiles, a fill starts with a sharp
@@ -1080,7 +1178,7 @@ enum DocumentProcessing {
             }
             if !touchesEdge { for index in region { fill[index] = true } }
         }
-        if fill.contains(true) {
+        if fill.contains(true) && !strongTint {
             for index in fill.indices where fill[index] { samples[index] = nil; paperConfidence[index] = false }
             known = samples.indices.filter { samples[$0] != nil }
         }
@@ -1103,7 +1201,10 @@ enum DocumentProcessing {
                 }
                 value = sum.map { $0/total }
             }
-            for channel in 0..<3 { bytes[index*4+channel] = UInt8(min(255,max(32,Int(value[channel]*255)))) }
+            // Strong colour: only the light falling on the paper is divided out (one level for
+            // all channels), so the paper keeps its colour, its brightest channel near white.
+            let level = value.max()!/0.96
+            for channel in 0..<3 { bytes[index*4+channel] = UInt8(min(255,max(32,Int((strongTint ? level : value[channel])*255)))) }
             for channel in 0..<3 { confidenceBytes[index*4+channel] = paperConfidence[index] ? 255 : 0 }
         }}
         func gridImage(_ bytes: [UInt8]) -> CIImage? {
@@ -1118,7 +1219,8 @@ enum DocumentProcessing {
             .clampedToExtent()
         }
         guard let surface = gridImage(bytes), let confidence = gridImage(confidenceBytes) else { return nil }
-        return PaperEstimate(surface: surface, confidence: confidence)
+        // Kept colour is never pulled toward white by the paper-white step.
+        return PaperEstimate(surface: surface, confidence: strongTint ? nil : confidence, keepsTint: strongTint)
     }
 
     private static func edgePaperCasts(raster: Raster, columns: Int, rows: Int, reference: [Double], protectedGrid: CGRect?, extent: CGRect) -> [Bool] {

@@ -654,23 +654,57 @@ final class QAScanTests: XCTestCase {
         try? small.jpegData(compressionQuality: 0.95)?.write(to: url)
     }
 
+    /// Detection diagnostics: for each photo named in qa/detect.txt (in the qa/set.txt set),
+    /// Vision's candidates and how each paper mask fares. Writes qa/detect-report.txt.
+    func testDetectionDiagnostics() throws {
+        let named = (try? String(contentsOf: Self.qa.appendingPathComponent("set.txt"), encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let set = named.isEmpty ? "synth" : named
+        let names = ((try? String(contentsOf: Self.qa.appendingPathComponent("detect.txt"), encoding: .utf8)) ?? "").split(separator: "\n").map(String.init)
+        var out: [String] = []
+        for name in names {
+            guard let data = try? Data(contentsOf: Self.qa.appendingPathComponent(set + "/photos/" + name + ".jpg")),
+                  let photo = CameraController.decode(data, maxPixels: 25_000_000) else { continue }
+            guard let cg = Imaging.limited(photo, maxPixels: 12_200_000).cgImage else { continue }
+            out.append("== " + name)
+            for c in DocumentProcessing.candidates(cg) {
+                out.append(String(format: "  %@ conf %.2f interior %.2f edge %.2f strong %d acc %@ score %.2f area %.2f", "\(c.kind)", c.confidence, c.interior, c.edge, c.strongEdges, c.accepted ? "Y" : "N", c.score, DocumentProcessing.area(c.quad)))
+            }
+            out.append("  detect: " + (DocumentProcessing.detect(cg).map { $0.points.map { String(format: "(%.2f,%.2f)", $0.x, $0.y) }.joined() } ?? "nil"))
+            if let r = RGBAImage(cg, maxSide: 700) {
+                let center = SIMD2<Double>(Double(r.w) / 2, Double(r.h) / 2)
+                for (label, m) in [("plain", PaperFeatures.paperMask(r, seed: center)), ("contrast", PaperFeatures.contrastPaperMask(r, seed: center)), ("light", PaperFeatures.lightPaperMask(r, seed: center))] {
+                    let a = m.map { Double($0.count) / Double(r.w * r.h) } ?? -1
+                    let q = m.flatMap { PaperFlattener.pageQuad($0, center: center) }
+                    out.append(String(format: "  %@ area %.2f quad %@", label, a, q.map { $0.points.map { String(format: "(%.2f,%.2f)", $0.x, $0.y) }.joined() } ?? "nil"))
+                }
+            }
+        }
+        try out.joined(separator: "\n").write(to: Self.qa.appendingPathComponent("detect-report.txt"), atomically: true, encoding: .utf8)
+    }
+
     func testScanAnswerKeys() throws {
-        let qa = Self.qa, photos = qa.appendingPathComponent("synth/photos"), pages = qa.appendingPathComponent("synth/pages")
-        let out = qa.appendingPathComponent("results/scan"); try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
-        let log = qa.appendingPathComponent("results/scan.jsonl"); try? FileManager.default.removeItem(at: log); FileManager.default.createFile(atPath: log.path, contents: nil)
+        // qa/set.txt names another photo set (synth-color: real coloured-paper pages); results
+        // then go to results-<set>/. Pages without truth lines are read against their clean OCR.
+        let named = (try? String(contentsOf: Self.qa.appendingPathComponent("set.txt"), encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let set = named.isEmpty ? "synth" : named
+        let qa = Self.qa, photos = qa.appendingPathComponent(set + "/photos"), pages = qa.appendingPathComponent(set + "/pages")
+        let results = qa.appendingPathComponent(set == "synth" ? "results" : "results-" + set)
+        let out = results.appendingPathComponent("scan"); try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        let log = results.appendingPathComponent("scan.jsonl"); try? FileManager.default.removeItem(at: log); FileManager.default.createFile(atPath: log.path, contents: nil)
         // QA_ONLY (or the first line of qa/only.txt): run only photos whose name contains it.
         let onlyFile = (try? String(contentsOf: qa.appendingPathComponent("only.txt"), encoding: .utf8))?.split(separator: "\n").first.map(String.init)
         let only = ProcessInfo.processInfo.environment["QA_ONLY"] ?? onlyFile.flatMap { $0.isEmpty ? nil : $0 }
         let names = try FileManager.default.contentsOfDirectory(atPath: photos.path).filter { $0.hasSuffix(".json") }.sorted()
         var baseline: [String: (cer: Double, recall: Double)] = [:]
         for name in names {
-            if let only, !name.contains(only) { continue }
+            if let only, !only.split(separator: "|").contains(where: { name.contains($0) }) { continue }
             try autoreleasepool {
                 let truth = try JSONDecoder().decode(PhotoTruth.self, from: Data(contentsOf: photos.appendingPathComponent(name)))
                 let page = try JSONDecoder().decode(PageTruth.self, from: Data(contentsOf: pages.appendingPathComponent(truth.page + ".json")))
-                let text = page.lines.joined(separator: "\n")
-                if baseline[truth.page] == nil, let clean = UIImage(contentsOfFile: pages.appendingPathComponent(truth.page + ".png").path)?.cgImage {
-                    let r = read(clean); baseline[truth.page] = (QAText.cer(truth: text, read: r), QAText.recall(truth: text, read: r))
+                var text = page.lines.joined(separator: "\n")
+                if let clean = UIImage(contentsOfFile: pages.appendingPathComponent(truth.page + ".png").path)?.cgImage {
+                    if page.lines.isEmpty { text = read(clean) }
+                    if baseline[truth.page] == nil { let r = read(clean); baseline[truth.page] = (QAText.cer(truth: text, read: r), QAText.recall(truth: text, read: r)) }
                 }
                 let stem = String(name.dropLast(5))
                 guard let data = try? Data(contentsOf: photos.appendingPathComponent(stem + ".jpg")), let photo = CameraController.decode(data, maxPixels: 25_000_000) else { return }

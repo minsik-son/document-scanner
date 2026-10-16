@@ -8,9 +8,10 @@ Source: `../마케팅 리포트/05_마케팅_실행_계획.md` §4 (adapted from
 - **Subtitle (30):** Scan offline. No watermark.
 - **Keywords (100):** document,docs,camera,word,excel,converter,sign,receipt,id,card,translate,compress,private,book,notes
 - **Category:** Productivity (secondary: Business)
-- **Support URL:** https://minsik-son.github.io/document-scanner/support.html
-- **Privacy Policy URL:** https://minsik-son.github.io/document-scanner/privacy.html
-- **Copyright:** 2026 Minsik Son
+- **Support URL:** https://rudefinch.com/hushscan/support.html
+- **Marketing URL:** https://rudefinch.com/
+- **Privacy Policy URL:** https://rudefinch.com/hushscan/privacy.html
+- **Copyright:** 2026 Rude Finch
 
 **Promotional text (170):**
 Scan, convert and translate documents on your iPhone. No account, no upload, no watermark — your paperwork never leaves your phone.
@@ -43,7 +44,7 @@ Scanning, PDF export and text recognition are free. Try each Pro tool for free f
 • A one-time Lifetime purchase is also available.
 
 Terms of Use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
-Privacy Policy: https://minsik-son.github.io/document-scanner/privacy.html
+Privacy Policy: https://rudefinch.com/hushscan/privacy.html
 
 ## Korean
 
@@ -80,7 +81,7 @@ HushScan은 종이 서류를 깨끗한 PDF와 편집 가능한 파일로 바꿔 
 • 한 번 구매로 계속 쓰는 평생 이용권도 있습니다.
 
 이용약관: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
-개인정보처리방침: https://minsik-son.github.io/document-scanner/privacy.html
+개인정보처리방침: https://rudefinch.com/hushscan/privacy.html
 
 ## Screenshots (6.9", 1320×2868) — storyboard
 1. Scan anything. No watermark.

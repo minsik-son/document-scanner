@@ -137,9 +137,9 @@ enum AppInfo {
     static var name: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "HushScan" }
     static var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0" }
     static var build: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1" }
-    /// Published privacy policy and support pages (GitHub Pages, docs/ folder of the repository).
-    static let privacyPolicy = "https://minsik-son.github.io/document-scanner/privacy.html"
-    static let support = "https://minsik-son.github.io/document-scanner/support.html"
+    /// Published privacy policy and support pages (rudefinch.com, served by GitHub Pages from docs/).
+    static let privacyPolicy = "https://rudefinch.com/hushscan/privacy.html"
+    static let support = "https://rudefinch.com/hushscan/support.html"
     /// Apple's standard licensed application end user license agreement.
     static let terms = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
     /// Support mail, the same address as on the support page.

@@ -5,11 +5,11 @@ Source: `../마케팅 리포트/05_마케팅_실행_계획.md` §4 (adapted from
 ## English (U.S.) — primary
 
 - **Name (30):** HushScan: PDF Scanner & OCR
-- **Subtitle (30):** Scan offline. No watermark.
-- **Keywords (100):** document,docs,camera,word,excel,converter,sign,receipt,id,card,translate,compress,private,book,notes
+- **Subtitle (30):** Offline Scan to Word & Excel
+- **Keywords (100):** document,text,converter,photo,translate,signature,receipt,id,card,compress,merge,redact,watermark
 - **Category:** Productivity (secondary: Business)
 - **Support URL:** https://rudefinch.com/hushscan/support.html
-- **Marketing URL:** https://rudefinch.com/
+- **Marketing URL:** https://rudefinch.com/hushscan/
 - **Privacy Policy URL:** https://rudefinch.com/hushscan/privacy.html
 - **Copyright:** 2026 Rude Finch
 
@@ -48,9 +48,9 @@ Privacy Policy: https://rudefinch.com/hushscan/privacy.html
 
 ## Korean
 
-- **이름:** HushScan - 문서 스캐너 PDF
-- **부제:** 워터마크 없는 스캔·OCR·변환
-- **키워드:** 스캔,스캔어플,PDF변환,문서,서명,영수증,신분증,워드,엑셀,번역,압축,명함,책,OCR,카메라,오프라인,사진
+- **이름:** HushScan: PDF 스캐너·문서 스캔
+- **부제:** 오프라인 스캔·워드 엑셀 변환
+- **키워드:** 사진,텍스트,추출,번역,영수증,신분증,서명,압축,합치기,워터마크,보안,파워포인트,수학,변환기,가리기
 - **프로모션 텍스트:** 계정도, 업로드도, 워터마크도 없이 iPhone 안에서 스캔·변환·번역하세요. 서류가 휴대폰 밖으로 나가지 않습니다.
 
 **설명:**
@@ -82,6 +82,14 @@ HushScan은 종이 서류를 깨끗한 PDF와 편집 가능한 파일로 바꿔 
 
 이용약관: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 개인정보처리방침: https://rudefinch.com/hushscan/privacy.html
+
+## Other store languages (App Store Connect, 2026-10-16)
+
+Each also has support URL https://rudefinch.com/hushscan/support.html, marketing URL https://rudefinch.com/hushscan/ and the privacy URL.
+
+- **en-GB** (searched in the UK, Korea, Germany, France and ~15 other stores): name and subtitle as en-US, description as en-US. Keywords: docs,paperwork,homework,worksheet,contract,invoice,form,fill,notes,book,whiteboard,passport,image
+- **es-MX** (also searched in the US store): HushScan: Escáner PDF y OCR / Escanea sin internet a Word. Keywords: escanear,documentos,convertir,excel,traducir,firma,recibo,credencial,comprimir,foto,texto,camara
+- **ja**: HushScan: PDFスキャナー・OCR / オフラインで書類スキャン・翻訳. Keywords: 文書,カメラ,文字認識,テキスト,ワード,エクセル,変換,レシート,署名,圧縮,証明書,透かし,写真,数学
 
 ## Screenshots (6.9", 1320×2868) — storyboard
 1. Scan anything. No watermark.

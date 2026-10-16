@@ -1,4 +1,4 @@
-/* HushScan — zh-Hant */
+/* Glide Scan — zh-Hant */
 "Word export" = "輸出為 Word";
 "Excel export" = "輸出為 Excel";
 "PowerPoint export" = "輸出為 PowerPoint";
@@ -1397,7 +1397,7 @@
 "Add %lld" = "加入 %lld 個";
 "Trial · 1 day left" = "試用 · 剩 1 天";
 "Trial · %lld days left" = "試用 · 剩 %lld 天";
-"Unlock\nHushScan Pro" = "解鎖\nHushScan Pro";
+"Unlock\nGlide Scan Pro" = "解鎖\nGlide Scan Pro";
 "Office export, translation, photo tools and no ads." = "Office 輸出、翻譯、照片工具，而且無廣告。";
 "Try free" = "免費試用";
 "See plans" = "查看方案";
@@ -2022,7 +2022,7 @@
 "Copy message" = "複製內容";
 "Rate the app" = "為 App 評分";
 "Share the app" = "分享 App";
-"HushScan scans documents and keeps them on your iPhone." = "HushScan 掃描文件，並只保存在你的 iPhone 上。";
+"Glide Scan scans documents and keeps them on your iPhone." = "Glide Scan 掃描文件，並只保存在你的 iPhone 上。";
 
 /* Done pages and toasts */
 "Moved to Trash" = "已移到垃圾桶";
@@ -2053,12 +2053,12 @@
 "Auto-save on" = "自動儲存已開啟";
 "Auto-save off" = "自動儲存已關閉";
 "Your documents are only on this iPhone" = "你的文件只存在這支 iPhone 上";
-"HushScan never uploads anything. Back up before you delete the app or change phones." = "HushScan 不會上傳任何內容。刪除 App 或更換手機前請先備份。";
+"Glide Scan never uploads anything. Back up before you delete the app or change phones." = "Glide Scan 不會上傳任何內容。刪除 App 或更換手機前請先備份。";
 "New scans are also saved to your folder" = "新掃描也會儲存到你選的資料夾";
 "The original stays on this iPhone, and the same PDF is saved to the folder you picked in Files." = "原件保留在這支 iPhone 上，同一份 PDF 會儲存到你在「檔案」中選的資料夾。";
 "Auto-save to Files" = "自動儲存到「檔案」";
 "Save each new scan as a PDF in a folder you pick" = "把每份新掃描以 PDF 存到你選的資料夾";
-"HushScan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone." = "HushScan 不會上傳。若選擇 iCloud 雲碟或 Dropbox 資料夾，會由該服務同步。「我的 iPhone」中的資料夾不會離開這支 iPhone。";
+"Glide Scan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone." = "Glide Scan 不會上傳。若選擇 iCloud 雲碟或 Dropbox 資料夾，會由該服務同步。「我的 iPhone」中的資料夾不會離開這支 iPhone。";
 "Backup files" = "備份檔案";
 "Backup files aren't password protected. Keep them somewhere you trust." = "備份檔案沒有密碼保護，請存放在可信的地方。";
 "Scanning, PDF creation and text recognition all run offline on this iPhone." = "掃描、製作 PDF 和文字辨識都在這支 iPhone 上離線完成。";
@@ -2077,7 +2077,7 @@
 "Saved to Files" = "已儲存到「檔案」";
 "Not saved yet" = "尚未儲存";
 "Couldn't save" = "無法儲存";
-"Allow HushScan to add photos in Settings, then try again." = "請在「設定」中允許 HushScan 加入照片，然後再試一次。";
+"Allow Glide Scan to add photos in Settings, then try again." = "請在「設定」中允許 Glide Scan 加入照片，然後再試一次。";
 "The picture couldn't be added to Photos." = "無法將圖片加入「照片」。";
 "Save it to Files, then share it. It isn't saved in your documents." = "先儲存到「檔案」，再分享。它不會儲存在你的文件中。";
 "Leave without applying?" = "不套用就離開？";
@@ -2099,4 +2099,4 @@
 "You'll find it in Documents." = "可在「文件」中找到。";
 "%lld files" = "%lld 個檔案";
 "Open-source licenses" = "開放原始碼授權";
-"HushScan uses these on-device models." = "HushScan 使用以下裝置端模型。";
+"Glide Scan uses these on-device models." = "Glide Scan 使用以下裝置端模型。";

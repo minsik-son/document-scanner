@@ -1,10 +1,10 @@
-# HushScan — Notes for App Review
+# Glide Scan — Notes for App Review
 
 Paste into App Store Connect → App Review Information → Notes.
 
 ---
 
-Thank you for reviewing HushScan.
+Thank you for reviewing Glide Scan.
 
 **No account needed.** The app has no sign-in. Every document is processed on the device: scanning, text recognition, Word/Excel/PowerPoint conversion, PDF tools and photo translation all run locally. We operate no server that receives documents.
 
@@ -24,4 +24,4 @@ Thank you for reviewing HushScan.
 
 **Permissions**: Camera (scanning), Photos add-only (saving images you create), Contacts (only when saving a scanned business card), Face ID (optional App lock), Notifications (only after starting a free trial, for a reminder 2 days before renewal).
 
-**Contact**: support@rudefinch.com · Support page: https://rudefinch.com/hushscan/support.html
+**Contact**: support@rudefinch.com · Support page: https://rudefinch.com/glidescan/support.html

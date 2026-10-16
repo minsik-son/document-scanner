@@ -9,12 +9,12 @@
       "localizations": [
         {
           "description": "All Pro tools and no ads. Pay once.",
-          "displayName": "HushScan Pro Lifetime",
+          "displayName": "Glide Scan Pro Lifetime",
           "locale": "en_US"
         },
         {
           "description": "모든 Pro 도구와 광고 제거. 한 번 결제",
-          "displayName": "HushScan Pro 평생",
+          "displayName": "Glide Scan Pro 평생",
           "locale": "ko"
         }
       ],
@@ -34,17 +34,17 @@
       "id": "scanner-pro",
       "localizations": [
         {
-          "description": "HushScan Pro",
-          "displayName": "HushScan Pro",
+          "description": "Glide Scan Pro",
+          "displayName": "Glide Scan Pro",
           "locale": "en_US"
         },
         {
-          "description": "HushScan Pro",
-          "displayName": "HushScan Pro",
+          "description": "Glide Scan Pro",
+          "displayName": "Glide Scan Pro",
           "locale": "ko"
         }
       ],
-      "name": "HushScan Pro",
+      "name": "Glide Scan Pro",
       "subscriptions": [
         {
           "adHocOffers": [],
@@ -57,12 +57,12 @@
           "localizations": [
             {
               "description": "All Pro tools and no ads. Billed monthly.",
-              "displayName": "HushScan Pro Monthly",
+              "displayName": "Glide Scan Pro Monthly",
               "locale": "en_US"
             },
             {
               "description": "모든 Pro 도구와 광고 제거. 매월 결제",
-              "displayName": "HushScan Pro 월간",
+              "displayName": "Glide Scan Pro 월간",
               "locale": "ko"
             }
           ],
@@ -88,12 +88,12 @@
           "localizations": [
             {
               "description": "All Pro tools and no ads. 7 days free.",
-              "displayName": "HushScan Pro Yearly",
+              "displayName": "Glide Scan Pro Yearly",
               "locale": "en_US"
             },
             {
               "description": "모든 Pro 도구와 광고 제거. 7일 무료",
-              "displayName": "HushScan Pro 연간",
+              "displayName": "Glide Scan Pro 연간",
               "locale": "ko"
             }
           ],

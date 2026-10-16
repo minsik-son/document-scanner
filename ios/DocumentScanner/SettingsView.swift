@@ -81,7 +81,7 @@ struct SettingsView: View {
                         .accessibilityIdentifier("settings-support")
                     Button { openURL(AppInfo.reviewURL) } label: { SettingsIconRow(icon: "star", title: "Rate the app", chevron: true) }
                         .buttonStyle(.plain).accessibilityIdentifier("settings-rate")
-                    ShareLink(item: AppInfo.storeURL, message: Text(L("HushScan scans documents and keeps them on your iPhone."))) {
+                    ShareLink(item: AppInfo.storeURL, message: Text(L("Glide Scan scans documents and keeps them on your iPhone."))) {
                         SettingsIconRow(icon: "share", title: "Share the app", chevron: true)
                     }.buttonStyle(.plain).accessibilityIdentifier("settings-share")
                     Button { Task { await subscription.restore() } } label: { SettingsIconRow(icon: "receipt", title: "Restore purchases", chevron: true) }
@@ -216,7 +216,7 @@ private struct SaveBackupView: View {
             Section {
                 AutoExportRow(openPaywall: { paywall = true }, folder: $autoFolder)
             } header: { Text("Auto-save") } footer: {
-                Text("HushScan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone.")
+                Text("Glide Scan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone.")
             }
             Section {
                 Button { backupWarning = true } label: { SettingsIconRow(icon: "export", title: "Export library backup", tint: TK.blue, chevron: true) }
@@ -270,7 +270,7 @@ private struct SaveBackupView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(autoFolder == nil ? "Your documents are only on this iPhone" : "New scans are also saved to your folder")
                     .font(.subheadline.weight(.bold))
-                Text(autoFolder == nil ? "HushScan never uploads anything. Back up before you delete the app or change phones."
+                Text(autoFolder == nil ? "Glide Scan never uploads anything. Back up before you delete the app or change phones."
                                        : "The original stays on this iPhone, and the same PDF is saved to the folder you picked in Files.")
                     .font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 Text(verbatim: backupLine(store.manifest.lastBackupCreated)).font(.caption.weight(.semibold)).foregroundStyle(TK.blue).padding(.top, 4)
@@ -280,7 +280,7 @@ private struct SaveBackupView: View {
     }
 }
 
-/// Privacy & data: what HushScan keeps, the policy, and ad choices for free users.
+/// Privacy & data: what Glide Scan keeps, the policy, and ad choices for free users.
 private struct PrivacyDataView: View {
     @EnvironmentObject var subscription: SubscriptionStore
     var body: some View {
@@ -666,7 +666,7 @@ struct OpenSourceLicensesView: View {
                     }
                     .padding(.vertical, 6)
                 }
-            } header: { Text("HushScan uses these on-device models.") }
+            } header: { Text("Glide Scan uses these on-device models.") }
         }
         .navigationTitle("Open-source licenses").navigationBarTitleDisplayMode(.inline)
         .accessibilityIdentifier("open-source-licenses")

@@ -7,7 +7,7 @@ import OSLog
 
 /// No scan, document name, recognized text or library metadata enters this module.
 enum HomeAdConfiguration {
-    /// HushScan in AdMob (also GADApplicationIdentifier in Info.plist).
+    /// Glide Scan in AdMob (also GADApplicationIdentifier in Info.plist).
     static let appID = "ca-app-pub-9921649727270589~5824656756"
     static let homeNativeLiveID = "ca-app-pub-9921649727270589/3406287684"
     static let toolsNativeLiveID = "ca-app-pub-9921649727270589/6320314928"

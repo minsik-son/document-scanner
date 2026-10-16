@@ -54,7 +54,7 @@ final class SubscriptionTests: XCTestCase {
     }
     /// App Review: one app name everywhere and working public links.
     func testAppNameAndPublicLinksAreConfigured() {
-        XCTAssertEqual(AppInfo.name, "HushScan")
+        XCTAssertEqual(AppInfo.name, "Glide Scan")
         for link in [AppInfo.privacyPolicy, AppInfo.support, AppInfo.terms] {
             let url = URL(string: link)
             XCTAssertEqual(url?.scheme, "https", link)

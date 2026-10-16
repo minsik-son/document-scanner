@@ -930,7 +930,7 @@ final class ScannerFlowTests: HushUITestCase {
             let app = XCUIApplication()
             app.launchArguments = ["--ui-test-session", UUID().uuidString, "-app-language", "en", "--hold-launch-screen"] + (t == "live" ? [] : ["--splash-time", t])
             app.launch()
-            XCTAssertTrue(app.otherElements["startup-screen"].waitForExistence(timeout: 10) || app.staticTexts["HushScan"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.otherElements["startup-screen"].waitForExistence(timeout: 10) || app.staticTexts["Glide Scan"].waitForExistence(timeout: 5))
             Thread.sleep(forTimeInterval: 1)
             let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); shot.name = "splash-\(t)"; shot.lifetime = .keepAlways; add(shot)
             app.terminate()

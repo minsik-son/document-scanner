@@ -2,17 +2,17 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url><loc>https://rudefinch.com/</loc><lastmod>2026-10-16</lastmod></url>
   <url>
-    <loc>https://rudefinch.com/hushscan/</loc><lastmod>2026-10-16</lastmod>
-    <xhtml:link rel="alternate" hreflang="en" href="https://rudefinch.com/hushscan/"/>
-    <xhtml:link rel="alternate" hreflang="ko" href="https://rudefinch.com/hushscan/ko/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://rudefinch.com/hushscan/"/>
+    <loc>https://rudefinch.com/glidescan/</loc><lastmod>2026-10-16</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://rudefinch.com/glidescan/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://rudefinch.com/glidescan/ko/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://rudefinch.com/glidescan/"/>
   </url>
   <url>
-    <loc>https://rudefinch.com/hushscan/ko/</loc><lastmod>2026-10-16</lastmod>
-    <xhtml:link rel="alternate" hreflang="en" href="https://rudefinch.com/hushscan/"/>
-    <xhtml:link rel="alternate" hreflang="ko" href="https://rudefinch.com/hushscan/ko/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://rudefinch.com/hushscan/"/>
+    <loc>https://rudefinch.com/glidescan/ko/</loc><lastmod>2026-10-16</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://rudefinch.com/glidescan/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://rudefinch.com/glidescan/ko/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://rudefinch.com/glidescan/"/>
   </url>
-  <url><loc>https://rudefinch.com/hushscan/support.html</loc><lastmod>2026-10-16</lastmod></url>
-  <url><loc>https://rudefinch.com/hushscan/privacy.html</loc><lastmod>2026-10-16</lastmod></url>
+  <url><loc>https://rudefinch.com/glidescan/support.html</loc><lastmod>2026-10-16</lastmod></url>
+  <url><loc>https://rudefinch.com/glidescan/privacy.html</loc><lastmod>2026-10-16</lastmod></url>
 </urlset>

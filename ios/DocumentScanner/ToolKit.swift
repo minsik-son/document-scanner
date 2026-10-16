@@ -1769,7 +1769,7 @@ struct SaveFirstButton: View {
         guard photos else { exporting = true; return }
         PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
             guard status == .authorized || status == .limited else {
-                DispatchQueue.main.async { failed = "Allow HushScan to add photos in Settings, then try again." }
+                DispatchQueue.main.async { failed = "Allow Glide Scan to add photos in Settings, then try again." }
                 return
             }
             PHPhotoLibrary.shared().performChanges({

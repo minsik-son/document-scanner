@@ -1,4 +1,4 @@
-/* HushScan — vi */
+/* Glide Scan — vi */
 "Word export" = "Xuất Word";
 "Excel export" = "Xuất Excel";
 "PowerPoint export" = "Xuất PowerPoint";
@@ -1397,7 +1397,7 @@
 "Add %lld" = "Thêm %lld";
 "Trial · 1 day left" = "Dùng thử · còn 1 ngày";
 "Trial · %lld days left" = "Dùng thử · còn %lld ngày";
-"Unlock\nHushScan Pro" = "Mở khóa\nHushScan Pro";
+"Unlock\nGlide Scan Pro" = "Mở khóa\nGlide Scan Pro";
 "Office export, translation, photo tools and no ads." = "Xuất Office, dịch thuật, công cụ ảnh và không quảng cáo.";
 "Try free" = "Dùng thử miễn phí";
 "See plans" = "Xem các gói";
@@ -2022,7 +2022,7 @@
 "Copy message" = "Sao chép nội dung";
 "Rate the app" = "Đánh giá ứng dụng";
 "Share the app" = "Chia sẻ ứng dụng";
-"HushScan scans documents and keeps them on your iPhone." = "HushScan quét tài liệu và chỉ lưu trên iPhone của bạn.";
+"Glide Scan scans documents and keeps them on your iPhone." = "Glide Scan quét tài liệu và chỉ lưu trên iPhone của bạn.";
 
 /* Done pages and toasts */
 "Moved to Trash" = "Đã chuyển vào Thùng rác";
@@ -2053,12 +2053,12 @@
 "Auto-save on" = "Tự động lưu đang bật";
 "Auto-save off" = "Tự động lưu đang tắt";
 "Your documents are only on this iPhone" = "Tài liệu của bạn chỉ ở trên iPhone này";
-"HushScan never uploads anything. Back up before you delete the app or change phones." = "HushScan không tải lên bất cứ thứ gì. Hãy sao lưu trước khi xóa ứng dụng hoặc đổi điện thoại.";
+"Glide Scan never uploads anything. Back up before you delete the app or change phones." = "Glide Scan không tải lên bất cứ thứ gì. Hãy sao lưu trước khi xóa ứng dụng hoặc đổi điện thoại.";
 "New scans are also saved to your folder" = "Bản quét mới cũng được lưu vào thư mục của bạn";
 "The original stays on this iPhone, and the same PDF is saved to the folder you picked in Files." = "Bản gốc vẫn ở trên iPhone này, và cùng tệp PDF được lưu vào thư mục bạn chọn trong Tệp.";
 "Auto-save to Files" = "Tự động lưu vào Tệp";
 "Save each new scan as a PDF in a folder you pick" = "Lưu mỗi bản quét mới dưới dạng PDF vào thư mục bạn chọn";
-"HushScan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone." = "HushScan không bao giờ tải lên. Nếu bạn chọn thư mục iCloud Drive hoặc Dropbox, dịch vụ đó sẽ đồng bộ. Thư mục Trên iPhone không bao giờ rời khỏi iPhone này.";
+"Glide Scan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone." = "Glide Scan không bao giờ tải lên. Nếu bạn chọn thư mục iCloud Drive hoặc Dropbox, dịch vụ đó sẽ đồng bộ. Thư mục Trên iPhone không bao giờ rời khỏi iPhone này.";
 "Backup files" = "Tệp sao lưu";
 "Backup files aren't password protected. Keep them somewhere you trust." = "Tệp sao lưu không có mật khẩu. Hãy cất ở nơi bạn tin tưởng.";
 "Scanning, PDF creation and text recognition all run offline on this iPhone." = "Quét, tạo PDF và nhận dạng văn bản đều chạy ngoại tuyến trên iPhone này.";
@@ -2077,7 +2077,7 @@
 "Saved to Files" = "Đã lưu vào Tệp";
 "Not saved yet" = "Chưa được lưu";
 "Couldn't save" = "Không thể lưu";
-"Allow HushScan to add photos in Settings, then try again." = "Cho phép HushScan thêm ảnh trong Cài đặt rồi thử lại.";
+"Allow Glide Scan to add photos in Settings, then try again." = "Cho phép Glide Scan thêm ảnh trong Cài đặt rồi thử lại.";
 "The picture couldn't be added to Photos." = "Không thể thêm ảnh vào Ảnh.";
 "Save it to Files, then share it. It isn't saved in your documents." = "Lưu vào Tệp rồi chia sẻ. Tệp không được lưu trong tài liệu của bạn.";
 "Leave without applying?" = "Thoát mà không áp dụng?";
@@ -2099,4 +2099,4 @@
 "You'll find it in Documents." = "Bạn có thể xem trong Tài liệu.";
 "%lld files" = "%lld tệp";
 "Open-source licenses" = "Giấy phép mã nguồn mở";
-"HushScan uses these on-device models." = "HushScan sử dụng các mô hình trên thiết bị sau.";
+"Glide Scan uses these on-device models." = "Glide Scan sử dụng các mô hình trên thiết bị sau.";

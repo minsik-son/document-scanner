@@ -1,4 +1,4 @@
-/* HushScan — es */
+/* Glide Scan — es */
 "Word export" = "Exportar a Word";
 "Excel export" = "Exportar a Excel";
 "PowerPoint export" = "Exportar a PowerPoint";
@@ -1397,7 +1397,7 @@
 "Add %lld" = "Añadir %lld";
 "Trial · 1 day left" = "Prueba · Queda 1 día";
 "Trial · %lld days left" = "Prueba · Quedan %lld días";
-"Unlock\nHushScan Pro" = "Desbloquea\nHushScan Pro";
+"Unlock\nGlide Scan Pro" = "Desbloquea\nGlide Scan Pro";
 "Office export, translation, photo tools and no ads." = "Exportación a Office, traducción, herramientas de fotos y sin anuncios.";
 "Try free" = "Probar gratis";
 "See plans" = "Ver planes";
@@ -2022,7 +2022,7 @@
 "Copy message" = "Copiar mensaje";
 "Rate the app" = "Valorar la app";
 "Share the app" = "Compartir la app";
-"HushScan scans documents and keeps them on your iPhone." = "HushScan escanea documentos y los guarda en tu iPhone.";
+"Glide Scan scans documents and keeps them on your iPhone." = "Glide Scan escanea documentos y los guarda en tu iPhone.";
 
 /* Done pages and toasts */
 "Moved to Trash" = "Movido a la papelera";
@@ -2053,12 +2053,12 @@
 "Auto-save on" = "Guardado automático activado";
 "Auto-save off" = "Guardado automático desactivado";
 "Your documents are only on this iPhone" = "Tus documentos solo están en este iPhone";
-"HushScan never uploads anything. Back up before you delete the app or change phones." = "HushScan no sube nada. Haz una copia de seguridad antes de borrar la app o cambiar de teléfono.";
+"Glide Scan never uploads anything. Back up before you delete the app or change phones." = "Glide Scan no sube nada. Haz una copia de seguridad antes de borrar la app o cambiar de teléfono.";
 "New scans are also saved to your folder" = "Los escaneos nuevos también se guardan en tu carpeta";
 "The original stays on this iPhone, and the same PDF is saved to the folder you picked in Files." = "El original se queda en este iPhone y el mismo PDF se guarda en la carpeta que elegiste en Archivos.";
 "Auto-save to Files" = "Guardar automáticamente en Archivos";
 "Save each new scan as a PDF in a folder you pick" = "Guarda cada escaneo nuevo como PDF en la carpeta que elijas";
-"HushScan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone." = "HushScan nunca sube nada. Si eliges una carpeta de iCloud Drive o Dropbox, ese servicio la sincroniza. Una carpeta En mi iPhone nunca sale de este iPhone.";
+"Glide Scan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone." = "Glide Scan nunca sube nada. Si eliges una carpeta de iCloud Drive o Dropbox, ese servicio la sincroniza. Una carpeta En mi iPhone nunca sale de este iPhone.";
 "Backup files" = "Archivos de copia de seguridad";
 "Backup files aren't password protected. Keep them somewhere you trust." = "Los archivos de copia no tienen contraseña. Guárdalos en un lugar de confianza.";
 "Scanning, PDF creation and text recognition all run offline on this iPhone." = "El escaneo, la creación de PDF y el reconocimiento de texto funcionan sin conexión en este iPhone.";
@@ -2077,7 +2077,7 @@
 "Saved to Files" = "Guardado en Archivos";
 "Not saved yet" = "Aún no se ha guardado";
 "Couldn't save" = "No se pudo guardar";
-"Allow HushScan to add photos in Settings, then try again." = "Permite que HushScan añada fotos en Ajustes y vuelve a intentarlo.";
+"Allow Glide Scan to add photos in Settings, then try again." = "Permite que Glide Scan añada fotos en Ajustes y vuelve a intentarlo.";
 "The picture couldn't be added to Photos." = "No se pudo añadir la imagen a Fotos.";
 "Save it to Files, then share it. It isn't saved in your documents." = "Guárdalo en Archivos y luego compártelo. No se guarda en tus documentos.";
 "Leave without applying?" = "¿Salir sin aplicar?";
@@ -2099,4 +2099,4 @@
 "You'll find it in Documents." = "Está en Documentos.";
 "%lld files" = "%lld archivos";
 "Open-source licenses" = "Licencias de código abierto";
-"HushScan uses these on-device models." = "HushScan usa estos modelos en el dispositivo.";
+"Glide Scan uses these on-device models." = "Glide Scan usa estos modelos en el dispositivo.";

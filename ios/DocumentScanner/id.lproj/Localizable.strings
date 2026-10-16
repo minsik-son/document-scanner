@@ -1,4 +1,4 @@
-/* HushScan — id */
+/* Glide Scan — id */
 "Word export" = "Ekspor Word";
 "Excel export" = "Ekspor Excel";
 "PowerPoint export" = "Ekspor PowerPoint";
@@ -1397,7 +1397,7 @@
 "Add %lld" = "Tambahkan %lld";
 "Trial · 1 day left" = "Uji coba · Sisa 1 hari";
 "Trial · %lld days left" = "Uji coba · Sisa %lld hari";
-"Unlock\nHushScan Pro" = "Aktifkan\nHushScan Pro";
+"Unlock\nGlide Scan Pro" = "Aktifkan\nGlide Scan Pro";
 "Office export, translation, photo tools and no ads." = "Ekspor Office, terjemahan, alat foto, dan tanpa iklan.";
 "Try free" = "Coba gratis";
 "See plans" = "Lihat paket";
@@ -2022,7 +2022,7 @@
 "Copy message" = "Salin pesan";
 "Rate the app" = "Beri nilai aplikasi";
 "Share the app" = "Bagikan aplikasi";
-"HushScan scans documents and keeps them on your iPhone." = "HushScan memindai dokumen dan menyimpannya di iPhone Anda.";
+"Glide Scan scans documents and keeps them on your iPhone." = "Glide Scan memindai dokumen dan menyimpannya di iPhone Anda.";
 
 /* Done pages and toasts */
 "Moved to Trash" = "Dipindahkan ke Sampah";
@@ -2053,12 +2053,12 @@
 "Auto-save on" = "Simpan otomatis aktif";
 "Auto-save off" = "Simpan otomatis nonaktif";
 "Your documents are only on this iPhone" = "Dokumen Anda hanya ada di iPhone ini";
-"HushScan never uploads anything. Back up before you delete the app or change phones." = "HushScan tidak pernah mengunggah apa pun. Cadangkan sebelum menghapus aplikasi atau ganti ponsel.";
+"Glide Scan never uploads anything. Back up before you delete the app or change phones." = "Glide Scan tidak pernah mengunggah apa pun. Cadangkan sebelum menghapus aplikasi atau ganti ponsel.";
 "New scans are also saved to your folder" = "Pindaian baru juga disimpan ke folder Anda";
 "The original stays on this iPhone, and the same PDF is saved to the folder you picked in Files." = "Aslinya tetap di iPhone ini, dan PDF yang sama disimpan ke folder pilihan Anda di File.";
 "Auto-save to Files" = "Simpan otomatis ke File";
 "Save each new scan as a PDF in a folder you pick" = "Simpan tiap pindaian baru sebagai PDF di folder pilihan Anda";
-"HushScan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone." = "HushScan tidak pernah mengunggah. Jika Anda memilih folder iCloud Drive atau Dropbox, layanan itu yang menyinkronkannya. Folder Di iPhone Saya tidak pernah keluar dari iPhone ini.";
+"Glide Scan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone." = "Glide Scan tidak pernah mengunggah. Jika Anda memilih folder iCloud Drive atau Dropbox, layanan itu yang menyinkronkannya. Folder Di iPhone Saya tidak pernah keluar dari iPhone ini.";
 "Backup files" = "File cadangan";
 "Backup files aren't password protected. Keep them somewhere you trust." = "File cadangan tidak dilindungi kata sandi. Simpan di tempat yang Anda percaya.";
 "Scanning, PDF creation and text recognition all run offline on this iPhone." = "Pemindaian, pembuatan PDF, dan pengenalan teks berjalan offline di iPhone ini.";
@@ -2077,7 +2077,7 @@
 "Saved to Files" = "Tersimpan di File";
 "Not saved yet" = "Belum disimpan";
 "Couldn't save" = "Tidak dapat menyimpan";
-"Allow HushScan to add photos in Settings, then try again." = "Izinkan HushScan menambahkan foto di Pengaturan, lalu coba lagi.";
+"Allow Glide Scan to add photos in Settings, then try again." = "Izinkan Glide Scan menambahkan foto di Pengaturan, lalu coba lagi.";
 "The picture couldn't be added to Photos." = "Gambar tidak dapat ditambahkan ke Foto.";
 "Save it to Files, then share it. It isn't saved in your documents." = "Simpan ke File, lalu bagikan. File ini tidak disimpan di dokumen Anda.";
 "Leave without applying?" = "Keluar tanpa menerapkan?";
@@ -2099,4 +2099,4 @@
 "You'll find it in Documents." = "Ada di Dokumen.";
 "%lld files" = "%lld file";
 "Open-source licenses" = "Lisensi sumber terbuka";
-"HushScan uses these on-device models." = "HushScan menggunakan model di perangkat ini.";
+"Glide Scan uses these on-device models." = "Glide Scan menggunakan model di perangkat ini.";

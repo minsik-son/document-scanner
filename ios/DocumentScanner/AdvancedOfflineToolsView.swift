@@ -1471,7 +1471,7 @@ struct AutoSaveTool: View {
             ToolHero(art: .autoSave)
             AutoExportRow(openPaywall: { paywall = true }, folder: $folder)
                 .padding(16).background(TK.grey50, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            Text("HushScan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone.").font(.footnote).foregroundStyle(TK.grey500)
+            Text("Glide Scan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone.").font(.footnote).foregroundStyle(TK.grey500)
             Text("You can change or turn this off any time here or in Settings.").font(.footnote).foregroundStyle(TK.grey500)
         } actions: { EmptyView() }
         .sheet(isPresented: $paywall) { PaywallView() }

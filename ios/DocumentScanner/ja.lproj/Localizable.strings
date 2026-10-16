@@ -1,4 +1,4 @@
-/* HushScan — ja */
+/* Glide Scan — ja */
 "Word export" = "Word書き出し";
 "Excel export" = "Excel書き出し";
 "PowerPoint export" = "PowerPoint書き出し";
@@ -1397,7 +1397,7 @@
 "Add %lld" = "%lld件を追加";
 "Trial · 1 day left" = "トライアル · 残り1日";
 "Trial · %lld days left" = "トライアル · 残り%lld日";
-"Unlock\nHushScan Pro" = "HushScan Proを\nアンロック";
+"Unlock\nGlide Scan Pro" = "Glide Scan Proを\nアンロック";
 "Office export, translation, photo tools and no ads." = "Office書き出し、翻訳、写真ツール、広告なし。";
 "Try free" = "無料で試す";
 "See plans" = "プランを見る";
@@ -2022,7 +2022,7 @@
 "Copy message" = "内容をコピー";
 "Rate the app" = "アプリを評価";
 "Share the app" = "アプリを共有";
-"HushScan scans documents and keeps them on your iPhone." = "HushScanは書類をスキャンし、iPhoneの中だけに保管します。";
+"Glide Scan scans documents and keeps them on your iPhone." = "Glide Scanは書類をスキャンし、iPhoneの中だけに保管します。";
 
 /* Done pages and toasts */
 "Moved to Trash" = "ゴミ箱に移動しました";
@@ -2053,12 +2053,12 @@
 "Auto-save on" = "自動保存オン";
 "Auto-save off" = "自動保存オフ";
 "Your documents are only on this iPhone" = "書類はこのiPhoneにだけ保存されています";
-"HushScan never uploads anything. Back up before you delete the app or change phones." = "HushScanは何もアップロードしません。アプリを削除したり機種変更したりする前にバックアップしてください。";
+"Glide Scan never uploads anything. Back up before you delete the app or change phones." = "Glide Scanは何もアップロードしません。アプリを削除したり機種変更したりする前にバックアップしてください。";
 "New scans are also saved to your folder" = "新しいスキャンは選んだフォルダにも保存されます";
 "The original stays on this iPhone, and the same PDF is saved to the folder you picked in Files." = "元の書類はこのiPhoneに残り、同じPDFが「ファイル」で選んだフォルダにも保存されます。";
 "Auto-save to Files" = "「ファイル」に自動保存";
 "Save each new scan as a PDF in a folder you pick" = "新しいスキャンを選んだフォルダにPDFで保存";
-"HushScan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone." = "HushScanはアップロードしません。iCloud DriveやDropboxのフォルダを選ぶと、そのサービスが同期します。「このiPhone内」のフォルダならiPhoneの外には出ません。";
+"Glide Scan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone." = "Glide Scanはアップロードしません。iCloud DriveやDropboxのフォルダを選ぶと、そのサービスが同期します。「このiPhone内」のフォルダならiPhoneの外には出ません。";
 "Backup files" = "バックアップファイル";
 "Backup files aren't password protected. Keep them somewhere you trust." = "バックアップファイルにはパスワードがかかりません。信頼できる場所に保管してください。";
 "Scanning, PDF creation and text recognition all run offline on this iPhone." = "スキャン、PDF作成、文字認識はすべてこのiPhone上でオフラインで動作します。";
@@ -2077,7 +2077,7 @@
 "Saved to Files" = "ファイルに保存しました";
 "Not saved yet" = "まだ保存されていません";
 "Couldn't save" = "保存できませんでした";
-"Allow HushScan to add photos in Settings, then try again." = "設定でHushScanに写真の追加を許可してから、もう一度お試しください。";
+"Allow Glide Scan to add photos in Settings, then try again." = "設定でGlide Scanに写真の追加を許可してから、もう一度お試しください。";
 "The picture couldn't be added to Photos." = "写真に画像を追加できませんでした。";
 "Save it to Files, then share it. It isn't saved in your documents." = "ファイルに保存してから共有してください。書類には保存されません。";
 "Leave without applying?" = "適用せずに戻りますか？";
@@ -2099,4 +2099,4 @@
 "You'll find it in Documents." = "書類タブにあります。";
 "%lld files" = "%lld個のファイル";
 "Open-source licenses" = "オープンソースライセンス";
-"HushScan uses these on-device models." = "HushScanは端末内で次のモデルを使用しています。";
+"Glide Scan uses these on-device models." = "Glide Scanは端末内で次のモデルを使用しています。";

@@ -935,7 +935,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 3Q2D38NW4X;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -1008,7 +1008,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Configuration/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = HushScan;
+				INFOPLIST_KEY_CFBundleDisplayName = "Glide Scan";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Scan paper documents and save them on your iPhone.";
 				INFOPLIST_KEY_NSContactsUsageDescription = "Save business cards you scan as new contacts.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your documents on this iPhone.";
@@ -1099,7 +1099,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 3Q2D38NW4X;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -1131,7 +1131,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Configuration/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = HushScan;
+				INFOPLIST_KEY_CFBundleDisplayName = "Glide Scan";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Scan paper documents and save them on your iPhone.";
 				INFOPLIST_KEY_NSContactsUsageDescription = "Save business cards you scan as new contacts.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your documents on this iPhone.";

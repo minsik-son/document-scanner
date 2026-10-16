@@ -1,4 +1,4 @@
-/* HushScan — tr */
+/* Glide Scan — tr */
 "Word export" = "Word'e aktar";
 "Excel export" = "Excel'e aktar";
 "PowerPoint export" = "PowerPoint'e aktar";
@@ -1397,7 +1397,7 @@
 "Add %lld" = "Ekle (%lld)";
 "Trial · 1 day left" = "Deneme · 1 gün kaldı";
 "Trial · %lld days left" = "Deneme · %lld gün kaldı";
-"Unlock\nHushScan Pro" = "HushScan Pro'nun\nkilidini aç";
+"Unlock\nGlide Scan Pro" = "Glide Scan Pro'nun\nkilidini aç";
 "Office export, translation, photo tools and no ads." = "Office'e aktarma, çeviri, fotoğraf araçları ve reklamsız kullanım.";
 "Try free" = "Ücretsiz dene";
 "See plans" = "Planları gör";
@@ -2022,7 +2022,7 @@
 "Copy message" = "Mesajı kopyala";
 "Rate the app" = "Uygulamayı değerlendir";
 "Share the app" = "Uygulamayı paylaş";
-"HushScan scans documents and keeps them on your iPhone." = "HushScan belgeleri tarar ve iPhone’unuzda saklar.";
+"Glide Scan scans documents and keeps them on your iPhone." = "Glide Scan belgeleri tarar ve iPhone’unuzda saklar.";
 
 /* Done pages and toasts */
 "Moved to Trash" = "Çöp Kutusu’na taşındı";
@@ -2053,12 +2053,12 @@
 "Auto-save on" = "Otomatik kaydetme açık";
 "Auto-save off" = "Otomatik kaydetme kapalı";
 "Your documents are only on this iPhone" = "Belgeleriniz yalnızca bu iPhone'da";
-"HushScan never uploads anything. Back up before you delete the app or change phones." = "HushScan hiçbir şey yüklemez. Uygulamayı silmeden veya telefon değiştirmeden önce yedek alın.";
+"Glide Scan never uploads anything. Back up before you delete the app or change phones." = "Glide Scan hiçbir şey yüklemez. Uygulamayı silmeden veya telefon değiştirmeden önce yedek alın.";
 "New scans are also saved to your folder" = "Yeni taramalar klasörünüze de kaydedilir";
 "The original stays on this iPhone, and the same PDF is saved to the folder you picked in Files." = "Orijinal bu iPhone'da kalır, aynı PDF Dosyalar'da seçtiğiniz klasöre de kaydedilir.";
 "Auto-save to Files" = "Dosyalar'a otomatik kaydet";
 "Save each new scan as a PDF in a folder you pick" = "Her yeni taramayı seçtiğiniz klasöre PDF olarak kaydeder";
-"HushScan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone." = "HushScan hiçbir şey yüklemez. iCloud Drive veya Dropbox klasörü seçerseniz o hizmet eşitler. iPhone'umda klasörü bu iPhone'dan hiç çıkmaz.";
+"Glide Scan never uploads. If you pick an iCloud Drive or Dropbox folder, that service syncs it. A folder On My iPhone never leaves this iPhone." = "Glide Scan hiçbir şey yüklemez. iCloud Drive veya Dropbox klasörü seçerseniz o hizmet eşitler. iPhone'umda klasörü bu iPhone'dan hiç çıkmaz.";
 "Backup files" = "Yedek dosyaları";
 "Backup files aren't password protected. Keep them somewhere you trust." = "Yedek dosyaları parola korumalı değildir. Güvendiğiniz bir yerde saklayın.";
 "Scanning, PDF creation and text recognition all run offline on this iPhone." = "Tarama, PDF oluşturma ve metin tanıma bu iPhone'da çevrimdışı çalışır.";
@@ -2077,7 +2077,7 @@
 "Saved to Files" = "Dosyalar’a kaydedildi";
 "Not saved yet" = "Henüz kaydedilmedi";
 "Couldn't save" = "Kaydedilemedi";
-"Allow HushScan to add photos in Settings, then try again." = "Ayarlar’da HushScan’in fotoğraf eklemesine izin verin ve tekrar deneyin.";
+"Allow Glide Scan to add photos in Settings, then try again." = "Ayarlar’da Glide Scan’in fotoğraf eklemesine izin verin ve tekrar deneyin.";
 "The picture couldn't be added to Photos." = "Görsel Fotoğraflar’a eklenemedi.";
 "Save it to Files, then share it. It isn't saved in your documents." = "Dosyalar’a kaydedin, sonra paylaşın. Belgelerinize kaydedilmez.";
 "Leave without applying?" = "Uygulamadan çıkılsın mı?";
@@ -2099,4 +2099,4 @@
 "You'll find it in Documents." = "Belgeler’de bulabilirsiniz.";
 "%lld files" = "%lld dosya";
 "Open-source licenses" = "Açık kaynak lisansları";
-"HushScan uses these on-device models." = "HushScan bu cihaz içi modelleri kullanır.";
+"Glide Scan uses these on-device models." = "Glide Scan bu cihaz içi modelleri kullanır.";

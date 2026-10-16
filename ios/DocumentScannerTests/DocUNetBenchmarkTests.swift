@@ -9,6 +9,8 @@ import Translation
 /// developer Mac (research data, never committed). Writes results to
 /// Verification/private/docunet; Verification/private/docunet/score.py scores them.
 final class DocUNetBenchmarkTests: XCTestCase {
+    override func setUp() { super.setUp(); NeuralTestSettings.apply() }
+    override func tearDown() { NeuralModels.use = .init(); super.tearDown() }
     private static let ios = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
     private static let out = ios.appendingPathComponent("Verification/private/docunet")
     private var data: URL? {

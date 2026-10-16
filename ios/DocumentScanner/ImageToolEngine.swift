@@ -405,8 +405,18 @@ enum ImageToolEngine {
         let radius = max(2, Int(Double(max(cg.width, cg.height)) * 0.003 * (0.7 + 0.6 * amount)))
         try despeckle(&r, radius: radius, threshold: Int(34 - 12 * amount))
         guard let clean = try image(r).cgImage else { throw ScannerError.message("This photo is unavailable.") }
-        var image = CIImage(cgImage: clean)
         try Task.checkCancellation()
+        // Small photos are enlarged two times.
+        let enlarged = max(cg.width, cg.height) < 1400
+        let target = enlarged ? CGRect(x: 0, y: 0, width: cg.width * 2, height: cg.height * 2) : extent
+        // 2–4 with the learned restorer: noise, blur and JPEG blocks rebuilt, then colour.
+        if let learned = try NeuralRestore.restore(clean, level: level, size: target.size) {
+            var image = try levels(CIImage(cgImage: learned), perChannel: fixColor, amount: amount)
+            image = image.applyingFilter("CIHighlightShadowAdjust", parameters: ["inputShadowAmount": 0.2 * amount, "inputHighlightAmount": 1 - 0.1 * amount])
+            if fixColor { image = image.applyingFilter("CIVibrance", parameters: ["inputAmount": 0.25 * amount]) }
+            return try output(image.cropped(to: target), extent: target)
+        }
+        var image = CIImage(cgImage: clean)
         // 2. Noise and film grain.
         image = image.applyingFilter("CINoiseReduction", parameters: ["inputNoiseLevel": 0.015 + 0.025 * amount, "inputSharpness": 0.4])
             .cropped(to: extent)
@@ -417,7 +427,7 @@ enum ImageToolEngine {
         image = image.cropped(to: extent)
         // 4. Small photos are enlarged two times, then sharpened.
         var outputExtent = extent
-        if max(cg.width, cg.height) < 1400 {
+        if enlarged {
             image = image.applyingFilter("CILanczosScaleTransform", parameters: [kCIInputScaleKey: 2.0, kCIInputAspectRatioKey: 1.0])
             outputExtent = CGRect(x: 0, y: 0, width: cg.width * 2, height: cg.height * 2)
         }
@@ -449,9 +459,25 @@ enum ImageToolEngine {
             let d = abs(Int(r.bytes[p]) - Int(a[p])) + abs(Int(r.bytes[p + 1]) - Int(a[p + 1])) + abs(Int(r.bytes[p + 2]) - Int(a[p + 2]))
             changed[i] = d > threshold * 3
         }
+        // Dust and scratches are isolated specks and thin lines. Where much of the
+        // neighbourhood changed, it is texture (leaves, lace, grain): left alone, or it
+        // would turn into flat blocks.
+        let reach = 3 * radius + 4
+        var sum = [Int32](repeating: 0, count: (w + 1) * (h + 1))
+        for y in 0..<h {
+            var row: Int32 = 0
+            for x in 0..<w { row += changed[y * w + x] ? 1 : 0; sum[(y + 1) * (w + 1) + x + 1] = sum[y * (w + 1) + x + 1] + row }
+        }
+        var speck = [Bool](repeating: false, count: w * h)
+        for y in 0..<h { for x in 0..<w where changed[y * w + x] {
+            let x0 = max(0, x - reach), x1 = min(w, x + reach + 1), y0 = max(0, y - reach), y1 = min(h, y + reach + 1)
+            let n = sum[y1 * (w + 1) + x1] - sum[y0 * (w + 1) + x1] - sum[y1 * (w + 1) + x0] + sum[y0 * (w + 1) + x0]
+            speck[y * w + x] = Double(n) <= Double((x1 - x0) * (y1 - y0)) * 0.12
+        } }
+        try Task.checkCancellation()
         for y in 0..<h { for x in 0..<w {
             var hit = false
-            for yy in max(0, y - 1)...min(h - 1, y + 1) where !hit { for xx in max(0, x - 1)...min(w - 1, x + 1) where changed[yy * w + xx] { hit = true; break } }
+            for yy in max(0, y - 1)...min(h - 1, y + 1) where !hit { for xx in max(0, x - 1)...min(w - 1, x + 1) where speck[yy * w + xx] { hit = true; break } }
             guard hit else { continue }
             let p = (y * w + x) * 4
             r.bytes[p] = a[p]; r.bytes[p + 1] = a[p + 1]; r.bytes[p + 2] = a[p + 2]

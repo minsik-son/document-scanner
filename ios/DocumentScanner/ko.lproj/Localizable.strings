@@ -2098,3 +2098,5 @@
 "You'll find it in the Photos app." = "사진 앱에서 볼 수 있어요.";
 "You'll find it in Documents." = "문서 탭에서 볼 수 있어요.";
 "%lld files" = "파일 %lld개";
+"Open-source licenses" = "오픈소스 라이선스";
+"HushScan uses these on-device models." = "HushScan은 기기 안에서 다음 모델을 사용합니다.";

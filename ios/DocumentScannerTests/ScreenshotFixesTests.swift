@@ -587,6 +587,8 @@ enum QAText {
 }
 
 final class QAScanTests: XCTestCase {
+    override func setUp() { super.setUp(); NeuralTestSettings.apply() }
+    override func tearDown() { NeuralModels.use = .init(); super.tearDown() }
     struct PhotoTruth: Decodable { let page: String; let variant: String; let corners: [[Double]] }
     struct PageTruth: Decodable { let id: String; let kind: String; let size: [Double]; let lines: [String]; let colors: [ColorTruth] }
     struct ColorTruth: Decodable { let name: String; let box: [Double]; let rgb: [Double] }

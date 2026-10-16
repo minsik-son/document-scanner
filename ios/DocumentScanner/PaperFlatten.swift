@@ -26,7 +26,7 @@ enum PaperFlatten {
     private static let gate = NSLock()
 
     static func key(imageFile: String, crop: ScanQuad) -> String {
-        "flat-v\(FlattenMesh.version)|\(imageFile)|" + crop.points.map { String(format: "%.4f,%.4f", $0.x, $0.y) }.joined(separator: ";")
+        "flat-v\(FlattenMesh.version)\(NeuralModels.use.unwarp ? "n" : "")|\(imageFile)|" + crop.points.map { String(format: "%.4f,%.4f", $0.x, $0.y) }.joined(separator: ";")
     }
     private static var folder: URL? {
         guard let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else { return nil }
@@ -65,7 +65,56 @@ enum PaperFlatten {
         let small = source.transformed(by: CGAffineTransform(translationX: -e.minX, y: -e.minY)).transformed(by: CGAffineTransform(scaleX: s, y: s))
         guard let cg = DocumentProcessing.context.createCGImage(small, from: CGRect(x: 0, y: 0, width: (e.width * s).rounded(.down), height: (e.height * s).rounded(.down)),
                                                                format: .RGBA8, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)) else { return nil }
-        return PaperFlattener.analyze(cg, crop: crop)
+        // The learned flattener keeps the page's true shape and follows crumpled paper
+        // (DocUNet: page shape error about halved, fewer OCR errors); the hand-written one
+        // when the model is unavailable, the page is flat or its result isn't plausible.
+        // When both find the page, the hand-written fit is kept only where its text lines
+        // come out at least twice as straight (a cut-off corner, which the model, trained
+        // on whole sheets, stretches to a full rectangle).
+        let learned = NeuralUnwarp.analyze(cg, crop: crop)
+        let fitted = PaperFlattener.analyze(cg, crop: crop)
+        guard let learned else { return fitted }
+        guard let fitted else { return learned }
+        let source = CIImage(cgImage: cg)
+        func bend(_ mesh: FlattenMesh) -> (worst: Double, lines: Int)? {
+            guard let flat = apply(mesh, to: source),
+                  let image = DocumentProcessing.context.createCGImage(flat, from: flat.extent) else { return nil }
+            let b = lineBend(image)
+            return (b.worst, b.lines)
+        }
+        guard let a = bend(learned), let b = bend(fitted), a.lines >= 5, b.lines >= 5 else { return learned }
+        #if DEBUG
+        print(String(format: "FLATTEN choice: learned %.2f (%d lines), fitted %.2f (%d lines)", a.worst, a.lines, b.worst, b.lines))
+        #endif
+        return b.worst < a.worst * 0.5 ? fitted : learned
+    }
+
+    /// How straight the text lines and ruled lines of a flat page are: per line, the
+    /// spread around its best straight line plus its tilt, in pixels at 1000 px wide.
+    /// Median and 90th percentile.
+    static func lineBend(_ image: CGImage) -> (median: Double, worst: Double, lines: Int) {
+        let w = 1000, h = max(100, Int(Double(image.height) * 1000 / Double(max(1, image.width))))
+        guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w, space: CGColorSpaceCreateDeviceGray(),
+                                  bitmapInfo: CGImageAlphaInfo.none.rawValue), let data = ctx.data else { return (0, 0, 0) }
+        ctx.interpolationQuality = .high
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        let bytes = data.bindMemory(to: UInt8.self, capacity: w * h)
+        var g = Plane(w: w, h: h)
+        for i in 0..<(w * h) { g.p[i] = bytes[i] }
+        let th = PaperFeatures.binarize(g)
+        var scores: [Double] = []
+        func score(_ pts: [SIMD2<Double>], vertical: Bool) {
+            guard pts.count >= 2 else { return }
+            let t = pts.map { vertical ? $0.y : $0.x }, s = pts.map { vertical ? $0.x : $0.y }
+            let n = Double(t.count), mt = t.reduce(0, +) / n, ms = s.reduce(0, +) / n
+            let b = zip(t, s).reduce(0) { $0 + ($1.0 - mt) * ($1.1 - ms) } / max(1e-9, t.reduce(0) { $0 + ($1 - mt) * ($1 - mt) })
+            let res = zip(t, s).map { abs($0.1 - (ms + b * ($0.0 - mt))) }.reduce(0, +) / n
+            scores.append(res + abs(b) * ((t.max() ?? 0) - (t.min() ?? 0)) / 2)
+        }
+        for l in PaperFeatures.textLines(th) + PaperFeatures.horizontalRules(th) { score(l.pts, vertical: false) }
+        for l in PaperFeatures.verticalRules(th) { score(l.pts, vertical: true) }
+        scores.sort()
+        return scores.isEmpty ? (0, 0, 0) : (scores[scores.count / 2], scores[scores.count * 9 / 10], scores.count)
     }
 
     // The map holds each grid point's offset from a plain four-corner (perspective)

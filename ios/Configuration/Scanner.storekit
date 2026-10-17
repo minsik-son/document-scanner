@@ -79,20 +79,15 @@
           "familyShareable": false,
           "groupNumber": 1,
           "internalID": "scanner-yearly",
-          "introductoryOffer": {
-            "internalID": "scanner-yearly-trial",
-            "numberOfPeriods": 1,
-            "paymentMode": "free",
-            "subscriptionPeriod": "P1W"
-          },
+          "introductoryOffer": null,
           "localizations": [
             {
-              "description": "All Pro tools and no ads. 7 days free.",
+              "description": "All Pro tools and no ads. Billed yearly.",
               "displayName": "Glide Scan Pro Yearly",
               "locale": "en_US"
             },
             {
-              "description": "모든 Pro 도구와 광고 제거. 7일 무료",
+              "description": "모든 Pro 도구와 광고 제거. 매년 결제",
               "displayName": "Glide Scan Pro 연간",
               "locale": "ko"
             }

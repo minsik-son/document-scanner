@@ -10,7 +10,7 @@ Thank you for reviewing Glide Scan.
 
 **How to try Pro features**
 - Free tries: each Pro tool family can be tried for free before upgrading — 3 uses each for Word/Excel/PowerPoint, Photo translation, photo tools and PDF tools; 1 use each for Hide personal info and Fill a form. Open the Tools tab (grid icon in the bottom bar) and tap any tile marked "N free".
-- Subscriptions (Sandbox): Monthly, and Yearly with a 7-day free trial. Open Me → "Explore Pro" (or any Pro tile after its free tries) to see the subscription page. Price, period and renewal terms on that page come from StoreKit.
+- Subscriptions (Sandbox): Monthly and Yearly (no free trial), plus a one-time Lifetime purchase. Open Me → "Explore Pro" (or any Pro tile after its free tries) to see the subscription page. Price, period and renewal terms on that page come from StoreKit.
 - Lifetime: a one-time, non-consumable purchase on the same page. "Restore purchases" is at the bottom of the subscription page.
 - The subscription page links to Apple's standard Terms of Use (EULA) and our Privacy Policy.
 
@@ -22,6 +22,6 @@ Thank you for reviewing Glide Scan.
 
 **3D scan** requires a LiDAR scanner and **Measure** requires AR support. Their tiles appear only on devices that can run them.
 
-**Permissions**: Camera (scanning), Photos add-only (saving images you create), Contacts (only when saving a scanned business card), Face ID (optional App lock), Notifications (only after starting a free trial, for a reminder 2 days before renewal).
+**Permissions**: Camera (scanning), Photos add-only (saving images you create), Contacts (only when saving a scanned business card), Face ID (optional App lock).
 
 **Contact**: support@rudefinch.com · Support page: https://rudefinch.com/glidescan/support.html

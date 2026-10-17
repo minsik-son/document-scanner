@@ -347,3 +347,101 @@ final class StoreScreenshotsUITests: HushUITestCase {
         app.terminate()
     }
 }
+
+/// App Store preview video: the same flows as the screenshots, paced for a screen
+/// recording (runner `recuitest`). Scene start/end times go to
+/// Verification/private/preview/marks-<lang>.json so the edit can cut them.
+extension StoreScreenshotsUITests {
+    @MainActor func testPreviewEN() { preview("en") }
+    @MainActor func testPreviewKO() { preview("ko") }
+
+    private static var marksURL: URL { ios.appendingPathComponent("Verification/private/preview") }
+
+    @MainActor private func preview(_ language: String) {
+        table = (NSDictionary(contentsOfFile: Self.ios.appendingPathComponent("DocumentScanner/\(language).lproj/Localizable.strings").path) as? [String: String]) ?? [:]
+        let seeded = seeds(language), names = Self.titles[language]!
+        var marks: [[String: Any]] = []
+        func mark(_ scene: String, _ edge: String) { marks.append(["scene": scene, "edge": edge, "t": Date().timeIntervalSince1970]) }
+        func pause(_ s: Double) { RunLoop.current.run(until: Date().addingTimeInterval(s)) }
+        defer {
+            try? FileManager.default.createDirectory(at: Self.marksURL, withIntermediateDirectories: true)
+            if let data = try? JSONSerialization.data(withJSONObject: marks, options: .prettyPrinted) {
+                try? data.write(to: Self.marksURL.appendingPathComponent("marks-\(language).json"))
+            }
+        }
+
+        // 1. Scan the lease: capture, then the clean page appears.
+        var app = launch(language, camera: Self.out.deletingLastPathComponent().appendingPathComponent("flat/lease.jpg").path)
+        let scan = app.buttons["scan-document"]
+        XCTAssertTrue(scan.waitForExistence(timeout: 10)); scan.tap()
+        let shutter = app.buttons[L("Capture page")]
+        _ = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true AND enabled == true"), object: shutter)], timeout: 20)
+        pause(1)
+        mark("scan", "start")
+        shutter.tap()
+        _ = app.buttons["capture-review-retake"].waitForExistence(timeout: 20)
+        _ = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true AND enabled == true"), object: app.buttons["review-done"])], timeout: 40)
+        pause(3)
+        mark("scan", "end")
+        app.terminate()
+
+        // 2. Invoice to Excel.
+        app = launch(language, seeds: seeded)
+        _ = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", names[2])).firstMatch.waitForExistence(timeout: 30)
+        pause(1)
+        mark("home", "start")
+        pause(2.5)
+        mark("home", "end")
+        app.buttons["nav-documents"].tap()
+        chooseDocument(app, names[1])
+        let tools = app.descendants(matching: .any)["document-tools"].firstMatch
+        XCTAssertTrue(tools.waitForExistence(timeout: 10)); tools.tap()
+        let more = app.buttons[L("More offline tools")]
+        if more.waitForExistence(timeout: 5) { more.tap() }
+        let excel = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", L("Excel export"))).firstMatch
+        _ = excel.waitForExistence(timeout: 20)
+        for _ in 0..<6 where !excel.isHittable { app.swipeUp() }
+        pause(0.5)
+        mark("excel", "start")
+        excel.tap()
+        if app.buttons["pro-try-free"].waitForExistence(timeout: 4) { app.buttons["pro-try-free"].tap() }
+        let excelPage = app.descendants(matching: .any)["office-page-preview"].firstMatch
+        if app.buttons["office-continue"].waitForExistence(timeout: 8), !excelPage.exists { app.buttons["office-continue"].tap() }
+        XCTAssertTrue(excelPage.waitForExistence(timeout: 90))
+        pause(2)
+        excelPage.tap()
+        let editor = app.descendants(matching: .any)["office-page-editor"].firstMatch
+        if editor.waitForExistence(timeout: 10) {
+            pause(1)
+            editor.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.42)).doubleTap()
+            pause(2.5)
+        }
+        mark("excel", "end")
+        app.terminate()
+
+        // 4. Hide personal info on the patient form.
+        app = launch(language, seeds: seeded)
+        openTool(app, label: L("Hide personal info"))
+        pause(0.5)
+        mark("redact", "start")
+        chooseDocument(app, names[2])
+        _ = app.buttons["redact-save"].waitForExistence(timeout: 60)
+        pause(3)
+        mark("redact", "end")
+        app.terminate()
+
+        // 6. Compress the lease.
+        app = launch(language, seeds: seeded)
+        openTool(app, label: L("Compress PDF"))
+        chooseDocument(app, names[0])
+        if app.buttons["compress-run"].waitForExistence(timeout: 20) {
+            pause(1)
+            mark("compress", "start")
+            app.buttons["compress-run"].tap()
+            _ = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "%")).firstMatch.waitForExistence(timeout: 60)
+            pause(2.5)
+            mark("compress", "end")
+        }
+        app.terminate()
+    }
+}

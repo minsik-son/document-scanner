@@ -6,9 +6,8 @@
 <title>Rude Finch — Small, private apps for iPhone</title>
 <meta name="description" content="Rude Finch is an independent studio making small iPhone apps that keep your things on your device: Glide Scan, an offline PDF scanner and OCR app, and Pinnap, an arrival alarm for trains and buses.">
 <link rel="canonical" href="https://rudefinch.com/">
-<link rel="icon" href="assets/finch.svg" type="image/svg+xml">
-<link rel="icon" href="assets/finch-180.png" type="image/png" sizes="180x180">
-<link rel="apple-touch-icon" href="assets/finch-180.png">
+<link rel="icon" href="assets/rf-favicon-64.png" type="image/png" sizes="64x64">
+<link rel="apple-touch-icon" href="assets/rf-touch-180.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Rude Finch">
 <meta property="og:title" content="Rude Finch — Small, private apps for iPhone">
@@ -25,7 +24,7 @@
       "@id": "https://rudefinch.com/#org",
       "name": "Rude Finch",
       "url": "https://rudefinch.com/",
-      "logo": "https://rudefinch.com/assets/finch-180.png",
+      "logo": "https://rudefinch.com/assets/rf-logo.png",
       "email": "support@rudefinch.com"
     },
     {
@@ -45,7 +44,7 @@
   :root {
     color-scheme: light dark;
     --bg:#ffffff; --surface:#f3f4f7; --ink:#1a1d23; --sub:#5a6170; --line:#e3e6eb;
-    --finch:#f5b800; --link:#2f6feb;
+    --link:#2f6feb;
     --glide:#e8f1ff; --pinnap:#efeaff;
     --display:"Bricolage Grotesque", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
@@ -57,23 +56,28 @@
   @media (prefers-reduced-motion: reduce) { html { scroll-behavior:auto; } }
   body { margin:0; background:var(--bg); color:var(--ink); font:17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; -webkit-font-smoothing:antialiased; }
   a { color:var(--link); }
-  a:focus-visible, .btn:focus-visible { outline:3px solid var(--finch); outline-offset:3px; border-radius:6px; }
+  a:focus-visible, .btn:focus-visible { outline:3px solid var(--link); outline-offset:3px; border-radius:6px; }
   .wrap { max-width:1120px; margin:0 auto; padding:0 24px; }
 
   /* Header */
   .top { display:flex; align-items:center; justify-content:space-between; padding:20px 0; }
-  .logo { display:flex; align-items:center; gap:10px; color:var(--ink); text-decoration:none; font:700 21px/1 var(--display); letter-spacing:-0.3px; }
-  .logo img { width:40px; height:40px; }
+  .ink-mask { display:inline-block; background:var(--ink); -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; -webkit-mask-size:contain; mask-size:contain; -webkit-mask-position:center; mask-position:center; }
+  .rf-mark { -webkit-mask-image:url(assets/rf-mark.png); mask-image:url(assets/rf-mark.png); aspect-ratio:731/548; }
+  .rf-word { -webkit-mask-image:url(assets/rf-wordmark.png); mask-image:url(assets/rf-wordmark.png); aspect-ratio:1078/143; }
+  .rf-logo { -webkit-mask-image:url(assets/rf-logo.png); mask-image:url(assets/rf-logo.png); aspect-ratio:1078/717; }
+  .logo { display:flex; align-items:center; gap:12px; text-decoration:none; }
+  .logo .rf-mark { height:34px; }
+  .logo .rf-word { height:15px; }
   .top nav a { color:var(--sub); text-decoration:none; font-weight:500; font-size:15px; margin-left:24px; }
   .top nav a:hover { color:var(--ink); }
 
   /* Hero */
   .hero { padding:72px 0 88px; }
   .hero h1 { font:800 clamp(44px, 7.4vw, 92px)/0.98 var(--display); letter-spacing:-0.035em; margin:0; max-width:15ch; }
-  .perch { position:relative; display:inline-block; padding-right:0.86em; }
-  .perch img { position:absolute; width:0.8em; height:0.8em; right:0; bottom:0.02em; transform-origin:40% 100%; }
+  .perch { position:relative; display:inline-block; padding-right:1.02em; }
+  .perch .rf-mark { position:absolute; height:0.72em; right:0; bottom:0.04em; transform-origin:40% 100%; }
   @media (prefers-reduced-motion: no-preference) {
-    .perch img { animation:land 900ms cubic-bezier(.2,.9,.25,1.15) 300ms both; }
+    .perch .rf-mark { animation:land 900ms cubic-bezier(.2,.9,.25,1.15) 300ms both; }
     @keyframes land {
       0% { transform:translate(1.4em,-1.2em) rotate(18deg); opacity:0; }
       60% { transform:translate(0,0.06em) rotate(-6deg); opacity:1; }
@@ -97,23 +101,21 @@
   .actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px 20px; }
   .btn { display:inline-block; background:var(--ink); color:var(--bg); text-decoration:none; font-weight:600; font-size:16px; padding:13px 22px; border-radius:14px; }
   .actions a:not(.btn) { font-size:15px; font-weight:500; }
-  .shots { position:relative; height:440px; }
-  .shots img { position:absolute; width:46%; max-width:220px; border-radius:22px; box-shadow:0 18px 40px rgba(20,24,40,.18); }
-  .shots img:first-child { left:12%; top:0; transform:rotate(-4deg); }
-  .shots img:last-child { right:8%; top:44px; transform:rotate(4deg); }
+  .shots { align-self:end; margin-bottom:-48px; }
+  .shots img { display:block; width:100%; max-width:470px; height:auto; margin:0 auto; }
 
   /* About */
   .about { padding:72px 0 24px; }
   .beliefs { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:40px; margin-top:8px; }
   .beliefs h3 { font:700 21px/1.25 var(--display); margin:0 0 8px; }
-  .beliefs h3::before { content:""; display:block; width:28px; height:6px; border-radius:3px; background:var(--finch); margin-bottom:16px; }
+  .beliefs h3::before { content:""; display:block; width:28px; height:6px; border-radius:3px; background:var(--ink); margin-bottom:16px; }
   .beliefs p { color:var(--sub); margin:0; }
 
   /* Contact */
   .contact { margin:72px 0 0; padding:44px 48px; background:var(--surface); border-radius:32px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:20px; }
   .contact h2 { font:700 28px/1.2 var(--display); letter-spacing:-0.02em; margin:0 0 6px; }
   .contact p { color:var(--sub); margin:0; }
-  .mail { font:700 22px/1.2 var(--display); color:var(--ink); text-decoration-color:var(--finch); text-decoration-thickness:3px; text-underline-offset:6px; }
+  .mail { font:700 22px/1.2 var(--display); color:var(--ink); text-decoration-color:var(--ink); text-decoration-thickness:3px; text-underline-offset:6px; }
 
   /* Footer */
   footer { margin-top:72px; border-top:1px solid var(--line); padding:40px 0 56px; }
@@ -125,7 +127,8 @@
 
   @media (max-width:860px) {
     .app { grid-template-columns:1fr; padding:32px 24px; border-radius:24px; }
-    .shots { height:360px; }
+    .shots { margin-bottom:-32px; }
+    .shots img { max-width:400px; }
     .beliefs { grid-template-columns:1fr; gap:28px; }
     .foot { grid-template-columns:1fr 1fr; }
     .contact { padding:32px 24px; border-radius:24px; }
@@ -134,8 +137,6 @@
     .top nav a { margin-left:14px; font-size:14px; }
     .top nav a.hide-s { display:none; }
     .hero { padding:40px 0 56px; }
-    .shots { height:300px; }
-    .shots img { width:48%; }
     .app h3 { font-size:26px; }
   }
 </style>
@@ -143,7 +144,7 @@
 <body>
 <div class="wrap">
   <header class="top">
-    <a class="logo" href="/"><picture><source srcset="assets/finch-dark.svg" media="(prefers-color-scheme: dark)"><img src="assets/finch.svg" alt="" width="40" height="40"></picture>Rude Finch</a>
+    <a class="logo" href="/" aria-label="Rude Finch home"><span class="ink-mask rf-mark"></span><span class="ink-mask rf-word"></span></a>
     <nav aria-label="Site">
       <a href="#apps">Apps</a>
       <a href="#about" class="hide-s">About</a>
@@ -153,7 +154,7 @@
 
   <main>
     <section class="hero">
-      <h1>Small iPhone apps that mind their own <span class="perch">business.<picture><source srcset="assets/finch-dark.svg" media="(prefers-color-scheme: dark)"><img src="assets/finch.svg" alt="" width="64" height="64"></picture></span></h1>
+      <h1>Small iPhone apps that mind their own <span class="perch">business.<span class="ink-mask rf-mark" aria-hidden="true"></span></span></h1>
       <p>Rude Finch is an independent studio. Each app does one job well, works without an account, and keeps your documents and places on your iPhone.</p>
     </section>
 
@@ -179,8 +180,7 @@
           </div>
         </div>
         <div class="shots" aria-hidden="true">
-          <img src="glidescan/img/en-01.jpg" alt="" width="600" height="1304" loading="lazy">
-          <img src="glidescan/img/en-02.jpg" alt="" width="600" height="1304" loading="lazy">
+          <img src="assets/glidescan-phones.webp" alt="" width="1000" height="1135" loading="lazy">
         </div>
       </article>
 
@@ -203,8 +203,7 @@
           </div>
         </div>
         <div class="shots" aria-hidden="true">
-          <img src="pinnap/img/en-01.jpg" alt="" width="600" height="1304" loading="lazy">
-          <img src="pinnap/img/en-03.jpg" alt="" width="600" height="1304" loading="lazy">
+          <img src="assets/pinnap-phones.webp" alt="" width="1000" height="1135" loading="lazy">
         </div>
       </article>
     </section>
@@ -239,7 +238,7 @@
   <footer>
     <div class="foot">
       <div>
-        <a class="logo" href="/"><picture><source srcset="assets/finch-dark.svg" media="(prefers-color-scheme: dark)"><img src="assets/finch.svg" alt="" width="32" height="32" style="width:32px;height:32px"></picture>Rude Finch</a>
+        <a href="/" aria-label="Rude Finch home" style="display:block;width:120px"><span class="ink-mask rf-logo" style="width:120px"></span></a>
         <small>Small, private apps for iPhone.</small>
         <small>© 2026 Rude Finch</small>
       </div>

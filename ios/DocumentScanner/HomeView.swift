@@ -330,7 +330,7 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 22) {
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Paper, meet\npeace of mind.").font(.system(.title2, weight: .bold))
+                    Text("Glide through\nyour paperwork.").font(.system(.title2, weight: .bold))
                         .lineLimit(3).minimumScaleFactor(0.8).fixedSize(horizontal: false, vertical: true)
                     Text("Clear scans. Everything in place.").font(.subheadline).foregroundStyle(.secondary)
                 }

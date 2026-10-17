@@ -3,55 +3,264 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rude Finch — Private apps for iPhone</title>
-<meta name="description" content="Rude Finch makes small, private apps for iPhone, including Glide Scan, an offline PDF scanner and OCR app, and Pinnap, an arrival alarm for trains and buses.">
+<title>Rude Finch — Small, private apps for iPhone</title>
+<meta name="description" content="Rude Finch is an independent studio making small iPhone apps that keep your things on your device: Glide Scan, an offline PDF scanner and OCR app, and Pinnap, an arrival alarm for trains and buses.">
 <link rel="canonical" href="https://rudefinch.com/">
-<link rel="icon" href="glidescan/img/icon.png">
+<link rel="icon" href="assets/finch.svg" type="image/svg+xml">
+<link rel="icon" href="assets/finch-180.png" type="image/png" sizes="180x180">
+<link rel="apple-touch-icon" href="assets/finch-180.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Rude Finch">
+<meta property="og:title" content="Rude Finch — Small, private apps for iPhone">
+<meta property="og:description" content="Glide Scan and Pinnap: iPhone apps that do one job well and keep your things on your device.">
+<meta property="og:url" content="https://rudefinch.com/">
+<meta property="og:image" content="https://rudefinch.com/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "Organization",
-  "@id": "https://rudefinch.com/#org",
-  "name": "Rude Finch",
-  "url": "https://rudefinch.com/",
-  "email": "support@rudefinch.com"
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://rudefinch.com/#org",
+      "name": "Rude Finch",
+      "url": "https://rudefinch.com/",
+      "logo": "https://rudefinch.com/assets/finch-180.png",
+      "email": "support@rudefinch.com"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://rudefinch.com/#site",
+      "url": "https://rudefinch.com/",
+      "name": "Rude Finch",
+      "publisher": { "@id": "https://rudefinch.com/#org" }
+    }
+  ]
 }
 </script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
 <style>
-  :root { color-scheme: light dark; --ink:#191f28; --sub:#4e5968; --line:#e5e8eb; --bg:#ffffff; --accent:#3182f6; }
-  @media (prefers-color-scheme: dark) { :root { --ink:#f2f4f6; --sub:#b0b8c1; --line:#333d4b; --bg:#17171c; } }
-  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-  main { max-width:720px; margin:0 auto; padding:40px 20px 64px; }
-  h1 { font-size:30px; margin:0 0 16px; } h2 { font-size:20px; margin:32px 0 8px; }
-  p, li { color:var(--sub); } a { color:var(--accent); }
-  .contact { border:1px solid var(--line); border-radius:16px; padding:16px 20px; display:flex; gap:16px; align-items:flex-start; }
-  .contact img { width:56px; height:56px; border-radius:13px; flex:none; margin-top:14px; }
-  .contact a.name { color:var(--ink); text-decoration:none; }
+  :root {
+    color-scheme: light dark;
+    --bg:#ffffff; --surface:#f3f4f7; --ink:#1a1d23; --sub:#5a6170; --line:#e3e6eb;
+    --finch:#f5b800; --link:#2f6feb;
+    --glide:#e8f1ff; --pinnap:#efeaff;
+    --display:"Bricolage Grotesque", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#121418; --surface:#1b1e24; --ink:#eef0f3; --sub:#a6adba; --line:#2b2f37; --link:#6e9dff; --glide:#16233a; --pinnap:#221c3a; }
+  }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior:auto; } }
+  body { margin:0; background:var(--bg); color:var(--ink); font:17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:var(--link); }
+  a:focus-visible, .btn:focus-visible { outline:3px solid var(--finch); outline-offset:3px; border-radius:6px; }
+  .wrap { max-width:1120px; margin:0 auto; padding:0 24px; }
+
+  /* Header */
+  .top { display:flex; align-items:center; justify-content:space-between; padding:20px 0; }
+  .logo { display:flex; align-items:center; gap:10px; color:var(--ink); text-decoration:none; font:700 21px/1 var(--display); letter-spacing:-0.3px; }
+  .logo img { width:40px; height:40px; }
+  .top nav a { color:var(--sub); text-decoration:none; font-weight:500; font-size:15px; margin-left:24px; }
+  .top nav a:hover { color:var(--ink); }
+
+  /* Hero */
+  .hero { padding:72px 0 88px; }
+  .hero h1 { font:800 clamp(44px, 7.4vw, 92px)/0.98 var(--display); letter-spacing:-0.035em; margin:0; max-width:15ch; }
+  .perch { position:relative; display:inline-block; padding-right:0.86em; }
+  .perch img { position:absolute; width:0.8em; height:0.8em; right:0; bottom:0.02em; transform-origin:40% 100%; }
+  @media (prefers-reduced-motion: no-preference) {
+    .perch img { animation:land 900ms cubic-bezier(.2,.9,.25,1.15) 300ms both; }
+    @keyframes land {
+      0% { transform:translate(1.4em,-1.2em) rotate(18deg); opacity:0; }
+      60% { transform:translate(0,0.06em) rotate(-6deg); opacity:1; }
+      100% { transform:translate(0,0) rotate(0); opacity:1; }
+    }
+  }
+  .hero p { font-size:clamp(18px, 2vw, 21px); color:var(--sub); max-width:36em; margin:28px 0 0; }
+
+  /* Apps */
+  .section-title { font:700 32px/1.15 var(--display); letter-spacing:-0.02em; margin:0 0 24px; }
+  .app { display:grid; grid-template-columns:minmax(0, 1.05fr) minmax(0, 0.95fr); gap:32px; align-items:center; border-radius:32px; padding:48px; margin-bottom:24px; overflow:hidden; }
+  .app.glide { background:var(--glide); }
+  .app.pinnap { background:var(--pinnap); }
+  .app-head { display:flex; align-items:center; gap:16px; }
+  .app-head img { width:72px; height:72px; border-radius:17px; box-shadow:0 1px 0 rgba(0,0,0,.06); }
+  .app h3 { font:700 30px/1.1 var(--display); letter-spacing:-0.02em; margin:0; }
+  .app .kind { color:var(--sub); font-size:15px; margin:4px 0 0; }
+  .app .pitch { font-size:19px; margin:22px 0 14px; }
+  .app ul { margin:0 0 26px; padding-left:20px; color:var(--sub); }
+  .app li { margin:4px 0; }
+  .actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px 20px; }
+  .btn { display:inline-block; background:var(--ink); color:var(--bg); text-decoration:none; font-weight:600; font-size:16px; padding:13px 22px; border-radius:14px; }
+  .actions a:not(.btn) { font-size:15px; font-weight:500; }
+  .shots { position:relative; height:440px; }
+  .shots img { position:absolute; width:46%; max-width:220px; border-radius:22px; box-shadow:0 18px 40px rgba(20,24,40,.18); }
+  .shots img:first-child { left:12%; top:0; transform:rotate(-4deg); }
+  .shots img:last-child { right:8%; top:44px; transform:rotate(4deg); }
+
+  /* About */
+  .about { padding:72px 0 24px; }
+  .beliefs { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:40px; margin-top:8px; }
+  .beliefs h3 { font:700 21px/1.25 var(--display); margin:0 0 8px; }
+  .beliefs h3::before { content:""; display:block; width:28px; height:6px; border-radius:3px; background:var(--finch); margin-bottom:16px; }
+  .beliefs p { color:var(--sub); margin:0; }
+
+  /* Contact */
+  .contact { margin:72px 0 0; padding:44px 48px; background:var(--surface); border-radius:32px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:20px; }
+  .contact h2 { font:700 28px/1.2 var(--display); letter-spacing:-0.02em; margin:0 0 6px; }
+  .contact p { color:var(--sub); margin:0; }
+  .mail { font:700 22px/1.2 var(--display); color:var(--ink); text-decoration-color:var(--finch); text-decoration-thickness:3px; text-underline-offset:6px; }
+
+  /* Footer */
+  footer { margin-top:72px; border-top:1px solid var(--line); padding:40px 0 56px; }
+  .foot { display:grid; grid-template-columns:1.4fr repeat(3, 1fr); gap:32px; }
+  .foot h4 { font-size:14px; font-weight:600; margin:0 0 10px; color:var(--ink); }
+  .foot a { display:block; color:var(--sub); text-decoration:none; font-size:15px; margin:6px 0; }
+  .foot a:hover { color:var(--ink); }
+  .foot small { display:block; color:var(--sub); font-size:14px; margin-top:12px; }
+
+  @media (max-width:860px) {
+    .app { grid-template-columns:1fr; padding:32px 24px; border-radius:24px; }
+    .shots { height:360px; }
+    .beliefs { grid-template-columns:1fr; gap:28px; }
+    .foot { grid-template-columns:1fr 1fr; }
+    .contact { padding:32px 24px; border-radius:24px; }
+  }
+  @media (max-width:520px) {
+    .top nav a { margin-left:14px; font-size:14px; }
+    .top nav a.hide-s { display:none; }
+    .hero { padding:40px 0 56px; }
+    .shots { height:300px; }
+    .shots img { width:48%; }
+    .app h3 { font-size:26px; }
+  }
 </style>
 </head>
 <body>
-<main>
-<h1>Rude Finch</h1>
-<p>Small, private apps for iPhone. Your files stay on your device.</p>
+<div class="wrap">
+  <header class="top">
+    <a class="logo" href="/"><picture><source srcset="assets/finch-dark.svg" media="(prefers-color-scheme: dark)"><img src="assets/finch.svg" alt="" width="40" height="40"></picture>Rude Finch</a>
+    <nav aria-label="Site">
+      <a href="#apps">Apps</a>
+      <a href="#about" class="hide-s">About</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
 
-<h2>Apps</h2>
-<div class="contact">
-  <img src="glidescan/img/icon.png" alt="Glide Scan app icon" width="56" height="56">
-  <div>
-    <p><strong><a class="name" href="glidescan/">Glide Scan: PDF Scanner &amp; OCR</a></strong> — a document scanner app that works offline. Scan to PDF, Word and Excel with no account and no watermark.</p>
-    <p><a href="glidescan/">About Glide Scan</a> · <a href="https://apps.apple.com/app/id6820689054">App Store</a> · <a href="glidescan/support.html">Support</a> · <a href="glidescan/privacy.html">Privacy Policy</a></p>
-  </div>
-</div>
-<div class="contact" style="margin-top:12px">
-  <img src="pinnap/img/icon.png" alt="Pinnap app icon" width="56" height="56">
-  <div>
-    <p><strong><a class="name" href="pinnap/">Pinnap: Arrival Alarm</a></strong> — an arrival alarm for trains and buses. Drop a pin on your stop and a system alarm wakes you as you get close, even in silent mode.</p>
-    <p><a href="pinnap/">About Pinnap</a> · <a href="https://apps.apple.com/app/id6823407013">App Store</a> · <a href="pinnap/support.html">Support</a> · <a href="pinnap/privacy.html">Privacy Policy</a></p>
-  </div>
-</div>
+  <main>
+    <section class="hero">
+      <h1>Small iPhone apps that mind their own <span class="perch">business.<picture><source srcset="assets/finch-dark.svg" media="(prefers-color-scheme: dark)"><img src="assets/finch.svg" alt="" width="64" height="64"></picture></span></h1>
+      <p>Rude Finch is an independent studio. Each app does one job well, works without an account, and keeps your documents and places on your iPhone.</p>
+    </section>
 
-<h2>Contact</h2>
-<p><a href="mailto:support@rudefinch.com">support@rudefinch.com</a></p>
-</main>
+    <section id="apps" aria-labelledby="apps-title">
+      <h2 class="section-title" id="apps-title">Apps</h2>
+
+      <article class="app glide">
+        <div>
+          <div class="app-head">
+            <img src="glidescan/img/icon.png" alt="Glide Scan app icon" width="72" height="72">
+            <div><h3>Glide Scan</h3><p class="kind">PDF scanner &amp; OCR</p></div>
+          </div>
+          <p class="pitch">Scan paper to clean PDFs, turn it into Word or Excel and copy the text — offline, with no watermark.</p>
+          <ul>
+            <li>Text recognition and file conversion run on your iPhone</li>
+            <li>Sign, fill in forms and hide ID numbers before you share</li>
+            <li>Free to scan; Glide Scan Pro unlocks every tool</li>
+          </ul>
+          <div class="actions">
+            <a class="btn" href="https://apps.apple.com/app/id6820689054">Get it on the App Store</a>
+            <a href="glidescan/">About Glide Scan</a>
+            <a href="glidescan/support.html">Support</a>
+          </div>
+        </div>
+        <div class="shots" aria-hidden="true">
+          <img src="glidescan/img/en-01.jpg" alt="" width="600" height="1304" loading="lazy">
+          <img src="glidescan/img/en-02.jpg" alt="" width="600" height="1304" loading="lazy">
+        </div>
+      </article>
+
+      <article class="app pinnap">
+        <div>
+          <div class="app-head">
+            <img src="pinnap/img/icon.png" alt="Pinnap app icon" width="72" height="72">
+            <div><h3>Pinnap</h3><p class="kind">Arrival alarm for trains and buses</p></div>
+          </div>
+          <p class="pitch">Drop a pin on your stop and doze off. A real alarm wakes you as you get close, even in silent mode.</p>
+          <ul>
+            <li>Heads-up before you arrive and an alert if you pass your stop</li>
+            <li>Leave an arrival memo, like “Grab your umbrella · Exit 3”</li>
+            <li>Location is used only while an alarm is on</li>
+          </ul>
+          <div class="actions">
+            <a class="btn" href="https://apps.apple.com/app/id6823407013">Get it on the App Store</a>
+            <a href="pinnap/">About Pinnap</a>
+            <a href="pinnap/support.html">Support</a>
+          </div>
+        </div>
+        <div class="shots" aria-hidden="true">
+          <img src="pinnap/img/en-01.jpg" alt="" width="600" height="1304" loading="lazy">
+          <img src="pinnap/img/en-03.jpg" alt="" width="600" height="1304" loading="lazy">
+        </div>
+      </article>
+    </section>
+
+    <section class="about" id="about" aria-labelledby="about-title">
+      <h2 class="section-title" id="about-title">How we make apps</h2>
+      <div class="beliefs">
+        <div>
+          <h3>Your things stay on your iPhone</h3>
+          <p>Scanning, text recognition and arrival checks run on the device. We don't run servers that receive your files or your location.</p>
+        </div>
+        <div>
+          <h3>No account to make</h3>
+          <p>Open the app and use it. There is nothing to sign up for and no password to forget.</p>
+        </div>
+        <div>
+          <h3>Straight about money</h3>
+          <p>Glide Scan is free to scan, with an optional Pro. Pinnap is free with ads, and never shows one while your alarm rings.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="contact" id="contact" aria-labelledby="contact-title">
+      <div>
+        <h2 id="contact-title">Questions or ideas?</h2>
+        <p>Write to us. We read every email and usually reply within 2 business days.</p>
+      </div>
+      <a class="mail" href="mailto:support@rudefinch.com">support@rudefinch.com</a>
+    </section>
+  </main>
+
+  <footer>
+    <div class="foot">
+      <div>
+        <a class="logo" href="/"><picture><source srcset="assets/finch-dark.svg" media="(prefers-color-scheme: dark)"><img src="assets/finch.svg" alt="" width="32" height="32" style="width:32px;height:32px"></picture>Rude Finch</a>
+        <small>Small, private apps for iPhone.</small>
+        <small>© 2026 Rude Finch</small>
+      </div>
+      <div>
+        <h4>Apps</h4>
+        <a href="glidescan/">Glide Scan</a>
+        <a href="pinnap/">Pinnap</a>
+      </div>
+      <div>
+        <h4>Support</h4>
+        <a href="glidescan/support.html">Glide Scan support</a>
+        <a href="pinnap/support.html">Pinnap support</a>
+        <a href="mailto:support@rudefinch.com">Email us</a>
+      </div>
+      <div>
+        <h4>Privacy</h4>
+        <a href="glidescan/privacy.html">Glide Scan privacy</a>
+        <a href="pinnap/privacy.html">Pinnap privacy</a>
+      </div>
+    </div>
+  </footer>
+</div>
 </body>
 </html>

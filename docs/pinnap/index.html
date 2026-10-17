@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pinnap — Arrival Alarm for iPhone: Wake Me at My Stop</title>
+<meta name="description" content="Pinnap is a free arrival alarm for iPhone. Drop a pin on your stop and a system alarm wakes you as the train or bus gets close, even in silent mode. No account; your location stays on your iPhone.">
+<link rel="canonical" href="https://rudefinch.com/pinnap/">
+<link rel="alternate" hreflang="en" href="https://rudefinch.com/pinnap/">
+<link rel="alternate" hreflang="ko" href="https://rudefinch.com/pinnap/ko/">
+<link rel="alternate" hreflang="x-default" href="https://rudefinch.com/pinnap/">
+<meta name="apple-itunes-app" content="app-id=6823407013">
+<link rel="icon" href="img/icon.png">
+<link rel="apple-touch-icon" href="img/icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Rude Finch">
+<meta property="og:title" content="Pinnap: Arrival Alarm for iPhone">
+<meta property="og:description" content="Doze off on the train or bus. Pinnap wakes you as you get close to your stop, even in silent mode.">
+<meta property="og:url" content="https://rudefinch.com/pinnap/">
+<meta property="og:image" content="https://rudefinch.com/pinnap/img/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "MobileApplication",
+      "@id": "https://rudefinch.com/pinnap/#app",
+      "name": "Pinnap: Arrival Alarm",
+      "alternateName": ["Pinnap", "Pinnap: 도착 알람"],
+      "description": "Arrival alarm for iPhone. Set where you get off and a system alarm wakes you as you get close to your stop, even in silent mode. Heads-up and missed-stop alerts, arrival memo and a backup time alarm. No account; location is used only while an alarm is on and stays on the device.",
+      "operatingSystem": "iOS",
+      "applicationCategory": "TravelApplication",
+      "applicationSubCategory": "Arrival alarm",
+      "url": "https://rudefinch.com/pinnap/",
+      "downloadUrl": "https://apps.apple.com/app/id6823407013",
+      "installUrl": "https://apps.apple.com/app/id6823407013",
+      "image": "https://rudefinch.com/pinnap/img/icon.png",
+      "screenshot": "https://rudefinch.com/pinnap/img/en-01.jpg",
+      "inLanguage": ["en", "ko", "ja", "zh-Hans", "zh-Hant", "es", "fr", "de", "pt-BR", "hi", "ar"],
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "publisher": { "@id": "https://rudefinch.com/#org" }
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://rudefinch.com/#org",
+      "name": "Rude Finch",
+      "url": "https://rudefinch.com/",
+      "email": "support@rudefinch.com"
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "Does the alarm ring in silent mode?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Pinnap uses the iPhone system alarm, so it rings even when your iPhone is in silent mode, and you can turn it off from the Lock Screen." } },
+        { "@type": "Question", "name": "How does Pinnap decide that I have arrived?",
+          "acceptedAnswer": { "@type": "Answer", "text": "It checks whether you are inside the radius you set around your destination, from 100 m to 2 km, using straight-line distance. It does not predict routes or timetables." } },
+        { "@type": "Question", "name": "What if I lose GPS in a tunnel or underground?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Use a generous radius and add a backup time alarm. It rings at the time you choose even if the location update is late." } },
+        { "@type": "Question", "name": "Does Pinnap track my location?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Location is used only while an alarm is on, to measure the distance to your stop on your iPhone. There is no account and no server that receives your location, and checks stop when the alarm ends." } },
+        { "@type": "Question", "name": "Is Pinnap free?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Pinnap is free and shows ads: a banner and an ad after you turn an alarm off. No ads appear while an alarm is ringing." } }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+  :root { color-scheme: light dark; --ink:#191f28; --sub:#4e5968; --line:#e5e8eb; --bg:#ffffff; --card:#f9fafb; --accent:#3182f6; }
+  @media (prefers-color-scheme: dark) { :root { --ink:#f2f4f6; --sub:#b0b8c1; --line:#333d4b; --bg:#17171c; --card:#202027; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { max-width:880px; margin:0 auto; padding:32px 20px 64px; }
+  nav { display:flex; justify-content:space-between; align-items:center; font-size:14px; margin-bottom:32px; }
+  nav a { color:var(--sub); text-decoration:none; margin-left:16px; }
+  .hero { display:flex; gap:20px; align-items:center; margin-bottom:12px; }
+  .hero img { width:88px; height:88px; border-radius:20px; flex:none; }
+  h1 { font-size:32px; line-height:1.2; margin:0; }
+  h2 { font-size:22px; margin:44px 0 12px; }
+  h3 { font-size:17px; margin:20px 0 4px; }
+  p, li { color:var(--sub); }
+  a { color:var(--accent); }
+  .lead { font-size:19px; margin:12px 0 20px; }
+  .cta { display:inline-block; background:var(--accent); color:#fff; text-decoration:none; font-weight:600; padding:12px 22px; border-radius:12px; }
+  .note { font-size:14px; margin-top:8px; }
+  .banner { width:100%; height:auto; border-radius:20px; margin:28px 0 8px; display:block; }
+  .shots { display:flex; gap:12px; overflow-x:auto; padding:4px 0 12px; scroll-snap-type:x mandatory; }
+  .shots img { width:200px; height:auto; border-radius:16px; border:1px solid var(--line); flex:none; scroll-snap-align:start; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px; }
+  .card h3 { margin-top:0; }
+  .card p { margin:0; }
+  footer { border-top:1px solid var(--line); margin-top:56px; padding-top:20px; font-size:14px; color:var(--sub); }
+  @media (max-width:520px) { h1 { font-size:26px; } .hero img { width:68px; height:68px; border-radius:16px; } .banner { border-radius:14px; } }
+</style>
+</head>
+<body>
+<main>
+<nav>
+  <a href="/" style="margin-left:0;color:var(--ink);font-weight:600">Rude Finch</a>
+  <span><a href="ko/" hreflang="ko" lang="ko">한국어</a><a href="support.html">Support</a></span>
+</nav>
+
+<header>
+  <div class="hero">
+    <img src="img/icon.png" alt="Pinnap app icon" width="88" height="88">
+    <h1>Pinnap: Arrival Alarm for iPhone</h1>
+  </div>
+  <p class="lead">Doze off on the subway, bus or train without missing your stop. Drop a pin where you get off, and Pinnap wakes you with a real alarm as you get close — even in silent mode.</p>
+  <a class="cta" href="https://apps.apple.com/app/id6823407013">Get Pinnap on the App Store</a>
+  <p class="note">Free. iPhone, iOS 26 or later.</p>
+</header>
+
+<img class="banner" src="img/header.jpg" alt="Pinnap: a ringing map pin between the map screen and the arrival screen" width="1920" height="823">
+
+<section aria-label="Screenshots">
+  <div class="shots">
+    <img src="img/en-01.jpg" alt="Doze off and wake up at your stop: set your destination on the map" width="200" height="435" loading="lazy">
+    <img src="img/en-02.jpg" alt="See how far your stop is while the alarm is on" width="200" height="435" loading="lazy">
+    <img src="img/en-03.jpg" alt="Arrival memo: don't leave your umbrella behind" width="200" height="435" loading="lazy">
+    <img src="img/en-04.jpg" alt="Heads-up and missed-stop alerts" width="200" height="435" loading="lazy">
+    <img src="img/en-05.jpg" alt="Search any station or place" width="200" height="435" loading="lazy">
+    <img src="img/en-06.jpg" alt="Save your usual stops with their alert radius" width="200" height="435" loading="lazy">
+  </div>
+</section>
+
+<section>
+  <h2>An arrival alarm that actually wakes you</h2>
+  <div class="grid">
+    <div class="card"><h3>Pin it on the map</h3><p>Move the map under the pin or search for a station or place. Choose an alert radius from 100 m to 2 km.</p></div>
+    <div class="card"><h3>Rings in silent mode</h3><p>An iPhone system alarm goes off when you enter the radius. Turn it off right from the Lock Screen.</p></div>
+    <div class="card"><h3>Heads-up before you arrive</h3><p>A gentle notification a little before your stop, so you have time to get ready.</p></div>
+    <div class="card"><h3>Missed-stop alert</h3><p>If you pass your stop and keep moving away, Pinnap lets you know right away.</p></div>
+    <div class="card"><h3>Arrival memo</h3><p>Leave yourself a note like “Grab your umbrella · Exit 3”. It shows up when you arrive.</p></div>
+    <div class="card"><h3>Backup time alarm</h3><p>Worried about tunnels or underground lines? Add an alarm at a set time as a safety net.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>Your location stays on your iPhone</h2>
+  <p>Pinnap measures the distance to your stop on your iPhone. There is no account and no server that receives your location. Location is checked only while an alarm is on — rarely while you are far away, more precisely as you get close — and stops as soon as the alarm ends.</p>
+</section>
+
+<section>
+  <h2>Free</h2>
+  <p>Pinnap is free and shows ads: a banner at the bottom of the screen and an ad right after you turn an alarm off. No ads appear while an alarm is ringing.</p>
+</section>
+
+<section>
+  <h2>Questions</h2>
+  <h3>Does the alarm ring in silent mode?</h3>
+  <p>Yes. Pinnap uses the iPhone system alarm, so it rings even when your iPhone is in silent mode, and you can turn it off from the Lock Screen.</p>
+  <h3>How does Pinnap decide that I have arrived?</h3>
+  <p>It checks whether you are inside the radius you set around your destination, using straight-line distance. It does not predict routes or timetables.</p>
+  <h3>What if I lose GPS in a tunnel or underground?</h3>
+  <p>Use a generous radius and add a backup time alarm. It rings at the time you choose even if the location update is late.</p>
+  <h3>Can I start an alarm when I'm already at my stop?</h3>
+  <p>No. If you are already inside the radius, Pinnap asks you to move the destination or make the radius smaller, so the alarm never rings by mistake.</p>
+</section>
+
+<footer>
+  <p><a href="support.html">Support</a> · <a href="privacy.html">Privacy Policy</a> · <a href="mailto:support@rudefinch.com">support@rudefinch.com</a></p>
+  <p>Pinnap is made by <a href="https://rudefinch.com/">Rude Finch</a>.</p>
+</footer>
+</main>
+</body>
+</html>

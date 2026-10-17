@@ -15,4 +15,18 @@
   </url>
   <url><loc>https://rudefinch.com/glidescan/support.html</loc><lastmod>2026-10-16</lastmod></url>
   <url><loc>https://rudefinch.com/glidescan/privacy.html</loc><lastmod>2026-10-16</lastmod></url>
+  <url>
+    <loc>https://rudefinch.com/pinnap/</loc><lastmod>2026-10-17</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://rudefinch.com/pinnap/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://rudefinch.com/pinnap/ko/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://rudefinch.com/pinnap/"/>
+  </url>
+  <url>
+    <loc>https://rudefinch.com/pinnap/ko/</loc><lastmod>2026-10-17</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://rudefinch.com/pinnap/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://rudefinch.com/pinnap/ko/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://rudefinch.com/pinnap/"/>
+  </url>
+  <url><loc>https://rudefinch.com/pinnap/support.html</loc><lastmod>2026-10-17</lastmod></url>
+  <url><loc>https://rudefinch.com/pinnap/privacy.html</loc><lastmod>2026-10-17</lastmod></url>
 </urlset>

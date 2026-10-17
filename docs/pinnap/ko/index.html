@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pinnap — 지하철·버스 도착 알람, 내릴 역에서 깨워드려요</title>
+<meta name="description" content="Pinnap은 iPhone 무료 도착 알람 앱이에요. 내릴 곳에 핀을 꽂으면 가까워졌을 때 무음 모드에서도 시스템 알람이 울려요. 가입 없이, 위치는 iPhone 안에서만 써요.">
+<link rel="canonical" href="https://rudefinch.com/pinnap/ko/">
+<link rel="alternate" hreflang="en" href="https://rudefinch.com/pinnap/">
+<link rel="alternate" hreflang="ko" href="https://rudefinch.com/pinnap/ko/">
+<link rel="alternate" hreflang="x-default" href="https://rudefinch.com/pinnap/">
+<meta name="apple-itunes-app" content="app-id=6823407013">
+<link rel="icon" href="../img/icon.png">
+<link rel="apple-touch-icon" href="../img/icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Rude Finch">
+<meta property="og:title" content="Pinnap: 도착 알람 - 하차 알림">
+<meta property="og:description" content="지하철·버스에서 깜빡 잠들어도 괜찮아요. 내릴 곳에 가까워지면 무음 모드에서도 깨워드려요.">
+<meta property="og:url" content="https://rudefinch.com/pinnap/ko/">
+<meta property="og:image" content="https://rudefinch.com/pinnap/img/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    { "@type": "Question", "name": "무음 모드에서도 알람이 울리나요?",
+      "acceptedAnswer": { "@type": "Answer", "text": "네. iPhone 시스템 알람을 쓰기 때문에 무음 모드에서도 울리고, 잠금 화면에서 바로 끌 수 있어요." } },
+    { "@type": "Question", "name": "도착은 어떻게 판단하나요?",
+      "acceptedAnswer": { "@type": "Answer", "text": "목적지를 중심으로 정한 반경(100m~2km) 안에 들어왔는지 직선거리로 판단해요. 경로나 시간표를 예측하지 않아요." } },
+    { "@type": "Question", "name": "터널이나 지하에서 GPS가 끊기면요?",
+      "acceptedAnswer": { "@type": "Answer", "text": "반경을 넉넉하게 잡고 보조 시간 알람을 함께 걸어두세요. 위치 확인이 늦어져도 정한 시간에 울려요." } },
+    { "@type": "Question", "name": "무료인가요?",
+      "acceptedAnswer": { "@type": "Answer", "text": "네, 무료예요. 하단 배너와 알람을 끈 직후의 광고가 있고, 알람이 울리는 중에는 광고가 나오지 않아요." } }
+  ]
+}
+</script>
+<style>
+  :root { color-scheme: light dark; --ink:#191f28; --sub:#4e5968; --line:#e5e8eb; --bg:#ffffff; --card:#f9fafb; --accent:#3182f6; }
+  @media (prefers-color-scheme: dark) { :root { --ink:#f2f4f6; --sub:#b0b8c1; --line:#333d4b; --bg:#17171c; --card:#202027; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.65 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif; word-break:keep-all; }
+  main { max-width:880px; margin:0 auto; padding:32px 20px 64px; }
+  nav { display:flex; justify-content:space-between; align-items:center; font-size:14px; margin-bottom:32px; }
+  nav a { color:var(--sub); text-decoration:none; margin-left:16px; }
+  .hero { display:flex; gap:20px; align-items:center; margin-bottom:12px; }
+  .hero img { width:88px; height:88px; border-radius:20px; flex:none; }
+  h1 { font-size:32px; line-height:1.25; margin:0; letter-spacing:-0.5px; }
+  h2 { font-size:22px; margin:44px 0 12px; }
+  h3 { font-size:17px; margin:20px 0 4px; }
+  p, li { color:var(--sub); }
+  a { color:var(--accent); }
+  .lead { font-size:19px; margin:12px 0 20px; }
+  .cta { display:inline-block; background:var(--accent); color:#fff; text-decoration:none; font-weight:600; padding:12px 22px; border-radius:12px; }
+  .note { font-size:14px; margin-top:8px; }
+  .banner { width:100%; height:auto; border-radius:20px; margin:28px 0 8px; display:block; }
+  .shots { display:flex; gap:12px; overflow-x:auto; padding:4px 0 12px; scroll-snap-type:x mandatory; }
+  .shots img { width:200px; height:auto; border-radius:16px; border:1px solid var(--line); flex:none; scroll-snap-align:start; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px; }
+  .card h3 { margin-top:0; }
+  .card p { margin:0; }
+  footer { border-top:1px solid var(--line); margin-top:56px; padding-top:20px; font-size:14px; color:var(--sub); }
+  @media (max-width:520px) { h1 { font-size:26px; } .hero img { width:68px; height:68px; border-radius:16px; } .banner { border-radius:14px; } }
+</style>
+</head>
+<body>
+<main>
+<nav>
+  <a href="/" style="margin-left:0;color:var(--ink);font-weight:600">Rude Finch</a>
+  <span><a href="../" hreflang="en" lang="en">English</a><a href="../support.html#ko">고객지원</a></span>
+</nav>
+
+<header>
+  <div class="hero">
+    <img src="../img/icon.png" alt="Pinnap 앱 아이콘" width="88" height="88">
+    <h1>Pinnap: 도착 알람 - 하차 알림</h1>
+  </div>
+  <p class="lead">지하철, 버스, 기차에서 깜빡 잠들어도 괜찮아요. 내릴 곳에 핀을 꽂아두면, 가까워졌을 때 무음 모드에서도 진짜 알람으로 깨워드려요.</p>
+  <a class="cta" href="https://apps.apple.com/kr/app/id6823407013">App Store에서 Pinnap 받기</a>
+  <p class="note">무료 · iPhone, iOS 26 이상</p>
+</header>
+
+<img class="banner" src="../img/header-ko.jpg" alt="지도 화면과 도착 화면 사이에서 울리는 Pinnap 핀" width="1920" height="823">
+
+<section aria-label="스크린샷">
+  <div class="shots">
+    <img src="../img/ko-01.jpg" alt="졸아도 괜찮아요. 지도에서 내릴 곳을 정해요" width="200" height="435" loading="lazy">
+    <img src="../img/ko-02.jpg" alt="알람이 켜져 있는 동안 남은 거리를 보여줘요" width="200" height="435" loading="lazy">
+    <img src="../img/ko-03.jpg" alt="도착 메모: 우산 두고 내리지 않게" width="200" height="435" loading="lazy">
+    <img src="../img/ko-04.jpg" alt="미리 알림과 지나침 감지" width="200" height="435" loading="lazy">
+    <img src="../img/ko-05.jpg" alt="어느 역이든 어느 장소든 검색" width="200" height="435" loading="lazy">
+    <img src="../img/ko-06.jpg" alt="자주 가는 곳은 반경까지 함께 저장" width="200" height="435" loading="lazy">
+  </div>
+</section>
+
+<section>
+  <h2>확실하게 깨워주는 도착 알람</h2>
+  <div class="grid">
+    <div class="card"><h3>지도에서 바로 정하기</h3><p>지도를 움직여 핀을 맞추거나 역·장소를 검색하세요. 알림 반경은 100m부터 2km까지 정할 수 있어요.</p></div>
+    <div class="card"><h3>무음 모드에서도 울려요</h3><p>반경에 들어오면 iPhone 시스템 알람이 울려요. 잠금 화면에서 바로 끌 수 있어요.</p></div>
+    <div class="card"><h3>도착 전 미리 알림</h3><p>내리기 조금 전에 알림을 보내드려요. 짐을 챙길 시간이 생겨요.</p></div>
+    <div class="card"><h3>지나침 감지</h3><p>내릴 곳을 지나쳐 멀어지면 바로 알려드려요.</p></div>
+    <div class="card"><h3>도착 메모</h3><p>“우산 챙기기 · 3번 출구”처럼 메모를 남겨두면 도착할 때 보여드려요.</p></div>
+    <div class="card"><h3>보조 시간 알람</h3><p>터널이나 지하 구간이 걱정되면 정한 시간에도 울리도록 함께 걸어두세요.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>위치는 iPhone 안에서만</h2>
+  <p>목적지까지의 거리 계산은 모두 iPhone 안에서 해요. 계정도, 위치를 받는 서버도 없어요. 알람이 켜져 있을 때만 위치를 확인하고 — 멀리 있을 때는 드물게, 가까워지면 정확하게 — 알람을 끄면 바로 멈춰요.</p>
+</section>
+
+<section>
+  <h2>무료</h2>
+  <p>Pinnap은 무료이고 광고가 있어요. 화면 하단 배너와 알람을 끈 직후의 광고가 나오며, 알람이 울리는 중에는 광고가 나오지 않아요.</p>
+</section>
+
+<section>
+  <h2>자주 묻는 질문</h2>
+  <h3>무음 모드에서도 알람이 울리나요?</h3>
+  <p>네. iPhone 시스템 알람을 쓰기 때문에 무음 모드에서도 울리고, 잠금 화면에서 바로 끌 수 있어요.</p>
+  <h3>도착은 어떻게 판단하나요?</h3>
+  <p>목적지를 중심으로 정한 반경 안에 들어왔는지 직선거리로 판단해요. 경로나 시간표를 예측하지 않아요.</p>
+  <h3>터널이나 지하에서 GPS가 끊기면요?</h3>
+  <p>반경을 넉넉하게 잡고 보조 시간 알람을 함께 걸어두세요. 위치 확인이 늦어져도 정한 시간에 울려요.</p>
+  <h3>이미 목적지 근처인데 알람을 켤 수 있나요?</h3>
+  <p>이미 반경 안에 있으면 알람이 바로 울리지 않도록, 목적지를 옮기거나 반경을 줄여달라고 안내해요.</p>
+</section>
+
+<footer>
+  <p><a href="../support.html#ko">고객지원</a> · <a href="../privacy.html#ko">개인정보처리방침</a> · <a href="mailto:support@rudefinch.com">support@rudefinch.com</a></p>
+  <p>Pinnap은 <a href="https://rudefinch.com/">Rude Finch</a>가 만들어요.</p>
+</footer>
+</main>
+</body>
+</html>

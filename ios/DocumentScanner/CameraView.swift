@@ -173,7 +173,7 @@ struct CameraView: View {
                 Image(systemName: "rectangle.landscape.rotate").rotationEffect(.degrees(captureTurns == 1 ? -90 : 90))
                     .accessibilityLabel("Landscape scan").accessibilityIdentifier("landscape-capture")
             }
-            Text(saving ? "Processing page…" : guidance).lineLimit(2).multilineTextAlignment(.center)
+            Text(LS(saving ? "Processing page…" : guidance)).lineLimit(2).multilineTextAlignment(.center)
                 .accessibilityIdentifier("cameraGuidance")
         }
         .font(.system(size: 15, weight: .semibold))
